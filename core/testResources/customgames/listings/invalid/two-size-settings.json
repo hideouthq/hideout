@@ -1,0 +1,49 @@
+{
+  "name": "Plain",
+  "tagline": "A mode with only what a listing needs.",
+  "description": "Nothing more than the required fields.",
+  "players": {
+    "min": 2,
+    "max": 6
+  },
+  "creators": [
+    "Someone"
+  ],
+  "released": "2026-11-01",
+  "settings": [
+    {
+      "key": "teams",
+      "label": "Teams",
+      "default": "1v1",
+      "options": [
+        {
+          "value": "1v1",
+          "label": "1v1",
+          "players": 2
+        },
+        {
+          "value": "2v2",
+          "label": "2v2",
+          "players": 4
+        }
+      ]
+    },
+    {
+      "key": "squads",
+      "label": "Teams",
+      "default": "1v1",
+      "options": [
+        {
+          "value": "1v1",
+          "label": "1v1",
+          "players": 2
+        },
+        {
+          "value": "2v2",
+          "label": "2v2",
+          "players": 4
+        }
+      ]
+    }
+  ]
+}

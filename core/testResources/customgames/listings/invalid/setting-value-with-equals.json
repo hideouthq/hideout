@@ -1,0 +1,30 @@
+{
+  "name": "Plain",
+  "tagline": "A mode with only what a listing needs.",
+  "description": "Nothing more than the required fields.",
+  "players": {
+    "min": 1,
+    "max": 8
+  },
+  "creators": [
+    "Someone"
+  ],
+  "released": "2026-11-01",
+  "settings": [
+    {
+      "key": "score",
+      "label": "Score to win",
+      "default": "a=b",
+      "options": [
+        {
+          "value": "a=b",
+          "label": "A"
+        },
+        {
+          "value": "c",
+          "label": "C"
+        }
+      ]
+    }
+  ]
+}

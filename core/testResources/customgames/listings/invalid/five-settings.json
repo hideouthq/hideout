@@ -1,0 +1,90 @@
+{
+  "name": "Plain",
+  "tagline": "A mode with only what a listing needs.",
+  "description": "Nothing more than the required fields.",
+  "players": {
+    "min": 1,
+    "max": 8
+  },
+  "creators": [
+    "Someone"
+  ],
+  "released": "2026-11-01",
+  "settings": [
+    {
+      "key": "k0",
+      "label": "Score to win",
+      "default": "5",
+      "options": [
+        {
+          "value": "3",
+          "label": "First to 3"
+        },
+        {
+          "value": "5",
+          "label": "First to 5"
+        }
+      ]
+    },
+    {
+      "key": "k1",
+      "label": "Score to win",
+      "default": "5",
+      "options": [
+        {
+          "value": "3",
+          "label": "First to 3"
+        },
+        {
+          "value": "5",
+          "label": "First to 5"
+        }
+      ]
+    },
+    {
+      "key": "k2",
+      "label": "Score to win",
+      "default": "5",
+      "options": [
+        {
+          "value": "3",
+          "label": "First to 3"
+        },
+        {
+          "value": "5",
+          "label": "First to 5"
+        }
+      ]
+    },
+    {
+      "key": "k3",
+      "label": "Score to win",
+      "default": "5",
+      "options": [
+        {
+          "value": "3",
+          "label": "First to 3"
+        },
+        {
+          "value": "5",
+          "label": "First to 5"
+        }
+      ]
+    },
+    {
+      "key": "k4",
+      "label": "Score to win",
+      "default": "5",
+      "options": [
+        {
+          "value": "3",
+          "label": "First to 3"
+        },
+        {
+          "value": "5",
+          "label": "First to 5"
+        }
+      ]
+    }
+  ]
+}

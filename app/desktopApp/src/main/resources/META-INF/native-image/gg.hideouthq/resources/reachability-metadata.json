@@ -1,0 +1,139 @@
+{
+  "comment": "Written by hand: whole resource trees the trace cannot enumerate, and lookups the JDK makes from its own code, which the trace filters out. AWT's glyph cache reads memory segments through the VarHandles. Native libraries are in the linux and windows folders, which only that system's image reads. The clipboard's DataFlavors load their classes by name from the flavor map on both systems, and a trace reaches them only if it copies. Sorting the flavors of anything pasted from another program asks for MarshalledObject's members, and fails the paste without them. zstd-jni's natives read and write a ZstdInputStream's positions through JNI, on the path of every 3D preview's model and of match metadata from the Steam cache, which no tour run reaches.",
+  "reflection": [
+    {
+      "type": "java.lang.invoke.VarHandleSegmentAsBooleans",
+      "allDeclaredMethods": true
+    },
+    {
+      "type": "java.lang.invoke.VarHandleSegmentAsBytes",
+      "allDeclaredMethods": true
+    },
+    {
+      "type": "java.lang.invoke.VarHandleSegmentAsChars",
+      "allDeclaredMethods": true
+    },
+    {
+      "type": "java.lang.invoke.VarHandleSegmentAsCharsAligned",
+      "allDeclaredMethods": true
+    },
+    {
+      "type": "java.lang.invoke.VarHandleSegmentAsDoubles",
+      "allDeclaredMethods": true
+    },
+    {
+      "type": "java.lang.invoke.VarHandleSegmentAsDoublesAligned",
+      "allDeclaredMethods": true
+    },
+    {
+      "type": "java.lang.invoke.VarHandleSegmentAsFloats",
+      "allDeclaredMethods": true
+    },
+    {
+      "type": "java.lang.invoke.VarHandleSegmentAsFloatsAligned",
+      "allDeclaredMethods": true
+    },
+    {
+      "type": "java.lang.invoke.VarHandleSegmentAsInts",
+      "allDeclaredMethods": true
+    },
+    {
+      "type": "java.lang.invoke.VarHandleSegmentAsIntsAligned",
+      "allDeclaredMethods": true
+    },
+    {
+      "type": "java.lang.invoke.VarHandleSegmentAsLongs",
+      "allDeclaredMethods": true
+    },
+    {
+      "type": "java.lang.invoke.VarHandleSegmentAsLongsAligned",
+      "allDeclaredMethods": true
+    },
+    {
+      "type": "java.lang.invoke.VarHandleSegmentAsShorts",
+      "allDeclaredMethods": true
+    },
+    {
+      "type": "java.lang.invoke.VarHandleSegmentAsShortsAligned",
+      "allDeclaredMethods": true
+    },
+    {
+      "type": "java.awt.Image"
+    },
+    {
+      "type": "java.io.InputStream"
+    },
+    {
+      "type": "java.io.Reader"
+    },
+    {
+      "type": "java.lang.String"
+    },
+    {
+      "type": "java.nio.ByteBuffer"
+    },
+    {
+      "type": "java.nio.CharBuffer"
+    },
+    {
+      "type": "java.util.List"
+    },
+    {
+      "type": "byte[]"
+    },
+    {
+      "type": "char[]"
+    },
+    {
+      "type": "java.rmi.MarshalledObject",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.Object"
+          ]
+        },
+        {
+          "name": "get",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "java.rmi.Remote"
+    },
+    {
+      "type": "com.github.luben.zstd.ZstdInputStreamNoFinalizer",
+      "jniAccessible": true,
+      "fields": [
+        {
+          "name": "srcPos"
+        },
+        {
+          "name": "dstPos"
+        }
+      ]
+    }
+  ],
+  "resources": [
+    {
+      "glob": "composeResources/**"
+    },
+    {
+      "glob": "steam-bridge/**"
+    },
+    {
+      "glob": "gg/hideouthq/Hideout/app.properties"
+    },
+    {
+      "glob": "gg/hideouthq/Hideout/preview.bin"
+    },
+    {
+      "bundle": "com.sun.accessibility.internal.resources.accessibility"
+    },
+    {
+      "module": "java.datatransfer",
+      "glob": "sun/datatransfer/resources/flavormap.properties"
+    }
+  ]
+}

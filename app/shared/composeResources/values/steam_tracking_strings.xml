@@ -1,0 +1,17 @@
+<resources>
+    <string name="steam_tracking_title">Steam tracking</string>
+    <string name="steam_tracking_developer">For people working on Hideout. Stats work without it.</string>
+    <string name="steam_tracking_description">Collect match history and metadata while Hideout and Deadlock are open. Enabling requires a Steam restart. This experimental integration cannot guarantee crash-free operation.</string>
+    <string name="steam_tracking_enable">Enable Steam tracking</string>
+    <string name="steam_tracking_disable">Disable Steam tracking</string>
+    <string name="steam_tracking_check">Check compatibility</string>
+    <string name="steam_tracking_backfill">Backfill history</string>
+    <string name="steam_tracking_unavailable">Steam tracking is not available for this installation yet.</string>
+    <string name="steam_tracking_off">Steam tracking is off.</string>
+    <string name="steam_tracking_account_mismatch">Switch Steam to your tracked account to continue.</string>
+    <string name="steam_tracking_wait_game">Open Deadlock to collect or backfill matches.</string>
+    <string name="steam_tracking_wait_steam">Waiting for Steam. Restart it through the tracking launcher if needed.</string>
+    <string name="steam_tracking_cooldown">Steam requests are paused. Saved matches remain available; backfill will resume after the cooldown.</string>
+    <string name="steam_tracking_progress">Connected · %1$d backfill summaries · %2$d matches awaiting metadata</string>
+    <string name="steam_tracking_wait_gc">Waiting for Deadlock’s game coordinator connection. Keep the game open.</string>
+</resources>

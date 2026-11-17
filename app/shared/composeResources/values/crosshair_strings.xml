@@ -1,0 +1,120 @@
+<resources>
+    <string name="crosshairs_title">Crosshairs</string>
+    <string name="crosshairs_subtitle">Pick one from Deadlock Mod Manager’s community library, or make your own and check it on different backgrounds.</string>
+    <string name="crosshairs_tab_browse">Browse</string>
+    <string name="crosshairs_tab_yours">Yours</string>
+    <string name="crosshairs_in_use">In use</string>
+    <string name="crosshairs_edit">Edit</string>
+    <string name="crosshairs_edit_in_use">Edit %1$s, the crosshair in use</string>
+    <string name="crosshairs_import">Import</string>
+    <string name="crosshairs_share">Share</string>
+    <string name="crosshairs_copied">Copied</string>
+
+    <string name="crosshairs_search">Search crosshairs or creators</string>
+    <string name="crosshairs_sort_popular">Popular</string>
+    <string name="crosshairs_sort_this_week">This week</string>
+    <string name="crosshairs_sort_new">New</string>
+    <string name="crosshairs_style_all">All</string>
+    <string name="crosshairs_style_small">Small</string>
+    <string name="crosshairs_style_dot_only">Dot only</string>
+    <string name="crosshairs_style_with_dot">With a dot</string>
+    <string name="crosshairs_style_outline">Outline</string>
+    <string name="crosshairs_style_fixed_gap">Fixed gap</string>
+    <string name="crosshairs_backdrop_sky">Sky</string>
+    <string name="crosshairs_backdrop_dark">Dark</string>
+    <string name="crosshairs_backdrop_grey">Grey</string>
+    <string name="crosshairs_saved">Saved</string>
+    <string name="crosshairs_no_match">No crosshairs match.</string>
+    <string name="crosshairs_clear_filters">Clear filters</string>
+    <string name="crosshairs_failed_title">Couldn’t load the community’s crosshairs</string>
+    <string name="crosshairs_failed_offline">Deadlock Mod Manager’s library can’t be reached. Check your connection and try again.</string>
+    <string name="crosshairs_failed_unavailable">Deadlock Mod Manager’s library didn’t answer properly. Try again in a moment.</string>
+    <string name="crosshairs_by">by %1$s</string>
+
+    <string name="crosshairs_color">Color</string>
+    <string name="crosshairs_length">Length</string>
+    <string name="crosshairs_thickness">Thickness</string>
+    <string name="crosshairs_gap">Gap</string>
+    <string name="crosshairs_opacity">Opacity</string>
+    <string name="crosshairs_dot">Dot</string>
+    <string name="crosshairs_outline">Outline</string>
+    <string name="crosshairs_fixed_gap">Fixed gap</string>
+    <string name="crosshairs_on">On</string>
+    <string name="crosshairs_off">Off</string>
+    <string name="crosshairs_percent">%1$d%</string>
+    <string name="crosshairs_use_in_game">Use in game</string>
+    <string name="crosshairs_in_use_next_start">In use · applies next time Deadlock starts</string>
+    <string name="crosshairs_settings_unreadable">Hideout couldn’t read the crosshair Deadlock saved.</string>
+    <string name="crosshairs_start_deadlock_once">Start Deadlock once so it saves its settings, then use a crosshair.</string>
+    <string name="crosshairs_yours_unreadable">Hideout couldn’t read your crosshairs. Restart Hideout to try again.</string>
+    <string name="crosshairs_settings_unreadable_short">Can’t read Deadlock’s crosshair</string>
+    <string name="crosshairs_start_deadlock_once_short">Start Deadlock once first</string>
+    <string name="crosshairs_yours_unreadable_short">Can’t read your crosshairs</string>
+    <string name="crosshairs_in_use_waiting">In use · waits for Deadlock to close</string>
+    <string name="crosshairs_saved_waiting">Saved · waits for Deadlock to close</string>
+    <string name="crosshairs_saved_game_folder">Saved, but Hideout couldn’t find your Steam account, so Deadlock might not use it</string>
+    <string name="crosshairs_save">Save to yours</string>
+    <string name="crosshairs_edit_copy">Edit a copy</string>
+    <string name="crosshairs_copy_code">Copy code</string>
+
+    <string name="crosshairs_zoom_actual">Actual size</string>
+    <string name="crosshairs_zoom_three">3×</string>
+    <string name="crosshairs_zoom_six">6×</string>
+    <string name="crosshairs_tag_in_use">%1$s · in use</string>
+    <string name="crosshairs_draws_nothing">Nothing shows in game. No visible lines or dot.</string>
+    <string name="crosshairs_tag_not_in_use">%1$s · not in use</string>
+    <string name="crosshairs_yours_title">Your crosshairs</string>
+    <string name="crosshairs_yours_hint">Select one to edit it</string>
+    <string name="crosshairs_new">New</string>
+    <string name="crosshairs_new_hint">From the default</string>
+    <string name="crosshairs_from_preset">Preset</string>
+    <string name="crosshairs_from_community">From the community</string>
+    <string name="crosshairs_from_copy">Copy · by %1$s</string>
+    <string name="crosshairs_from_copy_unnamed">Edited copy</string>
+    <string name="crosshairs_from_game">From the game</string>
+    <string name="crosshairs_from_code">Imported</string>
+    <string name="crosshairs_from_manager">From %1$s</string>
+    <string name="crosshairs_from_made">Made by you</string>
+    <string name="crosshairs_more">More for %1$s</string>
+    <string name="crosshairs_rename">Rename</string>
+    <string name="crosshairs_duplicate">Duplicate</string>
+    <string name="crosshairs_delete">Delete</string>
+
+    <string name="crosshairs_name">Crosshair name</string>
+    <string name="crosshairs_hex">Hex color</string>
+    <string-array name="crosshairs_swatches">
+        <item>White</item>
+        <item>Green</item>
+        <item>Cyan</item>
+        <item>Yellow</item>
+        <item>Pink</item>
+        <item>Red</item>
+    </string-array>
+    <string name="crosshairs_lines">Lines</string>
+    <string name="crosshairs_center_dot">Center dot</string>
+    <string name="crosshairs_fixed_gap_hint">The lines don’t spread when you move or shoot</string>
+    <string name="crosshairs_border_color">Border color</string>
+    <string name="crosshairs_border_hex">Border hex color</string>
+    <string name="crosshairs_line_border">Line border</string>
+    <string name="crosshairs_dot_border">Dot border</string>
+    <string name="crosshairs_size">Size</string>
+    <string name="crosshairs_line_border_size">Line border size</string>
+    <string name="crosshairs_line_border_gap">Line border gap</string>
+    <string name="crosshairs_line_border_opacity">Line border opacity</string>
+    <string name="crosshairs_dot_size">Dot size</string>
+    <string name="crosshairs_dot_opacity">Dot opacity</string>
+    <string name="crosshairs_dot_border_size">Dot border size</string>
+    <string name="crosshairs_dot_border_gap">Dot border gap</string>
+    <string name="crosshairs_dot_border_opacity">Dot border opacity</string>
+    <string name="crosshairs_collapse">Collapse when still</string>
+    <string name="crosshairs_collapse_hint">The game’s Collapse static reticle. Needs Fixed gap.</string>
+    <string name="crosshairs_reset">Reset</string>
+
+    <string name="crosshairs_import_title">Import a crosshair</string>
+    <string name="crosshairs_import_body">Paste a share code, or the citadel_crosshair_ lines from an autoexec.cfg.</string>
+    <string name="crosshairs_import_field">Share code or crosshair lines</string>
+    <string name="crosshairs_import_placeholder">HX1.… or citadel_crosshair_color_r "0"</string>
+    <string name="crosshairs_import_unreadable">Hideout can’t find a crosshair in that. Paste a share code or citadel_crosshair_ lines.</string>
+    <string name="crosshairs_import_cancel">Cancel</string>
+    <string name="crosshairs_import_add">Add to yours</string>
+</resources>

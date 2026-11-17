@@ -1,0 +1,1 @@
+registry.gitlab.steamos.cloud/steamrt/scout/sdk@sha256:d721294557004228c91057292a61d108d9192aca0cd2623792b065e05c0babc7

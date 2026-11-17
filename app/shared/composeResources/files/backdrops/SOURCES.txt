@@ -1,0 +1,7 @@
+Viewer backdrops supplied by the project owner.
+
+backdrop_greenech.jpg is copied from grenech.jpg.
+backdrop_broadway.jpg is copied from broadway.jpg.
+backdrop_york.jpg is copied from york.jpg.
+
+The original images are 1920 x 1080. Each backdrop_*_thumb.jpg is a 240 x 150 centre crop of its corresponding image.

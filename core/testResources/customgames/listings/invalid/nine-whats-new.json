@@ -1,0 +1,24 @@
+{
+  "name": "Plain",
+  "tagline": "A mode with only what a listing needs.",
+  "description": "Nothing more than the required fields.",
+  "players": {
+    "min": 1,
+    "max": 8
+  },
+  "creators": [
+    "Someone"
+  ],
+  "released": "2026-11-01",
+  "whatsNew": [
+    "Change 0",
+    "Change 1",
+    "Change 2",
+    "Change 3",
+    "Change 4",
+    "Change 5",
+    "Change 6",
+    "Change 7",
+    "Change 8"
+  ]
+}

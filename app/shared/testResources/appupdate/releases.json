@@ -1,0 +1,121 @@
+{
+  "schema": 1,
+  "latest": "1.4.0",
+  "notesUrl": "https://github.com/hideouthq/hideout/releases",
+  "versions": [
+    {
+      "version": "1.4.0",
+      "date": "2026-11-02",
+      "kind": "feature",
+      "download": {
+        "msi": {
+          "url": "https://github.com/hideouthq/hideout/releases/download/v1.4.0/Hideout-1.4.0.msi",
+          "size": 19293798,
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "appimage": {
+          "url": "https://github.com/hideouthq/hideout/releases/download/v1.4.0/Hideout-1.4.0-x86_64.AppImage",
+          "size": 19293799,
+          "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        },
+        "deb": {
+          "url": "https://github.com/hideouthq/hideout/releases/download/v1.4.0/hideout_1.4.0_amd64.deb",
+          "size": 19293800,
+          "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "rpm": {
+          "url": "https://github.com/hideouthq/hideout/releases/download/v1.4.0/hideout-1.4.0.x86_64.rpm",
+          "size": 19293801,
+          "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+        }
+      },
+      "highlights": [
+        {
+          "title": "Skin collections",
+          "text": "Hand-picked sets on Discover, like Halloween and Winter.",
+          "image": "1.4.0-collections@2x.webp"
+        },
+        {
+          "title": "Crosshairs",
+          "text": "Browse crosshairs from the community, or edit your own.",
+          "image": "1.4.0-crosshairs@2x.webp"
+        }
+      ],
+      "new": [
+        {
+          "area": "Discover",
+          "text": "Skin collections: hand-picked sets like Halloween and Winter, each one a profile in one click."
+        },
+        {
+          "area": "Crosshairs",
+          "text": "Browse crosshairs made by the community, and edit your own with a live preview."
+        }
+      ],
+      "improved": [
+        {
+          "area": "Stats",
+          "text": "With live tracking on, new matches show up about a minute after they end."
+        }
+      ],
+      "fixed": [
+        {
+          "area": "Library",
+          "text": "Mods with spaces in the file name load again."
+        }
+      ]
+    },
+    {
+      "version": "1.3.2",
+      "date": "2026-10-18",
+      "kind": "fixes",
+      "fixed": [
+        {
+          "area": "Library",
+          "text": "Load order no longer resets after a game update."
+        },
+        {
+          "area": "Discover",
+          "text": "Images on slow connections no longer stay blurred."
+        },
+        {
+          "area": "General",
+          "text": "The window no longer opens off-screen after unplugging a monitor."
+        }
+      ]
+    },
+    {
+      "version": "1.3.0",
+      "date": "2026-10-01",
+      "kind": "feature",
+      "highlights": [
+        {
+          "title": "Match stats",
+          "text": "Your rank, your heroes and every match you play.",
+          "image": "1.3.0-match-stats@2x.webp"
+        }
+      ],
+      "new": [
+        {
+          "area": "Stats",
+          "text": "Match stats: your rank, your heroes and every match."
+        },
+        {
+          "area": "Profiles",
+          "text": "Profiles: sets of mods you switch between in one click."
+        }
+      ],
+      "improved": [
+        {
+          "area": "Library",
+          "text": "A cards view for the library."
+        }
+      ],
+      "fixed": [
+        {
+          "area": "Install",
+          "text": "Some .7z files didn’t unpack."
+        }
+      ]
+    }
+  ]
+}

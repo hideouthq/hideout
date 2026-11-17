@@ -1,0 +1,15 @@
+<resources>
+    <string name="problem_profile_name">Enter a name for this profile.</string>
+    <string name="problem_profile_name_taken">That profile name is already used. Choose another name.</string>
+    <string name="problem_profile_missing">This profile no longer exists.</string>
+    <string name="problem_profile_last">Keep at least one profile.</string>
+    <string name="problem_profile_busy">Another change is still being applied. Try again when it finishes.</string>
+    <string name="problem_undo_expired">This change can no longer be undone.</string>
+    <string name="problem_undo_conflict">Your library changed since then, so nothing was undone.</string>
+    <string name="problem_version_changed">The installed version changed. Choose a version and try again.</string>
+    <string name="problem_update_changed">This mod or its files on GameBanana changed since the update was confirmed. Nothing was replaced; check for updates again.</string>
+    <string name="problem_listing_incomplete">GameBanana lists a file Hideout can’t read, so this update can’t be checked. Nothing was replaced; review the files instead.</string>
+    <string name="problem_local_unreadable">Hideout couldn’t read this file. Check that it’s still there and not open in another program, then try again.</string>
+    <string name="problem_local_unavailable">Adding files from your computer isn’t available in this mode.</string>
+    <string name="problem_same_file_installed">This file is already installed, as %1$s.</string>
+</resources>

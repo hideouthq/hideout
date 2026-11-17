@@ -1,0 +1,15 @@
+product: jvm/amper-plugin
+
+description: |
+  Generates Kotlin protobuf message classes from .proto schema files with Square's Wire compiler
+  (a pure-JVM library, no native protoc binary required). Used to turn the vendored, minimal
+  Deadlock match-metadata schema into real generated types instead of a handwritten decoder.
+
+apply:
+  - //common.module-template.yaml
+
+dependencies:
+  - com.squareup.wire:wire-compiler:5.3.3
+
+pluginInfo:
+  settingsClass: gg.hideouthq.protobuf.DeadlockProtobufSettings

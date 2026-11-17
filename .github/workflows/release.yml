@@ -1,0 +1,144 @@
+name: Release
+
+# Every job runs on ms02's self-hosted runners. They take this workflow only from a tag push or a
+# manual dispatch, so no pull_request trigger may ever be added here.
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  linux:
+    name: AppImage, DEB and RPM
+    runs-on: [self-hosted, linux, hideout-ms02]
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check the tag against the version and the notes
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: python3 tools/release/make_feed.py --check --version "${GITHUB_REF_NAME#v}" --tag "$GITHUB_REF_NAME" --notes release-notes
+      - name: Restore the Steam Runtime adapters
+        id: steam-bridge
+        run: |
+          cache="${HIDEOUT_CACHE:?}/steam-bridge/${{ hashFiles('native/steam-bridge/**') }}"
+          echo "cache=$cache" >> "$GITHUB_OUTPUT"
+          if [ -d "$cache" ]; then cp -a "$cache" .steam-sdk-artifacts; fi
+      - name: Build the packages
+        env:
+          HIDEOUT_BUILD_PREVIEW_URL: ${{ secrets.HIDEOUT_BUILD_PREVIEW_URL }}
+          HIDEOUT_BUILD_PREVIEW_KEY: ${{ secrets.HIDEOUT_BUILD_PREVIEW_KEY }}
+          HIDEOUT_BUILD_POSTHOG_KEY: ${{ secrets.HIDEOUT_BUILD_POSTHOG_KEY }}
+        run: |
+          : "${HIDEOUT_BUILD_PREVIEW_URL:?the repository has no HIDEOUT_BUILD_PREVIEW_URL secret}"
+          : "${HIDEOUT_BUILD_PREVIEW_KEY:?the repository has no HIDEOUT_BUILD_PREVIEW_KEY secret}"
+          : "${HIDEOUT_BUILD_POSTHOG_KEY:?the repository has no HIDEOUT_BUILD_POSTHOG_KEY secret}"
+          packaging/linux/build.sh
+      - name: Keep the Steam Runtime adapters
+        env:
+          cache: ${{ steps.steam-bridge.outputs.cache }}
+        run: |
+          if [ ! -d "$cache" ]; then
+            mkdir -p "$(dirname "$cache")"
+            cp -a .steam-sdk-artifacts "$cache.$$"
+            mv -T "$cache.$$" "$cache"
+          fi
+      - uses: actions/upload-artifact@v7
+        with:
+          name: linux
+          path: build/tasks/_desktopApp_packages@native-package/package/*
+          if-no-files-found: error
+          retention-days: 3
+
+  msi:
+    name: MSI
+    needs: linux
+    runs-on: [self-hosted, windows, hideout-ms02]
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+      - name: Oracle GraalVM 25.0.4
+        run: |
+          $dir = "$env:RUNNER_TOOL_CACHE\graalvm\25.0.4\x64"
+          if (-not (Test-Path "$dir.complete")) {
+            $zip = "$env:RUNNER_TEMP\graalvm.zip"
+            curl.exe -fsSL -o $zip https://download.oracle.com/graalvm/25/archive/graalvm-jdk-25.0.4_windows-x64_bin.zip
+            if ((Get-FileHash $zip -Algorithm SHA256).Hash -ne '5198b29a6448cb72b9a3cef10866723e2d1e2ec4799561a344e032bb7c61e555') { throw 'GraalVM checksum mismatch' }
+            Remove-Item $dir -Recurse -Force -ErrorAction SilentlyContinue
+            Expand-Archive $zip $dir
+            New-Item "$dir.complete" -ItemType File | Out-Null
+          }
+          "JAVA_HOME=$((Get-ChildItem $dir -Directory)[0].FullName)" >> $env:GITHUB_ENV
+      - name: Go 1.27.3
+        run: |
+          $dir = "$env:RUNNER_TOOL_CACHE\go\1.27.3\x64"
+          if (-not (Test-Path "$dir.complete")) {
+            $zip = "$env:RUNNER_TEMP\go.zip"
+            curl.exe -fsSL -o $zip https://go.dev/dl/go1.27.3.windows-amd64.zip
+            if ((Get-FileHash $zip -Algorithm SHA256).Hash -ne 'f26081f438319757f8a1b46d7d0b2c5ec7583d4038e485e0aa725cfde7885fff') { throw 'Go checksum mismatch' }
+            Remove-Item $dir -Recurse -Force -ErrorAction SilentlyContinue
+            Expand-Archive $zip $dir
+            New-Item "$dir.complete" -ItemType File | Out-Null
+          }
+          "$dir\go\bin" >> $env:GITHUB_PATH
+          "GOTOOLCHAIN=local" >> $env:GITHUB_ENV
+      - uses: ilammy/msvc-dev-cmd@a102174a2b586eec2ea151a69e6fd14404a8ce7c # v1.13.0
+      - name: Build the MSI
+        env:
+          HIDEOUT_BUILD_PREVIEW_URL: ${{ secrets.HIDEOUT_BUILD_PREVIEW_URL }}
+          HIDEOUT_BUILD_PREVIEW_KEY: ${{ secrets.HIDEOUT_BUILD_PREVIEW_KEY }}
+          HIDEOUT_BUILD_POSTHOG_KEY: ${{ secrets.HIDEOUT_BUILD_POSTHOG_KEY }}
+        run: |
+          if (-not $env:HIDEOUT_BUILD_PREVIEW_URL -or -not $env:HIDEOUT_BUILD_PREVIEW_KEY) { throw 'the repository has no HIDEOUT_BUILD_PREVIEW_URL or HIDEOUT_BUILD_PREVIEW_KEY secret' }
+          if (-not $env:HIDEOUT_BUILD_POSTHOG_KEY) { throw 'the repository has no HIDEOUT_BUILD_POSTHOG_KEY secret' }
+          ./kotlin.bat do nativePackages -m desktopApp
+      - uses: actions/upload-artifact@v7
+        with:
+          name: msi
+          path: build/tasks/_desktopApp_packages@native-package/package/*
+          if-no-files-found: error
+          retention-days: 3
+
+  release:
+    name: Draft release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [linux, msi]
+    runs-on: [self-hosted, linux, hideout-ms02]
+    environment: release
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v8
+        with:
+          path: packages
+          merge-multiple: true
+      - name: Make the release feed and notes
+        run: python3 tools/release/make_feed.py --version "${GITHUB_REF_NAME#v}" --tag "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --packages packages --notes release-notes --out feed
+      - name: Sign the release feed
+        env:
+          RELEASE_FEED_SIGNING_KEY: ${{ secrets.RELEASE_FEED_SIGNING_KEY }}
+        run: |
+          : "${RELEASE_FEED_SIGNING_KEY:?the release environment has no RELEASE_FEED_SIGNING_KEY secret}"
+          key=$(mktemp "$RUNNER_TEMP/release-feed-key.XXXXXX")
+          trap 'rm -f "$key"' EXIT
+          printf '%s\n' "$RELEASE_FEED_SIGNING_KEY" > "$key"
+          tools/release/sign_feed.sh "$key" feed/releases.json
+      # The feed names its files, so a name GitHub changed on upload must stop the release while it is still a draft.
+      # The feed stays offline until the owner publishes: releases/latest/download skips drafts.
+      - name: Draft the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mv feed/notes.md "$RUNNER_TEMP/notes.md"
+          assets=(packages/*.AppImage packages/*.deb packages/*.rpm packages/*.msi feed/*)
+          gh release create "$GITHUB_REF_NAME" "${assets[@]}" --draft --title "Hideout $GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/notes.md" --repo "$GITHUB_REPOSITORY"
+          diff <(basename -a "${assets[@]}" | sort) <(gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name' | sort)

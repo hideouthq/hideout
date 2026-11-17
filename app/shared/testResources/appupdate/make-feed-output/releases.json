@@ -1,0 +1,64 @@
+{
+  "schema": 1,
+  "latest": "1.1.0",
+  "notesUrl": "https://github.com/hideouthq/hideout/releases",
+  "versions": [
+    {
+      "version": "1.1.0",
+      "date": "2026-11-02",
+      "kind": "feature",
+      "download": {
+        "msi": {
+          "url": "https://github.com/hideouthq/hideout/releases/download/v1.1.0/Hideout-1.1.0.msi",
+          "size": 30,
+          "sha256": "4c0f40189dc20f51e8b33db2be1ac4f7e90057fb849135ed2d8369fa85535c05"
+        },
+        "appimage": {
+          "url": "https://github.com/hideouthq/hideout/releases/download/v1.1.0/Hideout-1.1.0-x86_64.AppImage",
+          "size": 42,
+          "sha256": "0f2cd3ee38eabf66c7c2ba0cf094ea205a608d46d1a4ea0780e5512d7ddb58ca"
+        },
+        "deb": {
+          "url": "https://github.com/hideouthq/hideout/releases/download/v1.1.0/hideout_1.1.0_amd64.deb",
+          "size": 36,
+          "sha256": "4542dfc4fc665fd14133faa7fc1b3bcb88570da629fee9310221af3cd5b075ad"
+        },
+        "rpm": {
+          "url": "https://github.com/hideouthq/hideout/releases/download/v1.1.0/hideout-1.1.0-1.x86_64.rpm",
+          "size": 39,
+          "sha256": "8e77380b53a83771a1b74e74a58146d5a437f86a9046b8db2cd49d99439ca9e0"
+        }
+      },
+      "highlights": [
+        {
+          "title": "Hideout updates",
+          "text": "New versions install when you restart.",
+          "image": "1.1.0-updates@2x.webp"
+        }
+      ],
+      "new": [
+        {
+          "area": "General",
+          "text": "Hideout updates: new versions install when you restart."
+        }
+      ],
+      "fixed": [
+        {
+          "area": "Library",
+          "text": "Café names with accents no longer break the list."
+        }
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "date": "2026-10-01",
+      "kind": "fixes",
+      "fixed": [
+        {
+          "area": "Install",
+          "text": "Installs no longer stop at 99%."
+        }
+      ]
+    }
+  ]
+}

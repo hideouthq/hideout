@@ -1,0 +1,70 @@
+<resources>
+    <string name="onboarding_skip_setup">Skip setup</string>
+    <string name="onboarding_game_missing_title">Where is Deadlock?</string>
+    <string name="onboarding_game_missing_lead">Hideout looked in your Steam libraries. Choose the folder Deadlock is installed in.</string>
+    <string name="import_source_title">Where are your mods?</string>
+    <string name="import_source_lead">Hideout takes over mods, profiles and crosshair from another manager, with nothing to download again.</string>
+    <string name="import_choose_title">Bring your mods over</string>
+    <string name="import_choose_lead">Your mods stay where they are, and Hideout takes a backup first.</string>
+    <string name="import_choose_lead_file">Mods already in the game stay where they are, and the rest are copied in from the export. Hideout takes a backup first.</string>
+    <string name="import_from">From %1$s</string>
+    <string name="import_from_file">From an export file</string>
+    <string name="import_pick_manager">Choose %1$s’s data folder</string>
+    <string name="import_pick_export">Choose the export’s folder</string>
+    <string name="import_dialog_cancel">Cancel</string>
+    <string name="import_dialog_import">Import</string>
+    <string name="import_sources">Import from</string>
+    <string name="import_manager_dmm">Deadlock Mod Manager</string>
+    <string name="import_manager_grimoire">Grimoire</string>
+    <string name="import_export_file">An export file</string>
+    <string name="import_export_file_detail">A mod-interchange bundle from either manager</string>
+    <plurals name="import_count_mods">
+        <item quantity="one">%1$d mod</item>
+        <item quantity="other">%1$d mods</item>
+    </plurals>
+    <plurals name="import_count_profiles">
+        <item quantity="one">%1$d profile</item>
+        <item quantity="other">%1$d profiles</item>
+    </plurals>
+    <plurals name="import_count_crosshairs">
+        <item quantity="one">%1$d crosshair</item>
+        <item quantity="other">%1$d crosshairs</item>
+    </plurals>
+    <plurals name="import_count_commands">
+        <item quantity="one">%1$d command</item>
+        <item quantity="other">%1$d commands</item>
+    </plurals>
+    <string name="import_what">What to import</string>
+    <string name="import_row_mods">Mods</string>
+    <string name="import_row_mods_detail">With their on/off state and load order</string>
+    <string name="import_row_profiles">Profiles</string>
+    <string name="import_row_crosshair">Crosshair</string>
+    <string name="import_row_crosshair_detail">Added to Yours, to use when you like</string>
+    <string name="import_row_autoexec">Autoexec</string>
+    <string name="import_row_autoexec_detail">Commands from autoexec.cfg</string>
+    <plurals name="import_missing">
+        <item quantity="one">%1$d mod in %2$s has no files and won’t come.</item>
+        <item quantity="other">%1$d mods in %2$s have no files and won’t come.</item>
+    </plurals>
+    <plurals name="import_missing_file">
+        <item quantity="one">%1$d mod in the export file has no files and won’t come.</item>
+        <item quantity="other">%1$d mods in the export file have no files and won’t come.</item>
+    </plurals>
+    <string name="import_step_waits_game">Waiting for Deadlock to close</string>
+    <string name="import_step_waits_custom_game">Waiting for the custom game to end</string>
+    <string name="import_step_waits_manager">Waiting for %1$s to close</string>
+    <string name="import_stopped">The import stopped.</string>
+    <string name="import_unavailable">Nothing can come from here.</string>
+    <string name="import_problem_game_missing">Hideout can’t find Deadlock’s folder.</string>
+    <string name="import_problem_busy">The library can’t take a change right now.</string>
+    <string name="import_problem_busy_why">The library can’t take a change right now: %1$s</string>
+    <string name="import_problem_not_a_bundle">This folder holds no export Hideout reads (%1$s).</string>
+    <string name="import_problem_game_unreadable">A folder of the game couldn’t be read: %1$s</string>
+    <string name="import_problem_backup">The backup couldn’t be written, so nothing changed: %1$s</string>
+    <string name="import_left_out">Left out</string>
+    <string name="import_profile_on">%1$d on</string>
+    <string name="onboarding_start_fresh">Start fresh</string>
+    <string name="import_importing">Importing…</string>
+    <string name="import_point_at">Choose its folder</string>
+    <string name="import_other_source">Another source…</string>
+</resources>

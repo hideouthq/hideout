@@ -1,0 +1,6 @@
+product: jvm/amper-plugin
+description: Builds and bundles the Linux Steam bridge and its structural compatibility probe.
+apply:
+  - //common.module-template.yaml
+pluginInfo:
+  settingsClass: gg.hideouthq.nativebridge.NativeBridgeSettings

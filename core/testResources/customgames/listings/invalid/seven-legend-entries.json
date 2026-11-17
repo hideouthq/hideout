@@ -1,0 +1,43 @@
+{
+  "name": "Plain",
+  "tagline": "A mode with only what a listing needs.",
+  "description": "Nothing more than the required fields.",
+  "players": {
+    "min": 1,
+    "max": 8
+  },
+  "creators": [
+    "Someone"
+  ],
+  "released": "2026-11-01",
+  "legend": [
+    {
+      "label": "Side 0",
+      "color": "#E6B977"
+    },
+    {
+      "label": "Side 1",
+      "color": "#E6B977"
+    },
+    {
+      "label": "Side 2",
+      "color": "#E6B977"
+    },
+    {
+      "label": "Side 3",
+      "color": "#E6B977"
+    },
+    {
+      "label": "Side 4",
+      "color": "#E6B977"
+    },
+    {
+      "label": "Side 5",
+      "color": "#E6B977"
+    },
+    {
+      "label": "Side 6",
+      "color": "#E6B977"
+    }
+  ]
+}

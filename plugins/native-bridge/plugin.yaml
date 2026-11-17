@@ -1,0 +1,10 @@
+tasks:
+  bundleSteamBridge:
+    action: !gg.hideouthq.nativebridge.bundleSteamBridge
+      sourceDir: ${pluginSettings.sourceDir}
+      prebuiltDir: ${pluginSettings.prebuiltDir}
+      buildDir: ${taskOutputDir}/build
+      outputDir: ${taskOutputDir}/resources
+generated:
+  resources:
+    - directory: ${tasks.bundleSteamBridge.action.outputDir}

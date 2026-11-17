@@ -1,0 +1,39 @@
+name: Tests
+
+# Runs on ms02's Linux runner, which takes this workflow only from a push, so only people with write
+# access can start it. No pull_request trigger may ever be added here.
+on:
+  push:
+    branches: ['**']
+    paths-ignore: ['docs/**', '**.md']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Tests
+    runs-on: [self-hosted, linux, hideout-ms02]
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - name: Restore the Steam Runtime adapters
+        id: steam-bridge
+        run: |
+          cache="${HIDEOUT_CACHE:?}/steam-bridge/${{ hashFiles('native/steam-bridge/**') }}"
+          echo "cache=$cache" >> "$GITHUB_OUTPUT"
+          if [ -d "$cache" ]; then cp -a "$cache" .steam-sdk-artifacts; fi
+      - run: ci/test.sh
+      - name: Keep the Steam Runtime adapters
+        env:
+          cache: ${{ steps.steam-bridge.outputs.cache }}
+        run: |
+          if [ ! -d "$cache" ] && [ -d .steam-sdk-artifacts ]; then
+            mkdir -p "$(dirname "$cache")"
+            cp -a .steam-sdk-artifacts "$cache.$$"
+            mv -T "$cache.$$" "$cache"
+          fi

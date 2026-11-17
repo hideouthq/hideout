@@ -1,0 +1,35 @@
+<resources>
+    <string name="profile_install_turn_on">Turn on in</string>
+    <string name="profile_install_on_in">On in</string>
+    <string name="profile_install_change_version">Change files…</string>
+    <string name="profile_install_show_library">Show in Library</string>
+    <string name="profile_install_cancel">Cancel download</string>
+    <string name="profile_install_downloading">Downloading · %1$d%</string>
+    <string name="profile_install_waiting">Waiting for another download</string>
+    <string name="profile_install_cancelling">Cancelling…</string>
+    <string name="profile_install_choose">Choosing…</string>
+    <string name="profile_install_seconds_left">About %1$d s left</string>
+    <string name="profile_install_minutes_left">About %1$d min left</string>
+    <string name="profile_install_badge_on">On</string>
+    <string name="profile_install_badge_library">In library</string>
+    <string name="profile_install_badge_downloading">%1$d%</string>
+    <plurals name="skin_swap_title">
+        <item quantity="one">Another %2$s skin is on</item>
+        <item quantity="other">%1$d other %2$s skins are on</item>
+    </plurals>
+    <plurals name="skin_swap_title_unnamed">
+        <item quantity="one">Another skin for this hero is on</item>
+        <item quantity="other">%1$d other skins for this hero are on</item>
+    </plurals>
+    <plurals name="skin_swap_title_mods">
+        <item quantity="one">%2$s changes the same models</item>
+        <item quantity="other">%2$s change the same models</item>
+    </plurals>
+    <plurals name="skin_swap_body">
+        <item quantity="one">%2$s is on. Turn it off and use %3$s instead, or keep both on? Keeping both puts %3$s on top, so it shows where they change the same files.</item>
+        <item quantity="other">%2$s are on. Turn them off and use %3$s instead, or keep them all on? Keeping them puts %3$s on top, so it shows where they change the same files.</item>
+    </plurals>
+    <string name="skin_swap_swap">Swap</string>
+    <string name="skin_swap_keep_both">Keep both</string>
+    <string name="skin_swap_cancel">Cancel</string>
+</resources>

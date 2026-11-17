@@ -1,0 +1,12 @@
+{
+  "name": "Plain",
+  "tagline": "A mode with only what a listing needs.",
+  "players": {
+    "min": 1,
+    "max": 8
+  },
+  "creators": [
+    "Someone"
+  ],
+  "released": "2026-11-01"
+}

@@ -1,0 +1,131 @@
+syntax = "proto2";
+
+package gg.hideouthq.core.data.deadlock.proto;
+option java_package = "gg.hideouthq.core.data.deadlock.proto";
+
+// Minimal, wire-compatible projection of the subset of Valve's Deadlock Game Coordinator match
+// metadata that this backend reads. Message and field names, numbers and types are copied
+// verbatim from the upstream, community-maintained schema below so this stays binary-compatible
+// with the real `.meta.bz2`/`.meta.zstd` payload Valve's replay CDN serves. Fields this backend
+// does not use are simply omitted: protobuf's wire format skips unknown/absent field numbers, so
+// trimming a message is always safe, it just means the generated Kotlin class exposes fewer
+// properties than Valve's own schema. Upstream enums are flattened to plain `uint32` wire-compatible
+// codes rather than redeclared.
+//
+// Upstream source (Unlicense): https://github.com/SteamDatabase/Protobufs/blob/master/deadlock/citadel_gcmessages_common.proto
+
+message CMsgMatchMetaData {
+  optional uint32 version = 1;
+  // Serialized CMsgMatchMetaDataContents.
+  optional bytes match_details = 2;
+  optional uint64 match_id = 3;
+}
+
+message CMsgMatchMetaDataContents {
+  message Deaths {
+    optional uint32 game_time_s = 1;
+    optional uint32 killer_player_slot = 9;
+    optional uint32 death_duration_s = 12;
+  }
+
+  message Items {
+    optional uint32 game_time_s = 1;
+    optional uint32 item_id = 2;
+    optional uint32 upgrade_id = 3;
+    optional uint32 sold_time_s = 4;
+    optional uint32 flags = 5;
+    optional uint32 upgrade_info = 7;
+  }
+
+  message PlayerStats {
+    optional uint32 time_stamp_s = 1;
+    optional uint32 net_worth = 2;
+    optional uint32 kills = 14;
+    optional uint32 deaths = 15;
+    optional uint32 assists = 16;
+    optional uint32 creep_kills = 17;
+    optional uint32 neutral_kills = 18;
+    optional uint32 player_damage = 21;
+    optional uint32 boss_damage = 23;
+    optional uint32 denies = 24;
+    optional uint32 player_healing = 25;
+    optional uint32 self_healing = 27;
+    optional uint32 player_damage_taken = 28;
+    optional uint32 shots_hit = 32;
+    optional uint32 shots_missed = 33;
+    optional uint32 hero_bullets_hit = 36;
+    optional uint32 hero_bullets_hit_crit = 37;
+    optional uint32 damage_mitigated = 42;
+    optional uint32 level = 43;
+  }
+
+  // Upstream CMsgMatchPlayerRankData. The latest recorded rank comes from deadlock-api's
+  // `/v1/players/{id}/rank`; of a match's rank data only the rank a player started it with is read.
+  message PlayerRankData {
+    optional uint32 initial_display_rank = 1;
+  }
+
+  message Players {
+    optional uint32 account_id = 1;
+    optional uint32 player_slot = 2;
+    repeated Deaths death_details = 3;
+    repeated Items items = 4;
+    repeated PlayerStats stats = 5;
+    // ECitadelLobbyTeam: 0 = Team0, 1 = Team1, 16 = Spectator.
+    optional uint32 team = 6;
+    optional uint32 kills = 8;
+    optional uint32 deaths = 9;
+    optional uint32 assists = 10;
+    optional uint32 net_worth = 11;
+    optional uint32 hero_id = 12;
+    optional uint32 last_hits = 13;
+    optional uint32 denies = 14;
+    optional uint32 level = 18;
+    optional uint32 abandon_match_time_s = 23;
+    optional PlayerRankData player_rank_data = 32;
+    // EPlayerMatchOutcome: 0 = Invalid, 1 = Win, 2 = Loss, 3 = Penalized, 4 = PenalizedParty,
+    // 5 = NotScored.
+    optional uint32 player_match_outcome = 33;
+  }
+
+  // A destroyed structure (lane tier, titan, shield generator, barrack boss) or, for
+  // team_objective_id, that structure's team-relative slot. ECitadelObjective/ECitadelTeamObjective
+  // enumerate the lane layout.
+  message Objective {
+    optional uint32 legacy_objective_id = 1;
+    optional uint32 destroyed_time_s = 2;
+    optional uint32 team_objective_id = 9;
+    // ECitadelLobbyTeam: 0 = Team0, 1 = Team1, 16 = Spectator.
+    optional uint32 team = 10;
+  }
+
+  message MidBoss {
+    optional uint32 team_killed = 1;
+    optional uint32 team_claimed = 2;
+    optional uint32 destroyed_time_s = 3;
+  }
+
+  message MatchInfo {
+    optional uint32 duration_s = 1;
+    // EMatchOutcome (nested, scoped to this message upstream): 0 = TeamWin, 1 = Error,
+    // 2 = MatchDraw.
+    optional uint32 match_outcome = 2;
+    // ECitadelLobbyTeam: 0 = Team0, 1 = Team1, 16 = Spectator.
+    optional uint32 winning_team = 3;
+    repeated Players players = 4;
+    optional uint32 start_time = 5;
+    optional uint64 match_id = 6;
+    // ECitadelGameMode: 0 = Invalid, 1 = Normal, 2 = 1v1Test, 3 = Sandbox, 4 = StreetBrawl,
+    // 5 = ExploreNYC, 6 = Internal.
+    optional uint32 game_mode = 9;
+    // ECitadelMatchMode: 0 = Invalid, 1 = Unranked, 2 = PrivateLobby, 3 = CoopBot, 4 = Ranked,
+    // 5 = ServerTest, 6 = Tutorial, 7 = HeroLabs, 8 = NewPlayerPlacement.
+    optional uint32 match_mode = 10;
+    repeated Objective objectives = 11;
+    repeated MidBoss mid_boss = 19;
+    optional uint32 average_badge_team0 = 23;
+    optional uint32 average_badge_team1 = 24;
+  }
+
+  optional MatchInfo match_info = 2;
+}

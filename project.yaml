@@ -1,0 +1,13 @@
+modules:
+  - app/desktopApp
+  - app/desktopTools
+  - app/shared
+  - core
+  - plugins/native-bridge
+  - plugins/native-package
+  - plugins/protobuf-codegen
+
+plugins:
+  - ./plugins/native-bridge
+  - ./plugins/native-package
+  - ./plugins/protobuf-codegen

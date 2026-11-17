@@ -1,0 +1,33 @@
+<resources>
+    <string name="profile_share">Copy share link</string>
+    <string name="profile_import">Import profile</string>
+    <string name="share_making">Making a link to %1$s…</string>
+    <string name="share_copied">Link to %1$s copied.</string>
+    <string name="share_copied_long">Long link to %1$s copied. Hideout couldn’t reach the link service for a short one.</string>
+    <plurals name="share_left_out">
+        <item quantity="one">%1$s %2$d mod not from GameBanana was left out.</item>
+        <item quantity="other">%1$s %2$d mods not from GameBanana were left out.</item>
+    </plurals>
+    <string name="share_nothing">%1$s has no GameBanana mods on, so there’s nothing to share.</string>
+    <string name="share_copy_failed">Couldn’t copy the link. Try again.</string>
+    <string name="import_body">Paste a profile link or code someone shared with you.</string>
+    <string name="import_field">Profile link or code</string>
+    <string name="import_placeholder">hideouthq.gg/p/K7Q2M9XD</string>
+    <string name="import_read">Continue</string>
+    <string name="import_looking">Looking up the profile…</string>
+    <string name="import_unreadable">That isn’t a profile link or code.</string>
+    <string name="import_missing">Couldn’t find that profile. Check the code, or ask for the link again.</string>
+    <string name="import_unreachable">Couldn’t reach %1$s. Check your connection and try again.</string>
+    <string name="import_unreachable_nowhere">This Hideout has no link service set, so codes can’t be looked up. Paste the long link instead.</string>
+    <string name="import_title">Import %1$s</string>
+    <plurals name="import_summary">
+        <item quantity="one">A new profile with %1$d mod on, in the order they were shared. Your current profile stays active.</item>
+        <item quantity="other">A new profile with %1$d mods on, in the order they were shared. Your current profile stays active.</item>
+    </plurals>
+    <string name="import_installed">Installed</string>
+    <string name="import_unknown">GameBanana mod %1$s</string>
+    <plurals name="import_create">
+        <item quantity="one">Create profile with %1$d mod</item>
+        <item quantity="other">Create profile with %1$d mods</item>
+    </plurals>
+</resources>

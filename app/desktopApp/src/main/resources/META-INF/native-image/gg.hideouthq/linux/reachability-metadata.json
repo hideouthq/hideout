@@ -1,0 +1,97 @@
+{
+  "comment": "Written by hand: the Linux native libraries the app's JARs carry. Their loaders skip the resource when an earlier run already unpacked it, so a trace sees them only on a clean machine. Only the Linux image reads this folder. Also the AWT field that names the window class, which only native startup sets. Also what X11's natives look up on the clipboard's paths: the root window, when another program reads a copy before it is converted, and JPEG's writer, when an image is on the clipboard at a paste.",
+  "resources": [
+    {
+      "glob": "linux/x64/org/lwjgl/**"
+    },
+    {
+      "glob": "META-INF/linux/x64/org/lwjgl/**"
+    },
+    {
+      "glob": "linux/amd64/libzstd-jni-*.so"
+    },
+    {
+      "glob": "libgdx64.so"
+    },
+    {
+      "glob": "com/sun/jna/linux-x86-64/*"
+    }
+  ],
+  "reflection": [
+    {
+      "type": "sun.awt.X11.XToolkit",
+      "fields": [
+        {
+          "name": "awtAppClassName"
+        }
+      ]
+    },
+    {
+      "type": "sun.awt.X11.XRootWindow",
+      "jniAccessible": true,
+      "methods": [
+        {
+          "name": "getXRootWindow",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.sun.imageio.plugins.jpeg.JPEGImageWriter",
+      "jniAccessible": true,
+      "methods": [
+        {
+          "name": "grabPixels",
+          "parameterTypes": [
+            "int"
+          ]
+        },
+        {
+          "name": "warningOccurred",
+          "parameterTypes": [
+            "int"
+          ]
+        },
+        {
+          "name": "warningWithMessage",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        },
+        {
+          "name": "writeMetadata",
+          "parameterTypes": []
+        },
+        {
+          "name": "writeOutputData",
+          "parameterTypes": [
+            "byte[]",
+            "int",
+            "int"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "javax.imageio.plugins.jpeg.JPEGHuffmanTable",
+      "jniAccessible": true,
+      "fields": [
+        {
+          "name": "lengths"
+        },
+        {
+          "name": "values"
+        }
+      ]
+    },
+    {
+      "type": "javax.imageio.plugins.jpeg.JPEGQTable",
+      "jniAccessible": true,
+      "fields": [
+        {
+          "name": "qTable"
+        }
+      ]
+    }
+  ]
+}

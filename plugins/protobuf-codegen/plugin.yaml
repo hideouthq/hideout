@@ -1,0 +1,10 @@
+tasks:
+  generateDeadlockProtobuf:
+    action: !gg.hideouthq.protobuf.generateDeadlockProtobuf
+      protoDir: ${pluginSettings.protoDir}
+      outputDir: ${taskOutputDir}
+
+generated:
+  sources:
+    - directory: ${tasks.generateDeadlockProtobuf.action.outputDir}
+      language: kotlin

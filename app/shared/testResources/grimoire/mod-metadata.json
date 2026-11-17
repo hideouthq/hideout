@@ -1,0 +1,155 @@
+{
+  "pak01_dir.vpk": {
+    "globalType": null,
+    "sha256": "24a228bb2988e4d7b13be61322db2f8604be1f4aecf907c8cb1b4774ad57ed58"
+  },
+  "pak02_dir.vpk": {
+    "lockerHero": "Ivy",
+    "globalType": null,
+    "sha256": "d2a305374c1754509676ee6e6e616631a39168c22679b7563c343cb706406b71"
+  },
+  "pak03_dir.vpk": {
+    "lockerHero": "Apollo",
+    "globalType": null,
+    "sha256": "b7acd2ac42478641c86255cd888ce72f0486b9531c9a2a7fd833b2487be61a74"
+  },
+  "pak04_dir.vpk": {
+    "lockerHero": "Apollo",
+    "globalType": null,
+    "sha256": "ef2164a09b5565537c7b464d03cf157e88dafce57edbca894b2a640500292b92"
+  },
+  "pak05_dir.vpk": {
+    "lockerHero": "Celeste",
+    "globalType": null,
+    "sha256": "e1796cee460815fa8ab1028af5d95b96b6bca365530dc8db5aaca5bb3241d8c7"
+  },
+  "pak06_dir.vpk": {
+    "lockerHero": "Vyper",
+    "globalType": null,
+    "sha256": "ec5cb266bc33829f972dbe291947066627e6fc9d03d8d2960769cebc1362dadf"
+  },
+  "pak07_dir.vpk": {
+    "globalType": null,
+    "sha256": "24c6a77d8e321958d5b1c0ddb982b8fc65827c8189b2d008935be5a9b75bf950"
+  },
+  "pak08_dir.vpk": {
+    "lockerHero": "Seven",
+    "globalType": null,
+    "sha256": "d13b339003895a2f78a38c6d828ee49aaa6b8a0e09c877409d9e2f9e7dad4f2e"
+  },
+  "pak09_dir.vpk": {
+    "globalType": "hud",
+    "sha256": "8907a56e3b2bda01db5b275cc004155d9567681dd8eae0fa562a590c4838157f"
+  },
+  "pak10_dir.vpk": {
+    "lockerHero": "Yamato",
+    "globalType": null,
+    "sha256": "ba94dedd7b79e059d2f5d5f5b06ca1095ecdfffdfe4bf84eccc84b38e1457f2d"
+  },
+  "pak11_dir.vpk": {
+    "globalType": null,
+    "sha256": "c9ca7d7eb863df0514a3660a89568b40417bd85556ae0a68a08b7705cc6244d0"
+  },
+  "pak13_dir.vpk": {
+    "lockerHero": "Infernus",
+    "globalType": null,
+    "sha256": "fe911ec1ceb11f592c8e797fc9a615edd37473e1a0bc6058199ddfc585ecbdd1"
+  },
+  "pak14_dir.vpk": {
+    "lockerHero": "Ivy",
+    "globalType": null,
+    "sha256": "baf38d1c5c5b47d5d79cdaa18c8146c51f592817365a03c69254c53ce08d1d7c"
+  },
+  "623518_pak01_dir.vpk": {
+    "globalType": "hud",
+    "sha256": "986d28a49f06919d84a090e9921929075fb2b9c5a445df58de13b1e06921d10d"
+  },
+  "630975_pak81_dir.vpk": {
+    "lockerHero": "Pocket",
+    "globalType": null,
+    "sha256": "e542edf6805cac070fbb2e5722ed22f0dcb4fc2e052ffec2b13d6b3d1c3c5147"
+  },
+  "637275_pak06_dir.vpk": {
+    "globalType": "hud",
+    "sha256": "74eab58bb64bdd46e66076d228649371e2fc3bc22287db292cdd0f0bfd605d3c"
+  },
+  "639529_pak02_dir.vpk": {
+    "lockerHero": "Mirage",
+    "globalType": null,
+    "sha256": "64476548ae39ac861489c416c48adf2848b3b96cd4eb0633c2cf6e07e7bca803"
+  },
+  "649307_pak15_dir.vpk": {
+    "lockerHero": "Rem",
+    "globalType": null,
+    "sha256": "b7b695ae9a11dac8fc0fccce7716f8d8f1b7c554f0b7c096692eac38fe1a8f51"
+  },
+  "657204_pak15_dir.vpk": {
+    "lockerHero": "Shiv",
+    "globalType": null,
+    "sha256": "844832d26df26c46feee6d6ace10726b8fd747f8a98805e2906ab118a8b604cd"
+  },
+  "666185_pak28_dir.vpk": {
+    "lockerHero": "Dynamo",
+    "globalType": null,
+    "sha256": "916054e0c4465715eb477a23ca00016503858b2d81c6f56f5e9e6a2ff0aa9ba8"
+  },
+  "669760_pak01_dir.vpk": {
+    "lockerHero": "Sinclair",
+    "globalType": null,
+    "sha256": "4c2352012d6a2f672dce4c7200fe8e43ae031c7c7bb7f160202cd6ea6880bbbc"
+  },
+  "677577_pak04_dir.vpk": {
+    "lockerHero": "Wraith",
+    "globalType": null,
+    "sha256": "eb094886fa982d562c2b149d1ce86777e7d4a3853b939fbb742f0ed7649bd2fe"
+  },
+  "677577_pak33_dir.vpk": {
+    "lockerHero": "Wraith",
+    "globalType": null,
+    "sha256": "14d9db5bbb71b402d0fe5f8b16b8077f894eef7a11e639726cc5d0eb2d81ae83"
+  },
+  "687443_pak59_dir.vpk": {
+    "lockerHero": "Silver",
+    "globalType": null,
+    "sha256": "12b1740a940ad6927b0d34fd948ac4a6c5395193c6fac7e892faea6af7597d13"
+  },
+  "708938_pak03_dir.vpk": {
+    "globalType": null,
+    "sha256": "ae1090fd310b6aa1ab94acf931abb283f04f32afda4c035d50da26bdbe237c90"
+  },
+  "713044_pak17_dir.vpk": {
+    "lockerHero": "Celeste",
+    "globalType": null,
+    "sha256": "979d2884e2aa5fad56e8f89b2212d016f24df9ed3812bfe957a769e9cb5ab258"
+  },
+  "721285_pak57_dir.vpk": {
+    "lockerHero": "Rem",
+    "globalType": null,
+    "sha256": "59cf5f78839955a4419bd65d1f0086c41e0c58caa26e902c8ce248b0eba738b9"
+  },
+  "721342_奶蛙v59_音效含logo_pak01_dir.vpk": {
+    "lockerHero": "Dynamo",
+    "globalType": null,
+    "sha256": "31423fc38c0111268f0a6f50cc8712f45e92bc949052125a12927fd9d02d1bc1"
+  },
+  "721342_奶龙v59_模型本体_pak01_dir.vpk": {
+    "lockerHero": "Dynamo",
+    "globalType": null,
+    "sha256": "70369600bb8f4b98366c4717c016f47c9257ecf4eb1b308482557ac8c27b48db"
+  },
+  "721650_pak01_dir.vpk": {
+    "lockerHero": "Vindicta",
+    "globalType": null,
+    "sha256": "979723c2d90ee7435f3b9679d42c7990f173107d3c67f26f204204fc95cfc82f"
+  },
+  "721908_pak37_dir.vpk": {
+    "lockerHero": "Pocket",
+    "globalType": null,
+    "sha256": "a4775e1244688636725c7bb568a5ef726d6b6289a9c40dc4b8cf181a5bc250c5"
+  },
+  "722139_klukai_wraith_v9_manual_transparency_dir.vpk": {
+    "lockerHero": "Wraith",
+    "globalType": null,
+    "sha256": "aebfc33480f2d3cad4a24ad086e629eb6ab27ebe4a57fadbdc19823d8fa20e90"
+  }
+}

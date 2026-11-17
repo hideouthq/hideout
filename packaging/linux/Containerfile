@@ -1,0 +1,22 @@
+# AlmaLinux 8 has glibc 2.28. An image linked there asks only for symbol versions up to GLIBC_2.17, so the packages
+# start on any distro since 2018.
+FROM docker.io/library/almalinux:8
+RUN dnf -y install epel-release \
+ && dnf -y install gcc glibc-devel zlib-devel rpm-build dpkg file findutils which tar gzip unzip git \
+ && dnf -y install xorg-x11-server-Xvfb xorg-x11-xauth mesa-libGL mesa-dri-drivers fontconfig dejavu-sans-fonts \
+      libXtst libXi libXrender libXrandr libXcursor libXinerama \
+ && dnf clean all
+ENV LANG=C.UTF-8
+ARG GRAALVM=https://download.oracle.com/graalvm/25/archive/graalvm-jdk-25.0.4_linux-x64_bin.tar.gz
+ARG GRAALVM_SHA256=76007c309f821aaf435bce63162ea0395587fc77350801c81643fe7feea37276
+RUN curl -fsSL -o /tmp/graalvm.tgz "$GRAALVM" \
+ && echo "$GRAALVM_SHA256  /tmp/graalvm.tgz" | sha256sum -c \
+ && mkdir /opt/graalvm && tar -xzf /tmp/graalvm.tgz -C /opt/graalvm --strip-components=1 && rm /tmp/graalvm.tgz
+ENV JAVA_HOME=/opt/graalvm
+ARG GO=https://go.dev/dl/go1.27.3.linux-amd64.tar.gz
+ARG GO_SHA256=65efbc80fdc1fa2cd2631cad5b481777a68e8725f34e89f50fc6ac714e379b40
+RUN curl -fsSL -o /tmp/go.tgz "$GO" \
+ && echo "$GO_SHA256  /tmp/go.tgz" | sha256sum -c \
+ && mkdir /opt/go && tar -xzf /tmp/go.tgz -C /opt/go --strip-components=1 && rm /tmp/go.tgz
+# -modcacherw, since the runner's trim cannot remove Go's read-only module cache otherwise.
+ENV PATH=/opt/go/bin:$PATH GOTOOLCHAIN=local GOFLAGS=-modcacherw CGO_ENABLED=0

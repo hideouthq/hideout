@@ -1,0 +1,50 @@
+<resources>
+    <string name="autoexec_subtitle">Console commands Deadlock runs every time it starts.</string>
+    <string name="autoexec_runs_at_launch">Runs at launch</string>
+    <string name="autoexec_runs_at_launch_tip">Deadlock runs autoexec.cfg every time it starts</string>
+    <string name="autoexec_open_folder">Open folder</string>
+    <string name="autoexec_show_in_folder">Show in folder</string>
+    <string name="autoexec_open_in_editor">Open in editor</string>
+    <string name="autoexec_in_file">In your autoexec</string>
+    <plurals name="autoexec_commands">
+        <item quantity="one">%1$d command</item>
+        <item quantity="other">%1$d commands</item>
+    </plurals>
+    <string name="autoexec_view_list">List</string>
+    <string name="autoexec_view_text">Text</string>
+    <string name="autoexec_reading">Reading autoexec.cfg…</string>
+    <string name="autoexec_unreadable">autoexec.cfg can’t be read</string>
+
+    <string name="autoexec_your_commands">Your commands</string>
+    <string name="autoexec_on_off">%1$d on · %2$d off</string>
+    <string name="autoexec_off">off</string>
+    <string name="autoexec_value_for">Value for %1$s</string>
+    <string name="autoexec_run">Run %1$s</string>
+    <string name="autoexec_remove">Remove %1$s</string>
+    <string name="autoexec_no_commands_title">No commands yet</string>
+    <string name="autoexec_no_commands_message">Add one below, or pick one from the library.</string>
+    <string name="autoexec_add_label">Add a command</string>
+    <string name="autoexec_add_placeholder">Add a command, e.g. fps_max 240</string>
+    <string name="autoexec_add">Add</string>
+
+    <string name="autoexec_editor">autoexec.cfg</string>
+    <string name="autoexec_managed_tool">Managed by %1$s</string>
+    <string name="autoexec_saved_next_launch">Saved · applies next launch</string>
+    <string name="autoexec_saved_next_start">Saved · applies next time Deadlock starts</string>
+    <string name="autoexec_retry">Retry</string>
+    <string name="autoexec_yours_unsaved">Hideout couldn’t save your crosshairs.</string>
+    <string name="autoexec_editor_failed">Couldn’t open autoexec.cfg in an editor.</string>
+
+    <string name="autoexec_library">Command library</string>
+    <string name="autoexec_library_search">Search commands</string>
+    <string name="autoexec_library_all">All</string>
+    <string name="autoexec_library_note">Collected by the community. Valve can change or remove any of these in an update, so add one at a time and check it in game.</string>
+    <string name="autoexec_library_add">Add %1$s</string>
+    <string name="autoexec_library_remove">Remove %1$s from your autoexec</string>
+    <string name="autoexec_library_none">No commands match.</string>
+    <string name="autoexec_category_performance">Performance</string>
+    <string name="autoexec_category_hud">HUD &amp; UI</string>
+    <string name="autoexec_category_network">Network</string>
+    <string name="autoexec_category_audio">Audio</string>
+    <string name="autoexec_category_mouse">Mouse</string>
+</resources>

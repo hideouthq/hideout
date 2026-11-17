@@ -1,0 +1,108 @@
+{
+  "name": "Bebop Wars",
+  "tagline": "Hook your opponent across the canal. First to 25 wins.",
+  "summary": "Hook your opponent across the canal to score. Spend souls on upgrades in the Winter Shop. First to 25 wins.",
+  "description": "A winter hook arena for 1v1, 2v2, and 3v3. Pull an enemy to your bank to score one capture. First to 25 wins, or lead after eight minutes; ties go to overtime. Start with Hook and 300 Souls, then earn tools and capped Hook upgrades through captures, team income and saves. Death keeps your purchases and returns you to your shop after four seconds.",
+  "kind": "teams",
+  "players": {
+    "min": 2,
+    "max": 6
+  },
+  "creators": [
+    "Hideout team"
+  ],
+  "curated": true,
+  "released": "2026-11-06",
+  "howToPlay": [
+    {
+      "title": "Hook them across",
+      "body": "Aim across the canal and throw. Pull your opponent onto your side to score.",
+      "icon": "hook"
+    },
+    {
+      "title": "Spend souls",
+      "body": "Souls come in as you play. Upgrades from the Winter Shop last the whole match.",
+      "icon": "souls"
+    },
+    {
+      "title": "First to 25",
+      "body": "Each capture is a point. If time runs out, it goes to overtime and the shop closes.",
+      "icon": "trophy"
+    }
+  ],
+  "legend": [
+    {
+      "label": "Your side",
+      "color": "#E6B977"
+    },
+    {
+      "label": "The canal",
+      "color": "#2E6E9E"
+    },
+    {
+      "label": "Their side",
+      "color": "#8FB4E8"
+    },
+    {
+      "label": "Each side has its own Curiosity Shop",
+      "color": "#E6B977"
+    }
+  ],
+  "facts": [
+    {
+      "label": "To win",
+      "value": "First to 25",
+      "note": "Overtime if time runs out"
+    },
+    {
+      "label": "Arena",
+      "value": "The canal by the Curiosity Shop"
+    }
+  ],
+  "whatsNew": [
+    "First release: 1v1, 2v2 and 3v3.",
+    "Winter Shop: five upgrades to buy with souls.",
+    "Overtime when the clock runs out."
+  ],
+  "art": {
+    "card": "art/card-background@2x.jpg",
+    "backdrop": "art/banner-background@2x.jpg",
+    "render": "art/bebop-render@2x.png",
+    "overlay": "art/bebop-hook-layer@2x.png",
+    "tile": "art/bebop-thumb@2x.png",
+    "explainer": "art/how-to-play-map@2x.png",
+    "screenshots": [
+      "art/bebop-wars-shot-hook.jpg",
+      "art/bebop-wars-shot-hook-tight.jpg",
+      "art/bebop-wars-shot-shop.jpg"
+    ]
+  },
+  "settings": [
+    {
+      "key": "teams",
+      "label": "Teams",
+      "hint": "Players per team. Every format has the same shop prices and capture payout.",
+      "default": "2v2",
+      "options": [
+        {
+          "value": "1v1",
+          "label": "1v1",
+          "players": 2
+        },
+        {
+          "value": "2v2",
+          "label": "2v2",
+          "players": 4
+        },
+        {
+          "value": "3v3",
+          "label": "3v3",
+          "players": 6
+        }
+      ]
+    }
+  ],
+  "sections": [
+    "scoreboard"
+  ]
+}

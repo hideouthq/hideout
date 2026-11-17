@@ -1,0 +1,96 @@
+<resources>
+    <string name="compat_label_repair_available">Repair available</string>
+    <string name="compat_label_repair_applied">Repair applied</string>
+    <string name="compat_label_partly_repaired">Partly repaired</string>
+    <string name="compat_label_needs_author">Needs author update</string>
+    <string name="compat_status_queued">Queued</string>
+    <string name="compat_status_restoring">Restoring…</string>
+    <string name="compat_status_verifying">Verifying…</string>
+    <string name="compat_status_waiting">Waits for Deadlock</string>
+    <string name="compat_status_repair_unfinished">Repair didn’t finish</string>
+    <string name="compat_status_restore_unfinished">Restore didn’t finish</string>
+    <string name="compat_chip_description">%1$s: %2$s. Show details</string>
+
+    <plurals name="compat_bar_repairable">
+        <item quantity="one">%1$d mod can be repaired for this game version</item>
+        <item quantity="other">%1$d mods can be repaired for this game version</item>
+    </plurals>
+    <plurals name="compat_bar_repairing">
+        <item quantity="one">Repairing %1$d mod…</item>
+        <item quantity="other">Repairing %1$d mods…</item>
+    </plurals>
+    <plurals name="compat_bar_restoring">
+        <item quantity="one">Restoring %1$d mod…</item>
+        <item quantity="other">Restoring %1$d mods…</item>
+    </plurals>
+    <plurals name="compat_bar_waiting">
+        <item quantity="one">%1$d waits for Deadlock to close</item>
+        <item quantity="other">%1$d wait for Deadlock to close</item>
+    </plurals>
+    <plurals name="compat_bar_unfinished">
+        <item quantity="one">%1$d didn’t finish</item>
+        <item quantity="other">%1$d didn’t finish</item>
+    </plurals>
+    <plurals name="compat_bar_repaired">
+        <item quantity="one">%1$d mod repaired</item>
+        <item quantity="other">%1$d mods repaired</item>
+    </plurals>
+    <plurals name="compat_bar_restored">
+        <item quantity="one">%1$d mod back to its original files</item>
+        <item quantity="other">%1$d mods back to their original files</item>
+    </plurals>
+    <string name="compat_bar_review">Review</string>
+    <string name="compat_bar_dismiss">Dismiss</string>
+    <string name="compat_bar_checking">Checking mods against the game…</string>
+
+    <string name="compat_details_title">%1$s and this game version</string>
+    <string name="compat_review_title">Mods with known problems</string>
+    <string name="compat_review_lead">These mods were made for an earlier version of Deadlock. Hideout can repair some of them from copies of their original files; the others need their authors to update them.</string>
+    <string name="compat_review_lead_automatic">These mods were made for an earlier version of Deadlock. Hideout repairs what it can by itself, from copies of their original files; the others need their authors to update them.</string>
+    <string name="compat_repair_all">Repair %1$d</string>
+    <string name="compat_retry_all">Try %1$d again</string>
+    <string name="compat_close">Close</string>
+    <string name="compat_details">Details</string>
+
+    <string name="compat_section">Game version</string>
+    <string name="compat_not_checked">Not checked yet.</string>
+    <string name="compat_checking">Checking against the game…</string>
+    <string name="compat_check_failed">Couldn’t check: %1$s</string>
+    <string name="compat_unavailable">Compatibility checks aren’t available: %1$s</string>
+    <string name="compat_no_known_problem">No known problem with this game version. This only covers the problems Hideout knows how to detect.</string>
+    <string name="compat_check_again">Check again</string>
+
+    <string name="compat_fixed_heading">Repaired</string>
+    <string name="compat_repairable_heading">Can be repaired</string>
+    <string name="compat_left_unchanged_heading">Left unchanged</string>
+    <string name="compat_unknown_heading">Couldn’t check</string>
+    <string name="compat_reason">Why: %1$s</string>
+    <string name="compat_incomplete">Part of this mod couldn’t be checked: %1$s</string>
+    <string name="compat_outdated_heading">Repair out of date</string>
+    <string name="compat_outdated">The repair was made for a different game version. Check again, or use the original files.</string>
+
+    <string name="compat_feature_frame">Camera and attachment points</string>
+    <string name="compat_feature_sound">Animation sounds</string>
+    <string name="compat_feature_other">Known problem (%1$s)</string>
+    <string name="compat_finding_resource">%1$s · %2$s</string>
+    <plurals name="compat_finding_edits">
+        <item quantity="one">%1$d value</item>
+        <item quantity="other">%1$d values</item>
+    </plurals>
+
+    <string name="compat_qualification">These repairs passed file checks, but haven’t been tested in a match yet.</string>
+    <string name="compat_apply">Apply repair</string>
+    <string name="compat_use_original">Use original files</string>
+    <string name="compat_chose_original">You chose the original files. Hideout won’t repair this mod unless you ask.</string>
+    <string name="compat_requested_waits">Repair requested. It’s applied when Deadlock closes.</string>
+    <string name="compat_original_waits">Original files requested. They’re put back when Deadlock closes.</string>
+    <string name="compat_queued">Queued. Hideout changes one mod’s files at a time.</string>
+    <string name="compat_repairing">Repairing…</string>
+    <string name="compat_restoring">Putting back the original files…</string>
+    <string name="compat_verifying">Checking the repaired files against the game…</string>
+    <string name="compat_verifying_original">Checking the original files against the game…</string>
+    <string name="compat_failed">The last change didn’t finish: %1$s</string>
+    <string name="compat_off_note">The repaired files load when you turn this mod on.</string>
+
+
+</resources>

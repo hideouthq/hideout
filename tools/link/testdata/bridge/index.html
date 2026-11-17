@@ -1,0 +1,108 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>hideout:bridge</title>
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'unsafe-inline'; connect-src http://127.0.0.1:*"
+    />
+  </head>
+  <body>
+    <script>
+      'use strict'
+      // Deadlock's interface can only load https pages, and reads what they say
+      // through their title. This page reads the player's screen from hideout-link
+      // on loopback and hands it to the game's renderer as titles, one part at a
+      // time. The renderer acknowledges each part by changing the URL's fragment.
+      // The screen itself never leaves the player's computer.
+      const maxPartBytes = 3900
+      const acknowledgeWait = 6000
+      const retryWait = 500
+      const stream =
+        'http://127.0.0.1:' +
+        Number(new URLSearchParams(location.search).get('port')) +
+        '/panorama/stream'
+
+      let acknowledged = () => {}
+      addEventListener('hashchange', () => acknowledged())
+
+      function showPart(title) {
+        return new Promise((resolve, reject) => {
+          const timer = setTimeout(
+            () => reject(new Error('the renderer did not acknowledge')),
+            acknowledgeWait,
+          )
+          acknowledged = () => {
+            clearTimeout(timer)
+            resolve()
+          }
+          document.title = title
+        })
+      }
+
+      // A packed character above 127 takes two bytes in the title.
+      function partEnd(packed, start) {
+        let end = start
+        for (let bytes = 0; end < packed.length && bytes < maxPartBytes; end++) {
+          bytes += packed.charCodeAt(end) < 0x80 ? 1 : 2
+        }
+        return end
+      }
+
+      let screenId = 0
+
+      // A line is "~<sequence>:<packed screen>". An empty screen has no parts, and
+      // an empty title is how the renderer is told to draw nothing.
+      async function present(line) {
+        const colon = line.indexOf(':')
+        const sequence = line.slice(1, colon)
+        const packed = line.slice(colon + 1)
+        if (packed === '') {
+          document.title = ''
+          return
+        }
+        const id = ++screenId
+        for (let start = 0, end; start < packed.length; start = end) {
+          end = partEnd(packed, start)
+          await showPart(
+            `modlock:frame:${id}:${start}:${packed.length}:${sequence}:${packed.slice(start, end)}`,
+          )
+        }
+      }
+
+      async function follow() {
+        const response = await fetch(stream)
+        if (!response.ok) throw new Error('the helper refused the page')
+        const reader = response.body.getReader()
+        try {
+          const decoder = new TextDecoder()
+          let buffered = ''
+          for (;;) {
+            const { value, done } = await reader.read()
+            if (done) return
+            buffered += decoder.decode(value, { stream: true })
+            for (
+              let end = buffered.indexOf('\n');
+              end >= 0;
+              end = buffered.indexOf('\n')
+            ) {
+              await present(buffered.slice(0, end))
+              buffered = buffered.slice(end + 1)
+            }
+          }
+        } finally {
+          await reader.cancel().catch(() => {})
+        }
+      }
+
+      ;(async () => {
+        for (;;) {
+          await follow().catch(() => {})
+          document.title = ''
+          await new Promise((resolve) => setTimeout(resolve, retryWait))
+        }
+      })()
+    </script>
+  </body>
+</html>

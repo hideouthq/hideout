@@ -1,0 +1,55 @@
+{
+  "version": 3,
+  "mods": {
+    "641178": {
+      "enabled": true,
+      "compatibilityEnabled": false,
+      "compatibilityOptedOut": false,
+      "order": 2,
+      "shard": 1,
+      "currentVpks": [
+        "pak04_dir.vpk",
+        "pak05_dir.vpk"
+      ],
+      "disabledVpks": [],
+      "originalVpkNames": []
+    },
+    "691043": {
+      "enabled": true,
+      "compatibilityEnabled": false,
+      "compatibilityOptedOut": false,
+      "order": 4,
+      "shard": 1,
+      "currentVpks": [
+        "pak07_dir.vpk"
+      ],
+      "disabledVpks": [],
+      "originalVpkNames": []
+    },
+    "733735": {
+      "enabled": true,
+      "compatibilityEnabled": false,
+      "compatibilityOptedOut": false,
+      "order": 0,
+      "shard": 1,
+      "currentVpks": [
+        "pak01_dir.vpk"
+      ],
+      "disabledVpks": [],
+      "originalVpkNames": []
+    },
+    "734001": {
+      "enabled": true,
+      "compatibilityEnabled": false,
+      "compatibilityOptedOut": false,
+      "order": 1,
+      "shard": 1,
+      "currentVpks": [
+        "pak02_dir.vpk",
+        "pak03_dir.vpk"
+      ],
+      "disabledVpks": [],
+      "originalVpkNames": []
+    }
+  }
+}

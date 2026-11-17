@@ -1,0 +1,32 @@
+{
+  "scene": {
+    "model": "model.glb.zst",
+    "maxJointsPerSkin": 8,
+    "influenceSets": 2,
+    "morphTargets": 0,
+    "extensionsRequired": [
+      "KHR_mesh_quantization",
+      "EXT_meshopt_compression"
+    ]
+  },
+  "assets": [
+    {
+      "path": "model.glb.zst",
+      "bytes": 1034,
+      "sha256": "cb170b3e86bcbe29350f6cb6dec6410ac5865b9169290011c9241ffd719074ce",
+      "type": "model/gltf-binary",
+      "encoding": {
+        "codec": "zstd",
+        "decodedBytes": 3676,
+        "decodedSha256": "755247db0e778724404db6211eee79f30cc0e15c56083ee0d12ebc4d2554b262"
+      }
+    }
+  ],
+  "clips": [
+    {
+      "id": "fifth-joint-moves",
+      "durationMillis": 1000
+    }
+  ],
+  "pictures": []
+}

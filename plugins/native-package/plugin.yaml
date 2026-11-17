@@ -1,0 +1,43 @@
+tasks:
+  appProperties:
+    action: !gg.hideouthq.nativepackage.writeAppProperties
+      id: ${pluginSettings.id}
+      version: ${pluginSettings.version}
+      outputDir: ${taskOutputDir}
+
+  previewHost:
+    action: !gg.hideouthq.nativepackage.writePreviewHost
+      id: ${pluginSettings.id}
+      localFile: ${pluginSettings.previewFile}
+      outputDir: ${taskOutputDir}
+
+  appImageTools:
+    action: !gg.hideouthq.nativepackage.downloadAppImageTools
+      outputDir: ${taskOutputDir}
+
+  image:
+    action: !gg.hideouthq.nativepackage.buildNativeImage
+      settings: ${pluginSettings}
+      app: ${module.jar}
+      runtimeClasspath: ${module.runtimeClasspath}
+      mainClass: ${module.settings.jvm.mainClass}
+      outputDir: ${taskOutputDir}
+
+  packages:
+    action: !gg.hideouthq.nativepackage.packageNative
+      settings: ${pluginSettings}
+      imageOutput: ${tasks.image.action.outputDir}
+      mainClass: ${module.settings.jvm.mainClass}
+      tools: ${tasks.appImageTools.action.outputDir}
+      outputDir: ${taskOutputDir}
+
+generated:
+  resources:
+    - directory: ${tasks.appProperties.action.outputDir}
+    - directory: ${tasks.previewHost.action.outputDir}
+
+commands:
+  - name: nativeImage
+    performedBy: image
+  - name: nativePackages
+    performedBy: packages

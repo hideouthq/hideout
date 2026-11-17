@@ -1,0 +1,105 @@
+product: jvm/app
+layout: maven-like
+
+description: The Hideout desktop app.
+
+apply:
+  - //common.module-template.yaml
+
+repositories:
+  - https://jitpack.io
+
+dependencies:
+  - //app/shared
+  - //core
+  - $compose.desktop.currentOs
+  - $libs.kotlinx.coroutinesSwing
+  - $libs.ktor.clientCore
+  - $libs.ktor.clientOkhttp
+  - $libs.coil.compose
+  - $libs.coil.networkKtor3
+  - $libs.coil.svg
+  - $libs.javamp3
+  - $libs.jna.platform
+  - $libs.filekit.dialogs
+  - $libs.commons.compress
+  - $libs.xz
+  - $libs.junrar
+  - $libs.gdx
+  - $libs.gdx.backend.lwjgl3
+  # The catalog's Gradle format has no classifiers, so the desktop natives are named here.
+  - com.badlogicgames.gdx:gdx-platform:1.13.1:natives-desktop: runtime-only
+  - $libs.gdx.gltf
+  - $libs.zstd.jni
+  - org.lwjgl:lwjgl-meshoptimizer:3.3.3
+  - org.lwjgl:lwjgl-meshoptimizer:3.3.3:natives-linux: runtime-only
+  - org.lwjgl:lwjgl-meshoptimizer:3.3.3:natives-linux-arm64: runtime-only
+  - org.lwjgl:lwjgl-meshoptimizer:3.3.3:natives-windows: runtime-only
+  - org.lwjgl:lwjgl-meshoptimizer:3.3.3:natives-windows-arm64: runtime-only
+
+test-dependencies:
+  - $libs.wire.runtime
+  - $libs.kotlinx.coroutinesTest
+  - $libs.ktor.clientMock
+  - $libs.ktor.serverNetty
+
+settings:
+  kotlin:
+    serialization: enabled
+  compose:
+    enabled: true
+    version: 1.12.1
+  jvm:
+    mainClass: gg.hideouthq.MainKt
+    test:
+      systemProperties:
+        # Tests run in the module directory.
+        preview.fixture: ../../core/testResources/preview/store
+        preview.textures: ../../core/testResources/preview/textures
+        preview.signing: ../../core/testResources/preview/signing.json
+
+plugins:
+  native-bridge:
+    enabled: true
+    sourceDir: ../../native/steam-bridge
+    prebuiltDir: ../../.steam-sdk-artifacts
+  native-package:
+    enabled: true
+    name: Hideout
+    id: gg.hideouthq.Hideout
+    # core/customgames/Invite.kt reads the same scheme.
+    urlScheme: hideout
+    version: 1.1.0
+    previewFile: ../../preview-build.properties
+    description: Deadlock mod manager
+    homepage: https://hideouthq.gg
+    vendor: Hideout
+    linuxIcon: icons/hideout-512.png
+    windowsIcon: icons/hideout.ico
+    debDependencies: [libc6, libstdc++6, zlib1g, libasound2, libfontconfig1, libfreetype6, libgl1, libx11-6, libxext6, libxi6, libxrender1, libxtst6]
+    noticeIndex: ../shared/composeResources/files/licenses/index.tsv
+    linkHelper: ../../tools/link
+    pgoProfile: hideout.iprof.gz
+    imageOptions:
+      # The builder takes 75% of the machine's memory by default; this keeps it and the Toolchain inside a 12 GB build.
+      - -J-Xmx7g
+      - -march=x86-64-v2
+      - -Djava.awt.headless=false
+      - --initialize-at-build-time=kotlin
+      - --initialize-at-run-time=kotlin.uuid.SecureRandomHolder
+      - --enable-url-protocols=http,https
+      # JNA and LWJGL call System.load; without it every start prints the restricted-method warning.
+      - --enable-native-access=ALL-UNNAMED
+      # main.kt sets the field AWT names the window class from. Windows has no such package and only warns.
+      - --add-opens=java.desktop/sun.awt.X11=ALL-UNNAMED
+      # A 512 MB cap and a 32 MB young generation measured lowest at idle, with a model open and after it closes.
+      - -R:MaxHeapSize=512m
+      - -R:MaxNewSize=32m
+      # NIO copies each heap buffer written to a channel into a cached direct buffer per thread and keeps the largest.
+      # sun.nio.ch.Util is initialized at build time, so the cap must be set here; set in main() it does nothing.
+      - -Djdk.nio.maxCachedBufferSize=1048576
+    # A GUI executable: no console window opens beside the app.
+    windowsImageOptions:
+      - -H:+UnlockExperimentalVMOptions
+      - -H:NativeLinkerOption=/SUBSYSTEM:WINDOWS
+      - -H:NativeLinkerOption=/ENTRY:mainCRTStartup

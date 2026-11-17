@@ -1,0 +1,26 @@
+<resources>
+    <string name="discover_trending_gameplay">Trending in Gameplay</string>
+    <string name="discover_keyword_hero">hero</string>
+    <string name="discover_keyword_skins">Skins</string>
+    <string name="discover_keyword_gameplay">Gameplay</string>
+    <string name="discover_keyword_hud">HUD</string>
+    <string name="discover_keyword_sounds">Sounds</string>
+    <string name="discover_news">News from Deadlock</string>
+    <string name="discover_keyword_news">Deadlock</string>
+    <string name="discover_news_all">All on Steam</string>
+    <string name="news_patch_notes">Patch notes</string>
+    <string name="news_announcement">Announcement</string>
+    <string name="news_read">Read</string>
+    <string name="news_read_post">Read: %1$s</string>
+    <string name="news_open_on_steam">Open on Steam</string>
+    <string name="news_close">Close</string>
+    <string name="news_just_now">Just now</string>
+    <plurals name="news_hours_ago">
+        <item quantity="one">%1$d hour ago</item>
+        <item quantity="other">%1$d hours ago</item>
+    </plurals>
+    <plurals name="news_days_ago">
+        <item quantity="one">%1$d day ago</item>
+        <item quantity="other">%1$d days ago</item>
+    </plurals>
+</resources>

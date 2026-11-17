@@ -1,0 +1,33 @@
+<resources>
+    <string name="nav_crosshairs">Crosshairs</string>
+    <string name="nav_autoexec">Autoexec</string>
+    <string name="nav_discord">Discord</string>
+    <string name="sidebar_mods">Mods</string>
+    <string name="sidebar_game">Game</string>
+    <string name="sidebar_collapse">Collapse sidebar (Ctrl+B)</string>
+    <string name="sidebar_expand">Expand · Ctrl+B</string>
+    <string name="sidebar_running">Deadlock is running</string>
+    <string name="sidebar_downloading">Library · downloading %1$d%</string>
+    <plurals name="sidebar_profile">
+        <item quantity="one">%1$s · %2$d mod on</item>
+        <item quantity="other">%1$s · %2$d mods on</item>
+    </plurals>
+    <string name="sidebar_discord_tip">Discord · opens in browser</string>
+    <string name="settings_tab_stats">Stats</string>
+    <string name="settings_group_account">Account</string>
+    <string name="settings_group_data">Data</string>
+    <string name="setting_share_match_ids_title">Share my match IDs with deadlock-api</string>
+    <string name="setting_share_match_ids_description">Sends the match ID and replay key of matches Steam has cached, and nothing about you.</string>
+    <string name="setting_share_match_ids_keywords">share, match, ids, upload, deadlock-api, replay, salts, privacy, network</string>
+    <string name="setting_stats_source_title">Where stats come from</string>
+    <string name="setting_stats_source_description">Match data from deadlock-api.com.</string>
+    <string name="setting_stats_source_keywords">stats, data, source, deadlock-api</string>
+    <string name="setting_stats_cache_title">Saved stats</string>
+    <string name="setting_stats_cache_description">Clear saved match data. Your Steam account stays linked.</string>
+    <string name="setting_stats_cache_keywords">stats, cache, clear, saved, data</string>
+    <string name="setting_open_stats_source">Open deadlock-api</string>
+    <string name="setting_stats_clear">Clear</string>
+    <string name="library_installed_files">Installed files</string>
+    <string name="library_files_count">%1$d of %2$d</string>
+    <string name="library_files_summary">%1$d of %2$d files</string>
+</resources>

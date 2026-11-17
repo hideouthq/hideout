@@ -1,0 +1,26 @@
+{
+  "name": "Plain",
+  "tagline": "A mode with only what a listing needs.",
+  "description": "Nothing more than the required fields.",
+  "players": {
+    "min": 1,
+    "max": 8
+  },
+  "creators": [
+    "Someone"
+  ],
+  "released": "2026-11-01",
+  "art": {
+    "screenshots": [
+      "art/s0.png",
+      "art/s1.png",
+      "art/s2.png",
+      "art/s3.png",
+      "art/s4.png",
+      "art/s5.png",
+      "art/s6.png",
+      "art/s7.png",
+      "art/s8.png"
+    ]
+  }
+}

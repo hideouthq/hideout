@@ -1,0 +1,16 @@
+*.iml
+.kotlin
+**/build/
+.idea
+.DS_Store
+node_modules/
+__pycache__/
+*.py[cod]
+.ruff_cache/
+/.mimir/
+/.steam-sdk-artifacts/
+/preview-build.properties
+.wrangler/
+/Android/
+/.cache/
+/.skiko/

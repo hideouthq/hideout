@@ -1,0 +1,1690 @@
+{
+ "_about": "Accept/reject cases for the optional viewer metadata and for the images packed in a scene model. Every validator applies `viewer` to the base fixture manifest unless a case starts from `base`, applies the case's ops, applies its `model` ops, if any, to the glTF JSON of the base fixture's scene model, and must accept exactly the valid cases, judging the model only once the manifest is valid. Ops set or remove the value at a path of keys and list indices; setting index len(list) appends.",
+ "base": "store/bundles/7fcfac9ff3fe9ce4937a8e2d635a8dad/manifest.json",
+ "viewer": [
+  {
+   "set": [
+    "assets",
+    3
+   ],
+   "value": {
+    "path": "icons/ability_incendiary_projectile.png",
+    "bytes": 4001,
+    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "type": "image/png"
+   }
+  },
+  {
+   "set": [
+    "assets",
+    4
+   ],
+   "value": {
+    "path": "icons/ability_flame_dash.png",
+    "bytes": 4002,
+    "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "type": "image/png"
+   }
+  },
+  {
+   "set": [
+    "assets",
+    5
+   ],
+   "value": {
+    "path": "icons/ability_afterburn.png",
+    "bytes": 4003,
+    "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "type": "image/png"
+   }
+  },
+  {
+   "set": [
+    "assets",
+    6
+   ],
+   "value": {
+    "path": "icons/ability_fire_bomb.png",
+    "bytes": 4004,
+    "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "type": "image/png"
+   }
+  },
+  {
+   "set": [
+    "assets",
+    7
+   ],
+   "value": {
+    "path": "icons/vanilla/ability_incendiary_projectile.png",
+    "bytes": 3999,
+    "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "type": "image/png"
+   }
+  },
+  {
+   "set": [
+    "clips",
+    0,
+    "category"
+   ],
+   "value": "idle"
+  },
+  {
+   "set": [
+    "clips",
+    0,
+    "source"
+   ],
+   "value": {
+    "owner": "game",
+    "path": "models/heroes_wip/inferno/clips/idle.vnmclip_c",
+    "sha256": "7777777777777777777777777777777777777777777777777777777777777777"
+   }
+  },
+  {
+   "set": [
+    "clips",
+    1,
+    "category"
+   ],
+   "value": "movement"
+  },
+  {
+   "set": [
+    "clips",
+    1,
+    "source"
+   ],
+   "value": {
+    "owner": "mod",
+    "path": "models/heroes_wip/inferno/clips/walk.vnmclip_c",
+    "sha256": "8888888888888888888888888888888888888888888888888888888888888888"
+   }
+  },
+  {
+   "set": [
+    "clips",
+    1,
+    "changedByMod"
+   ],
+   "value": true
+  },
+  {
+   "set": [
+    "abilities"
+   ],
+   "value": [
+    {
+     "slot": 1,
+     "id": "ability_incendiary_projectile",
+     "name": "Napalm",
+     "icon": {
+      "asset": "icons/ability_incendiary_projectile.png",
+      "source": {
+       "owner": "mod",
+       "path": "panorama/images/hud/abilities/inferno_molotov_psd.vtex_c",
+       "sha256": "9999999999999999999999999999999999999999999999999999999999999999"
+      },
+      "changedByMod": true
+     },
+     "vanillaIcon": {
+      "asset": "icons/vanilla/ability_incendiary_projectile.png",
+      "source": {
+       "owner": "game",
+       "path": "panorama/images/hud/abilities/inferno_molotov_psd.vtex_c",
+       "sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+      },
+      "changedByMod": false
+     }
+    },
+    {
+     "slot": 2,
+     "id": "ability_flame_dash",
+     "name": "Flame Dash",
+     "icon": {
+      "asset": "icons/ability_flame_dash.png",
+      "source": {
+       "owner": "game",
+       "path": "panorama/images/hud/abilities/inferno_dash_psd.vtex_c",
+       "sha256": "2222222222222222222222222222222222222222222222222222222222222222"
+      }
+     },
+     "clipId": "walk"
+    },
+    {
+     "slot": 3,
+     "id": "ability_afterburn",
+     "name": "Afterburn",
+     "icon": {
+      "asset": "icons/ability_afterburn.png",
+      "source": {
+       "owner": "game",
+       "path": "panorama/images/hud/abilities/inferno_deflect_psd.vtex_c",
+       "sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+      }
+     }
+    },
+    {
+     "slot": 4,
+     "id": "ability_fire_bomb",
+     "name": "Concussive Combustion",
+     "icon": {
+      "asset": "icons/ability_fire_bomb.png",
+      "source": {
+       "owner": "game",
+       "path": "panorama/images/hud/abilities/inferno_bomb_psd.vtex_c",
+       "sha256": "4444444444444444444444444444444444444444444444444444444444444444"
+      }
+     },
+     "clipId": "idle"
+    }
+   ]
+  }
+ ],
+ "cases": [
+  {
+   "name": "the published schema-1 manifest without viewer metadata",
+   "start": "base",
+   "valid": true,
+   "ops": []
+  },
+  {
+   "name": "viewer metadata with a changed icon and mod and game clips",
+   "start": "viewer",
+   "valid": true,
+   "ops": []
+  },
+  {
+   "name": "explicit nulls are absent optional fields",
+   "start": "viewer",
+   "valid": true,
+   "ops": [
+    {
+     "set": [
+      "clips",
+      0,
+      "category"
+     ],
+     "value": null
+    },
+    {
+     "set": [
+      "clips",
+      1,
+      "source"
+     ],
+     "value": null
+    },
+    {
+     "set": [
+      "clips",
+      1,
+      "changedByMod"
+     ],
+     "value": false
+    },
+    {
+     "set": [
+      "abilities",
+      1,
+      "clipId"
+     ],
+     "value": null
+    },
+    {
+     "set": [
+      "abilities",
+      0,
+      "vanillaIcon"
+     ],
+     "value": null
+    },
+    {
+     "set": [
+      "abilities",
+      0,
+      "icon",
+      "source",
+      "owner"
+     ],
+     "value": "game"
+    },
+    {
+     "set": [
+      "abilities",
+      0,
+      "icon",
+      "changedByMod"
+     ],
+     "value": false
+    }
+   ]
+  },
+  {
+   "name": "an empty ability list",
+   "start": "viewer",
+   "valid": true,
+   "ops": [
+    {
+     "set": [
+      "abilities"
+     ],
+     "value": []
+    }
+   ]
+  },
+  {
+   "name": "categories alone without sources",
+   "start": "viewer",
+   "valid": true,
+   "ops": [
+    {
+     "remove": [
+      "clips",
+      0,
+      "source"
+     ]
+    },
+    {
+     "remove": [
+      "clips",
+      1,
+      "source"
+     ]
+    },
+    {
+     "remove": [
+      "clips",
+      1,
+      "changedByMod"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "a mod clip with the game's bytes is not changed",
+   "start": "viewer",
+   "valid": true,
+   "ops": [
+    {
+     "set": [
+      "clips",
+      1,
+      "changedByMod"
+     ],
+     "value": false
+    }
+   ]
+  },
+  {
+   "name": "a mod icon with the game's bytes is not changed",
+   "start": "viewer",
+   "valid": true,
+   "ops": [
+    {
+     "set": [
+      "abilities",
+      1,
+      "icon",
+      "source",
+      "owner"
+     ],
+     "value": "mod"
+    }
+   ]
+  },
+  {
+   "name": "explicit false flags",
+   "start": "viewer",
+   "valid": true,
+   "ops": [
+    {
+     "set": [
+      "clips",
+      0,
+      "changedByMod"
+     ],
+     "value": false
+    },
+    {
+     "set": [
+      "abilities",
+      1,
+      "icon",
+      "changedByMod"
+     ],
+     "value": false
+    }
+   ]
+  },
+  {
+   "name": "a changed mod icon the game does not have",
+   "start": "viewer",
+   "valid": true,
+   "ops": [
+    {
+     "set": [
+      "abilities",
+      1,
+      "icon",
+      "source",
+      "owner"
+     ],
+     "value": "mod"
+    },
+    {
+     "set": [
+      "abilities",
+      1,
+      "icon",
+      "changedByMod"
+     ],
+     "value": true
+    }
+   ]
+  },
+  {
+   "name": "a JPEG icon",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "assets",
+      4
+     ],
+     "value": {
+      "path": "icons/a.jpg",
+      "bytes": 10,
+      "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "type": "image/jpeg"
+     }
+    },
+    {
+     "set": [
+      "abilities",
+      1,
+      "icon",
+      "asset"
+     ],
+     "value": "icons/a.jpg"
+    }
+   ]
+  },
+  {
+   "name": "a WebP icon",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "assets",
+      5
+     ],
+     "value": {
+      "path": "icons/b.webp",
+      "bytes": 10,
+      "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "type": "image/webp"
+     }
+    },
+    {
+     "set": [
+      "abilities",
+      2,
+      "icon",
+      "asset"
+     ],
+     "value": "icons/b.webp"
+    }
+   ]
+  },
+  {
+   "name": "an icon of exactly the byte limit",
+   "start": "viewer",
+   "valid": true,
+   "ops": [
+    {
+     "set": [
+      "assets",
+      4,
+      "bytes"
+     ],
+     "value": 1048576
+    }
+   ]
+  },
+  {
+   "name": "unknown keys inside viewer metadata",
+   "start": "viewer",
+   "valid": true,
+   "ops": [
+    {
+     "set": [
+      "abilities",
+      0,
+      "changed"
+     ],
+     "value": true
+    },
+    {
+     "set": [
+      "clips",
+      0,
+      "source",
+      "entry"
+     ],
+     "value": "x"
+    }
+   ]
+  },
+  {
+   "name": "a resource path of exactly 255 characters",
+   "start": "viewer",
+   "valid": true,
+   "ops": [
+    {
+     "set": [
+      "clips",
+      0,
+      "source",
+      "path"
+     ],
+     "value": "a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/b.vnmclip_c"
+    }
+   ]
+  },
+  {
+   "name": "a changed clip owned by the game",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "clips",
+      0,
+      "changedByMod"
+     ],
+     "value": true
+    }
+   ]
+  },
+  {
+   "name": "a changed clip without a source",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "remove": [
+      "clips",
+      1,
+      "source"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "a clip flag as text",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "clips",
+      1,
+      "changedByMod"
+     ],
+     "value": "true"
+    }
+   ]
+  },
+  {
+   "name": "a null clip flag",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "clips",
+      1,
+      "changedByMod"
+     ],
+     "value": null
+    }
+   ]
+  },
+  {
+   "name": "a numeric clip flag",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "clips",
+      0,
+      "changedByMod"
+     ],
+     "value": 0
+    }
+   ]
+  },
+  {
+   "name": "a changed icon owned by the game",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "abilities",
+      1,
+      "icon",
+      "changedByMod"
+     ],
+     "value": true
+    }
+   ]
+  },
+  {
+   "name": "an icon flag as text",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "abilities",
+      1,
+      "icon",
+      "changedByMod"
+     ],
+     "value": "false"
+    }
+   ]
+  },
+  {
+   "name": "a changed vanilla icon",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "abilities",
+      0,
+      "vanillaIcon",
+      "changedByMod"
+     ],
+     "value": true
+    }
+   ]
+  },
+  {
+   "name": "a vanilla icon beside an unchanged icon",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "abilities",
+      0,
+      "icon",
+      "changedByMod"
+     ],
+     "value": false
+    }
+   ]
+  },
+  {
+   "name": "a vanilla icon beside an icon without a flag",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "remove": [
+      "abilities",
+      0,
+      "icon",
+      "changedByMod"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "an unknown category",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "clips",
+      0,
+      "category"
+     ],
+     "value": "dance"
+    }
+   ]
+  },
+  {
+   "name": "a category in display case",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "clips",
+      0,
+      "category"
+     ],
+     "value": "Idle"
+    }
+   ]
+  },
+  {
+   "name": "a numeric category",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "clips",
+      0,
+      "category"
+     ],
+     "value": 1
+    }
+   ]
+  },
+  {
+   "name": "an owner in display case",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "clips",
+      0,
+      "source",
+      "owner"
+     ],
+     "value": "Mod"
+    }
+   ]
+  },
+  {
+   "name": "an unknown owner",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "clips",
+      0,
+      "source",
+      "owner"
+     ],
+     "value": "disk"
+    }
+   ]
+  },
+  {
+   "name": "a source without an owner",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "remove": [
+      "clips",
+      0,
+      "source",
+      "owner"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "a source without a hash",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "remove": [
+      "clips",
+      0,
+      "source",
+      "sha256"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "an uppercase resource path",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "clips",
+      0,
+      "source",
+      "path"
+     ],
+     "value": "models/Idle.vnmclip_c"
+    }
+   ]
+  },
+  {
+   "name": "a climbing resource path",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "clips",
+      0,
+      "source",
+      "path"
+     ],
+     "value": "models/../idle.vnmclip_c"
+    }
+   ]
+  },
+  {
+   "name": "an absolute resource path",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "clips",
+      0,
+      "source",
+      "path"
+     ],
+     "value": "/models/idle.vnmclip_c"
+    }
+   ]
+  },
+  {
+   "name": "a backslash resource path",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "clips",
+      0,
+      "source",
+      "path"
+     ],
+     "value": "models\\idle.vnmclip_c"
+    }
+   ]
+  },
+  {
+   "name": "an uncompiled resource path",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "clips",
+      0,
+      "source",
+      "path"
+     ],
+     "value": "models/idle.vnmclip"
+    }
+   ]
+  },
+  {
+   "name": "a resource path without an extension",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "clips",
+      0,
+      "source",
+      "path"
+     ],
+     "value": "models/idle_c"
+    }
+   ]
+  },
+  {
+   "name": "a resource path with an empty segment",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "clips",
+      0,
+      "source",
+      "path"
+     ],
+     "value": "models//idle.vnmclip_c"
+    }
+   ]
+  },
+  {
+   "name": "a resource path longer than 255 characters",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "clips",
+      0,
+      "source",
+      "path"
+     ],
+     "value": "a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/a/b.vnmclip_c"
+    }
+   ]
+  },
+  {
+   "name": "an uppercase source hash",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "clips",
+      0,
+      "source",
+      "sha256"
+     ],
+     "value": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    }
+   ]
+  },
+  {
+   "name": "a short source hash",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "clips",
+      0,
+      "source",
+      "sha256"
+     ],
+     "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   ]
+  },
+  {
+   "name": "three abilities",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "remove": [
+      "abilities",
+      3
+     ]
+    }
+   ]
+  },
+  {
+   "name": "five abilities",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "abilities",
+      4
+     ],
+     "value": {
+      "slot": 5,
+      "id": "x",
+      "name": "X",
+      "icon": {
+       "asset": "icons/ability_afterburn.png",
+       "source": {
+        "owner": "game",
+        "path": "a/b.vtex_c",
+        "sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "slots out of order",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "abilities",
+      0,
+      "slot"
+     ],
+     "value": 2
+    },
+    {
+     "set": [
+      "abilities",
+      1,
+      "slot"
+     ],
+     "value": 1
+    }
+   ]
+  },
+  {
+   "name": "a repeated slot",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "abilities",
+      1,
+      "slot"
+     ],
+     "value": 1
+    }
+   ]
+  },
+  {
+   "name": "a slot as text",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "abilities",
+      0,
+      "slot"
+     ],
+     "value": "1"
+    }
+   ]
+  },
+  {
+   "name": "a fractional slot",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "abilities",
+      0,
+      "slot"
+     ],
+     "value": 1.0
+    }
+   ]
+  },
+  {
+   "name": "a clip duration as text",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "clips",
+      0,
+      "durationMillis"
+     ],
+     "value": "1250"
+    }
+   ]
+  },
+  {
+   "name": "a boolean slot",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "abilities",
+      0,
+      "slot"
+     ],
+     "value": true
+    }
+   ]
+  },
+  {
+   "name": "a missing slot",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "remove": [
+      "abilities",
+      0,
+      "slot"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "an uppercase ability id",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "abilities",
+      0,
+      "id"
+     ],
+     "value": "Ability_Napalm"
+    }
+   ]
+  },
+  {
+   "name": "a repeated ability id",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "abilities",
+      1,
+      "id"
+     ],
+     "value": "ability_incendiary_projectile"
+    }
+   ]
+  },
+  {
+   "name": "a blank ability name",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "abilities",
+      0,
+      "name"
+     ],
+     "value": "  "
+    }
+   ]
+  },
+  {
+   "name": "a control character in an ability name",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "abilities",
+      0,
+      "name"
+     ],
+     "value": "Napalm\n"
+    }
+   ]
+  },
+  {
+   "name": "a numeric ability name",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "abilities",
+      0,
+      "name"
+     ],
+     "value": 7
+    }
+   ]
+  },
+  {
+   "name": "a clip id that was not exported",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "abilities",
+      1,
+      "clipId"
+     ],
+     "value": "run"
+    }
+   ]
+  },
+  {
+   "name": "a numeric clip id",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "abilities",
+      1,
+      "clipId"
+     ],
+     "value": 1
+    }
+   ]
+  },
+  {
+   "name": "an ability without an icon",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "remove": [
+      "abilities",
+      1,
+      "icon"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "a null icon",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "abilities",
+      1,
+      "icon"
+     ],
+     "value": null
+    }
+   ]
+  },
+  {
+   "name": "an icon asset that is not listed",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "abilities",
+      1,
+      "icon",
+      "asset"
+     ],
+     "value": "icons/missing.png"
+    }
+   ]
+  },
+  {
+   "name": "an icon asset that is the model",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "abilities",
+      1,
+      "icon",
+      "asset"
+     ],
+     "value": "model.glb.zst"
+    }
+   ]
+  },
+  {
+   "name": "an icon larger than the byte limit",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "assets",
+      4,
+      "bytes"
+     ],
+     "value": 1048577
+    }
+   ]
+  },
+  {
+   "name": "an icon without a source",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "remove": [
+      "abilities",
+      1,
+      "icon",
+      "source"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "a vanilla icon for a game-owned icon",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "abilities",
+      0,
+      "icon",
+      "source",
+      "owner"
+     ],
+     "value": "game"
+    }
+   ]
+  },
+  {
+   "name": "a vanilla icon owned by the mod",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "abilities",
+      0,
+      "vanillaIcon",
+      "source",
+      "owner"
+     ],
+     "value": "mod"
+    }
+   ]
+  },
+  {
+   "name": "a vanilla icon with the same bytes",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "abilities",
+      0,
+      "vanillaIcon",
+      "source",
+      "sha256"
+     ],
+     "value": "9999999999999999999999999999999999999999999999999999999999999999"
+    }
+   ]
+  },
+  {
+   "name": "a vanilla icon from another path",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "abilities",
+      0,
+      "vanillaIcon",
+      "source",
+      "path"
+     ],
+     "value": "panorama/images/hud/abilities/inferno_dash_psd.vtex_c"
+    }
+   ]
+  },
+  {
+   "name": "a vanilla icon asset that is not listed",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "abilities",
+      0,
+      "vanillaIcon",
+      "asset"
+     ],
+     "value": "icons/vanilla/missing.png"
+    }
+   ]
+  },
+  {
+   "name": "null abilities",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "abilities"
+     ],
+     "value": null
+    }
+   ]
+  },
+  {
+   "name": "abilities as an object",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "abilities"
+     ],
+     "value": {
+      "slot": 1
+     }
+    }
+   ]
+  },
+  {
+   "name": "an ability that is not an object",
+   "start": "viewer",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "abilities",
+      0
+     ],
+     "value": "napalm"
+    }
+   ]
+  },
+  {
+   "name": "an asset that still names its channels",
+   "start": "base",
+   "valid": true,
+   "ops": [
+    {
+     "set": [
+      "assets",
+      1,
+      "channels"
+     ],
+     "value": "RGBA"
+    }
+   ]
+  },
+  {
+   "name": "two model images sharing one packed view",
+   "start": "base",
+   "valid": true,
+   "ops": [],
+   "model": [
+    {
+     "set": [
+      "images",
+      1
+     ],
+     "value": {
+      "bufferView": 8,
+      "mimeType": "image/ktx2"
+     }
+    }
+   ]
+  },
+  {
+   "name": "a packed model image with a name",
+   "start": "base",
+   "valid": true,
+   "ops": [],
+   "model": [
+    {
+     "set": [
+      "images",
+      0,
+      "name"
+     ],
+     "value": "body"
+    }
+   ]
+  },
+  {
+   "name": "packed images of exactly the image byte limit",
+   "start": "base",
+   "valid": true,
+   "ops": [],
+   "model": [
+    {
+     "set": [
+      "bufferViews",
+      8,
+      "byteLength"
+     ],
+     "value": 134217728
+    },
+    {
+     "set": [
+      "buffers",
+      0,
+      "byteLength"
+     ],
+     "value": 134217912
+    }
+   ]
+  },
+  {
+   "name": "packed images over the image byte limit",
+   "start": "base",
+   "valid": false,
+   "ops": [],
+   "model": [
+    {
+     "set": [
+      "bufferViews",
+      8,
+      "byteLength"
+     ],
+     "value": 134217729
+    },
+    {
+     "set": [
+      "buffers",
+      0,
+      "byteLength"
+     ],
+     "value": 134217916
+    }
+   ]
+  },
+  {
+   "name": "a model image that is a file beside the model",
+   "start": "base",
+   "valid": false,
+   "ops": [],
+   "model": [
+    {
+     "set": [
+      "images",
+      0
+     ],
+     "value": {
+      "uri": "textures/body.ktx2",
+      "mimeType": "image/ktx2"
+     }
+    }
+   ]
+  },
+  {
+   "name": "a model image with a uri beside its buffer view",
+   "start": "base",
+   "valid": false,
+   "ops": [],
+   "model": [
+    {
+     "set": [
+      "images",
+      0,
+      "uri"
+     ],
+     "value": "textures/body.ktx2"
+    }
+   ]
+  },
+  {
+   "name": "a model image as a data uri",
+   "start": "base",
+   "valid": false,
+   "ops": [],
+   "model": [
+    {
+     "set": [
+      "images",
+      0
+     ],
+     "value": {
+      "uri": "data:image/ktx2;base64,AAAA",
+      "mimeType": "image/ktx2"
+     }
+    }
+   ]
+  },
+  {
+   "name": "a packed model image typed image/png",
+   "start": "base",
+   "valid": false,
+   "ops": [],
+   "model": [
+    {
+     "set": [
+      "images",
+      0,
+      "mimeType"
+     ],
+     "value": "image/png"
+    }
+   ]
+  },
+  {
+   "name": "a packed model image without a mime type",
+   "start": "base",
+   "valid": false,
+   "ops": [],
+   "model": [
+    {
+     "remove": [
+      "images",
+      0,
+      "mimeType"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "a model image in a buffer view that does not exist",
+   "start": "base",
+   "valid": false,
+   "ops": [],
+   "model": [
+    {
+     "set": [
+      "images",
+      0,
+      "bufferView"
+     ],
+     "value": 9
+    }
+   ]
+  },
+  {
+   "name": "a model image in a mesh's buffer view",
+   "start": "base",
+   "valid": false,
+   "ops": [],
+   "model": [
+    {
+     "set": [
+      "images",
+      0,
+      "bufferView"
+     ],
+     "value": 0
+    }
+   ]
+  },
+  {
+   "name": "a model image view that overlaps the meshes",
+   "start": "base",
+   "valid": false,
+   "ops": [],
+   "model": [
+    {
+     "set": [
+      "bufferViews",
+      8,
+      "byteOffset"
+     ],
+     "value": 0
+    }
+   ]
+  },
+  {
+   "name": "a buffer view after the image views",
+   "start": "base",
+   "valid": false,
+   "ops": [],
+   "model": [
+    {
+     "set": [
+      "bufferViews",
+      9
+     ],
+     "value": {
+      "buffer": 0,
+      "byteOffset": 0,
+      "byteLength": 4
+     }
+    }
+   ]
+  },
+  {
+   "name": "a model image view with a byte stride",
+   "start": "base",
+   "valid": false,
+   "ops": [],
+   "model": [
+    {
+     "set": [
+      "bufferViews",
+      8,
+      "byteStride"
+     ],
+     "value": 4
+    }
+   ]
+  },
+  {
+   "name": "a model image view an accessor reads",
+   "start": "base",
+   "valid": false,
+   "ops": [],
+   "model": [
+    {
+     "set": [
+      "accessors",
+      0,
+      "bufferView"
+     ],
+     "value": 8
+    }
+   ]
+  },
+  {
+   "name": "a separate viewer texture asset",
+   "start": "base",
+   "valid": false,
+   "ops": [
+    {
+     "set": [
+      "assets",
+      3
+     ],
+     "value": {
+      "path": "textures/body.ktx2",
+      "bytes": 271,
+      "sha256": "8346d7d185650b041c6489e21d16618c065834d2d1040495195f48e7ce6e1aa7",
+      "type": "image/ktx2"
+     }
+    }
+   ]
+  }
+ ]
+}

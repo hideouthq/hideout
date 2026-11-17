@@ -1,0 +1,33 @@
+{
+  "comment": "Preview request signatures. Each signer takes the host from url; host is what it must arrive at. The Worker's, the app's and the Python tools' tests all read this file.",
+  "window": 300,
+  "vectors": [
+    {
+      "key": "fixture-key-one-0123456789abcdef0123",
+      "method": "GET",
+      "url": "https://previews.example.test/v1/index.json",
+      "host": "previews.example.test",
+      "path": "/v1/index.json",
+      "time": 1800000000,
+      "signature": "6f9998cc15070c4d40844d9187c7c5bcd5d809143799a0a3b85ba84360d4d9f8"
+    },
+    {
+      "key": "fixture-key-one-0123456789abcdef0123",
+      "method": "HEAD",
+      "url": "https://Previews.Example.Test:443/v1/bundles/7fcfac9ff3fe9ce4937a8e2d635a8dad/model.glb.zst",
+      "host": "previews.example.test",
+      "path": "/v1/bundles/7fcfac9ff3fe9ce4937a8e2d635a8dad/model.glb.zst",
+      "time": 1800000300,
+      "signature": "c6cf2a62cbcb46f2b8d83bc0876c479bdf91a139eb9c054bbde687e80ad84de0"
+    },
+    {
+      "key": "fixture-key-two-fedcba9876543210fedc",
+      "method": "GET",
+      "url": "http://127.0.0.1:8787/v1/bundles/7fcfac9ff3fe9ce4937a8e2d635a8dad/manifest.json",
+      "host": "127.0.0.1:8787",
+      "path": "/v1/bundles/7fcfac9ff3fe9ce4937a8e2d635a8dad/manifest.json",
+      "time": 1700000000,
+      "signature": "49b8b8c6614e6103dbeb7ed592050fcf61755ad8511532c679788fb2b9094533"
+    }
+  ]
+}

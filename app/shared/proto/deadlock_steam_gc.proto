@@ -1,0 +1,64 @@
+syntax = "proto2";
+package gg.hideouthq.core.data.deadlock.proto;
+option java_package = "gg.hideouthq.core.data.deadlock.proto";
+
+// Wire-compatible projection of SteamDatabase/Protobufs (Unlicense), commit
+// 184badc242dae6153ce875eeb8217c14b1ce3f3c, deadlock/citadel_gcmessages_{client,common}.proto.
+message SteamGcHeader {
+  optional fixed64 job_id_target = 11;
+}
+
+message CMsgClientToGCGetMatchHistoryResponse {
+	message Match {
+		optional uint64 match_id = 1;
+		optional uint32 hero_id = 2;
+		optional uint32 match_duration_s = 3;
+		optional uint32 start_time = 4;
+		optional uint32 match_result = 5;
+		optional uint32 player_team = 6;
+		optional uint32 player_kills = 7;
+		optional uint32 player_deaths = 8;
+		optional uint32 player_assists = 9;
+		optional uint32 last_hits = 11;
+		optional uint32 denies = 12;
+		optional uint32 hero_level = 13;
+		optional uint32 net_worth = 14;
+		optional uint32 abandoned_time_s = 18;
+		optional uint32 match_mode = 19;
+		optional uint32 game_mode = 20;
+		optional uint32 player_match_outcome = 26;
+		optional uint32 ranked_display_badge = 27;
+		optional uint32 ranked_calibration_match = 29;
+	}
+
+	enum EResult {
+		k_eResult_InternalError = 0;
+		k_eResult_Success = 1;
+		k_eResult_InvalidPermission = 2;
+		k_eResult_TemporarilyDisabled = 3;
+		k_eResult_TooBusy = 4;
+		k_eResult_RateLimited = 5;
+	}
+
+	optional CMsgClientToGCGetMatchHistoryResponse.EResult result = 1 [default = k_eResult_InternalError];
+	optional uint64 continue_cursor = 2;
+	repeated CMsgClientToGCGetMatchHistoryResponse.Match matches = 3;
+}
+
+message CMsgClientToGCGetMatchMetaDataResponse {
+	enum EResult {
+		k_eResult_InternalError = 0;
+		k_eResult_Success = 1;
+		k_eResult_InvalidPermission = 2;
+		k_eResult_TemporarilyDisabled = 3;
+		k_eResult_TooBusy = 4;
+		k_eResult_RateLimited = 5;
+		k_eResult_InvalidMatch = 6;
+		k_eResult_MatchInFlight = 7;
+		k_eResult_Timeout = 8;
+	}
+
+	optional CMsgClientToGCGetMatchMetaDataResponse.EResult result = 1 [default = k_eResult_InternalError];
+	optional uint32 metadata_salt = 3;
+	optional uint32 replay_group_id = 5;
+}

@@ -1,0 +1,13 @@
+<resources>
+    <string name="order_move_up">Move up</string>
+    <string name="order_move_down">Move down</string>
+    <string name="order_move_to_position">Move to position…</string>
+    <string name="order_move_to_position_title">Move %1$s to position</string>
+    <string name="order_position_label">Position (1–%1$d)</string>
+    <string name="order_move_confirm">Move</string>
+    <string name="order_move_cancel">Cancel</string>
+    <string name="parts_order_action">Reorder parts…</string>
+    <string name="parts_order_title">Reorder parts of %1$s</string>
+    <string name="parts_order_body">Higher parts show where two change the same files. Saving renames them inside this mod’s own numbers, once Deadlock is closed.</string>
+    <string name="parts_order_save">Save order</string>
+</resources>

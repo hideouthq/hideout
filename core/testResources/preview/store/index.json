@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "generation": 1,
+  "publishedAt": "2026-10-07T16:31:00Z",
+  "entries": [
+    {
+      "submission": {
+        "model": "Mod",
+        "id": 612345
+      },
+      "fileId": 1500001,
+      "fileMd5": "77108bcd62e970276cfa1296c799e150",
+      "bundleId": "7fcfac9ff3fe9ce4937a8e2d635a8dad",
+      "manifestSha256": "777a75fa38e22956d080c1fa1a83ec9530f59747303e124dfb82c1c54a70ae36",
+      "build": 21000001,
+      "picture": "ready",
+      "interactive": "ready"
+    }
+  ]
+}

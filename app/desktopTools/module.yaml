@@ -1,0 +1,35 @@
+product: jvm/app
+
+description: |
+  Developer tools for the desktop app: rendered screenshots, smoke checks and preview checks. They run against the
+  compiled desktop app and never ship with it.
+
+apply:
+  - //common.module-template.yaml
+
+repositories:
+  - https://jitpack.io
+
+dependencies:
+  - //app/desktopApp
+  - //app/shared
+  - //core
+  - $compose.desktop.currentOs
+  - $libs.compose.material3
+  - $libs.androidx.lifecycle.viewmodelCompose
+  - $libs.coil.compose
+  - $libs.ktor.clientCore
+  - $libs.ktor.clientMock
+  - $libs.ktor.clientOkhttp
+  - $libs.ktor.serverNetty
+  - $libs.gdx
+  - $libs.zstd.jni
+
+settings:
+  kotlin:
+    serialization: enabled
+  compose:
+    enabled: true
+    version: 1.12.1
+  jvm:
+    mainClass: gg.hideouthq.tools.ScreenshotsKt

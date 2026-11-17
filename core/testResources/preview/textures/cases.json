@@ -1,0 +1,35 @@
+{
+ "_about": "Viewer texture files both readers must agree on: hideout-previews' viewer_textures.read and the app's Ktx2Texture.parse. Written by hideout-previews' test_viewer_textures.py.",
+ "accept": [
+  "1x1",
+  "4x4",
+  "5x3",
+  "64x32",
+  "8x1"
+ ],
+ "reject": [
+  "array-layer",
+  "basis-supercompressed",
+  "bc1",
+  "bc7-srgb",
+  "cube",
+  "depth-1",
+  "dfd-srgb",
+  "frame-states-other-size",
+  "frame-without-size",
+  "gap",
+  "kvd",
+  "largest-first",
+  "level-outside",
+  "not-a-frame",
+  "not-ktx2",
+  "not-supercompressed",
+  "short-chain",
+  "too-wide",
+  "trailing-byte",
+  "truncated",
+  "type-size-4",
+  "wrong-level-length",
+  "zero-width"
+ ]
+}

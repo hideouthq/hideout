@@ -1,0 +1,291 @@
+{
+  "version": 3,
+  "mods": {
+    "626469": {
+      "enabled": true,
+      "order": null,
+      "shard": 1,
+      "currentVpks": [
+        "pak13_dir.vpk"
+      ],
+      "disabledVpks": [],
+      "originalVpkNames": [
+        "pak02_dir.vpk"
+      ]
+    },
+    "630975": {
+      "enabled": false,
+      "order": null,
+      "shard": 1,
+      "currentVpks": [],
+      "disabledVpks": [
+        "630975_pak81_dir.vpk"
+      ],
+      "originalVpkNames": [
+        "pak81_dir.vpk"
+      ]
+    },
+    "631628": {
+      "enabled": true,
+      "order": null,
+      "shard": 1,
+      "currentVpks": [
+        "pak06_dir.vpk",
+        "pak07_dir.vpk",
+        "pak08_dir.vpk",
+        "pak09_dir.vpk",
+        "pak10_dir.vpk",
+        "pak11_dir.vpk",
+        "pak12_dir.vpk"
+      ],
+      "disabledVpks": [],
+      "originalVpkNames": [
+        "pak07_dir.vpk",
+        "pak07_dir.vpk",
+        "pak08_dir.vpk",
+        "pak09_dir.vpk",
+        "pak10_dir.vpk",
+        "pak11_dir.vpk",
+        "pak12_dir.vpk"
+      ]
+    },
+    "637275": {
+      "enabled": false,
+      "order": null,
+      "shard": 1,
+      "currentVpks": [],
+      "disabledVpks": [],
+      "originalVpkNames": [
+        "pak15_dir.vpk",
+        "pak16_dir.vpk"
+      ]
+    },
+    "639529": {
+      "enabled": false,
+      "order": null,
+      "shard": 1,
+      "currentVpks": [],
+      "disabledVpks": [],
+      "originalVpkNames": [
+        "pak12_dir.vpk"
+      ]
+    },
+    "649307": {
+      "enabled": false,
+      "order": null,
+      "shard": 1,
+      "currentVpks": [],
+      "disabledVpks": [
+        "649307_pak15_dir.vpk"
+      ],
+      "originalVpkNames": [
+        "pak15_dir.vpk"
+      ]
+    },
+    "656621": {
+      "enabled": true,
+      "order": null,
+      "shard": 1,
+      "currentVpks": [
+        "pak03_dir.vpk",
+        "pak04_dir.vpk"
+      ],
+      "disabledVpks": [],
+      "originalVpkNames": [
+        "pak39_dir.vpk",
+        "pak41_dir.vpk"
+      ]
+    },
+    "657204": {
+      "enabled": false,
+      "order": null,
+      "shard": 1,
+      "currentVpks": [],
+      "disabledVpks": [],
+      "originalVpkNames": [
+        "pak17_dir.vpk"
+      ]
+    },
+    "666185": {
+      "enabled": false,
+      "order": null,
+      "shard": 1,
+      "currentVpks": [],
+      "disabledVpks": [
+        "666185_pak28_dir.vpk"
+      ],
+      "originalVpkNames": [
+        "pak28_dir.vpk"
+      ]
+    },
+    "669760": {
+      "enabled": false,
+      "order": null,
+      "shard": 1,
+      "currentVpks": [],
+      "disabledVpks": [
+        "669760_pak01_dir.vpk"
+      ],
+      "originalVpkNames": [
+        "pak01_dir.vpk"
+      ]
+    },
+    "673959": {
+      "enabled": true,
+      "order": null,
+      "shard": 1,
+      "currentVpks": [
+        "pak05_dir.vpk"
+      ],
+      "disabledVpks": [],
+      "originalVpkNames": [
+        "pak90_dir.vpk"
+      ]
+    },
+    "677577": {
+      "enabled": false,
+      "order": null,
+      "shard": 1,
+      "currentVpks": [],
+      "disabledVpks": [],
+      "originalVpkNames": [
+        "pak11_dir.vpk",
+        "pak18_dir.vpk"
+      ]
+    },
+    "687443": {
+      "enabled": false,
+      "order": null,
+      "shard": 1,
+      "currentVpks": [],
+      "disabledVpks": [
+        "687443_pak59_dir.vpk"
+      ],
+      "originalVpkNames": [
+        "pak59_dir.vpk"
+      ]
+    },
+    "691863": {
+      "enabled": true,
+      "order": null,
+      "shard": 1,
+      "currentVpks": [
+        "pak10_dir.vpk"
+      ],
+      "disabledVpks": [],
+      "originalVpkNames": [
+        "pak50_dir.vpk"
+      ]
+    },
+    "696085": {
+      "enabled": true,
+      "order": null,
+      "shard": 1,
+      "currentVpks": [
+        "pak01_dir.vpk"
+      ],
+      "disabledVpks": [],
+      "originalVpkNames": [
+        "pak51_dir.vpk"
+      ]
+    },
+    "708938": {
+      "enabled": false,
+      "order": null,
+      "shard": 1,
+      "currentVpks": [],
+      "disabledVpks": [
+        "708938_pak03_dir.vpk"
+      ],
+      "originalVpkNames": [
+        "pak03_dir.vpk"
+      ]
+    },
+    "713044": {
+      "enabled": false,
+      "order": null,
+      "shard": 1,
+      "currentVpks": [],
+      "disabledVpks": [
+        "713044_pak17_dir.vpk"
+      ],
+      "originalVpkNames": [
+        "pak17_dir.vpk"
+      ]
+    },
+    "717740": {
+      "enabled": false,
+      "order": null,
+      "shard": 1,
+      "currentVpks": [],
+      "disabledVpks": [
+        "717740_dokibird_as_paradox_updated_2026-09-30.vpk"
+      ],
+      "originalVpkNames": [
+        "dokibird_as_paradox_updated_2026-09-30.vpk"
+      ]
+    },
+    "721285": {
+      "enabled": false,
+      "order": null,
+      "shard": 1,
+      "currentVpks": [],
+      "disabledVpks": [
+        "721285_pak57_dir.vpk"
+      ],
+      "originalVpkNames": [
+        "pak57_dir.vpk"
+      ]
+    },
+    "721342": {
+      "enabled": false,
+      "order": null,
+      "shard": 1,
+      "currentVpks": [],
+      "disabledVpks": [
+        "721342_奶蛙v59_音效含logo_pak01_dir.vpk",
+        "721342_奶龙v59_模型本体_pak01_dir.vpk"
+      ],
+      "originalVpkNames": [
+        "奶蛙v59_音效含logo_pak01_dir.vpk",
+        "奶龙v59_模型本体_pak01_dir.vpk"
+      ]
+    },
+    "721650": {
+      "enabled": false,
+      "order": null,
+      "shard": 1,
+      "currentVpks": [],
+      "disabledVpks": [
+        "721650_pak01_dir.vpk"
+      ],
+      "originalVpkNames": [
+        "pak01_dir.vpk"
+      ]
+    },
+    "721908": {
+      "enabled": false,
+      "order": null,
+      "shard": 1,
+      "currentVpks": [],
+      "disabledVpks": [
+        "721908_pak37_dir.vpk"
+      ],
+      "originalVpkNames": [
+        "pak37_dir.vpk"
+      ]
+    },
+    "722139": {
+      "enabled": false,
+      "order": null,
+      "shard": 1,
+      "currentVpks": [],
+      "disabledVpks": [
+        "722139_klukai_wraith_v9_manual_transparency_dir.vpk"
+      ],
+      "originalVpkNames": [
+        "klukai_wraith_v9_manual_transparency_dir.vpk"
+      ]
+    }
+  }
+}

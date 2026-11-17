@@ -1,0 +1,128 @@
+{
+  "schema": 1,
+  "bundleId": "7fcfac9ff3fe9ce4937a8e2d635a8dad",
+  "input": {
+    "game": {
+      "appId": 1422450,
+      "build": 21000001,
+      "depots": {
+        "1422451": "7310089211263420011",
+        "1422452": "4592231077154218804"
+      },
+      "snapshotSha256": "d9f2b7d771ad9079b0549b973293ac309efd7cb220ba12ee236adef5e62765b0"
+    },
+    "hero": "hero_inferno",
+    "submission": {
+      "model": "Mod",
+      "id": 612345
+    },
+    "file": {
+      "id": 1500001,
+      "md5": "77108bcd62e970276cfa1296c799e150",
+      "sha256": "019c263c13b3ce5d2a9bf3c3b3ecc0bae3d2a8eb497e5018f7221188185ee2c4",
+      "bytes": 35,
+      "vpk": "pak01_dir.vpk",
+      "vpkSha256": "c0f7cec01f0371c6c4bfad606f3cf258e0977103013ee41218791fc61bad2d9c"
+    },
+    "converter": {
+      "vrfCommit": "127f4ad58874f568d7fbd87b419a31d15a5bd8c7",
+      "convertImage": "sha256:84bf59cb85168a4183eaa3e9caafffe1674c599695cb404d3deaaf3bcc1188a9",
+      "captureImage": "sha256:cc123c547a2da6fb18185710424b62ad03c16756174610ce2f8ab1804a017e5a"
+    },
+    "recipeSha256": "1389d30266d5bb987b076176feb97f52d9d7af72a8a9d88a3628755f94eaaab3",
+    "dependencies": []
+  },
+  "createdAt": "2026-10-07T16:30:00Z",
+  "fidelity": "studio_approximation",
+  "attribution": "Fixture mod by Hideout tests on GameBanana. Deadlock content belongs to Valve. Studio render, not an in-game screenshot.",
+  "assets": [
+    {
+      "path": "model.glb.zst",
+      "bytes": 841,
+      "sha256": "e4d785a7d11ab6e885be5ea7d00483fdaba3506be4907f10360d430264cd5edc",
+      "type": "model/gltf-binary",
+      "encoding": {
+        "codec": "zstd",
+        "decodedBytes": 2376,
+        "decodedSha256": "f1cc0813bb2b0915c8b507499975c7600f7e78edeb707d0a387274d8bfe2e965"
+      }
+    },
+    {
+      "path": "pictures/featured.webp",
+      "bytes": 32,
+      "sha256": "1f91db1bdf3ab8e9798faaf7daa2d6698fb940cf3a7e45ce74762715010ed63b",
+      "type": "image/webp"
+    },
+    {
+      "path": "pictures/detail.webp",
+      "bytes": 32,
+      "sha256": "afa649d5f8757d56e5698322701f0c3e852b52d3524d88a613757b86e712a642",
+      "type": "image/webp"
+    }
+  ],
+  "scene": {
+    "model": "model.glb.zst",
+    "maxJointsPerSkin": 2,
+    "influenceSets": 1,
+    "morphTargets": 0,
+    "extensionsRequired": []
+  },
+  "clips": [
+    {
+      "id": "idle",
+      "durationMillis": 1250
+    },
+    {
+      "id": "walk",
+      "durationMillis": 800
+    }
+  ],
+  "missingClips": [
+    "run"
+  ],
+  "pictures": [
+    {
+      "role": "featured",
+      "asset": "pictures/featured.webp",
+      "clip": "idle",
+      "timeMillis": 500,
+      "width": 24,
+      "height": 16,
+      "azimuth": 30.0,
+      "lighting": "studio_three_point",
+      "hiddenMeshSuffixes": [
+        ".flask_in_hand_l"
+      ]
+    },
+    {
+      "role": "detail",
+      "asset": "pictures/detail.webp",
+      "timeMillis": 0,
+      "width": 16,
+      "height": 24,
+      "azimuth": 0.0,
+      "lighting": "studio_three_point",
+      "hiddenMeshSuffixes": []
+    }
+  ],
+  "picture": {
+    "state": "ready",
+    "checks": [
+      "nonblank",
+      "unclipped",
+      "quality_review"
+    ]
+  },
+  "interactive": {
+    "state": "ready",
+    "checks": [
+      "glb_structure",
+      "desktop_renderer_probe"
+    ]
+  },
+  "capabilities": {
+    "weapon": false,
+    "effects": false,
+    "styles": false
+  }
+}

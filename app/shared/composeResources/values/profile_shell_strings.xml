@@ -1,0 +1,67 @@
+<resources>
+    <string name="profile_new">New profile</string>
+    <string name="profile_create">Create profile</string>
+    <string name="profile_name">Name</string>
+    <string name="profile_colour">Colour</string>
+    <string name="profile_start_with">Start with</string>
+    <string name="profile_copy_on">The mods on in</string>
+    <plurals name="profile_copy_hint">
+        <item quantity="one">%1$d mod on, the same as %2$s today</item>
+        <item quantity="other">%1$d mods on, the same as %2$s today</item>
+    </plurals>
+    <string name="profile_nothing_on">Nothing on</string>
+    <string name="profile_nothing_hint">Your mods stay installed, in the load order you have now; you pick which ones to turn on.</string>
+    <string name="profile_activate_now">Switch to it now</string>
+    <string name="profile_empty_name">Enter a name for this profile.</string>
+    <string name="profile_duplicate_name">There’s already a profile called "%1$s".</string>
+    <string name="profile_active_label">Active profile: %1$s</string>
+    <string name="profile_active">Active</string>
+    <string name="profile_switch_label">Switch to profile %1$s</string>
+    <string name="profile_options">Options for %1$s</string>
+    <string name="profile_switch">Switch to this profile</string>
+    <string name="profile_rename">Rename</string>
+    <string name="profile_duplicate">Duplicate</string>
+    <string name="profile_delete_menu">Delete</string>
+    <string name="profile_only_one">Only profile</string>
+    <string name="profile_deleted">Deleted %1$s</string>
+    <string name="profile_deleted_switched">Deleted %1$s · switched to %2$s</string>
+    <plurals name="library_turned_on">
+        <item quantity="one">Turned on %1$d mod</item>
+        <item quantity="other">Turned on %1$d mods</item>
+    </plurals>
+    <string name="library_uninstalled">Uninstalled %1$s</string>
+    <plurals name="library_uninstalled_count">
+        <item quantity="one">Uninstalled %1$d mod</item>
+        <item quantity="other">Uninstalled %1$d mods</item>
+    </plurals>
+    <plurals name="library_turned_off">
+        <item quantity="one">Turned off %1$d mod</item>
+        <item quantity="other">Turned off %1$d mods</item>
+    </plurals>
+    <plurals name="library_turned_on_in">
+        <item quantity="one">Turned on %1$d mod in %2$s</item>
+        <item quantity="other">Turned on %1$d mods in %2$s</item>
+    </plurals>
+    <plurals name="library_turned_off_in">
+        <item quantity="one">Turned off %1$d mod in %2$s</item>
+        <item quantity="other">Turned off %1$d mods in %2$s</item>
+    </plurals>
+    <string name="profile_undo">Undo</string>
+    <string name="mod_lines_put_back">%1$s changed Deadlock’s mod settings. Hideout put them back.</string>
+    <string name="profile_close_notice">Close notification</string>
+    <string name="profile_cancel">Cancel</string>
+    <string name="profile_mods_on">%1$d on</string>
+    <plurals name="profile_launch_status">
+        <item quantity="one">%1$s · %2$d mod on</item>
+        <item quantity="other">%1$s · %2$d mods on</item>
+    </plurals>
+    <string name="profile_applying">Applying…</string>
+    <string name="profile_saving">Saving…</string>
+    <string name="profile_saved">Saved</string>
+    <string name="profile_not_applied">Changes not applied yet</string>
+    <string name="launch_in_custom_game">In a custom game</string>
+    <string name="profile_apply_failed">Your choices are saved but could not be applied.</string>
+    <string name="profile_save_failed">Could not save your changes.</string>
+    <string name="profile_running_status">Next launch · %1$s</string>
+    <string name="profile_in_game">In game</string>
+</resources>

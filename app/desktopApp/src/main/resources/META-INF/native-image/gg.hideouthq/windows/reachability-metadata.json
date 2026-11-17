@@ -1,0 +1,206 @@
+{
+  "comment": "Written by hand: the Windows native libraries the app's JARs carry. Their loaders skip the resource when an earlier run already unpacked it, so a trace sees them only on a clean machine. Only the Windows image reads this folder. DesktopHandoff's ShellExecute also needs the type JNA builds for its result, which the Windows trace predates. The rest is what the JDK's Windows clipboard natives look up by name: the methods they call back, the class a pasted file list is returned in, and the exceptions they throw. Copying is what first reaches them, and a pasted image alone reaches concatData, so these stay here where a retrace cannot lose them. java.net.URL is a class only Windows' flavor map names. awt_Component.cpp builds each MouseWheelEvent through JNI, and the Windows trace never turned the wheel.",
+  "resources": [
+    {
+      "glob": "windows/x64/org/lwjgl/**"
+    },
+    {
+      "glob": "META-INF/windows/x64/org/lwjgl/**"
+    },
+    {
+      "glob": "win/amd64/libzstd-jni-*.dll"
+    },
+    {
+      "glob": "gdx64.dll"
+    },
+    {
+      "glob": "com/sun/jna/win32-x86-64/*"
+    }
+  ],
+  "reflection": [
+    {
+      "type": "java.awt.event.MouseWheelEvent",
+      "jniAccessible": true,
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.awt.Component",
+            "int",
+            "long",
+            "int",
+            "int",
+            "int",
+            "int",
+            "int",
+            "int",
+            "boolean",
+            "int",
+            "int",
+            "int",
+            "double"
+          ]
+        },
+        {
+          "name": "getWheelRotation",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.awt.windows.WDropTargetContextPeer",
+      "jniAccessible": true,
+      "methods": [
+        {
+          "name": "getWDropTargetContextPeer",
+          "parameterTypes": []
+        },
+        {
+          "name": "getFileStream",
+          "parameterTypes": [
+            "java.lang.String",
+            "long"
+          ]
+        },
+        {
+          "name": "getIStream",
+          "parameterTypes": [
+            "long"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sun.awt.dnd.SunDropTargetContextPeer",
+      "jniAccessible": true,
+      "methods": [
+        {
+          "name": "handleEnterMessage",
+          "parameterTypes": [
+            "java.awt.Component",
+            "int",
+            "int",
+            "int",
+            "int",
+            "long[]",
+            "long"
+          ]
+        },
+        {
+          "name": "handleExitMessage",
+          "parameterTypes": [
+            "java.awt.Component",
+            "long"
+          ]
+        },
+        {
+          "name": "handleMotionMessage",
+          "parameterTypes": [
+            "java.awt.Component",
+            "int",
+            "int",
+            "int",
+            "int",
+            "long[]",
+            "long"
+          ]
+        },
+        {
+          "name": "handleDropMessage",
+          "parameterTypes": [
+            "java.awt.Component",
+            "int",
+            "int",
+            "int",
+            "int",
+            "long[]",
+            "long"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "com.sun.jna.platform.win32.WinDef$INT_PTR",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.awt.windows.WClipboard",
+      "jniAccessible": true,
+      "methods": [
+        {
+          "name": "lostSelectionOwnershipImpl",
+          "parameterTypes": []
+        },
+        {
+          "name": "handleContentsChanged",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.awt.datatransfer.DataTransferer",
+      "jniAccessible": true,
+      "methods": [
+        {
+          "name": "getInstance",
+          "parameterTypes": []
+        },
+        {
+          "name": "concatData",
+          "parameterTypes": [
+            "java.lang.Object",
+            "java.lang.Object"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "java.lang.IllegalStateException",
+      "jniAccessible": true,
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "java.io.IOException",
+      "jniAccessible": true,
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "java.lang.OutOfMemoryError",
+      "jniAccessible": true,
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "java.lang.String",
+      "jniAccessible": true
+    },
+    {
+      "type": "java.net.URL"
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "version": 3,
+  "mods": {
+    "724744": {
+      "enabled": true,
+      "compatibilityEnabled": false,
+      "compatibilityOptedOut": false,
+      "order": null,
+      "shard": 1,
+      "currentVpks": [
+        "pak01_dir.vpk"
+      ],
+      "disabledVpks": [],
+      "originalVpkNames": [
+        "classicinvestments_dir.vpk"
+      ]
+    },
+    "735850": {
+      "enabled": true,
+      "compatibilityEnabled": false,
+      "compatibilityOptedOut": false,
+      "order": null,
+      "shard": 1,
+      "currentVpks": [
+        "pak02_dir.vpk",
+        "pak03_dir.vpk"
+      ],
+      "disabledVpks": [],
+      "originalVpkNames": [
+        "bluefish_rem.vpk",
+        "cn-vo.vpk"
+      ]
+    }
+  }
+}

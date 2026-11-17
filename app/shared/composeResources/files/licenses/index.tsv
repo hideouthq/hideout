@@ -1,0 +1,98 @@
+# component	licence	OSI-approved	notice files	artifacts
+Kotlin standard library	Apache License 2.0	yes	apache_2.txt,kotlin_notice.txt,threetenbp_bsd_3.txt,kotlin_boost_license.txt	org.jetbrains.kotlin:kotlin-stdlib:2.4.21
+JetBrains Java Annotations	Apache License 2.0	yes	jetbrains_annotations_apache_2.txt	org.jetbrains:annotations:23.0.0
+kotlinx.coroutines	Apache License 2.0	yes	kotlinx_coroutines_apache_2.txt,kotlinx_coroutines_notice.txt	org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.11.0,org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.11.0,org.jetbrains.kotlinx:kotlinx-coroutines-slf4j:1.11.0
+kotlinx.serialization	Apache License 2.0	yes	kotlinx_serialization_apache_2.txt,kotlinx_serialization_notice.txt	org.jetbrains.kotlinx:kotlinx-serialization-json-jvm:1.12.0,org.jetbrains.kotlinx:kotlinx-serialization-core-jvm:1.12.0
+kotlinx-datetime	Apache License 2.0	yes	apache_2.txt,threetenbp_bsd_3.txt	org.jetbrains.kotlinx:kotlinx-datetime-jvm:0.7.1
+kotlinx-io	Apache License 2.0	yes	kotlinx_io_apache_2.txt,kotlinx_io_notice.txt	org.jetbrains.kotlinx:kotlinx-io-core-jvm:0.9.1,org.jetbrains.kotlinx:kotlinx-io-bytestring-jvm:0.9.1
+kotlinx.atomicfu	Apache License 2.0	yes	apache_2.txt,atomicfu_license.txt,atomicfu_notice.txt	org.jetbrains.kotlinx:atomicfu-jvm:0.28.0
+Compose Multiplatform	Apache License 2.0	yes	androidx_apache_2.txt	org.jetbrains.compose.material3:material3-desktop:1.12.0-alpha03,org.jetbrains.compose.ui:ui-tooling-preview-desktop:1.12.1,org.jetbrains.compose.runtime:runtime-desktop:1.12.1,org.jetbrains.compose.foundation:foundation-desktop:1.12.1,org.jetbrains.compose.ui:ui-desktop:1.12.1,org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose-desktop:2.11.0,org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose-desktop:2.11.0,org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-navigation3-desktop:2.11.0,org.jetbrains.compose.desktop:desktop-jvm:1.12.1,org.jetbrains.compose.animation:animation-core-desktop:1.12.1,org.jetbrains.compose.foundation:foundation-layout-desktop:1.12.1,org.jetbrains.compose.material:material-ripple-desktop:1.12.1,org.jetbrains.compose.ui:ui-backhandler-desktop:1.12.1,org.jetbrains.compose.ui:ui-text-desktop:1.12.1,org.jetbrains.compose.ui:ui-util-desktop:1.12.1,org.jetbrains.compose.animation:animation-desktop:1.12.1,org.jetbrains.androidx.navigationevent:navigationevent-compose-desktop:1.1.0,org.jetbrains.compose.runtime:runtime-saveable-desktop:1.12.1,org.jetbrains.compose.ui:ui-geometry-desktop:1.12.1,org.jetbrains.compose.ui:ui-graphics-desktop:1.12.1,org.jetbrains.compose.ui:ui-unit-desktop:1.12.1,org.jetbrains.androidx.lifecycle:lifecycle-common-jvm:2.11.0,org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-desktop:2.11.0,org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-savedstate-desktop:2.11.0,org.jetbrains.androidx.lifecycle:lifecycle-runtime-desktop:2.11.0,org.jetbrains.androidx.savedstate:savedstate-compose-desktop:1.4.0,org.jetbrains.compose.material:material-desktop:1.12.1
+Compose Multiplatform Resources	Apache License 2.0	yes	compose_multiplatform_apache_2.txt	org.jetbrains.compose.components:components-resources-desktop:1.12.1
+AndroidX libraries	Apache License 2.0	yes	androidx_apache_2.txt	androidx.navigation3:navigation3-runtime-desktop:1.1.7,androidx.graphics:graphics-shapes-desktop:1.1.0,androidx.collection:collection-jvm:1.5.0,androidx.annotation:annotation-jvm:1.11.0,androidx.compose.runtime:runtime-desktop:1.12.1,androidx.compose.runtime:runtime-retain-desktop:1.12.1,androidx.lifecycle:lifecycle-viewmodel-compose-desktop:2.11.0,androidx.lifecycle:lifecycle-viewmodel-savedstate-desktop:2.11.0,androidx.savedstate:savedstate-compose-desktop:1.4.0,androidx.lifecycle:lifecycle-runtime-compose-desktop:2.11.0,androidx.lifecycle:lifecycle-viewmodel-navigation3-desktop:2.11.0,androidx.compose.runtime:runtime-saveable-desktop:1.12.1,androidx.lifecycle:lifecycle-runtime-desktop:2.11.0,androidx.navigationevent:navigationevent-desktop:1.1.2,androidx.savedstate:savedstate-desktop:1.4.0,androidx.arch.core:core-common:2.2.0,androidx.compose.runtime:runtime-annotation-jvm:1.12.1,androidx.lifecycle:lifecycle-common-jvm:2.11.0,androidx.lifecycle:lifecycle-viewmodel-desktop:2.11.0,androidx.navigationevent:navigationevent-compose-desktop:1.1.2
+Skiko	Apache License 2.0	yes	apache_2.txt,skiko_notice.txt,skia_bsd_3.txt,freetype_license.txt,freetype_ftl.txt,harfbuzz_license.txt,icu_license.txt,libpng_license.txt,libjpeg_turbo_license.txt,libjpeg_turbo_readme_ijg.txt,libwebp_license.txt,libwebp_patents.txt,zlib_license.txt,expat_license.txt,dng_sdk_license.txt	org.jetbrains.skiko:skiko-awt-runtime-linux-x64:0.150.1,org.jetbrains.skiko:skiko-awt-runtime-windows-x64:0.150.1,org.jetbrains.skiko:skiko-awt-runtime-windows-arm64:0.150.1,org.jetbrains.skiko:skiko-awt:0.150.1
+JetBrains Runtime API	Apache License 2.0	yes	apache_2.txt	org.jetbrains.runtime:jbr-api:1.9.0
+Ktor	Apache License 2.0	yes	ktor_apache_2.txt	io.ktor:ktor-client-core-jvm:3.6.0,io.ktor:ktor-client-okhttp-jvm:3.6.0,io.ktor:ktor-http-jvm:3.6.0,io.ktor:ktor-http-cio-jvm:3.6.0,io.ktor:ktor-events-jvm:3.6.0,io.ktor:ktor-websocket-serialization-jvm:3.6.0,io.ktor:ktor-sse-jvm:3.6.0,io.ktor:ktor-utils-jvm:3.6.0,io.ktor:ktor-network-jvm:3.6.0,io.ktor:ktor-io-jvm:3.6.0,io.ktor:ktor-serialization-jvm:3.6.0,io.ktor:ktor-websockets-jvm:3.6.0
+OkHttp	Apache License 2.0	yes	apache_2.txt,okhttp_public_suffix_notice.txt,mpl_2_0.txt	com.squareup.okhttp3:okhttp-jvm:5.5.0
+Okio	Apache License 2.0	yes	apache_2.txt	com.squareup.okio:okio-jvm:3.18.2
+Wire runtime	Apache License 2.0	yes	wire_apache_2.txt	com.squareup.wire:wire-runtime-jvm:5.3.3
+zstd-jni	BSD 2-Clause License	yes	zstd_jni_bsd_2.txt	com.github.luben:zstd-jni:1.5.7-3
+Coil	Apache License 2.0	yes	coil_apache_2.txt	io.coil-kt.coil3:coil-compose-jvm:3.6.3,io.coil-kt.coil3:coil-network-ktor3-jvm:3.6.3,io.coil-kt.coil3:coil-jvm:3.6.3,io.coil-kt.coil3:coil-compose-core-jvm:3.6.3,io.coil-kt.coil3:coil-core-jvm:3.6.3,io.coil-kt.coil3:coil-network-core-jvm:3.6.3,io.coil-kt.coil3:coil-svg-jvm:3.6.3
+JSpecify	Apache License 2.0	yes	apache_2.txt	org.jspecify:jspecify:1.0.0
+libGDX	Apache License 2.0	yes	apache_2_no_appendix.txt,stb_license.txt,liberation_sans_ofl.txt	com.badlogicgames.gdx:gdx:1.13.1,com.badlogicgames.gdx:gdx-backend-lwjgl3:1.13.1,com.badlogicgames.gdx:gdx-platform:1.13.1
+gdx-jnigen loader	Apache License 2.0	yes	apache_2_no_appendix.txt	com.badlogicgames.gdx:gdx-jnigen-loader:2.5.2
+gdx-gltf	Apache License 2.0	yes	apache_2_no_appendix.txt	com.github.mgsx-dev.gdx-gltf:gltf:2.3.0
+LWJGL	BSD 3-Clause License	yes	lwjgl_bsd_3.txt,lwjgl_libffi_license.txt,liburing_license.txt,glfw_zlib.txt,jemalloc_bsd_2.txt,openal_soft_lgpl_2.txt,khronos_license.txt,stb_license.txt	org.lwjgl:lwjgl:3.3.3,org.lwjgl:lwjgl-glfw:3.3.3,org.lwjgl:lwjgl-jemalloc:3.3.3,org.lwjgl:lwjgl-openal:3.3.3,org.lwjgl:lwjgl-opengl:3.3.3,org.lwjgl:lwjgl-stb:3.3.3
+# Meshoptimizer notice source: https://github.com/LWJGL/lwjgl3/blob/f0ec1437a6149dae00eaa27c47268e5e4efb129f/modules/lwjgl/meshoptimizer/meshoptimizer_license.txt (LWJGL 3.3.3)
+LWJGL Meshoptimizer	BSD 3-Clause License and MIT License	yes	lwjgl_bsd_3.txt,meshoptimizer_mit.txt	org.lwjgl:lwjgl-meshoptimizer:3.3.3
+JNA	Apache License 2.0	yes	jna_license.txt,apache_2_no_appendix.txt,jna_libffi_license.txt	net.java.dev.jna:jna-platform:5.19.1,net.java.dev.jna:jna:5.19.1
+Apache Commons Compress	Apache License 2.0	yes	commons_compress_apache_2.txt,commons_compress_notice.txt	org.apache.commons:commons-compress:1.28.0
+Apache Commons IO	Apache License 2.0	yes	commons_io_apache_2.txt,commons_io_notice.txt	commons-io:commons-io:2.20.0
+Apache Commons Lang	Apache License 2.0	yes	commons_lang3_apache_2.txt,commons_lang3_notice.txt	org.apache.commons:commons-lang3:3.18.0
+Apache Commons Codec	Apache License 2.0	yes	commons_codec_apache_2.txt,commons_codec_notice.txt	commons-codec:commons-codec:1.19.0
+XZ for Java	BSD Zero Clause License	yes	xz_0bsd.txt	org.tukaani:xz:1.12
+Junrar	UnRAR licence	no	junrar_unrar.txt	com.github.junrar:junrar:8.1.2
+SLF4J API	MIT License	yes	slf4j_api_mit.txt	org.slf4j:slf4j-api:2.0.19
+JavaMP3	MIT License	yes	javamp3_mit.txt	fr.delthas:javamp3:1.0.1
+JLayer (libGDX build)	GNU Lesser General Public License 2.1	yes	lgpl_2_1.txt	com.badlogicgames.jlayer:jlayer:1.0.1-gdx
+JOrbis	GNU Lesser General Public License 2.1	yes	lgpl_2_1.txt	org.jcraft:jorbis:0.0.17
+Google Sans Flex font	SIL Open Font License 1.1	yes	google_sans_flex_ofl.txt	-
+JetBrains Mono font	SIL Open Font License 1.1	yes	jetbrains_mono_ofl.txt	-
+deadlock-api-ingest (adapted cache discovery)	MIT License	yes	deadlock_api_ingest_mit.txt	-
+SteamTracking Protobufs (Deadlock schema projection)	The Unlicense	yes	steamtracking_protobufs_unlicense.txt	-
+FileKit	MIT License	yes	filekit_mit.txt	io.github.vinceglb:filekit-dialogs-jvm:0.17.0,io.github.vinceglb:filekit-core-jvm:0.17.0
+dbus-java	MIT License	yes	dbus_java_mit.txt	com.github.hypfvieh:dbus-java-core:5.2.2,com.github.hypfvieh:dbus-java-transport-native-unixsocket:5.2.2
+# hideout-link's Go modules, written by tools/link/notices.py
+Go standard library	BSD 3-Clause License	yes	go_std.txt	go:std:go1.27.3
+filippo.io/edwards25519	BSD 3-Clause License	yes	go_filippo_io_edwards25519.txt	go:filippo.io/edwards25519:v1.2.0
+github.com/anmitsu/go-shlex	MIT License	yes	go_github_com_anmitsu_go_shlex.txt	go:github.com/anmitsu/go-shlex:v0.0.0-20200514113438-38f4b401e2be
+github.com/aperturerobotics/json-iterator-lite	MIT License	yes	go_github_com_aperturerobotics_json_iterator_lite.txt	go:github.com/aperturerobotics/json-iterator-lite:v1.1.0
+github.com/aperturerobotics/protobuf-go-lite	BSD 3-Clause License	yes	go_github_com_aperturerobotics_protobuf_go_lite.txt	go:github.com/aperturerobotics/protobuf-go-lite:v0.19.1-0.20261028131920-f644656fc4a7
+github.com/coder/websocket	ISC License	yes	go_github_com_coder_websocket.txt	go:github.com/coder/websocket:v1.8.15
+github.com/creachadair/msync	BSD 3-Clause License	yes	go_github_com_creachadair_msync.txt	go:github.com/creachadair/msync:v0.10.1
+github.com/creack/pty	MIT License	yes	go_github_com_creack_pty.txt	go:github.com/creack/pty:v1.1.24
+github.com/dblohm7/wingoes	BSD 3-Clause License	yes	go_github_com_dblohm7_wingoes.txt	go:github.com/dblohm7/wingoes:v0.0.0-20260526185140-fb298caac7ca
+github.com/fxamacker/cbor/v2	MIT License	yes	go_github_com_fxamacker_cbor_v2.txt	go:github.com/fxamacker/cbor/v2:v2.9.3
+github.com/gaissmai/bart	MIT License	yes	go_github_com_gaissmai_bart.txt	go:github.com/gaissmai/bart:v0.29.0
+github.com/go-json-experiment/json	BSD 3-Clause License	yes	go_github_com_go_json_experiment_json.txt	go:github.com/go-json-experiment/json:v0.0.0-20260820222146-c27c302e5fc3
+github.com/godbus/dbus/v5	BSD 2-Clause License	yes	go_github_com_godbus_dbus_v5.txt	go:github.com/godbus/dbus/v5:v5.2.2
+github.com/golang/groupcache	Apache License 2.0	yes	go_github_com_golang_groupcache.txt	go:github.com/golang/groupcache:v0.0.0-20241129210726-2c02b8208cf8
+github.com/google/btree	Apache License 2.0	yes	go_github_com_google_btree.txt	go:github.com/google/btree:v1.1.3
+github.com/hdevalence/ed25519consensus	BSD 3-Clause License	yes	go_github_com_hdevalence_ed25519consensus.txt	go:github.com/hdevalence/ed25519consensus:v0.2.0
+github.com/hideouthq/modlock	MIT License	yes	go_github_com_hideouthq_modlock.txt	go:github.com/hideouthq/modlock:v0.1.74-0.20261114205555-1c0572400b86
+github.com/jsimonetti/rtnetlink	MIT License	yes	go_github_com_jsimonetti_rtnetlink.txt	go:github.com/jsimonetti/rtnetlink:v1.4.2
+github.com/klauspost/compress	Apache License 2.0 and MIT License and BSD 3-Clause License	yes	go_github_com_klauspost_compress.txt	go:github.com/klauspost/compress:v1.20.3
+github.com/kr/fs	BSD 3-Clause License	yes	go_github_com_kr_fs.txt	go:github.com/kr/fs:v0.1.0
+github.com/mdlayher/netlink	MIT License	yes	go_github_com_mdlayher_netlink.txt	go:github.com/mdlayher/netlink:v1.11.2
+github.com/mdlayher/socket	MIT License	yes	go_github_com_mdlayher_socket.txt	go:github.com/mdlayher/socket:v0.7.0
+github.com/mitchellh/go-ps	MIT License	yes	go_github_com_mitchellh_go_ps.txt	go:github.com/mitchellh/go-ps:v1.0.0
+github.com/pierrec/lz4/v4	BSD 3-Clause License	yes	go_github_com_pierrec_lz4_v4.txt	go:github.com/pierrec/lz4/v4:v4.1.33
+github.com/pires/go-proxyproto	Apache License 2.0	yes	go_github_com_pires_go_proxyproto.txt	go:github.com/pires/go-proxyproto:v0.15.0
+github.com/pkg/errors	BSD 2-Clause License	yes	go_github_com_pkg_errors.txt	go:github.com/pkg/errors:v0.9.1
+github.com/pkg/sftp	BSD 2-Clause License	yes	go_github_com_pkg_sftp.txt	go:github.com/pkg/sftp:v1.13.11
+github.com/safchain/ethtool	Apache License 2.0	yes	go_github_com_safchain_ethtool.txt	go:github.com/safchain/ethtool:v0.7.0
+github.com/tailscale/certstore	MIT License	yes	go_github_com_tailscale_certstore.txt	go:github.com/tailscale/certstore:v0.1.1-0.20260409135935-3638fb84b77d
+github.com/tailscale/gliderssh	BSD 3-Clause License	yes	go_github_com_tailscale_gliderssh.txt	go:github.com/tailscale/gliderssh:v0.3.4-0.20260716005906-1a0f895faf28
+github.com/tailscale/go-winio	MIT License	yes	go_github_com_tailscale_go_winio.txt	go:github.com/tailscale/go-winio:v0.0.0-20231025203758-c4f33415bf55
+github.com/tailscale/hujson	BSD 3-Clause License	yes	go_github_com_tailscale_hujson.txt	go:github.com/tailscale/hujson:v0.0.0-20260727124030-b80ff77dac4f
+github.com/tailscale/peercred	BSD 3-Clause License	yes	go_github_com_tailscale_peercred.txt	go:github.com/tailscale/peercred:v0.0.0-20250107143737-35a0c7bd7edc
+github.com/tailscale/tailcat	BSD 3-Clause License	yes	go_github_com_tailscale_tailcat.txt	go:github.com/tailscale/tailcat:v0.7.1-0.20261007201807-52fbad323e9d
+github.com/tailscale/web-client-prebuilt	BSD 3-Clause License	yes	go_github_com_tailscale_web_client_prebuilt.txt	go:github.com/tailscale/web-client-prebuilt:v0.0.0-20260917222731-e0ed2d0d0fea
+github.com/tailscale/wireguard-go	MIT License	yes	go_github_com_tailscale_wireguard_go.txt	go:github.com/tailscale/wireguard-go:v0.0.0-20260924224943-0a83b87f7908
+github.com/tetratelabs/wazero	Apache License 2.0	yes	go_github_com_tetratelabs_wazero.txt	go:github.com/tetratelabs/wazero:v1.12.1-0.20261019203559-ef2dd2f85376
+github.com/u-root/u-root	BSD 3-Clause License	yes	go_github_com_u_root_u_root.txt	go:github.com/u-root/u-root:v0.16.0
+github.com/x448/float16	MIT License	yes	go_github_com_x448_float16.txt	go:github.com/x448/float16:v0.8.4
+go4.org/mem	Apache License 2.0	yes	go_go4_org_mem.txt	go:go4.org/mem:v0.0.0-20240501181205-ae6ca9944745
+go4.org/netipx	BSD 3-Clause License	yes	go_go4_org_netipx.txt	go:go4.org/netipx:v0.0.0-20260823151212-3075585bcbeb
+golang.org/x/crypto	BSD 3-Clause License	yes	go_golang_org_x_crypto.txt	go:golang.org/x/crypto:v0.58.0
+golang.org/x/exp	BSD 3-Clause License	yes	go_golang_org_x_exp.txt	go:golang.org/x/exp:v0.0.0-20261014143641-f0251eb4aa3e
+golang.org/x/mod	BSD 3-Clause License	yes	go_golang_org_x_mod.txt	go:golang.org/x/mod:v0.42.0
+golang.org/x/net	BSD 3-Clause License	yes	go_golang_org_x_net.txt	go:golang.org/x/net:v0.61.0
+golang.org/x/sync	BSD 3-Clause License	yes	go_golang_org_x_sync.txt	go:golang.org/x/sync:v0.24.0
+golang.org/x/sys	BSD 3-Clause License	yes	go_golang_org_x_sys.txt	go:golang.org/x/sys:v0.49.0
+golang.org/x/term	BSD 3-Clause License	yes	go_golang_org_x_term.txt	go:golang.org/x/term:v0.47.0
+golang.org/x/text	BSD 3-Clause License	yes	go_golang_org_x_text.txt	go:golang.org/x/text:v0.43.0
+golang.org/x/time	BSD 3-Clause License	yes	go_golang_org_x_time.txt	go:golang.org/x/time:v0.16.0
+golang.zx2c4.com/wintun	MIT License	yes	go_golang_zx2c4_com_wintun.txt	go:golang.zx2c4.com/wintun:v0.0.0-20230126152724-0fa3db229ce2
+golang.zx2c4.com/wireguard/windows	MIT License	yes	go_golang_zx2c4_com_wireguard_windows.txt	go:golang.zx2c4.com/wireguard/windows:v1.0.1
+gvisor.dev/gvisor	Apache License 2.0 and MIT License and BSD 3-Clause License	yes	go_gvisor_dev_gvisor.txt	go:gvisor.dev/gvisor:v0.0.0-20260915211658-a6f909f08a72
+tailscale.com	BSD 3-Clause License	yes	go_tailscale_com.txt	go:tailscale.com:v1.103.0-pre.0.20260929142145-a0e471a35b8f

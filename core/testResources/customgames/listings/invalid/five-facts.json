@@ -1,0 +1,35 @@
+{
+  "name": "Plain",
+  "tagline": "A mode with only what a listing needs.",
+  "description": "Nothing more than the required fields.",
+  "players": {
+    "min": 1,
+    "max": 8
+  },
+  "creators": [
+    "Someone"
+  ],
+  "released": "2026-11-01",
+  "facts": [
+    {
+      "label": "Fact 0",
+      "value": "Yes"
+    },
+    {
+      "label": "Fact 1",
+      "value": "Yes"
+    },
+    {
+      "label": "Fact 2",
+      "value": "Yes"
+    },
+    {
+      "label": "Fact 3",
+      "value": "Yes"
+    },
+    {
+      "label": "Fact 4",
+      "value": "Yes"
+    }
+  ]
+}

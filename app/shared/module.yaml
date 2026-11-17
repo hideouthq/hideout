@@ -1,0 +1,50 @@
+product:
+  type: kmp/lib
+  platforms: [jvm]
+
+apply:
+  - //common.module-template.yaml
+
+dependencies:
+  - //core
+  - $libs.compose.runtime
+  - $libs.compose.foundation
+  - $libs.compose.material3
+  - $libs.compose.ui
+  - $libs.compose.components.resources
+  - $libs.androidx.lifecycle.viewmodelCompose
+  - $libs.androidx.lifecycle.runtimeCompose
+  - $libs.androidx.lifecycle.viewmodelNavigation3
+  - $libs.androidx.navigation3.runtime
+  - $libs.androidx.graphics.shapes
+  - $libs.kotlinx.serializationJson
+  - $libs.ktor.clientCore
+  - $libs.wire.runtime
+  - $libs.commons.compress
+  - $libs.zstd.jni
+
+test-dependencies:
+  - $libs.kotlinx.coroutinesTest
+  - $libs.ktor.clientMock
+
+test-dependencies@jvm:
+  - $libs.ktor.clientOkhttp
+  # Skia's native library, for tests that draw Compose in an ImageComposeScene.
+  - $compose.desktop.currentOs
+
+settings:
+  kotlin:
+    serialization: enabled
+    optIns:
+      - androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+      - androidx.compose.animation.ExperimentalSharedTransitionApi
+  compose:
+    enabled: true
+    version: 1.12.1
+    resources:
+      packageName: gg.hideouthq.resources
+
+plugins:
+  protobuf-codegen:
+    enabled: true
+    protoDir: proto

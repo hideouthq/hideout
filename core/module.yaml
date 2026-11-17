@@ -1,0 +1,13 @@
+product:
+  type: kmp/lib
+  platforms: [jvm]
+
+apply:
+  - //common.module-template.yaml
+
+dependencies:
+  - $libs.kotlinx.serializationJson: exported
+
+settings:
+  kotlin:
+    serialization: enabled

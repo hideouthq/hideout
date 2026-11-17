@@ -1,0 +1,51 @@
+[versions]
+androidx-lifecycle = "2.11.0"
+commons-compress = "1.28.0"
+androidx-navigation3 = "1.1.7"
+coil = "3.6.3"
+filekit = "0.17.0"
+graphics-shapes = "1.1.0"
+javamp3 = "1.0.1"
+jna = "5.19.1"
+junrar = "8.1.2"
+composeMultiplatform = "1.12.1"
+kotlinx-coroutines = "1.11.0"
+kotlinx-serialization = "1.11.0"
+ktor = "3.6.0"
+material3 = "1.12.0-alpha03"
+xz = "1.12"
+wire = "5.3.3"
+zstdJni = "1.5.7-3"
+
+[libraries]
+androidx-lifecycle-viewmodelCompose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "androidx-lifecycle" }
+androidx-lifecycle-runtimeCompose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose", version.ref = "androidx-lifecycle" }
+androidx-lifecycle-viewmodelNavigation3 = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-navigation3", version.ref = "androidx-lifecycle" }
+androidx-navigation3-runtime = { module = "androidx.navigation3:navigation3-runtime", version.ref = "androidx-navigation3" }
+androidx-graphics-shapes = { module = "androidx.graphics:graphics-shapes", version.ref = "graphics-shapes" }
+compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "composeMultiplatform" }
+compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "composeMultiplatform" }
+compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "material3" }
+compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "composeMultiplatform" }
+compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "composeMultiplatform" }
+kotlinx-coroutinesSwing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "kotlinx-coroutines" }
+kotlinx-coroutinesTest = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
+kotlinx-serializationJson = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
+coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
+coil-svg = { module = "io.coil-kt.coil3:coil-svg", version.ref = "coil" }
+coil-networkKtor3 = { module = "io.coil-kt.coil3:coil-network-ktor3", version.ref = "coil" }
+javamp3 = { module = "fr.delthas:javamp3", version.ref = "javamp3" }
+filekit-dialogs = { module = "io.github.vinceglb:filekit-dialogs-jvm", version.ref = "filekit" }
+jna-platform = { module = "net.java.dev.jna:jna-platform", version.ref = "jna" }
+commons-compress = { module = "org.apache.commons:commons-compress", version.ref = "commons-compress" }
+xz = { module = "org.tukaani:xz", version.ref = "xz" }
+wire-runtime = { module = "com.squareup.wire:wire-runtime", version.ref = "wire" }
+zstd-jni = { module = "com.github.luben:zstd-jni", version.ref = "zstdJni" }
+junrar = { module = "com.github.junrar:junrar", version.ref = "junrar" }
+ktor-clientCore = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
+ktor-clientOkhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
+ktor-clientMock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }
+ktor-serverNetty = { module = "io.ktor:ktor-server-netty-jvm", version.ref = "ktor" }
+gdx = { module = "com.badlogicgames.gdx:gdx", version = "1.13.1" }
+gdx-backend-lwjgl3 = { module = "com.badlogicgames.gdx:gdx-backend-lwjgl3", version = "1.13.1" }
+gdx-gltf = { module = "com.github.mgsx-dev.gdx-gltf:gltf", version = "2.3.0" }

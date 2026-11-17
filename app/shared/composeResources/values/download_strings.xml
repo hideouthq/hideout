@@ -1,0 +1,25 @@
+<resources>
+    <string name="busy_gamebanana">GameBanana is busy</string>
+    <string name="busy_starts">GameBanana is busy. Starts by itself %1$s.</string>
+    <string name="busy_goes_on">GameBanana is busy. Goes on by itself %1$s.</string>
+    <string name="busy_checks">GameBanana is busy. Back %1$s.</string>
+    <string name="busy_starts_short">Starts by itself %1$s.</string>
+    <string name="busy_goes_on_short">Goes on by itself %1$s.</string>
+    <string name="busy_catalogue_body">The mods show up here by themselves %1$s.</string>
+    <string name="busy_when_soon">in under a minute</string>
+    <plurals name="busy_when_minutes">
+        <item quantity="one">in about a minute</item>
+        <item quantity="other">in about %1$d min</item>
+    </plurals>
+    <string name="install_stalled">Stalled. Retrying…</string>
+    <string name="library_download_reading">Reading the file…</string>
+    <string name="install_waiting_game">Installs when Deadlock closes</string>
+    <string name="install_cancel">Cancel</string>
+    <string name="install_cancel_named">Cancel installing %1$s</string>
+    <string name="problem_download_network_resume">The download stopped. Check your connection, then try again: it goes on from where it stopped.</string>
+    <string name="problem_download_gone">GameBanana no longer has this file. Its page may offer another one.</string>
+    <string name="problem_download_refused">GameBanana’s file server refused the download (error %1$d). Check on the mod’s GameBanana page that the file is still offered.</string>
+    <string name="problem_download_server">GameBanana’s file server isn’t working right now (error %1$d). Try again in a few minutes.</string>
+    <string name="app_update_failed_unwritable">Hideout can’t replace its own file where it is. Move it to a folder you can write to, or install the new version yourself from GitHub.</string>
+    <string name="app_update_failed_not_replaced">Hideout opened again on the version it had, so %1$s didn’t take. Install it yourself from GitHub.</string>
+</resources>

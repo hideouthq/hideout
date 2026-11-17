@@ -1,0 +1,10 @@
+<resources>
+    <string name="file_import_pick">Add from file</string>
+    <string name="file_import_pick_reinstall">Choose the file this mod was installed from</string>
+    <string name="file_import_drop">Drop to add to your library</string>
+    <string name="file_import_types">.zip, .7z, .rar or .vpk · turns on in %1$s</string>
+    <string name="file_import_supported">.zip, .7z, .rar or .vpk</string>
+    <string name="file_import_unsupported">Hideout can’t install this file type</string>
+    <string name="file_import_unreadable">Hideout couldn’t read this file. Choose it again.</string>
+    <string name="file_import_close">Dismiss</string>
+</resources>

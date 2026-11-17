@@ -1,0 +1,42 @@
+<resources>
+    <string name="profile_library_summary">%1$d of %2$d on in %3$s · %4$s</string>
+    <string name="profile_library_summary_none_on">%1$d of %2$d on in %3$s</string>
+    <string name="profile_library_membership">On in profiles</string>
+    <string name="profile_library_status_on">On in %1$s</string>
+    <string name="profile_library_status_off">Off in %1$s</string>
+    <string name="profile_library_summary_note"> · %1$s</string>
+    <string name="profile_library_running">Deadlock is running: changes apply when it closes</string>
+    <string name="profile_library_unknown">Changes apply once Deadlock is known to be closed</string>
+    <string name="profile_library_saved_running">Saved: applies when Deadlock closes</string>
+    <string name="profile_library_saved_unknown">Saved: applies once Deadlock is known to be closed</string>
+    <string name="profile_library_saved_custom_game">Saved: applies after the custom game, once Deadlock closes</string>
+    <plurals name="profile_library_past_limit">
+        <item quantity="one">%1$d mod won’t load: it’s past Deadlock’s 99-file limit</item>
+        <item quantity="other">%1$d mods won’t load: they’re past Deadlock’s 99-file limit</item>
+    </plurals>
+    <string name="profile_library_row_past_limit">Not loading</string>
+    <string name="profile_library_empty_title">Your library is empty</string>
+    <string name="profile_library_empty_message">Mods you install land here. Turn them on and off for each profile, and Hideout takes care of the game files.</string>
+    <string name="profile_library_discover">Discover mods</string>
+    <string name="profile_library_add_file">Add from file</string>
+    <string name="profile_library_import">Import from another manager…</string>
+    <string name="profile_library_drop_hint">or drop a .zip, .7z, .rar or .vpk anywhere in the window</string>
+    <string name="profile_library_details_placeholder">Pick a mod to see its details.</string>
+    <string name="profile_library_no_results">No matching mods</string>
+    <string name="profile_library_no_results_hint">Try another search or filter.</string>
+    <string name="library_finding">Finding on GameBanana…</string>
+    <plurals name="library_importing_mods">
+        <item quantity="one">Bringing %1$d mod over from %2$s</item>
+        <item quantity="other">Bringing %1$d mods over from %2$s</item>
+    </plurals>
+    <plurals name="library_importing_mods_file">
+        <item quantity="one">Bringing %1$d mod over from the export file</item>
+        <item quantity="other">Bringing %1$d mods over from the export file</item>
+    </plurals>
+    <string name="library_importing_empty_title">Your mods are on their way</string>
+    <string name="library_importing_from">Bringing mods over from %1$s</string>
+    <string name="library_importing_from_file">Bringing mods over from the export file</string>
+    <string name="library_import_needs_manager">Close %1$s to bring your mods over</string>
+    <string name="library_import_needs_game">Close Deadlock to bring your mods over</string>
+    <string name="library_import_needs_custom_game">Your mods come over when the custom game ends</string>
+</resources>

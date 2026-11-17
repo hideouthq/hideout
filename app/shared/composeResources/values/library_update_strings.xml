@@ -1,0 +1,34 @@
+<resources>
+    <string name="library_filter_updates">Updates</string>
+    <string name="library_filter_review">To review</string>
+    <string name="library_updates_keep_all">Keep all current files</string>
+    <string name="library_updates_check">Check for updates</string>
+    <string name="library_updates_checking">Checking for updates…</string>
+    <string name="library_updates_all">Update all (%1$d)</string>
+    <plurals name="library_updates_available">
+        <item quantity="one">%1$d update available</item>
+        <item quantity="other">%1$d updates available</item>
+    </plurals>
+    <plurals name="library_updates_review">
+        <item quantity="one">%1$d to review</item>
+        <item quantity="other">%1$d to review</item>
+    </plurals>
+    <plurals name="library_updates_unchecked">
+        <item quantity="one">%1$d not checked</item>
+        <item quantity="other">%1$d not checked</item>
+    </plurals>
+    <string name="library_update_available">Update available</string>
+    <string name="library_update_review">Review files</string>
+    <string name="library_update_review_note">Its page offers other files now. Change them, or keep these.</string>
+    <string name="library_update_unknown">Couldn’t check for updates</string>
+    <string name="library_update_action">Update</string>
+    <string name="library_update_named">Update %1$s</string>
+    <string name="library_update_change_named">Change the files of %1$s</string>
+    <string name="library_update_keep">Keep current files</string>
+    <string name="library_update_keep_named">Keep the current files of %1$s</string>
+    <string name="library_update_updating">Updating</string>
+    <string name="library_update_waiting_game">Ready. Updates when Deadlock closes</string>
+    <string name="library_update_waiting_custom_game">Ready. Updates when the custom game ends</string>
+    <string name="library_update_cancel">Cancel update of %1$s</string>
+    <string name="update_cancel">Cancel</string>
+</resources>

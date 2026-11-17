@@ -1,0 +1,35 @@
+{
+  "format": "vpk-modinfo",
+  "schemaVersion": 1,
+  "kind": "mod",
+  "writtenBy": {
+    "tool": "grimoire",
+    "version": "1.22.0"
+  },
+  "writtenAt": "2026-07-03T18:24:07.512Z",
+  "firstImprintedAt": "2026-05-11T09:02:44.108Z",
+  "game": {
+    "name": "Deadlock",
+    "steamAppId": 1422450,
+    "gameBananaGameId": 20948
+  },
+  "identity": {
+    "sha256": "6f5902ac237024bdd0c176cb93063dc44c34fb724fe72f5a68be6c4022e9bb3f",
+    "size": 18874368,
+    "crc32": "3b7a2c91"
+  },
+  "title": "Neon Vindicta",
+  "author": "ExampleAuthor",
+  "source": {
+    "gamebananaId": 512345,
+    "gamebananaFileId": 987654,
+    "url": "https://gamebanana.com/mods/512345",
+    "section": "Mod",
+    "categoryId": 29705,
+    "categoryName": "Vindicta"
+  },
+  "packaging": {
+    "vpkIndex": 0,
+    "variantLabel": "Red"
+  }
+}

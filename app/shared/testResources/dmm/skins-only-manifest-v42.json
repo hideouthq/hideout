@@ -1,0 +1,33 @@
+{
+  "version": 3,
+  "mods": {
+    "691043": {
+      "enabled": false,
+      "compatibilityEnabled": false,
+      "compatibilityOptedOut": false,
+      "order": 0,
+      "shard": 1,
+      "currentVpks": [],
+      "disabledVpks": [
+        "691043_pak03_dir.vpk"
+      ],
+      "originalVpkNames": [
+        "pak03_dir.vpk"
+      ]
+    },
+    "733735": {
+      "enabled": false,
+      "compatibilityEnabled": false,
+      "compatibilityOptedOut": false,
+      "order": 1,
+      "shard": 1,
+      "currentVpks": [],
+      "disabledVpks": [
+        "733735_pak13_dir.vpk"
+      ],
+      "originalVpkNames": [
+        "pak13_dir.vpk"
+      ]
+    }
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "format": "vpk-modinfo",
+  "schemaVersion": 1,
+  "kind": "merge",
+  "writtenBy": {
+    "tool": "grimoire",
+    "version": "1.22.0"
+  },
+  "writtenAt": "2026-06-20T14:03:11.907Z",
+  "firstImprintedAt": "2026-06-20T14:03:11.907Z",
+  "game": {
+    "name": "Deadlock",
+    "steamAppId": 1422450,
+    "gameBananaGameId": 20948
+  },
+  "identity": {
+    "sha256": "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9",
+    "size": 27262976,
+    "crc32": "9ae0daaf"
+  },
+  "title": "My Skin Pack",
+  "author": "Multiple (merged)",
+  "merge": {
+    "title": "My Skin Pack"
+  },
+  "sources": [
+    {
+      "title": "Neon Vindicta",
+      "identity": {
+        "sha256": "6f5902ac237024bdd0c176cb93063dc44c34fb724fe72f5a68be6c4022e9bb3f"
+      },
+      "gamebananaId": 512345,
+      "gamebananaFileId": 987654,
+      "section": "Mod",
+      "priorityAtMergeTime": 3,
+      "enabledAtMergeTime": true,
+      "fileNameAtMergeTime": "pak03_dir.vpk",
+      "vpkIndex": 0
+    },
+    {
+      "title": "Local Sound Tweak",
+      "identity": {
+        "sha256": "3e23e8160039594a33894f6564e1b1348bbd7a0088d42c4acb73eeaed59c009d"
+      },
+      "priorityAtMergeTime": 5,
+      "enabledAtMergeTime": false,
+      "fileNameAtMergeTime": "local_sound_tweak.vpk"
+    }
+  ]
+}
