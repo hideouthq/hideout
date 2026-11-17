@@ -1,6 +1,7 @@
 package gg.hideouthq.core.analytics
 
 import gg.hideouthq.core.data.fake.MemoryStorage
+import gg.hideouthq.core.data.fake.FakeCustomGamesFeed
 import kotlinx.coroutines.*
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
@@ -48,12 +49,29 @@ class PostHogTransportTest {
                 transport.send("random-id", UsageEvent.Started(operation))
                 transport.send("random-id", UsageEvent.Result(operation, UsageOutcome.Failed, DurationBucket.UnderMinute, UsageStage.Download, failure = UsageFailure.Network))
             }
+            val mode = PublicUsageMode.from(FakeCustomGamesFeed.SampleMode)!!
+            transport.send("random-id", UsageEvent.PlayStarted(mode, UsagePlayRole.Host))
+            transport.send("random-id", UsageEvent.PlayTime(mode, UsagePlayRole.Guest, PlayedMinutes.Five))
             for (body in requests) {
                 assertEquals(setOf("api_key", "distinct_id", "event", "properties"), body.keys)
                 assertEquals("phc_test", body["api_key"]?.jsonPrimitive?.content)
                 assertEquals("random-id", body["distinct_id"]?.jsonPrimitive?.content)
                 val properties = body.getValue("properties").jsonObject
-                assertTrue(properties.keys.all { it in setOf("app_version", "os", "\$process_person_profile", "\$geoip_disable", "\$ip", "source", "outcome", "duration_bucket", "stage", "failure") })
+                val common = setOf("app_version", "os", "\$process_person_profile", "\$geoip_disable", "\$ip")
+                val event = body.getValue("event").jsonPrimitive.content
+                val eventFields = when {
+                    event == "custom_game_play_started" -> setOf("mode_id", "mode_name", "role")
+                    event == "custom_game_play_time" -> setOf("mode_id", "mode_name", "role", "play_minutes")
+                    event.endsWith("_result") -> setOf("outcome", "duration_bucket", "stage", "failure")
+                    else -> emptySet()
+                }
+                assertEquals(common + eventFields, properties.keys)
+                if (event.startsWith("custom_game_play_")) {
+                    assertEquals(mode.id, properties.getValue("mode_id").jsonPrimitive.content)
+                    assertEquals(mode.name, properties.getValue("mode_name").jsonPrimitive.content)
+                    assertEquals(if (event.endsWith("started")) "host" else "guest", properties.getValue("role").jsonPrimitive.content)
+                }
+                if (event == "custom_game_play_time") assertEquals(JsonPrimitive(5), properties["play_minutes"])
                 assertEquals(JsonPrimitive(false), properties["\$process_person_profile"])
                 assertEquals(JsonPrimitive(true), properties["\$geoip_disable"])
                 assertEquals(JsonNull, properties["\$ip"])

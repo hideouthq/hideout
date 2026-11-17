@@ -2,11 +2,16 @@ package gg.hideouthq.core.analytics
 
 import gg.hideouthq.core.data.CacheStorage
 import gg.hideouthq.core.data.fake.MemoryStorage
+import gg.hideouthq.core.data.fake.FakeCustomGamesFeed
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TestTimeSource
 import kotlin.test.*
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
@@ -116,5 +121,181 @@ class UsageAnalyticsTest {
         runCurrent()
         assertEquals(2, sent.size)
         assertTrue(sent.all { it.first == "random-installation" && it.second is UsageEvent.Result })
+    }
+
+    @Test fun publicModeIdentityCannotComeFromAFolderWithTheSameName() {
+        val listed = FakeCustomGamesFeed.SampleMode
+        val folder = FakeCustomGamesFeed.SampleFolder
+        assertEquals(listed.id, folder.id)
+        assertEquals(listed.listing.name, folder.listing.name)
+        assertNull(PublicUsageMode.from(folder))
+        val mode = assertNotNull(PublicUsageMode.from(listed))
+        assertEquals(listed.id.value, mode.id)
+        assertEquals(listed.listing.name, mode.name)
+    }
+
+    @Test fun connectedMinutesAreBatchedAndPausedTimeDoesNotCount() = runTest {
+        val sent = mutableListOf<UsageEvent>()
+        val analytics = UsageAnalytics(MemoryStorage(), UsageTransport { _, event -> sent += event }, backgroundScope, time = testScheduler.timeSource)
+        analytics.load(); analytics.choose(true)
+        val play = analytics.beginPlay(PublicMode, UsagePlayRole.Host)
+        runCurrent()
+        repeat(3) { play.setPlaying(true) }
+        advanceTimeBy(11.minutes + 40.seconds)
+        runCurrent()
+        assertEquals(listOf(5, 5), sent.filterIsInstance<UsageEvent.PlayTime>().map { it.minutes.value })
+        play.setPlaying(false)
+        runCurrent()
+        assertEquals(listOf(5, 5, 1), sent.filterIsInstance<UsageEvent.PlayTime>().map { it.minutes.value })
+        advanceTimeBy(7.minutes)
+        play.setPlaying(true)
+        runCurrent()
+        advanceTimeBy(2.minutes + 30.seconds)
+        play.close()
+        runCurrent()
+        assertEquals(listOf(5, 5, 1, 2), sent.filterIsInstance<UsageEvent.PlayTime>().map { it.minutes.value })
+        assertEquals(1, sent.filterIsInstance<UsageEvent.PlayStarted>().size)
+        play.close(); play.setPlaying(true)
+        advanceTimeBy(10.minutes); runCurrent()
+        assertEquals(13, sent.filterIsInstance<UsageEvent.PlayTime>().sumOf { it.minutes.value })
+    }
+
+    @Test fun pausingAtTheFiveMinuteBoundaryCountsThatChunkOnlyOnce() = runTest {
+        val sent = mutableListOf<UsageEvent>()
+        val analytics = UsageAnalytics(MemoryStorage(), UsageTransport { _, event -> sent += event }, backgroundScope, time = testScheduler.timeSource)
+        analytics.load(); analytics.choose(true)
+        val play = analytics.beginPlay(PublicMode, UsagePlayRole.Guest)
+        runCurrent()
+        advanceTimeBy(5.minutes)
+        play.setPlaying(false)
+        runCurrent()
+        assertEquals(listOf(5), sent.filterIsInstance<UsageEvent.PlayTime>().map { it.minutes.value })
+        play.setPlaying(true)
+        runCurrent()
+        advanceTimeBy(5.minutes); runCurrent()
+        play.setPlaying(false)
+        runCurrent()
+        assertEquals(listOf(5, 5), sent.filterIsInstance<UsageEvent.PlayTime>().map { it.minutes.value })
+        play.close()
+    }
+
+    @Test fun aSubMinutePlayCountsTheSessionWithoutInventingMinutes() = runTest {
+        val sent = mutableListOf<UsageEvent>()
+        val analytics = UsageAnalytics(MemoryStorage(), UsageTransport { _, event -> sent += event }, backgroundScope, time = testScheduler.timeSource)
+        analytics.load(); analytics.choose(true)
+        val play = analytics.beginPlay(PublicMode, UsagePlayRole.Host)
+        runCurrent()
+        advanceTimeBy(59.seconds)
+        play.close(); runCurrent()
+        assertEquals(1, sent.filterIsInstance<UsageEvent.PlayStarted>().size)
+        assertTrue(sent.filterIsInstance<UsageEvent.PlayTime>().isEmpty())
+    }
+
+    @Test fun revokingPlayDropsQueuedTimeAndCannotReviveTheOldSession() = runTest {
+        var block = true
+        val sent = mutableListOf<UsageEvent>()
+        val analytics = UsageAnalytics(MemoryStorage(), UsageTransport { _, event ->
+            if (block) awaitCancellation() else sent += event
+        }, backgroundScope, time = testScheduler.timeSource)
+        analytics.load(); analytics.choose(true)
+        val old = analytics.beginPlay(PublicMode, UsagePlayRole.Host)
+        runCurrent(); advanceTimeBy(7.minutes); runCurrent()
+        analytics.choose(false)
+        runCurrent()
+        block = false
+        analytics.choose(true)
+        old.setPlaying(false); old.setPlaying(true); old.close()
+        advanceTimeBy(7.minutes); runCurrent()
+        assertTrue(sent.none { it is UsageEvent.PlayStarted || it is UsageEvent.PlayTime })
+        val fresh = analytics.beginPlay(PublicMode, UsagePlayRole.Guest)
+        runCurrent(); advanceTimeBy(2.minutes)
+        fresh.close(); runCurrent()
+        assertEquals(1, sent.filterIsInstance<UsageEvent.PlayStarted>().size)
+        assertEquals(listOf(2), sent.filterIsInstance<UsageEvent.PlayTime>().map { it.minutes.value })
+    }
+
+    @Test fun disabledAndClosedAnalyticsDoNotCollectOrBackfillPlaytime() = runTest {
+        val sent = mutableListOf<UsageEvent>()
+        val analytics = UsageAnalytics(MemoryStorage(), UsageTransport { _, event -> sent += event }, backgroundScope, time = testScheduler.timeSource)
+        analytics.load(); analytics.choose(false)
+        val disabled = analytics.beginPlay(PublicMode, UsagePlayRole.Host)
+        advanceTimeBy(8.minutes); runCurrent()
+        analytics.choose(true)
+        disabled.setPlaying(false); disabled.setPlaying(true)
+        advanceTimeBy(8.minutes); runCurrent()
+        assertTrue(sent.none { it is UsageEvent.PlayStarted || it is UsageEvent.PlayTime })
+        val enabled = analytics.beginPlay(PublicMode, UsagePlayRole.Host)
+        runCurrent(); advanceTimeBy(2.minutes)
+        analytics.close(); runCurrent()
+        enabled.close()
+        advanceTimeBy(8.minutes); runCurrent()
+        assertEquals(1, sent.filterIsInstance<UsageEvent.PlayStarted>().size)
+        assertTrue(sent.filterIsInstance<UsageEvent.PlayTime>().isEmpty())
+    }
+
+    @Test fun delayedPauseProcessingCannotCountPausedTimeOrResumeAfterClose() = runTest {
+        val time = TestTimeSource()
+        val sent = mutableListOf<UsageEvent>()
+        val analytics = UsageAnalytics(MemoryStorage(), UsageTransport { _, event -> sent += event }, backgroundScope, time = time)
+        analytics.load(); analytics.choose(true)
+        val play = analytics.beginPlay(PublicMode, UsagePlayRole.Host)
+        runCurrent()
+        time += 2.minutes
+        play.setPlaying(false)
+        time += 6.minutes
+        runCurrent()
+        assertEquals(listOf(2), sent.filterIsInstance<UsageEvent.PlayTime>().map { it.minutes.value })
+        play.setPlaying(true); runCurrent()
+        time += 1.minutes
+        play.close()
+        play.setPlaying(true)
+        time += 10.minutes
+        runCurrent()
+        assertEquals(listOf(2, 1), sent.filterIsInstance<UsageEvent.PlayTime>().map { it.minutes.value })
+        val neverObserved = analytics.beginPlay(PublicMode, UsagePlayRole.Guest)
+        neverObserved.close(); neverObserved.setPlaying(true)
+        time += 10.minutes
+        advanceTimeBy(10.minutes); runCurrent()
+        assertEquals(listOf(2, 1), sent.filterIsInstance<UsageEvent.PlayTime>().map { it.minutes.value })
+    }
+
+    @Test fun conflatedPauseAndResumeStillExcludeDisconnectedTime() = runTest {
+        val time = TestTimeSource()
+        val sent = mutableListOf<UsageEvent>()
+        val analytics = UsageAnalytics(MemoryStorage(), UsageTransport { _, event -> sent += event }, backgroundScope, time = time)
+        analytics.load(); analytics.choose(true)
+        val play = analytics.beginPlay(PublicMode, UsagePlayRole.Host)
+        runCurrent()
+        time += 2.minutes
+        play.setPlaying(false)
+        time += 10.minutes
+        play.setPlaying(true)
+        time += 1.minutes
+        runCurrent()
+        play.close(); runCurrent()
+        assertEquals(3, sent.filterIsInstance<UsageEvent.PlayTime>().sumOf { it.minutes.value })
+        assertEquals(1, sent.filterIsInstance<UsageEvent.PlayStarted>().size)
+    }
+
+    @Test fun aTimerAlreadyDueCannotCountAConflatedDisconnectedInterval() = runTest {
+        val time = TestTimeSource()
+        val sent = mutableListOf<UsageEvent>()
+        val analytics = UsageAnalytics(MemoryStorage(), UsageTransport { _, event -> sent += event }, backgroundScope, time = time)
+        analytics.load(); analytics.choose(true)
+        val play = analytics.beginPlay(PublicMode, UsagePlayRole.Host)
+        runCurrent()
+        advanceTimeBy(5.minutes)
+        time += 2.minutes
+        play.setPlaying(false)
+        time += 10.minutes
+        play.setPlaying(true)
+        time += 1.minutes
+        runCurrent()
+        play.close(); runCurrent()
+        assertEquals(3, sent.filterIsInstance<UsageEvent.PlayTime>().sumOf { it.minutes.value })
+    }
+
+    private companion object {
+        val PublicMode = PublicUsageMode.from(FakeCustomGamesFeed.SampleMode)!!
     }
 }

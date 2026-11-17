@@ -58,15 +58,7 @@ fun App(state: HideoutAppState) {
 @Composable
 fun AppContent(state: HideoutAppState) {
     val analytics = state.container.analytics
-    if (analytics != null) {
-        val choice by analytics.choice.collectAsState()
-        LaunchedEffect(analytics) { analytics.load() }
-        if (choice == null) { AppWindow {}; return }
-        if (choice == AnalyticsChoice.NotDisclosed) {
-            gg.hideouthq.feature.analytics.AnalyticsDisclosure(analytics)
-            return
-        }
-    }
+    LaunchedEffect(analytics) { analytics?.load() }
     val preferences = state.container.preferences
     val setupDone by preferences.setupDone.collectAsState()
     LaunchedEffect(preferences) { preferences.readSetup() }

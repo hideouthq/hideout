@@ -5,10 +5,12 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
@@ -17,6 +19,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlin.time.Clock
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.TimeSource
 import kotlin.uuid.Uuid
@@ -36,6 +39,8 @@ sealed interface UsageEvent {
     data object AppActive : UsageEvent
     data class Started(val operation: UsageOperation, val source: UsageSource? = null) : UsageEvent
     data class Result(val operation: UsageOperation, val outcome: UsageOutcome, val duration: DurationBucket, val stage: UsageStage, val source: UsageSource? = null, val failure: UsageFailure? = null) : UsageEvent
+    data class PlayStarted(val mode: PublicUsageMode, val role: UsagePlayRole) : UsageEvent
+    data class PlayTime(val mode: PublicUsageMode, val role: UsagePlayRole, val minutes: PlayedMinutes) : UsageEvent
 }
 
 fun interface UsageTransport {
@@ -55,6 +60,7 @@ class UsageAnalytics(
     private val scope: CoroutineScope,
     private val clock: Clock = Clock.System,
     private val newId: () -> String = { Uuid.random().toString() },
+    private val time: TimeSource = TimeSource.Monotonic,
 ) {
     private val mutex = Mutex()
     private val published = MutableStateFlow<AnalyticsChoice?>(null)
@@ -99,7 +105,7 @@ class UsageAnalytics(
 
     fun begin(operation: UsageOperation, source: UsageSource? = null): UsageAttempt {
         val delivery = control.value.delivery ?: return UsageAttempt { _, _, _ -> }
-        val start = TimeSource.Monotonic.markNow()
+        val start = time.markNow()
         if (operation != UsageOperation.PreviewLoad && operation != UsageOperation.ManagerImport) delivery.queue.trySend(UsageEvent.Started(operation, source))
         return UsageAttempt { outcome, stage, failure ->
             if (control.value.delivery === delivery) {
@@ -108,6 +114,34 @@ class UsageAnalytics(
                 delivery.queue.trySend(UsageEvent.Result(operation, outcome, duration, stage, source, failure))
             }
         }
+    }
+
+    fun beginPlay(mode: PublicUsageMode, role: UsagePlayRole): UsagePlay {
+        val activity = MutableStateFlow<PlayClock>(PlayClock.Playing(Duration.ZERO, time.markNow()))
+        val delivery = control.value.delivery ?: return UsagePlay(activity, time, null)
+        delivery.queue.trySend(UsageEvent.PlayStarted(mode, role))
+        val job = delivery.scope.launch {
+            activity.collectLatest { current ->
+                if (current !is PlayClock.Playing) return@collectLatest
+                var reported = activity.value.elapsed()
+                try {
+                    while (true) {
+                        delay(5.minutes)
+                        val now = activity.value
+                        if (now is PlayClock.Playing && control.value.delivery === delivery) {
+                            val elapsed = now.elapsed()
+                            PlayedMinutes.remainder(elapsed - reported)?.let { delivery.queue.trySend(UsageEvent.PlayTime(mode, role, it)) }
+                            reported = elapsed
+                        }
+                    }
+                } finally {
+                    if (control.value.delivery === delivery) {
+                        PlayedMinutes.remainder(activity.value.elapsed() - reported)?.let { delivery.queue.trySend(UsageEvent.PlayTime(mode, role, it)) }
+                    }
+                }
+            }
+        }
+        return UsagePlay(activity, time, job)
     }
 
     suspend fun recordActiveDay() = mutex.withLock {
@@ -125,8 +159,8 @@ class UsageAnalytics(
     fun close() { stopDelivery() }
 
     private fun startDelivery(installation: String, revision: Long) {
-        val delivery = Delivery()
-        delivery.worker = scope.launch(start = CoroutineStart.LAZY) {
+        val delivery = Delivery(scope)
+        val worker = delivery.scope.launch(start = CoroutineStart.LAZY) {
             for (event in delivery.queue) {
                 if (control.value.delivery !== delivery) break
                 try { transport.send(installation, event) }
@@ -134,13 +168,13 @@ class UsageAnalytics(
                 catch (_: Exception) { }
             }
         }
-        delivery.daily = scope.launch(start = CoroutineStart.LAZY) {
+        val daily = delivery.scope.launch(start = CoroutineStart.LAZY) {
             while (control.value.delivery === delivery) { recordActiveDay(); delay(15.minutes) }
         }
         val before = control.value
         if (before.revision == revision && before.delivery == null && control.compareAndSet(before, before.copy(delivery = delivery))) {
-            delivery.worker?.start()
-            delivery.daily?.start()
+            worker.start()
+            daily.start()
         } else delivery.cancel()
     }
 
@@ -150,11 +184,11 @@ class UsageAnalytics(
         return before.revision + 1
     }
 
-    private class Delivery {
+    private class Delivery(parent: CoroutineScope) {
+        private val job = SupervisorJob(parent.coroutineContext[Job])
+        val scope = CoroutineScope(parent.coroutineContext + job)
         val queue = Channel<UsageEvent>(32)
-        var worker: Job? = null
-        var daily: Job? = null
-        fun cancel() { queue.cancel(); worker?.cancel(); daily?.cancel() }
+        fun cancel() { queue.cancel(); job.cancel() }
     }
 
     @Serializable

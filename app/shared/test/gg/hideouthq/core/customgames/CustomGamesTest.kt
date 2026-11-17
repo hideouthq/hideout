@@ -152,14 +152,14 @@ class CustomGamesTest {
             settle()
         }
 
-        fun hostUntilStarting() {
-            games.host(Source, Choices.None, null)
+        fun hostUntilStarting(mode: Mode = Source) {
+            games.host(mode, Choices.None, null)
             settle()
             assertIs<Session.HostStarting>(session)
         }
 
-        fun hostUntilHosting() {
-            hostUntilStarting()
+        fun hostUntilHosting(mode: Mode = Source) {
+            hostUntilStarting(mode)
             link.say(LinkEvent.InviteReady(Friend))
             link.say(LinkEvent.Server(ServerEvent.Ready("street")))
             settle()
@@ -174,15 +174,15 @@ class CustomGamesTest {
             assertEquals(Session.Confirming(Invite(code, offer)), session)
         }
 
-        fun joinUntilLinked() {
-            found()
+        fun joinUntilLinked(offer: InviteOffer = Arena) {
+            found(offer)
             games.confirmJoin(null)
             settle()
             assertIs<Session.Linking>(session)
         }
 
-        fun joinUntilPlaying() {
-            joinUntilLinked()
+        fun joinUntilPlaying(offer: InviteOffer = Arena) {
+            joinUntilLinked(offer)
             link.say(LinkEvent.Linked)
             link.say(LinkEvent.Path(LinkPath.Direct))
             settle()
@@ -218,7 +218,131 @@ class CustomGamesTest {
         assertEquals(UsageOutcome.Failed, result.outcome)
         assertEquals(UsageStage.Prepare, result.stage)
         assertFalse(sent.toString().contains("private file path"))
+        assertTrue(sent.none { it is UsageEvent.PlayStarted || it is UsageEvent.PlayTime })
     }
+
+    @Test
+    fun publicHostPlayStartsOnlyAfterLocalEntryAndKeepsOneSessionAcrossReconnects() = scenario {
+        val sent = mutableListOf<UsageEvent>()
+        val analytics = playAnalytics(sent)
+        val run = Run(this, FakeCustomGamesFeed(), analytics = analytics)
+        run.opened()
+        run.hostUntilStarting(FakeCustomGamesFeed.SampleMode)
+        run.link.enterAnswer = emptyList()
+        run.link.say(LinkEvent.InviteReady(Friend))
+        run.link.say(LinkEvent.Server(ServerEvent.Ready("street")))
+        run.settle()
+        assertIs<Session.Hosting>(run.session)
+        assertTrue(sent.filterIsInstance<UsageEvent.PlayStarted>().isEmpty())
+        run.link.say(LinkEvent.Game(GameTraffic.Flowing))
+        run.settle()
+        val started = sent.filterIsInstance<UsageEvent.PlayStarted>().single()
+        assertEquals("arena", started.mode.id)
+        assertEquals(FakeCustomGamesFeed.SampleMode.listing.name, started.mode.name)
+        assertEquals(UsagePlayRole.Host, started.role)
+        repeat(3) { run.link.say(LinkEvent.Game(GameTraffic.Flowing)) }
+        run.link.say(LinkEvent.Server(ServerEvent.Joined(3, Player("private player", "private steam id"))))
+        run.settle()
+        run.wait(7.minutes)
+        run.link.say(LinkEvent.Game(GameTraffic.Quiet))
+        run.settle()
+        run.wait(10.minutes)
+        assertEquals(7, sent.filterIsInstance<UsageEvent.PlayTime>().sumOf { it.minutes.value })
+        run.link.say(LinkEvent.Game(GameTraffic.Flowing))
+        run.settle()
+        run.wait(2.minutes)
+        run.games.stop(); run.settle()
+        assertEquals(1, sent.filterIsInstance<UsageEvent.PlayStarted>().size)
+        assertEquals(9, sent.filterIsInstance<UsageEvent.PlayTime>().sumOf { it.minutes.value })
+        assertFalse(sent.toString().contains("private"))
+        assertFalse(sent.toString().contains(Friend.shown))
+        run.games.again(); run.settle()
+        run.link.say(LinkEvent.InviteReady(Other))
+        run.link.say(LinkEvent.Server(ServerEvent.Ready("street")))
+        run.settle()
+        assertEquals(2, sent.filterIsInstance<UsageEvent.PlayStarted>().size)
+        run.games.stop(); run.settle()
+    }
+
+    @Test
+    fun publicGuestPlayRequiresActualEntryAndUsesTheCatalogName() = scenario {
+        val sent = mutableListOf<UsageEvent>()
+        val run = Run(this, FakeCustomGamesFeed(), analytics = playAnalytics(sent))
+        run.opened()
+        run.joinUntilLinked()
+        run.link.enterAnswer = emptyList()
+        run.link.say(LinkEvent.Linked)
+        run.settle()
+        assertIs<Session.Playing>(run.session)
+        assertTrue(sent.filterIsInstance<UsageEvent.PlayStarted>().isEmpty())
+        run.link.say(LinkEvent.Game(GameTraffic.Flowing)); run.settle()
+        val played = sent.filterIsInstance<UsageEvent.PlayStarted>().single()
+        assertEquals("arena", played.mode.id)
+        assertEquals(FakeCustomGamesFeed.SampleMode.listing.name, played.mode.name)
+        assertEquals(UsagePlayRole.Guest, played.role)
+        run.wait(2.minutes)
+        run.games.close(); run.settle()
+        assertEquals(listOf(2), sent.filterIsInstance<UsageEvent.PlayTime>().map { it.minutes.value })
+        run.wait(10.minutes)
+        assertEquals(listOf(2), sent.filterIsInstance<UsageEvent.PlayTime>().map { it.minutes.value })
+    }
+
+    @Test
+    fun privateFoldersAreNotNamedEvenWhenTheyUseAPublicModesId() = scenario {
+        val sent = mutableListOf<UsageEvent>()
+        val run = Run(this, FakeCustomGamesFeed(), analytics = playAnalytics(sent))
+        run.opened()
+        run.hostUntilHosting(Source.copy(listing = Source.listing.copy(name = "private prototype")))
+        run.wait(6.minutes)
+        run.games.stop(); run.settle()
+        assertTrue(sent.none { it is UsageEvent.PlayStarted || it is UsageEvent.PlayTime })
+        assertFalse(sent.toString().contains("private prototype"))
+    }
+
+    @Test
+    fun guestsWithUnknownSharedOrMismatchedModesDoNotSendModeIdentity() = scenario {
+        val sent = mutableListOf<UsageEvent>()
+        val analytics = playAnalytics(sent)
+        val withClient = clientVersion("2.0.0", 'f')
+        val feed = FakeCustomGamesFeed(answer = CustomGamesFetch.Fresh(FakeCustomGamesFeed.SampleModes.copy(modes = listOf(withClient))))
+        val offers = listOf(
+            Arena.copy(mode = ModeId("private-mode")),
+            Arena,
+            Arena.copy(content = OfferContent.Host(FakeCustomGamesPlatform.SampleShared)),
+        )
+        for (offer in offers) {
+            val run = Run(this, feed, analytics = analytics)
+            run.opened()
+            run.joinUntilLinked(offer)
+            run.link.say(LinkEvent.Linked)
+            run.link.say(LinkEvent.Fetched)
+            run.settle()
+            assertEquals(OwnGame.In, assertIs<Session.Playing>(run.session).own)
+            run.wait(2.minutes)
+            run.games.stop(); run.settle()
+        }
+        assertTrue(sent.none { it is UsageEvent.PlayStarted || it is UsageEvent.PlayTime })
+    }
+
+    @Test
+    fun disabledCustomGamePlayDoesNotResumeWhenSharingIsEnabledMidSession() = scenario {
+        val sent = mutableListOf<UsageEvent>()
+        val analytics = playAnalytics(sent)
+        analytics.choose(false)
+        val run = Run(this, FakeCustomGamesFeed(), analytics = analytics)
+        run.opened(); run.hostUntilHosting(FakeCustomGamesFeed.SampleMode)
+        run.wait(2.minutes)
+        analytics.choose(true)
+        run.link.say(LinkEvent.Game(GameTraffic.Flowing)); run.settle()
+        run.wait(6.minutes)
+        run.games.stop(); run.settle()
+        assertTrue(sent.none { it is UsageEvent.PlayStarted || it is UsageEvent.PlayTime })
+    }
+
+    private suspend fun TestScope.playAnalytics(sent: MutableList<UsageEvent>): UsageAnalytics =
+        UsageAnalytics(MemoryStorage(), UsageTransport { _, event -> sent += event }, backgroundScope, time = testScheduler.timeSource).also {
+            it.load(); it.choose(true)
+        }
 
     private fun analyticsSession(host: Boolean) = scenario {
         val sent = mutableListOf<UsageEvent>()

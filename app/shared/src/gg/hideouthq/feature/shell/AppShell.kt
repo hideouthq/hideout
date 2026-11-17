@@ -21,6 +21,8 @@ import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import gg.hideouthq.core.analytics.AnalyticsChoice
+import gg.hideouthq.core.analytics.LocalUsageAnalytics
 import gg.hideouthq.core.appupdate.AppUpdates
 import gg.hideouthq.core.data.CatalogRepository
 import gg.hideouthq.core.data.GameLauncher
@@ -41,6 +43,7 @@ import gg.hideouthq.core.ui.WindowModal
 import gg.hideouthq.core.ui.copyText
 import gg.hideouthq.core.ui.windowWidth
 import gg.hideouthq.feature.appupdate.AppUpdateToast
+import gg.hideouthq.feature.analytics.AnalyticsNotice
 import gg.hideouthq.feature.appupdate.UpdateChip
 import gg.hideouthq.feature.appupdate.WhatsNewDialog
 import gg.hideouthq.feature.appupdate.updateChipState
@@ -99,12 +102,21 @@ fun AppShell(
     ShellKeysEffect(keys, toggleSidebar)
     var panel by remember { mutableStateOf<ChipPanel?>(null) }
     val toggle = { chip: ChipPanel -> panel = if (panel == chip) null else chip }
-    val chipsShown = setOfNotNull(ChipPanel.Hosting.takeIf { hosting != null }, ChipPanel.Update.takeIf { updateChipState(appUpdate, game) != null })
+    val analytics = LocalUsageAnalytics.current
+    val analyticsChoice = analytics?.choice?.collectAsState()?.value
+    val showAnalytics = analyticsChoice == AnalyticsChoice.NotDisclosed
+    val chipsShown = setOfNotNull(
+        ChipPanel.Hosting.takeIf { hosting != null },
+        ChipPanel.Update.takeIf { updateChipState(appUpdate, game) != null },
+        ChipPanel.Analytics.takeIf { showAnalytics },
+    )
     LaunchedEffect(chipsShown) { if (panel !in chipsShown) panel = null }
+    LaunchedEffect(analyticsChoice) { if (showAnalytics && panel == null) panel = ChipPanel.Analytics }
     AppWindow(modifier) {
         Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(HideoutDimens.Window.PaneGap)) {
             Sidebar(state, navigator.activeSection, navigator::openSection, viewModel::play, viewModel, showStats, showCustomGames, game != null, collapsed, toggleSidebar)
             ContentFrame(navigator, sidePanelOverlay, Modifier.weight(1f).fillMaxSize(), chips = {
+                if (showAnalytics) AnalyticsNotice(analytics, panel == ChipPanel.Analytics, { toggle(ChipPanel.Analytics) })
                 hosting?.let { HostingChip(it, panel == ChipPanel.Hosting, { toggle(ChipPanel.Hosting) }, onOpenGame) }
                 UpdateChip(appUpdate, game, appUpdates, panel == ChipPanel.Update, { toggle(ChipPanel.Update) }, { onWhatsNewOpen(true) })
             }) {
@@ -152,4 +164,4 @@ fun AppShell(
     }
 }
 
-private enum class ChipPanel { Hosting, Update }
+private enum class ChipPanel { Hosting, Update, Analytics }

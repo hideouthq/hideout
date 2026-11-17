@@ -110,7 +110,7 @@ class CustomGames(
     private val hostFolders: Flow<Boolean>,
     private val analytics: UsageAnalytics? = null,
 ) : AutoCloseable {
-    private data class UsageRun(val attempt: UsageAttempt, var stage: UsageStage = UsageStage.Prepare)
+    private class UsageRun(val attempt: UsageAttempt, var stage: UsageStage = UsageStage.Prepare, var play: UsagePlay? = null)
     private var usage: UsageRun? = null
     val firewallMayAsk: Boolean get() = platform.firewallMayAsk
 
@@ -150,6 +150,7 @@ class CustomGames(
         class Prepared(val job: Job, val answer: PrepareAnswer) : Input
 
         data object Again : Input
+        data object CloseUsage : Input
     }
 
     private sealed interface ModeUpkeep : Input {
@@ -317,6 +318,7 @@ class CustomGames(
 
     /** Asks the helper to stop as Hideout exits. The journal stays, so the next start checks that it did. */
     override fun close() {
+        inbox.trySend(Input.CloseUsage)
         val running = link ?: return
         runBlocking { withTimeoutOrNull(ExitStopLimit) { running.stop() } }
     }
@@ -365,6 +367,7 @@ class CustomGames(
                 scope.launch { readInstalled() }
             }
             Input.Again -> again(publishedLive.value)
+            Input.CloseUsage -> { usage?.play?.close(); usage = null }
             is ModeUpkeep -> upkeep(input)
         }
     }
@@ -454,9 +457,21 @@ class CustomGames(
         val record = recordAfter(before.game, event, step.session, context)
         if (step.session is Session.HostPreparing && before.session !is Session.HostPreparing || step.session is Session.Finding && before.session !is Session.Finding) {
             usage?.attempt?.finish(UsageOutcome.Cancelled, UsageStage.Prepare)
+            usage?.play?.close()
             usage = analytics?.begin(if (step.session is Session.HostPreparing) UsageOperation.CustomGameHost else UsageOperation.CustomGameJoin)?.let(::UsageRun)
         }
         usage?.let { run ->
+            val playing = step.session.own == OwnGame.In
+            if (playing && run.play == null) {
+                val role = record?.role
+                val mode = when (role) {
+                    is Role.Host -> role.mode
+                    is Role.Guest -> role.offer?.let(publishedModes.value::forGuest)
+                    null -> null
+                }?.let(PublicUsageMode::from)
+                if (mode != null) run.play = analytics?.beginPlay(mode, if (role is Role.Host) UsagePlayRole.Host else UsagePlayRole.Guest)
+            }
+            run.play?.setPlaying(playing)
             run.stage = when (step.session) {
                 is Session.HostPreparing, is Session.GuestPreparing, is Session.SettingUp,
                 is Session.RestartNeeded, is Session.Restarting, is Session.HostAdmitting, is Session.GuestAdmitting -> UsageStage.Prepare
@@ -470,6 +485,7 @@ class CustomGames(
             usage?.attempt?.finish(if (step.session.reason == EndReason.PlayerStopped) UsageOutcome.Cancelled else UsageOutcome.Failed,
                 usage?.stage ?: UsageStage.Unknown,
                 when (step.session.reason) { is EndReason.TimedOut -> UsageFailure.Timeout; is EndReason.LinkFailed -> UsageFailure.Network; is EndReason.Refused -> UsageFailure.Unavailable; EndReason.PlayerStopped -> null; else -> UsageFailure.Other })
+            usage?.play?.close()
             usage = null
         }
         val after = LiveSession(step.session, record)

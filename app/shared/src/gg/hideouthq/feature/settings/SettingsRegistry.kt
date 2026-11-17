@@ -4,7 +4,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import gg.hideouthq.core.designsystem.component.ButtonVariant
 import gg.hideouthq.core.designsystem.icon.HideoutIcons
 import gg.hideouthq.resources.analytics_title
-import gg.hideouthq.resources.analytics_description
+import gg.hideouthq.resources.analytics_settings_description
 import gg.hideouthq.resources.analytics_keywords
 import gg.hideouthq.resources.Res
 import gg.hideouthq.resources.setting_accent_description
@@ -184,7 +184,7 @@ internal val SettingsRegistry: List<Setting> = listOf(
         Res.string.setting_stats_source_keywords, HideoutIcons.Globe, SettingControl.Button(SettingAction.OpenStatsSource, ButtonVariant.Text), Visibility.WithStats),
     Setting(SettingId.StatsCache, SettingGroup.StatsData, Res.string.setting_stats_cache_title, Res.string.setting_stats_cache_description,
         Res.string.setting_stats_cache_keywords, HideoutIcons.Box, SettingControl.Button(SettingAction.ClearStats, ButtonVariant.Tonal), Visibility.WithStats),
-    Setting(SettingId.UsageAnalytics, SettingGroup.Hideout, Res.string.analytics_title, Res.string.analytics_description,
+    Setting(SettingId.UsageAnalytics, SettingGroup.Hideout, Res.string.analytics_title, Res.string.analytics_settings_description,
         Res.string.analytics_keywords, null, SettingControl.Switch, Visibility.WithAnalytics),
     Setting(
         SettingId.Version, SettingGroup.Hideout, Res.string.setting_version_title, Res.string.setting_version_description,

@@ -26,6 +26,8 @@ class PostHogTransport(private val client: HttpClient, private val version: Stri
             UsageEvent.AppActive -> "app_active"
             is UsageEvent.Started -> "${event.operation.wire}_started"
             is UsageEvent.Result -> "${event.operation.wire}_result"
+            is UsageEvent.PlayStarted -> "custom_game_play_started"
+            is UsageEvent.PlayTime -> "custom_game_play_time"
         })
         put("properties", buildJsonObject {
             put("app_version", version)
@@ -42,6 +44,17 @@ class PostHogTransport(private val client: HttpClient, private val version: Stri
                     put("stage", event.stage.wire)
                     event.failure?.let { put("failure", it.wire) }
                     event.source?.let { put("source", it.wire) }
+                }
+                is UsageEvent.PlayStarted -> {
+                    put("mode_id", event.mode.id)
+                    put("mode_name", event.mode.name)
+                    put("role", event.role.wire)
+                }
+                is UsageEvent.PlayTime -> {
+                    put("mode_id", event.mode.id)
+                    put("mode_name", event.mode.name)
+                    put("role", event.role.wire)
+                    put("play_minutes", event.minutes.value)
                 }
             }
         })
