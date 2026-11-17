@@ -1,5 +1,6 @@
 package gg.hideouthq.feature.appupdate
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -52,6 +53,7 @@ import gg.hideouthq.core.designsystem.theme.HideoutTheme
 import gg.hideouthq.core.designsystem.theme.HideoutWeights
 import gg.hideouthq.feature.customgames.GameInProgress
 import gg.hideouthq.resources.*
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 enum class UpdateChipState { Available, Seen, AvailableInGame, Downloading, Ready, ReadyInGame, AfterGame, Failed }
@@ -268,6 +270,7 @@ private fun PanelHeader(icon: ImageVector, tone: PanelTone, title: String, line:
             Text(title, style = HideoutTheme.typography.titleUpdateCard.copy(fontSize = 15.sp, lineHeight = 19.sp), color = scheme.onSurface)
             Text(line, Modifier.padding(top = 2.dp), style = HideoutTheme.typography.caption.copy(fontSize = 12.5.sp, lineHeight = 17.sp), color = scheme.outline)
         }
+        Image(painterResource(Res.drawable.update_helper), null, Modifier.size(width = 64.dp, height = 72.dp))
     }
 }
 

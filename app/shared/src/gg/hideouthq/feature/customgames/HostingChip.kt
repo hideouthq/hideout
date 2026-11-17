@@ -1,5 +1,6 @@
 package gg.hideouthq.feature.customgames
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -44,6 +45,7 @@ import gg.hideouthq.core.designsystem.theme.HideoutWeights
 import gg.hideouthq.core.ui.copyText
 import gg.hideouthq.resources.*
 import kotlinx.coroutines.delay
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 sealed interface StatusDetail {
@@ -112,6 +114,7 @@ private fun HostingPanel(chip: HostingChipView, first: FocusRequester, onOpen: (
                 Text(statusLine(chip), style = PanelStatus, color = tone, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
+        Image(painterResource(Res.drawable.game_helpers), null, Modifier.size(64.dp))
     }
     chip.invite?.code?.let { code -> CodeBox(code) }
     Row(horizontalArrangement = Arrangement.spacedBy(dimens.ActionGap)) {
