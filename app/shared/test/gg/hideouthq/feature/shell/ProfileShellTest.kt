@@ -22,6 +22,7 @@ import gg.hideouthq.core.library.NewProfile
 import gg.hideouthq.core.library.ProfileColour
 import gg.hideouthq.core.library.ProfileId
 import gg.hideouthq.core.library.ProfileSeed
+import gg.hideouthq.core.sharing.ProfileImports
 import gg.hideouthq.feature.withViewModels
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -50,6 +51,7 @@ class ProfileShellTest {
     }
 
     private val disk = HeldStore()
+    private val imports = ProfileImports()
 
     private fun shell(test: suspend TestScope.(ShellViewModel, ModLibrary) -> Unit) = withViewModels { viewModels ->
         val root = GameRoot("/games/Deadlock")
@@ -57,10 +59,45 @@ class ProfileShellTest {
             putBytes(root, InMemoryGameFiles.GameInfo, "GameInfo { FileSystem { SearchPaths { Game citadel/addons Game citadel } } }".encodeToByteArray())
         }
         val library = ModLibrary(FakeGameLocator(listOf(root.path), mapOf(root.path to null)), Preferences(MemoryStorage()), disk, files, InstallPorts(FakeGameBanana(), FakeDownloader(files), files, files, FakeProcesses()), backgroundScope).apply { start() }
-        val vm = viewModels.keep(ShellViewModel(library, FakeGameLauncher()))
+        val vm = viewModels.keep(ShellViewModel(library, FakeGameLauncher(), imports = imports))
         backgroundScope.launch { vm.uiState.collect {} }
         runCurrent()
         test(vm, library)
+    }
+
+    @Test
+    fun importingLeavesTheNewProfileDraftWithoutCreatingIt() = shell { vm, library ->
+        val opened = mutableListOf<String?>()
+        backgroundScope.launch { imports.incoming.collect { opened += it } }
+        vm.newProfile()
+        vm.setProfileName("Abandoned")
+        vm.importProfile()
+        runCurrent()
+        assertNull(vm.uiState.value.profileEditor)
+        assertEquals(listOf<String?>(null), opened)
+        assertEquals(listOf("Main"), library.state.value.profiles!!.profiles.map { it.name })
+        vm.newProfile()
+        runCurrent()
+        assertEquals("", assertIs<ProfileEditor.New>(vm.uiState.value.profileEditor).name)
+    }
+
+    @Test
+    fun importingCannotReplaceAProfileWhileItIsBeingCreated() = shell { vm, library ->
+        val opened = mutableListOf<String?>()
+        backgroundScope.launch { imports.incoming.collect { opened += it } }
+        disk.held = CompletableDeferred()
+        vm.newProfile()
+        vm.setProfileName("Practice")
+        vm.confirmProfile()
+        runCurrent()
+        assertTrue(vm.uiState.value.profileSubmitting)
+        vm.importProfile()
+        runCurrent()
+        assertTrue(opened.isEmpty())
+        assertEquals("Practice", assertIs<ProfileEditor.New>(vm.uiState.value.profileEditor).name)
+        disk.held!!.complete(Unit)
+        runCurrent()
+        assertEquals("Practice", library.state.value.profiles!!.activeProfile.name)
     }
 
     @Test

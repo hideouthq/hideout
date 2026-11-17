@@ -82,7 +82,6 @@ internal fun ProfileSidebar(state: ShellUiState, actions: ProfileActions, compac
     Box(Modifier.fillMaxWidth()) {
         SidebarGroup(stringResource(Res.string.sidebar_profiles), compact)
         if (!compact) Row(Modifier.align(Alignment.BottomEnd)) {
-            HideoutIconButton(HideoutIcons.Import, stringResource(Res.string.profile_import), actions::importProfile, size = 28.dp, enabled = state.canEditChoices)
             HideoutIconButton(HideoutIcons.Plus, stringResource(Res.string.profile_new), actions::newProfile, size = 28.dp, enabled = state.canEditChoices)
         }
     }

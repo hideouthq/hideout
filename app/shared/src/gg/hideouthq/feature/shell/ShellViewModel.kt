@@ -237,7 +237,11 @@ class ShellViewModel(
         notify(if (copied) SnackbarMessage.Shared(link) else SnackbarMessage.CopyFailed)
     }
 
-    override fun importProfile() = imports.open()
+    override fun importProfile() {
+        if (!modLibrary.state.value.canEditChoices || local.value.submitting) return
+        dismissProfile()
+        imports.open()
+    }
 
     private fun notify(message: SnackbarMessage) {
         val id = ++noticeId

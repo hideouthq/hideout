@@ -80,7 +80,14 @@ internal fun ProfileDialogs(state: ShellUiState, actions: ProfileActions, modal:
     val confirm = { if (canConfirm) actions.confirmProfile() }
     AlertModal(dialog(state) != null, modal, title, actions::dismissProfile, focus, width = 480.dp) {
         Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text(title, style = HideoutTheme.typography.titleDialog)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(title, Modifier.weight(1f), style = HideoutTheme.typography.titleDialog)
+                if (shown is ProfileEditor.New) HideoutButton(
+                    stringResource(Res.string.profile_import_link), actions::importProfile,
+                    variant = ButtonVariant.Text, size = ButtonSize.Small, leadingIcon = HideoutIcons.Link,
+                    enabled = state.canEditChoices && !state.profileSubmitting,
+                )
+            }
             when (shown) {
                 is ProfileEditor.New -> NewProfileFields(shown, last, actions, focus, confirm)
                 is ProfileEditor.Rename -> {

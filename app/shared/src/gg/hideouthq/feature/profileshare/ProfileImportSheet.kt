@@ -75,8 +75,8 @@ internal fun ProfileImportSheet(sheet: ImportSheet?, modal: WindowModal, actions
     val shown = last ?: return
     val focus = remember { FocusRequester() }
     val title = (shown as? ImportSheet.Reviewing)?.let { stringResource(Res.string.import_title, it.shared) } ?: stringResource(Res.string.profile_import)
-    LaunchedEffect(shown::class) { if (sheet != null && shown !is ImportSheet.Looking) focus.requestFocus() }
     AlertModal(sheet != null, modal, title, actions::dismissImport, focus, width = HideoutDimens.Collection.SheetWidth) {
+        LaunchedEffect(shown::class) { if (sheet != null && shown !is ImportSheet.Looking) focus.requestFocus() }
         Column(verticalArrangement = Arrangement.spacedBy(HideoutDimens.AlertDialog.Gap)) {
             Text(title, style = HideoutTheme.typography.titleDialog, color = MaterialTheme.colorScheme.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis)
             when (shown) {
