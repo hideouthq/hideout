@@ -189,7 +189,8 @@ class DesktopInstallFlowTest {
 
     private fun exitRunning() {
         running?.let { (scope, store) ->
-            scope.cancel()
+            // Like a closed app, the old library must be done. A save still on its way would take the lock back from the next one.
+            runBlocking { scope.coroutineContext.job.cancelAndJoin() }
             store.close()
         }
         running = null
