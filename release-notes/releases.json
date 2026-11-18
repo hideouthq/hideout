@@ -2,21 +2,79 @@
   "schema": 1,
   "versions": [
     {
-      "version": "1.1.0",
-      "date": "2026-11-02",
+      "version": "0.0.1",
+      "date": "2026-11-18",
       "kind": "feature",
-      "new": [
+      "highlights": [
         {
-          "area": "General",
-          "text": "Hideout updates: new versions download in the background and install when you restart."
+          "title": "First release!",
+          "text": "Hideout installs mods from GameBanana and hosts custom games your friends join with a code. Thanks for trying it."
         },
         {
-          "area": "General",
-          "text": "What's new: a dialog that lists what changed in each version."
+          "title": "Skins in 3D before you install",
+          "text": "Open a skin to see it in 3D. Drag to turn it, and play its animations and abilities."
+        }
+      ],
+      "new": [
+        {
+          "area": "Game",
+          "text": "Host a custom game and send your friends a code or a link. Hideout gets the mode for them and puts them in your game, with no ports to forward."
+        },
+        {
+          "area": "Game",
+          "text": "The custom games so far are Bebop Wars, Rooftop Rally, Pillars and Shattered Arena. They're new and still being tested."
+        },
+        {
+          "area": "Install",
+          "text": "Install mods from GameBanana, and update them from Library when their authors post a new version."
+        },
+        {
+          "area": "Profiles",
+          "text": "Each profile has its own mods turned on and its own load order."
+        },
+        {
+          "area": "Profiles",
+          "text": "Copy a share link for a profile. A friend opens it, or pastes it into Import from link when making a new profile, and gets the same mods in the same order."
+        },
+        {
+          "area": "Library",
+          "text": "When two mods change the same files, File priority lists the files they share and which mod wins."
+        },
+        {
+          "area": "Setup",
+          "text": "Bring your mods over from Deadlock Mod Manager or Grimoire, with your profiles, crosshair and autoexec. Their load order and on or off state come along."
+        },
+        {
+          "area": "Crosshairs",
+          "text": "Pick a crosshair the community made, or make your own."
+        },
+        {
+          "area": "Autoexec",
+          "text": "Edit autoexec.cfg from a library of commands. The lines you wrote by hand stay."
+        },
+        {
+          "area": "Stats",
+          "text": "Your match history, heroes and rank, from deadlock-api.com."
+        },
+        {
+          "area": "Library",
+          "text": "When a Deadlock update breaks a skin, Hideout repairs what it can and keeps the original files. Skin repairs are experimental."
+        },
+        {
+          "area": "Browse",
+          "text": "Mature mods show with their pictures blurred. Turn on Hide mature mods in Settings to leave them out."
+        },
+        {
+          "area": "Game",
+          "text": "Play vanilla starts Deadlock without your mods. Backups put back your mods, their order, your profiles, autoexec.cfg and your crosshair."
         },
         {
           "area": "Settings",
-          "text": "Download updates automatically: a switch in the About tab, on by default."
+          "text": "Save a bug report from Settings › About. It's a text file with your setup, your mods and what Hideout did recently, without your user name."
+        },
+        {
+          "area": "General",
+          "text": "Hideout updates itself. A new version downloads in the background and installs when you restart."
         }
       ]
     }
