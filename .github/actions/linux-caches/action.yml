@@ -1,0 +1,60 @@
+name: Linux build caches
+description: >-
+  Restores what ci/test.sh and packaging/linux/build.sh reuse between runs: the Kotlin and Go caches, the AlmaLinux build
+  image, the Steam Runtime adapters and the tests' pass markers. The first three are saved when the job succeeds.
+outputs:
+  markers-key:
+    description: The key to save build/ci-cache/passed under.
+    value: ${{ steps.markers.outputs.key }}
+runs:
+  using: composite
+  steps:
+    - name: Restore the Kotlin and Go caches
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: |
+          ~/.cache/JetBrains
+          .cache/JetBrains
+          !~/.cache/JetBrains/Kotlin/telemetry
+          !.cache/JetBrains/Kotlin/telemetry
+        key: kotlin-linux-${{ hashFiles('kotlin', 'libs.versions.toml', 'project.yaml', 'common.module-template.yaml', '**/module.yaml', '**/plugin.yaml', 'tools/link/go.sum') }}
+        restore-keys: kotlin-linux-
+    - name: Restore the Steam Runtime adapters
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: .steam-sdk-artifacts
+        key: steam-bridge-${{ hashFiles('native/steam-bridge/**') }}
+    - name: Restore the build image
+      id: image
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ~/.cache/hideout-build-image.tar
+        key: build-image-${{ hashFiles('packaging/linux/Containerfile') }}
+    - name: Load or build the build image
+      shell: bash
+      env:
+        hit: ${{ steps.image.outputs.cache-hit }}
+      run: |
+        archive=~/.cache/hideout-build-image.tar
+        if [ "$hit" = true ]; then
+          podman load -q -i "$archive"
+        else
+          packaging/linux/container.sh true
+          podman save -o "$archive" "$(podman images --format '{{.Repository}}:{{.Tag}}' localhost/hideout-native-build)"
+        fi
+    - name: Name the pass markers
+      id: markers
+      shell: bash
+      run: |
+        tree=$(git rev-parse 'HEAD^{tree}')
+        echo "tree=$tree" >> "$GITHUB_OUTPUT"
+        echo "key=test-markers-$tree-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
+    # Markers from any earlier run are safe to reuse: each one names the hash of the inputs that passed.
+    - name: Restore the pass markers
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: build/ci-cache/passed
+        key: ${{ steps.markers.outputs.key }}
+        restore-keys: |
+          test-markers-${{ steps.markers.outputs.tree }}-
+          test-markers-

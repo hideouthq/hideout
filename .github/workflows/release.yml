@@ -1,14 +1,11 @@
 name: Release
 
-# Every job runs on ms02's self-hosted runners. They take this workflow only from a tag push or a
-# manual dispatch, so no pull_request trigger may ever be added here.
 on:
   workflow_dispatch:
   push:
     tags: ['v*']
 
-permissions:
-  contents: read
+permissions: {}
 
 concurrency:
   group: release
@@ -17,19 +14,19 @@ concurrency:
 jobs:
   linux:
     name: AppImage, DEB and RPM
-    runs-on: [self-hosted, linux, hideout-ms02]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Check the tag against the version and the notes
         if: startsWith(github.ref, 'refs/tags/v')
         run: python3 tools/release/make_feed.py --check --version "${GITHUB_REF_NAME#v}" --tag "$GITHUB_REF_NAME" --notes release-notes
-      - name: Restore the Steam Runtime adapters
-        id: steam-bridge
-        run: |
-          cache="${HIDEOUT_CACHE:?}/steam-bridge/${{ hashFiles('native/steam-bridge/**') }}"
-          echo "cache=$cache" >> "$GITHUB_OUTPUT"
-          if [ -d "$cache" ]; then cp -a "$cache" .steam-sdk-artifacts; fi
+      - uses: ./.github/actions/linux-caches
+      # Skips every part the Tests workflow already passed on this tree.
+      - name: Run the tests
+        run: ci/test.sh
       - name: Build the packages
         env:
           HIDEOUT_BUILD_PREVIEW_URL: ${{ secrets.HIDEOUT_BUILD_PREVIEW_URL }}
@@ -40,54 +37,62 @@ jobs:
           : "${HIDEOUT_BUILD_PREVIEW_KEY:?the repository has no HIDEOUT_BUILD_PREVIEW_KEY secret}"
           : "${HIDEOUT_BUILD_POSTHOG_KEY:?the repository has no HIDEOUT_BUILD_POSTHOG_KEY secret}"
           packaging/linux/build.sh
-      - name: Keep the Steam Runtime adapters
-        env:
-          cache: ${{ steps.steam-bridge.outputs.cache }}
-        run: |
-          if [ ! -d "$cache" ]; then
-            mkdir -p "$(dirname "$cache")"
-            cp -a .steam-sdk-artifacts "$cache.$$"
-            mv -T "$cache.$$" "$cache"
-          fi
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: linux
           path: build/tasks/_desktopApp_packages@native-package/package/*
           if-no-files-found: error
-          retention-days: 3
+          retention-days: 14
 
   msi:
     name: MSI
-    needs: linux
-    runs-on: [self-hosted, windows, hideout-ms02]
+    runs-on: windows-2025
+    permissions:
+      contents: read
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Oracle GraalVM 25.0.4
+      - name: Restore the toolchain downloads
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/toolchain-downloads
+          key: msi-toolchain-${{ hashFiles('.github/workflows/release.yml') }}
+      - name: Restore the Kotlin and Go caches
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/AppData/Local/JetBrains
+            ~/AppData/Local/go-build
+            ~/go/pkg/mod
+            .cache/JetBrains
+          key: kotlin-windows-${{ hashFiles('kotlin.bat', 'libs.versions.toml', 'project.yaml', 'common.module-template.yaml', '**/module.yaml', '**/plugin.yaml', 'tools/link/go.sum') }}
+          restore-keys: kotlin-windows-
+      - name: Oracle GraalVM 25.0.4, Go 1.27.3 and WiX 3.14.1
         run: |
-          $dir = "$env:RUNNER_TOOL_CACHE\graalvm\25.0.4\x64"
-          if (-not (Test-Path "$dir.complete")) {
-            $zip = "$env:RUNNER_TEMP\graalvm.zip"
-            curl.exe -fsSL -o $zip https://download.oracle.com/graalvm/25/archive/graalvm-jdk-25.0.4_windows-x64_bin.zip
-            if ((Get-FileHash $zip -Algorithm SHA256).Hash -ne '5198b29a6448cb72b9a3cef10866723e2d1e2ec4799561a344e032bb7c61e555') { throw 'GraalVM checksum mismatch' }
-            Remove-Item $dir -Recurse -Force -ErrorAction SilentlyContinue
-            Expand-Archive $zip $dir
-            New-Item "$dir.complete" -ItemType File | Out-Null
+          $downloads = "$HOME\toolchain-downloads"
+          $tools = "$env:RUNNER_TEMP\tools"
+          New-Item -ItemType Directory -Force $downloads | Out-Null
+          function Install-Tool($url, $sha256, $dir) {
+            $file = Join-Path $downloads ([IO.Path]::GetFileName(([Uri]$url).AbsolutePath))
+            if (-not (Test-Path $file)) {
+              curl.exe -fsSL --retry 5 -o $file $url
+              if ($LASTEXITCODE) { throw "download failed: $url" }
+            }
+            if ((Get-FileHash $file -Algorithm SHA256).Hash -ne $sha256) { Remove-Item $file; throw "checksum mismatch: $url" }
+            New-Item -ItemType Directory -Force $dir | Out-Null
+            & "$env:SystemRoot\System32\tar.exe" -xf $file -C $dir
+            if ($LASTEXITCODE) { throw "could not unpack $file" }
           }
-          "JAVA_HOME=$((Get-ChildItem $dir -Directory)[0].FullName)" >> $env:GITHUB_ENV
-      - name: Go 1.27.3
-        run: |
-          $dir = "$env:RUNNER_TOOL_CACHE\go\1.27.3\x64"
-          if (-not (Test-Path "$dir.complete")) {
-            $zip = "$env:RUNNER_TEMP\go.zip"
-            curl.exe -fsSL -o $zip https://go.dev/dl/go1.27.3.windows-amd64.zip
-            if ((Get-FileHash $zip -Algorithm SHA256).Hash -ne 'f26081f438319757f8a1b46d7d0b2c5ec7583d4038e485e0aa725cfde7885fff') { throw 'Go checksum mismatch' }
-            Remove-Item $dir -Recurse -Force -ErrorAction SilentlyContinue
-            Expand-Archive $zip $dir
-            New-Item "$dir.complete" -ItemType File | Out-Null
-          }
-          "$dir\go\bin" >> $env:GITHUB_PATH
+          Install-Tool https://download.oracle.com/graalvm/25/archive/graalvm-jdk-25.0.4_windows-x64_bin.zip `
+            5198b29a6448cb72b9a3cef10866723e2d1e2ec4799561a344e032bb7c61e555 "$tools\graalvm"
+          Install-Tool https://go.dev/dl/go1.27.3.windows-amd64.zip `
+            f26081f438319757f8a1b46d7d0b2c5ec7583d4038e485e0aa725cfde7885fff $tools
+          Install-Tool https://github.com/wixtoolset/wix3/releases/download/wix3141rtm/wix314-binaries.zip `
+            6ac824e1642d6f7277d0ed7ea09411a508f6116ba6fae0aa5f2c7daa2ff43d31 "$tools\wix"
+          "JAVA_HOME=$((Get-ChildItem "$tools\graalvm" -Directory)[0].FullName)" >> $env:GITHUB_ENV
           "GOTOOLCHAIN=local" >> $env:GITHUB_ENV
+          "$tools\go\bin" >> $env:GITHUB_PATH
+          "$tools\wix" >> $env:GITHUB_PATH
       - uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
       - name: Build the MSI
         env:
@@ -103,13 +108,13 @@ jobs:
           name: msi
           path: build/tasks/_desktopApp_packages@native-package/package/*
           if-no-files-found: error
-          retention-days: 3
+          retention-days: 14
 
   release:
     name: Draft release
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [linux, msi]
-    runs-on: [self-hosted, linux, hideout-ms02]
+    runs-on: ubuntu-24.04
     environment: release
     permissions:
       contents: write
