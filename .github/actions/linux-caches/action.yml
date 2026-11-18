@@ -1,36 +1,57 @@
 name: Linux build caches
 description: >-
   Restores what ci/test.sh and packaging/linux/build.sh reuse between runs: the Kotlin and Go caches, the AlmaLinux build
-  image, the Steam Runtime adapters and the tests' pass markers. The first three are saved when the job succeeds.
-outputs:
-  markers-key:
-    description: The key to save build/ci-cache/passed under.
-    value: ${{ steps.markers.outputs.key }}
+  image, the Steam Runtime adapters and the tests' pass markers. Run it again with save set to true at the end of the job,
+  whether the tests passed or not, to keep what changed. The Steam Runtime adapters are kept only when the job succeeds.
+inputs:
+  save:
+    description: Save the caches instead of restoring them.
+    default: 'false'
 runs:
   using: composite
   steps:
+    - name: Name the caches
+      if: inputs.save != 'true'
+      id: keys
+      shell: bash
+      run: |
+        tree=$(git rev-parse 'HEAD^{tree}')
+        {
+          echo "tree=$tree"
+          echo "markers=test-markers-$tree-${{ github.run_id }}-${{ github.run_attempt }}"
+          echo "kotlin=kotlin-linux-${{ hashFiles('kotlin', 'libs.versions.toml', 'project.yaml', 'common.module-template.yaml', '**/module.yaml', '**/plugin.yaml', 'tools/link/go.sum') }}"
+          echo "steam=steam-bridge-${{ hashFiles('native/steam-bridge/**') }}"
+          echo "image=build-image-${{ hashFiles('packaging/linux/Containerfile') }}"
+        } | tee -a "$GITHUB_OUTPUT" | sed 's/^/LINUX_CACHES_KEY_/' >> "$GITHUB_ENV"
+
     - name: Restore the Kotlin and Go caches
-      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      if: inputs.save != 'true'
+      id: kotlin
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: |
           ~/.cache/JetBrains
           .cache/JetBrains
           !~/.cache/JetBrains/Kotlin/telemetry
           !.cache/JetBrains/Kotlin/telemetry
-        key: kotlin-linux-${{ hashFiles('kotlin', 'libs.versions.toml', 'project.yaml', 'common.module-template.yaml', '**/module.yaml', '**/plugin.yaml', 'tools/link/go.sum') }}
+        key: ${{ steps.keys.outputs.kotlin }}
         restore-keys: kotlin-linux-
+    # Saved only when the job succeeds, since a failed build leaves a partial folder that build.sh would take as done.
     - name: Restore the Steam Runtime adapters
+      if: inputs.save != 'true'
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: .steam-sdk-artifacts
-        key: steam-bridge-${{ hashFiles('native/steam-bridge/**') }}
+        key: ${{ steps.keys.outputs.steam }}
     - name: Restore the build image
+      if: inputs.save != 'true'
       id: image
-      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/.cache/hideout-build-image.tar
-        key: build-image-${{ hashFiles('packaging/linux/Containerfile') }}
+        key: ${{ steps.keys.outputs.image }}
     - name: Load or build the build image
+      if: inputs.save != 'true'
       shell: bash
       env:
         hit: ${{ steps.image.outputs.cache-hit }}
@@ -42,19 +63,44 @@ runs:
           packaging/linux/container.sh true
           podman save -o "$archive" "$(podman images --format '{{.Repository}}:{{.Tag}}' localhost/hideout-native-build)"
         fi
-    - name: Name the pass markers
-      id: markers
-      shell: bash
-      run: |
-        tree=$(git rev-parse 'HEAD^{tree}')
-        echo "tree=$tree" >> "$GITHUB_OUTPUT"
-        echo "key=test-markers-$tree-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
     # Markers from any earlier run are safe to reuse: each one names the hash of the inputs that passed.
     - name: Restore the pass markers
+      if: inputs.save != 'true'
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: build/ci-cache/passed
-        key: ${{ steps.markers.outputs.key }}
+        key: ${{ steps.keys.outputs.markers }}
         restore-keys: |
-          test-markers-${{ steps.markers.outputs.tree }}-
+          test-markers-${{ steps.keys.outputs.tree }}-
           test-markers-
+    - name: Remember which caches were found
+      if: inputs.save != 'true'
+      shell: bash
+      run: |
+        {
+          echo "LINUX_CACHES_KOTLIN_HIT=${{ steps.kotlin.outputs.cache-hit }}"
+          echo "LINUX_CACHES_IMAGE_HIT=${{ steps.image.outputs.cache-hit }}"
+        } >> "$GITHUB_ENV"
+
+    - name: Keep the Kotlin and Go caches
+      if: inputs.save == 'true' && env.LINUX_CACHES_KOTLIN_HIT != 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: |
+          ~/.cache/JetBrains
+          .cache/JetBrains
+          !~/.cache/JetBrains/Kotlin/telemetry
+          !.cache/JetBrains/Kotlin/telemetry
+        key: ${{ env.LINUX_CACHES_KEY_kotlin }}
+    - name: Keep the build image
+      if: inputs.save == 'true' && env.LINUX_CACHES_IMAGE_HIT != 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ~/.cache/hideout-build-image.tar
+        key: ${{ env.LINUX_CACHES_KEY_image }}
+    - name: Keep the pass markers
+      if: inputs.save == 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: build/ci-cache/passed
+        key: ${{ env.LINUX_CACHES_KEY_markers }}
