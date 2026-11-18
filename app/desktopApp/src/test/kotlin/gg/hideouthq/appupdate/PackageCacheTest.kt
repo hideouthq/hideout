@@ -284,6 +284,9 @@ class PackageCacheTest {
                     while (request.readLine().orEmpty().isNotEmpty()) Unit
                     socket.getOutputStream().write("HTTP/1.1 200 OK\r\nContent-Length: ${bytes.size}\r\n\r\n".toByteArray() + bytes.copyOfRange(0, half))
                     socket.getOutputStream().flush()
+                    // The client drops what it received but the download has not read yet when the connection is cut.
+                    val deadline = System.nanoTime() + 20.seconds.inWholeNanoseconds
+                    while (!(Files.exists(part()) && Files.size(part()) > 0) && System.nanoTime() < deadline) Thread.sleep(5)
                 }
             }
         }
