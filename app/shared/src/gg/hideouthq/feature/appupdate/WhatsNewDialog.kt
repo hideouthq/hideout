@@ -32,9 +32,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
@@ -75,6 +79,7 @@ import gg.hideouthq.core.designsystem.theme.HideoutTheme
 import gg.hideouthq.core.ui.AlertModal
 import gg.hideouthq.core.ui.ModLabels
 import gg.hideouthq.core.ui.WindowModal
+import gg.hideouthq.core.ui.windowHeight
 import gg.hideouthq.core.ui.windowWidth
 import gg.hideouthq.resources.Res
 import gg.hideouthq.resources.app_update_action
@@ -100,6 +105,7 @@ import gg.hideouthq.resources.app_update_version_menu
 import gg.hideouthq.resources.app_update_versions
 import gg.hideouthq.resources.app_update_waiting_mods
 import gg.hideouthq.resources.app_update_whats_new_title
+import gg.hideouthq.resources.helper_peek
 import gg.hideouthq.resources.hideout_logo
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
@@ -115,7 +121,9 @@ internal fun WhatsNewDialog(open: Boolean, state: AppUpdateState, game: GameInPr
         var selected by remember { mutableStateOf<AppVersion?>(null) }
         LaunchedEffect(open) { if (open) selected = null }
         val shown = view.versions.firstOrNull { it.notes.version == selected } ?: view.versions.firstOrNull()
-        Column(Modifier.fillMaxWidth().height(dimens.DialogHeight)) {
+        val roomAbove = windowHeight() >= dimens.DialogHeight + dimens.HelperHeight * 2
+        val helper = if (firstRelease(state, shown?.notes) && roomAbove) painterResource(Res.drawable.helper_peek) else null
+        Column(Modifier.fillMaxWidth().height(dimens.DialogHeight).helperOnTopEdge(helper)) {
             Row(Modifier.padding(start = 22.dp, top = 20.dp, end = 18.dp, bottom = 18.dp), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
                 CookieTile(MaterialTheme.colorScheme.surfaceContainerHigh, size = dimens.LogoTile) {
                     Image(painterResource(Res.drawable.hideout_logo), null, Modifier.size(dimens.LogoSize))
@@ -131,15 +139,12 @@ internal fun WhatsNewDialog(open: Boolean, state: AppUpdateState, game: GameInPr
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 if (narrow) Column(Modifier.fillMaxHeight()) {
                     if (shown != null) VersionDropdown(view.versions, shown) { selected = it.notes.version }
-                    HideoutDivider()
                     Notes(shown?.notes, view.notesUrl, Modifier.weight(1f))
                 } else Row(Modifier.fillMaxHeight()) {
                     VersionList(view.versions, shown) { selected = it.notes.version }
-                    Box(Modifier.width(HideoutDimens.Hairline).fillMaxHeight().background(MaterialTheme.colorScheme.outlineVariant))
                     Notes(shown?.notes, view.notesUrl, Modifier.weight(1f))
                 }
             }
-            HideoutDivider()
             Footer(view.footer, view.notesUrl, state.phase.version, game, updates, onClose)
         }
     }
@@ -148,7 +153,7 @@ internal fun WhatsNewDialog(open: Boolean, state: AppUpdateState, game: GameInPr
 @Composable
 private fun VersionList(versions: List<WhatsNewVersion>, selected: WhatsNewVersion?, onSelect: (WhatsNewVersion) -> Unit) {
     Column(
-        Modifier.width(HideoutDimens.AppUpdate.VersionColumn - HideoutDimens.Hairline).fillMaxHeight().verticalScroll(rememberScrollState()).padding(start = 10.dp, end = 10.dp, top = 10.dp, bottom = 12.dp),
+        Modifier.width(HideoutDimens.AppUpdate.VersionColumn).fillMaxHeight().verticalScroll(rememberScrollState()).padding(start = 10.dp, end = 10.dp, top = 10.dp, bottom = 12.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         Text(stringResource(Res.string.app_update_versions), Modifier.padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 8.dp), style = HideoutTheme.typography.labelSection, color = MaterialTheme.colorScheme.outline)
@@ -363,6 +368,18 @@ private fun Footer(footer: WhatsNewFooter, notesUrl: String?, offered: AppVersio
         Text(info, Modifier.weight(1f), style = HideoutTheme.typography.subtitle, color = MaterialTheme.colorScheme.outline)
         buttons()
     }
+}
+
+/** The feed's oldest version is Hideout's first release. The dialog keeps to the ten newest, so its own list can't tell. */
+internal fun firstRelease(state: AppUpdateState, shown: ReleaseNotes?): Boolean =
+    shown != null && shown.version == state.feed?.versions?.minOfOrNull { it.version }
+
+/** Draws [helper] above the top edge, outside the bounds. The picture's bottom row is the edge it lies on. */
+private fun Modifier.helperOnTopEdge(helper: Painter?): Modifier = if (helper == null) this else drawWithContent {
+    drawContent()
+    val dimens = HideoutDimens.AppUpdate
+    val drawn = Size(dimens.HelperWidth.toPx(), dimens.HelperHeight.toPx())
+    translate(size.width - dimens.HelperInset.toPx() - drawn.width, -drawn.height) { with(helper) { draw(drawn) } }
 }
 
 private const val ImprovedTileAlpha = 0.14f

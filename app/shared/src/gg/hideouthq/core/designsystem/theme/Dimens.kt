@@ -95,6 +95,9 @@ object HideoutDimens {
         val GroupIcon = 15.dp
         val GroupIndent = 36.dp
         val AreaColumn = 76.dp
+        val HelperWidth = 78.dp
+        val HelperHeight = 66.dp
+        val HelperInset = 96.dp
     }
 
     object NavItem {
