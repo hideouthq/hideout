@@ -82,7 +82,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.BasicFileAttributes
 import java.security.MessageDigest
-import java.util.Collections
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.io.path.createDirectories
 import kotlin.io.path.readBytes
@@ -159,7 +159,7 @@ class DesktopInstallFlowTest {
     private val stores = mutableListOf<FileLibraryStore>()
     private val nextId = AtomicInteger()
     private var running: Pair<CoroutineScope, FileLibraryStore>? = null
-    private val logged: MutableList<String> = Collections.synchronizedList(mutableListOf())
+    private val logged: MutableList<String> = CopyOnWriteArrayList()
 
     @AfterTest
     fun stop() = runBlocking {
