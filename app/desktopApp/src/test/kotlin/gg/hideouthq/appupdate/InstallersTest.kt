@@ -4,6 +4,8 @@ import gg.hideouthq.core.appupdate.AppVersion
 import gg.hideouthq.core.appupdate.InstallOutcome
 import gg.hideouthq.core.appupdate.PackageFormat
 import gg.hideouthq.core.appupdate.ReleasePackage
+import gg.hideouthq.core.customgames.ProcessIdentity
+import gg.hideouthq.customgames.identityOf
 import kotlinx.coroutines.runBlocking
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -205,6 +207,7 @@ class InstallersTest {
         assertEquals(folder, spec.folder)
         assertEquals(helper.toString(), spec.command.first())
         assertEquals(FinishRequest(4242, msi, folder.resolve("finish-update.log"), executable, relaunch = true), FinishRequest.parse(spec.command.drop(1)))
+        assertTrue(FinishingUpdate(folder).handOff(null, { it == identityOf(ProcessHandle.current()) }, System.currentTimeMillis()), "the started helper is announced")
     }
 
     @Test
@@ -242,10 +245,13 @@ class InstallersTest {
         for (failure in listOf(1, 1603)) assertEquals(1, finish(listOf(failure)).exit, "$failure")
     }
 
-    private fun finish(codes: List<Int>, relaunch: Boolean = true, appGone: Boolean = true): FinishRun {
+    private fun finish(codes: List<Int>, relaunch: Boolean = true, appGone: Boolean = true, reopen: String? = null): FinishRun {
         val log = Files.createDirectories(root.resolve("update")).resolve("finish.log")
         val executable = root.resolve("Hideout/Hideout.exe")
         val request = FinishRequest(99, root.resolve("x y.msi"), log, executable, relaunch)
+        val finishing = FinishingUpdate(log.parent)
+        finishing.announce(Helper)
+        reopen?.let { assertTrue(finishing.handOff(it, { true }, Helper.startedAtMillis)) }
         val commands = mutableListOf<ProcessSpec>()
         val pauses = mutableListOf<Long>()
         val waited = mutableListOf<Long>()
@@ -259,6 +265,7 @@ class InstallersTest {
             pause = { pauses += it },
         )
         val exit = finish.run(request)
+        assertFalse(finishing.handOff(null, { true }, Helper.startedAtMillis), "the helper's announcement is gone once it ends")
         return FinishRun(exit, request, commands, pauses, waited, log.resolveSibling("finish.log.result"))
     }
 
@@ -319,6 +326,15 @@ class InstallersTest {
     }
 
     @Test
+    fun aHideoutOpenedDuringTheInstallIsReopenedAfterItWithItsLink() {
+        val run = finish(listOf(0), relaunch = false, reopen = "hideout://join/ABCD")
+        assertEquals(1, run.msiexecs.size)
+        assertEquals(ProcessSpec(listOf(run.request.executable.toString(), "hideout://join/ABCD"), run.request.executable.parent), run.relaunches.single())
+        assertEquals(listOf(run.request.executable.toString()), finish(listOf(0), relaunch = false, reopen = "").relaunches.single().command)
+        assertEquals(1, finish(listOf(0), relaunch = true, reopen = "").relaunches.size, "a restart and a reopen open one copy")
+    }
+
+    @Test
     fun anAppThatOutlivesTheWaitGetsNoInstallAndNoSecondCopy() {
         val run = finish(emptyList(), appGone = false)
 
@@ -347,6 +363,10 @@ class InstallersTest {
         }
     }
 
+    private companion object {
+        val Helper = ProcessIdentity(77, 1_800_000_000_000)
+    }
+
     private class Finished(private val code: Int) : Process() {
         override fun getOutputStream() = ByteArrayOutputStream()
         override fun getInputStream() = ByteArrayInputStream(ByteArray(0))
@@ -354,5 +374,6 @@ class InstallersTest {
         override fun waitFor() = code
         override fun exitValue() = code
         override fun destroy() = Unit
+        override fun toHandle(): ProcessHandle = ProcessHandle.current()
     }
 }

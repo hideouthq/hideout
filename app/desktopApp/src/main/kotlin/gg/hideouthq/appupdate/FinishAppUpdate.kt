@@ -50,20 +50,23 @@ internal class FinishAppUpdate(
 ) {
     fun run(request: FinishRequest): Int {
         val note = { line: String -> note(request.log, line) }
-        if (!waitForExit(request.pid)) {
-            note("Hideout ${request.pid} was still running after the wait; the MSI did not run")
-            return StillRunning
-        }
-        val installed = runMsi(request, note)
-        if (request.relaunch) {
+        val gone = waitForExit(request.pid)
+        if (!gone) note("Hideout ${request.pid} was still running after the wait; the MSI did not run")
+        val installed = gone && runMsi(request, note)
+        val reopen = FinishingUpdate(request.log.parent).close()
+        if (gone && request.relaunch || reopen != null) {
             try {
-                start(ProcessSpec(listOf(request.executable.toString()), request.executable.parent))
+                start(ProcessSpec(listOf(request.executable.toString()) + listOfNotNull(reopen?.ifEmpty { null }), request.executable.parent))
                 note("Started ${request.executable}")
             } catch (e: IOException) {
                 note("Couldn't start ${request.executable}: $e")
             }
         }
-        return if (installed) 0 else InstallFailed
+        return when {
+            !gone -> StillRunning
+            installed -> 0
+            else -> InstallFailed
+        }
     }
 
     private fun runMsi(request: FinishRequest, note: (String) -> Unit): Boolean {

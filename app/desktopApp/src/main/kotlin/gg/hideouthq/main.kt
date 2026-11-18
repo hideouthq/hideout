@@ -16,9 +16,12 @@ import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import gg.hideouthq.appupdate.FinishAppUpdateFlag
+import gg.hideouthq.appupdate.FinishingUpdate
+import gg.hideouthq.appupdate.appUpdateFolder
 import gg.hideouthq.appupdate.desktopAppUpdates
 import gg.hideouthq.appupdate.finishAppUpdate
 import gg.hideouthq.appupdate.isNativeImage
+import gg.hideouthq.appupdate.isRunning
 import gg.hideouthq.core.customgames.InviteCode
 import gg.hideouthq.core.customgames.LiveSession
 import gg.hideouthq.core.data.fake.FakeAppUpdate
@@ -99,7 +102,10 @@ fun main(args: Array<String>) {
     if (args.firstOrNull() == FinishAppUpdateFlag) exitProcess(finishAppUpdate(args.asList()))
     pointLibrariesAtTheExecutable()
     val link = args.firstOrNull(InviteCode::isAppLink)
-    val dataFolder = if (System.getProperty("hideout.data") == "fake") null else ownDataFolderOrExit(link)
+    val dataFolder = if (System.getProperty("hideout.data") == "fake") null else {
+        leaveIfAnUpdateIsFinishing(link)
+        ownDataFolderOrExit(link)
+    }
     configureNativeMemory()
     nameTheWindowClass()
     // The JDK reads this once, when the first connection picks a proxy, so it is set before anything connects.
@@ -184,6 +190,12 @@ fun main(args: Array<String>) {
             }
         }
     }
+}
+
+private fun leaveIfAnUpdateIsFinishing(link: String?) {
+    if (!FinishingUpdate(appUpdateFolder()).handOff(link, ::isRunning, System.currentTimeMillis())) return
+    note("Not starting: an update is finishing, and Hideout opens once it's done")
+    exitProcess(0)
 }
 
 private fun ownDataFolderOrExit(link: String?): DataFolderClaim.Owner? {

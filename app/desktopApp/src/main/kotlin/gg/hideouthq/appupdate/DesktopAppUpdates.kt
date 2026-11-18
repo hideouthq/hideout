@@ -26,7 +26,7 @@ internal fun desktopAppUpdates(client: HttpClient, downloadClient: () -> HttpCli
     val executable = ProcessHandle.current().info().command().map { Path.of(it) }.orElse(null)
     val installed = executable?.takeIf { isNativeImage() }?.let { detectInstall(readMarker(it), System::getenv, it.parent, ::realPathOrNull, Files::isWritable, ::onPath) }
         ?: return DesktopAppUpdates(null, feed, UpdatePackages.None)
-    val folder = AppDirs.cache().toPath().resolve("app-update")
+    val folder = appUpdateFolder()
     val pid = ProcessHandle.current().pid()
     val cache = PackageCache(folder, downloadClient())
     val method = when (installed) {
@@ -36,6 +36,8 @@ internal fun desktopAppUpdates(client: HttpClient, downloadClient: () -> HttpCli
     }
     return DesktopAppUpdates(method, feed, cache)
 }
+
+internal fun appUpdateFolder(): Path = AppDirs.cache().toPath().resolve("app-update")
 
 internal fun runningAppImage(): Path? {
     val executable = ProcessHandle.current().info().command().map { Path.of(it) }.orElse(null)?.takeIf { isNativeImage() } ?: return null
