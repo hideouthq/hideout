@@ -71,55 +71,51 @@ data class ReleaseFeed(
 )
 
 /**
- * Reads the release-notes file fetched from [feedUrl], or null when this build cannot use it: a newer schema, or a
- * top-level field missing or broken. Below that it ignores unknown fields, treats missing groups as empty, and drops a
- * version or a package with a malformed field.
+ * Reads the release-notes file fetched from [feedUrl], or null when its `schema`, `latest` or `notesUrl` is missing or
+ * broken. A schema this build doesn't know still names the version on offer, with no notes and no packages, so a later
+ * feed can always point this copy at GitHub. Below that it ignores unknown fields, reads an unknown kind as fixes, and
+ * drops only the version, highlight, line or package that is malformed. The latest version's packages are read apart
+ * from its notes, so broken notes never cost the update.
  */
 fun parseReleaseFeed(text: String, feedUrl: String): ReleaseFeed? {
-    val wire = try {
-        FeedJson.decodeFromString<WireFeed>(text)
+    val root = try {
+        FeedJson.parseToJsonElement(text)
     } catch (e: IllegalArgumentException) {
         return null
     }
-    if (wire.schema != SupportedSchema) return null
-    val latest = AppVersion.parse(wire.latest) ?: return null
-    if (wire.notesUrl.isBlank()) return null
-    val parsed = wire.versions.mapNotNull { parseVersion(it, feedUrl) }
-        .filter { it.notes.version <= latest }
-        .distinctBy { it.notes.version }
-        .sortedByDescending { it.notes.version }
+    val head = root.readAs<WireHead>() ?: return null
+    val latest = AppVersion.parse(head.latest) ?: return null
+    if (head.notesUrl.isBlank()) return null
+    if (head.schema != SupportedSchema) return ReleaseFeed(latest, head.notesUrl, emptyList(), emptyMap())
+    val entries = root.readAs<WireVersions>()?.versions.orEmpty()
+    val download = entries.mapNotNull { it.readAs<WireDownload>() }.firstOrNull { AppVersion.parse(it.version) == latest }
     return ReleaseFeed(
         latest = latest,
-        notesUrl = wire.notesUrl,
-        versions = parsed.map { it.notes },
-        packages = parsed.firstOrNull { it.notes.version == latest }?.packages.orEmpty(),
+        notesUrl = head.notesUrl,
+        versions = entries.mapNotNull { parseNotes(it, feedUrl) }
+            .filter { it.version <= latest }
+            .distinctBy { it.version }
+            .sortedByDescending { it.version },
+        packages = download?.let { parsePackages(it.download, latest) }.orEmpty(),
     )
 }
 
-private class ParsedVersion(val notes: ReleaseNotes, val packages: Map<PackageFormat, ReleasePackage>)
-
-private fun parseVersion(element: JsonElement, feedUrl: String): ParsedVersion? {
-    val wire = try {
-        FeedJson.decodeFromJsonElement<WireVersion>(element)
-    } catch (e: IllegalArgumentException) {
-        return null
-    }
-    val version = AppVersion.parse(wire.version) ?: return null
-    val notes = ReleaseNotes(
-        version = version,
+private fun parseNotes(element: JsonElement, feedUrl: String): ReleaseNotes? {
+    val wire = element.readAs<WireVersion>() ?: return null
+    return ReleaseNotes(
+        version = AppVersion.parse(wire.version) ?: return null,
         date = parseDate(wire.date) ?: return null,
-        kind = when (wire.kind) {
-            "feature" -> ReleaseKind.Feature
-            "fixes" -> ReleaseKind.Fixes
-            else -> return null
-        },
-        highlights = wire.highlights.take(MaxHighlights).map { Highlight(it.title, it.text, imageUrl(it.image, feedUrl)) },
-        new = wire.new.map { ReleaseEntry(it.area, it.text) },
-        improved = wire.improved.map { ReleaseEntry(it.area, it.text) },
-        fixed = wire.fixed.map { ReleaseEntry(it.area, it.text) },
+        kind = if (wire.kind == "feature") ReleaseKind.Feature else ReleaseKind.Fixes,
+        highlights = wire.highlights.mapNotNull { it.readAs<WireHighlight>() }
+            .take(MaxHighlights)
+            .map { Highlight(it.title, it.text, imageUrl(it.image, feedUrl)) },
+        new = entries(wire.new),
+        improved = entries(wire.improved),
+        fixed = entries(wire.fixed),
     )
-    return ParsedVersion(notes, parsePackages(wire.download, version))
 }
+
+private fun entries(group: List<JsonElement>): List<ReleaseEntry> = group.mapNotNull { it.readAs<WireEntry>() }.map { ReleaseEntry(it.area, it.text) }
 
 private fun parseDate(text: String): CalendarDate? = try {
     LocalDate.parse(text).let { CalendarDate(it.year, it.monthValue, it.dayOfMonth) }
@@ -129,11 +125,7 @@ private fun parseDate(text: String): CalendarDate? = try {
 
 private fun parsePackages(download: JsonObject, version: AppVersion): Map<PackageFormat, ReleasePackage> = buildMap {
     for (format in PackageFormat.entries) {
-        val wire = try {
-            download[format.feedKey]?.let { FeedJson.decodeFromJsonElement<WirePackage>(it) }
-        } catch (e: IllegalArgumentException) {
-            null
-        } ?: continue
+        val wire = download[format.feedKey]?.readAs<WirePackage>() ?: continue
         val hash = wire.sha256.lowercase()
         val usable = wire.size > 0 && Sha256Shape.matches(hash) && (wire.url.startsWith("https://") || wire.url.startsWith("http://"))
         if (usable) put(format, ReleasePackage(version, format, wire.url, wire.size, hash))
@@ -150,19 +142,30 @@ private const val MaxHighlights = 2
 private val Sha256Shape = Regex("[0-9a-f]{64}")
 private val FeedJson = Json { ignoreUnknownKeys = true; explicitNulls = false }
 
+private inline fun <reified T> JsonElement.readAs(): T? = try {
+    FeedJson.decodeFromJsonElement<T>(this)
+} catch (e: IllegalArgumentException) {
+    null
+}
+
 @Serializable
-private data class WireFeed(val schema: Int, val latest: String, val notesUrl: String, val versions: List<JsonElement>)
+private data class WireHead(val schema: Int, val latest: String, val notesUrl: String)
+
+@Serializable
+private data class WireVersions(val versions: List<JsonElement>)
+
+@Serializable
+private data class WireDownload(val version: String, val download: JsonObject = JsonObject(emptyMap()))
 
 @Serializable
 private data class WireVersion(
     val version: String,
     val date: String,
-    val kind: String,
-    val download: JsonObject = JsonObject(emptyMap()),
-    val highlights: List<WireHighlight> = emptyList(),
-    val new: List<WireEntry> = emptyList(),
-    val improved: List<WireEntry> = emptyList(),
-    val fixed: List<WireEntry> = emptyList(),
+    val kind: String? = null,
+    val highlights: List<JsonElement> = emptyList(),
+    val new: List<JsonElement> = emptyList(),
+    val improved: List<JsonElement> = emptyList(),
+    val fixed: List<JsonElement> = emptyList(),
 )
 
 @Serializable

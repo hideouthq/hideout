@@ -80,16 +80,32 @@ class ReleaseFeedTest {
     }
 
     @Test
-    fun aNewerSchemaOrABrokenRequiredFieldIsNoFeed() {
+    fun aBrokenRequiredFieldIsNoFeed() {
         assertNull(parse("not json"))
-        assertNull(parse("""{"schema":2,"latest":"1.4.0","notesUrl":"https://example.test","versions":[]}"""))
-        assertNull(parse("""{"schema":0,"latest":"1.4.0","notesUrl":"https://example.test","versions":[]}"""))
         assertNull(parse("""{"latest":"1.4.0","notesUrl":"https://example.test","versions":[]}"""), "no schema")
+        assertNull(parse("""{"schema":"two","latest":"1.4.0","notesUrl":"https://example.test","versions":[]}"""), "schema isn't a number")
         assertNull(parse("""{"schema":1,"notesUrl":"https://example.test","versions":[]}"""), "no latest")
         assertNull(parse("""{"schema":1,"latest":"newest","notesUrl":"https://example.test","versions":[]}"""), "latest isn't a version")
         assertNull(parse("""{"schema":1,"latest":"1.4.0","versions":[]}"""), "no notesUrl")
         assertNull(parse("""{"schema":1,"latest":"1.4.0","notesUrl":" ","versions":[]}"""), "blank notesUrl")
-        assertNull(parse("""{"schema":1,"latest":"1.4.0","notesUrl":"https://example.test"}"""), "no versions")
+        assertNull(parse("""{"schema":2,"latest":"1.4.0"}"""), "a newer schema without notesUrl")
+    }
+
+    @Test
+    fun aSchemaThisBuildDoesNotKnowOffersTheLatestVersionWithNothingElse() {
+        for (schema in listOf(0, 2)) {
+            val text = """{"schema":$schema,"latest":"1.4.0","notesUrl":"https://example.test/releases","versions":{"1.4.0":{}},
+                "releases":[${version("1.4.0", ""","download":{"msi":{"url":"https://example.test/a.msi","size":1,"sha256":"$sha"}}""")}]}"""
+            assertEquals(ReleaseFeed(AppVersion(1, 4, 0), "https://example.test/releases", emptyList(), emptyMap()), parse(text), "schema $schema")
+        }
+    }
+
+    @Test
+    fun aFeedWithNoVersionsStillNamesTheLatest() {
+        val feed = assertNotNull(parse("""{"schema":1,"latest":"1.4.0","notesUrl":"https://example.test"}"""))
+        assertEquals(AppVersion(1, 4, 0), feed.latest)
+        assertEquals(emptyList(), feed.versions)
+        assertEquals(emptyMap(), feed.packages)
     }
 
     @Test
@@ -112,9 +128,7 @@ class ReleaseFeedTest {
             """{"version":"not-a-version","date":"2026-11-02","kind":"fixes"}""",
             """{"version":"1.3.1","date":"2 Nov 2026","kind":"fixes"}""",
             """{"version":"1.3.1","date":"2026-02-31","kind":"fixes"}""",
-            """{"version":"1.3.1","date":"2026-11-02"}""",
-            """{"version":"1.3.1","date":"2026-11-02","kind":"hotfix"}""",
-            """{"version":"1.3.1","date":"2026-11-02","kind":"fixes","fixed":[{"area":"Library"}]}""",
+            """{"version":"1.3.1","kind":"fixes"}""",
             """{"version":"1.3.1","date":"2026-11-02","kind":"fixes","highlights":"none"}""",
             """17""",
         )
@@ -125,11 +139,39 @@ class ReleaseFeedTest {
     }
 
     @Test
+    fun aKindThisBuildDoesNotKnowReadsAsFixes() {
+        for (kind in listOf(""""hotfix"""", "null")) {
+            val entry = """{"version":"1.4.0","date":"2026-11-02","kind":$kind}"""
+            assertEquals(ReleaseKind.Fixes, parse(feed("1.4.0", entry))?.versions?.single()?.kind, kind)
+        }
+        assertEquals(ReleaseKind.Fixes, parse(feed("1.4.0", """{"version":"1.4.0","date":"2026-11-02"}"""))?.versions?.single()?.kind, "no kind")
+    }
+
+    @Test
+    fun aMalformedHighlightOrLineIsDroppedAloneAndTheVersionKept() {
+        val extra = ""","highlights":[{"title":"Broken"},{"title":"1","text":"X"},"card",{"title":"2","text":"X"},{"title":"3","text":"X"}],""" +
+            """"fixed":[{"area":"Library"},{"area":"Stats","text":"Faster."},{"area":"Stats","text":{"en":"Faster."}}]"""
+        val notes = assertNotNull(parse(feed("1.4.0", version("1.4.0", extra)))).versions.single()
+        assertEquals(listOf("1", "2"), notes.highlights.map { it.title }, "the two kept are the first two that read")
+        assertEquals(listOf(ReleaseEntry("Stats", "Faster.")), notes.fixed)
+    }
+
+    @Test
     fun aLatestVersionThatIsDroppedStillOffersTheVersionWithNoPackages() {
         val feed = assertNotNull(parse(feed("1.4.0", """{"version":"1.4.0"}""", version("1.3.0"))))
         assertEquals(AppVersion(1, 4, 0), feed.latest)
         assertEquals(emptyMap(), feed.packages)
         assertEquals(listOf(AppVersion(1, 3, 0)), feed.versions.map { it.version })
+    }
+
+    @Test
+    fun theLatestVersionsPackagesSurviveNotesThatCannotBeRead() {
+        val download = ""","download":{"msi":{"url":"https://example.test/a.msi","size":1,"sha256":"$sha"}}"""
+        for (notes in listOf("""{"version":"1.4.0"$download}""", """{"version":"1.4.0","date":"soon","kind":"feature","highlights":"none"$download}""")) {
+            val feed = assertNotNull(parse(feed("1.4.0", notes, version("1.3.0"))), notes)
+            assertEquals(setOf(PackageFormat.Msi), feed.packages.keys, notes)
+            assertEquals(listOf(AppVersion(1, 3, 0)), feed.versions.map { it.version }, notes)
+        }
     }
 
     @Test
