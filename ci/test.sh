@@ -3,7 +3,7 @@
 set -eu
 repo=$(cd "$(dirname "$0")/.." && pwd)
 cd "$repo"
-passed=${HIDEOUT_CACHE:-$repo/build/ci-cache}/passed
+passed=$repo/build/ci-cache/passed
 mkdir -p "$passed"
 find "$passed" -type f -mtime +30 -delete
 all=no
@@ -63,7 +63,7 @@ python_tests() {
 packaging/linux/container.sh true
 
 pids=
-key=$(inputs . ':!docs' ':!*.md' ':!.github' ':!ci/ms02' ':!release-notes' ':!tools')
+key=$(inputs . ':!docs' ':!*.md' ':!.github' ':!release-notes' ':!tools')
 part kotlin packaging/linux/build.sh test & pids="$pids kotlin:$!"
 key=$(inputs tools/link packaging/linux/Containerfile packaging/linux/container.sh)
 part link packaging/linux/container.sh tools/link/test.sh & pids="$pids link:$!"
