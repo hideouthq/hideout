@@ -1,5 +1,5 @@
 {
-  "comment": "Written by hand: whole resource trees the trace cannot enumerate, and lookups the JDK makes from its own code, which the trace filters out. AWT's glyph cache reads memory segments through the VarHandles. Native libraries are in the linux and windows folders, which only that system's image reads. The clipboard's DataFlavors load their classes by name from the flavor map on both systems, and a trace reaches them only if it copies. Sorting the flavors of anything pasted from another program asks for MarshalledObject's members, and fails the paste without them. zstd-jni's natives read and write a ZstdInputStream's positions through JNI, on the path of every 3D preview's model and of match metadata from the Steam cache, which no tour run reaches.",
+  "comment": "Written by hand: whole resource trees the trace cannot enumerate, and lookups the JDK makes from its own code, which the trace filters out. AWT's glyph cache reads memory segments through the VarHandles. Native libraries are in the linux and windows folders, which only that system's image reads. The clipboard's DataFlavors load their classes by name from the flavor map on both systems, and a trace reaches them only if it copies. Sorting the flavors of anything pasted from another program asks for MarshalledObject's members, and fails the paste without them. zstd-jni's natives read and write a ZstdInputStream's positions through JNI, on the path of every 3D preview's model and of match metadata from the Steam cache, which no tour run reaches. Java Sound's natives build a PortMixerInfo through JNI for each of the system's mixers when the mixer providers load for a sound preview; a computer whose sound cards have none never reaches it.",
   "reflection": [
     {
       "type": "java.lang.invoke.VarHandleSegmentAsBooleans",
@@ -111,6 +111,22 @@
         },
         {
           "name": "dstPos"
+        }
+      ]
+    },
+    {
+      "type": "com.sun.media.sound.PortMixerProvider$PortMixerInfo",
+      "jniAccessible": true,
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "int",
+            "java.lang.String",
+            "java.lang.String",
+            "java.lang.String",
+            "java.lang.String"
+          ]
         }
       ]
     }

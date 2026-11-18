@@ -1,5 +1,5 @@
 {
-  "comment": "Written by hand: the Linux native libraries the app's JARs carry. Their loaders skip the resource when an earlier run already unpacked it, so a trace sees them only on a clean machine. Only the Linux image reads this folder. Also the AWT field that names the window class, which only native startup sets. Also what X11's natives look up on the clipboard's paths: the root window, when another program reads a copy before it is converted, and JPEG's writer, when an image is on the clipboard at a paste.",
+  "comment": "Written by hand: the Linux native libraries the app's JARs carry. Their loaders skip the resource when an earlier run already unpacked it, so a trace sees them only on a clean machine. Only the Linux image reads this folder. Also the AWT field that names the window class, which only native startup sets. Also what X11's natives look up on the clipboard's paths: the root window, when another program reads a copy before it is converted, and JPEG's writer, when an image is on the clipboard at a paste. Also what the font path's natives look up when a font is not among those already loaded, as GTK's look and feel's font can be on GNOME: whether the display is local.",
   "resources": [
     {
       "glob": "linux/x64/org/lwjgl/**"
@@ -90,6 +90,26 @@
       "fields": [
         {
           "name": "qTable"
+        }
+      ]
+    },
+    {
+      "type": "java.awt.GraphicsEnvironment",
+      "jniAccessible": true,
+      "methods": [
+        {
+          "name": "getLocalGraphicsEnvironment",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.java2d.SunGraphicsEnvironment",
+      "jniAccessible": true,
+      "methods": [
+        {
+          "name": "isDisplayLocal",
+          "parameterTypes": []
         }
       ]
     }
