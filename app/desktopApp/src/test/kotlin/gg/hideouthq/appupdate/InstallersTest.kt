@@ -4,6 +4,7 @@ import gg.hideouthq.core.appupdate.AppVersion
 import gg.hideouthq.core.appupdate.InstallOutcome
 import gg.hideouthq.core.appupdate.PackageFormat
 import gg.hideouthq.core.appupdate.ReleasePackage
+import gg.hideouthq.core.appupdate.UpdateFailure
 import gg.hideouthq.core.customgames.ProcessIdentity
 import gg.hideouthq.customgames.identityOf
 import kotlinx.coroutines.runBlocking
@@ -13,6 +14,8 @@ import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermission
+import java.security.MessageDigest
+import java.util.HexFormat
 import java.util.concurrent.TimeUnit
 import kotlin.test.AfterTest
 import kotlin.test.Test
@@ -148,7 +151,7 @@ class InstallersTest {
     }
 
     @Test
-    fun aDebInstallsThroughPkexecAptGetAndAnRpmThroughPkexecDnf() {
+    fun aDebInstallsThroughPkexecAptGetAndAnRpmThroughPkexecDnfInOnePrompt() {
         val executable = Path.of("/opt/hideout/Hideout")
         val file = Path.of("/home/me/.cache/hideout/app-update/abc.deb")
 
@@ -157,10 +160,61 @@ class InstallersTest {
             SystemPackageInstaller("dnf", executable, 1, { file }, starter).install(pkg)
         }
 
-        assertEquals(
-            listOf(listOf("pkexec", "apt-get", "install", "-y", file.toString()), listOf("pkexec", "dnf", "install", "-y", file.toString())),
-            started.map { it.command },
+        assertEquals(2, started.size)
+        for ((spec, tool) in started.zip(listOf("apt-get", "dnf"))) {
+            assertEquals(listOf("pkexec", "/bin/sh", "-c"), spec.command.take(3))
+            assertEquals(listOf("sh", tool, file.toString(), pkg.sha256), spec.command.drop(4))
+        }
+    }
+
+    private class RootRun(val outcome: InstallOutcome, val toolSaw: List<String>)
+
+    /** The command pkexec would run, run as this user, with a package tool that writes down what it was given. */
+    private fun installAsRoot(content: String, toolExit: Int = 0): RootRun {
+        val file = Files.createDirectories(root.resolve("cache")).resolve("${pkg.sha256}.deb")
+        Files.writeString(file, "package")
+        val tool = root.resolve("fake-apt-get")
+        val saw = root.resolve("saw")
+        Files.writeString(
+            tool,
+            "#!/bin/sh\n" +
+                "printf '%s\\n' \"$@\" \"$(stat -c %a \"$(dirname \"$3\")\")\" \"$(cat \"$3\")\" > '$saw'\n" +
+                "printf '%s\\n' \"$3\" >> '$saw'\n" +
+                "exit $toolExit\n",
         )
+        tool.toFile().setExecutable(true)
+        val hashed = pkg.copy(sha256 = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(content.toByteArray())))
+        val outcome = runBlocking {
+            SystemPackageInstaller(tool.toString(), root, 1, { file }, { spec -> startForReal(spec.copy(command = spec.command.drop(1))) }).install(hashed)
+        }
+        return RootRun(outcome, if (Files.exists(saw)) Files.readAllLines(saw) else emptyList())
+    }
+
+    @Test
+    fun rootInstallsAPrivateCopyThatMatchesTheFeedAndRemovesIt() {
+        val run = installAsRoot("package")
+
+        assertEquals(InstallOutcome.Done, run.outcome)
+        val copy = run.toolSaw[2]
+        assertEquals(listOf("install", "-y", copy, "700", "package", copy), run.toolSaw)
+        assertTrue(copy.endsWith("/${pkg.sha256}.deb") && !copy.startsWith(root.toString()), copy)
+        assertFalse(Files.exists(Path.of(copy).parent), "the private folder is removed")
+    }
+
+    @Test
+    fun aPackageThatNoLongerMatchesIsNeverHandedToTheTool() {
+        val run = installAsRoot("what the feed promised")
+
+        assertEquals(InstallOutcome.Failed("The package changed before root could install it", UpdateFailure.Mismatch), run.outcome)
+        assertEquals(emptyList(), run.toolSaw)
+    }
+
+    @Test
+    fun theToolsOwnFailureComesThroughAndTheCopyIsStillRemoved() {
+        val run = installAsRoot("package", toolExit = 100)
+
+        assertEquals(InstallOutcome.Failed("The package tool exited with 100"), run.outcome)
+        assertFalse(Files.exists(Path.of(run.toolSaw[2]).parent))
     }
 
     @Test
