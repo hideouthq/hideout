@@ -45,6 +45,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.BasicFileAttributes
 import java.util.Base64
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executor
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
@@ -164,9 +165,13 @@ class NioModInstallerTest {
         val archive = zip("set.zip", Entry("Set/x_dir.vpk", dir), Entry("Set/x_000.vpk", chunk))
         val tasks = LinkedBlockingQueue<Runnable>()
         val caller = Executor { tasks.put(it) }.asCoroutineDispatcher()
+        // An extraction that ends before its caller has suspended hands the result straight back, with nothing to cancel.
+        val callerSuspended = CountDownLatch(1)
+        val installer = NioModInstaller(staging, clock = { callerSuspended.await(20, TimeUnit.SECONDS); System.nanoTime() })
         var result: UnpackResult? = null
         val job = CoroutineScope(caller).launch { result = installer.unpack(archive, UnpackLimits()) }
         assertNotNull(tasks.poll(20, TimeUnit.SECONDS)).run()
+        callerSuspended.countDown()
 
         val resumption = assertNotNull(tasks.poll(20, TimeUnit.SECONDS), "the extraction finished on the IO threads and asked to resume its caller")
         assertEquals(2, stagingFiles().size, "both VPKs were extracted into a staging folder")
