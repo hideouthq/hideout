@@ -117,6 +117,14 @@ class SignedReleaseFeedTest {
     }
 
     @Test
+    fun aGenuineFeedOverTheSizeCapFailsTheCheckAndNothingIsKept() = runTest {
+        val huge = body.replace("\"versions\"", "\"padding\":\"${"x".repeat(1 shl 20)}\",\"versions\"").encodeToByteArray()
+        val storage = MemoryStorage()
+        assertIs<FeedFetch.Unreachable>(source(storage, feed = { huge to HttpStatusCode.OK }, signature = { sign(huge) to HttpStatusCode.OK }).fetch())
+        assertNull(storage.read(fileName))
+    }
+
+    @Test
     fun theLastGoodFeedComesBackProvenAcrossRestarts() = runTest {
         val storage = MemoryStorage()
         assertNull(source(storage).lastGood(), "nothing kept yet")

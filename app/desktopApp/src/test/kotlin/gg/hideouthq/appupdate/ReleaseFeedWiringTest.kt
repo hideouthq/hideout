@@ -2,18 +2,29 @@ package gg.hideouthq.appupdate
 
 import gg.hideouthq.core.appupdate.FeedFetch
 import gg.hideouthq.core.appupdate.SignedReleaseFeed
+import gg.hideouthq.core.network.hideoutHttpClient
 import gg.hideouthq.data.FileCacheStorage
+import gg.hideouthq.data.desktopEngine
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
+import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
+import io.ktor.server.engine.embeddedServer
+import io.ktor.server.netty.Netty
+import io.ktor.server.response.respondBytesWriter
+import io.ktor.server.routing.get
+import io.ktor.server.routing.routing
+import io.ktor.utils.io.writeFully
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import java.nio.file.Files
 import java.security.KeyFactory
 import java.security.KeyPairGenerator
 import java.security.Signature
 import java.security.spec.X509EncodedKeySpec
 import java.util.Base64
+import java.util.concurrent.atomic.AtomicLong
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -21,6 +32,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.seconds
 
 class ReleaseFeedWiringTest {
     private val keys = KeyPairGenerator.getInstance("Ed25519").generateKeyPair()
@@ -73,6 +85,33 @@ class ReleaseFeedWiringTest {
     fun aSignatureThatIsNotOneIsRefused() = runBlocking<Unit> {
         assertIs<FeedFetch.Refused>(feed(Feed, "not base64 !!").fetch())
         assertIs<FeedFetch.Refused>(feed(Feed, "c2hvcnQ=").fetch())
+    }
+
+    @Test
+    fun anEndlessFeedOverTheNetworkIsCutOffAndTheCheckFails() = runBlocking<Unit> {
+        val sent = AtomicLong()
+        val server = embeddedServer(Netty, port = 0, host = "127.0.0.1") {
+            routing {
+                get("/releases.json") {
+                    call.respondBytesWriter(ContentType.Application.Json) {
+                        val chunk = ByteArray(64 * 1024) { ' '.code.toByte() }
+                        while (true) {
+                            writeFully(chunk)
+                            flush()
+                            sent.addAndGet(chunk.size.toLong())
+                        }
+                    }
+                }
+            }
+        }.start(wait = false)
+        try {
+            val port = server.engine.resolvedConnectors().single().port
+            val source = SignedReleaseFeed(hideoutHttpClient(desktopEngine(), "Hideout tests"), "http://127.0.0.1:$port/releases.json", FileCacheStorage(folder.toFile()), Clock.System, check)
+            assertIs<FeedFetch.Unreachable>(withTimeout(30.seconds) { source.fetch() })
+            assertTrue(sent.get() < 64L shl 20, "sent ${sent.get()} bytes")
+        } finally {
+            server.stop(0, 0)
+        }
     }
 
     @Test
