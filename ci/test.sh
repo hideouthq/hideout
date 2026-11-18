@@ -64,7 +64,7 @@ packaging/linux/container.sh true
 
 pids=
 key=$(inputs . ':!docs' ':!*.md' ':!.github' ':!ci/ms02' ':!release-notes' ':!tools')
-part kotlin packaging/linux/build.sh test -m shared -m desktopApp & pids="$pids kotlin:$!"
+part kotlin packaging/linux/build.sh test & pids="$pids kotlin:$!"
 key=$(inputs tools/link packaging/linux/Containerfile packaging/linux/container.sh)
 part link packaging/linux/container.sh tools/link/test.sh & pids="$pids link:$!"
 key=$(inputs tools/release release-notes app/desktopApp/module.yaml)
