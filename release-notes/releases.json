@@ -8,11 +8,13 @@
       "highlights": [
         {
           "title": "First release!",
-          "text": "Hideout installs mods from GameBanana and hosts custom games your friends join with a code. Thanks for trying it."
+          "text": "Hideout installs mods from GameBanana and hosts custom games your friends join with a code. Thanks for trying it.",
+          "image": "0.0.1-first-release@2x.webp"
         },
         {
           "title": "Skins in 3D before you install",
-          "text": "Open a skin to see it in 3D. Drag to turn it, and play its animations and abilities."
+          "text": "Open a skin to see it in 3D. Drag to turn it, and play its animations and abilities.",
+          "image": "0.0.1-3d-previews@2x.webp"
         }
       ],
       "new": [
