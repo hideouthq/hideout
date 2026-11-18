@@ -22,7 +22,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class ModeGridTest {
-    private val cards = libraryView(ModeList(feed = FakeCustomGamesFeed.Placeholder), ModeFilter(), LocalDate.of(2026, 11, 6)).shown
+    private val feed = FakeCustomGamesFeed.SampleModes.copy(modes = listOf(FakeCustomGamesFeed.BebopWars, FakeCustomGamesFeed.SampleMode))
+    private val cards = libraryView(ModeList(feed = feed), ModeFilter(), LocalDate.of(2026, 11, 6)).shown
 
     @Test
     fun everyCardInALibraryRowIsAsTallAsTheTallestWhateverItsTaglineLength() {
@@ -45,11 +46,12 @@ class ModeGridTest {
             assertEquals(1, row.map { it.taglineHeight }.distinct().size, "the taglines at $width keep the same room: ${row.map { it.label to it.taglineHeight }}")
             assertEquals(1, row.map { it.byLine.bottom }.distinct().size, "the by-lines at $width end on one line: ${row.map { it.label to it.byLine.bottom }}")
         }
-        val bebop = shown.single { it.card != null }
-        assertEquals(rows.single { bebop in it }.maxOf { it.byLine.bottom }, bebop.card!!.bottom, "Bebop Wars's card at $width ends with the row's by-lines")
+        for (row in rows) {
+            for (item in row) assertEquals(row.first().byLine.bottom, item.card.bottom, "${item.label} ends with its row at $width")
+        }
     }
 
-    private class Shown(val label: String, val name: Rect, val tagline: Rect, val byLine: Rect, val card: Rect?) {
+    private class Shown(val label: String, val name: Rect, val tagline: Rect, val byLine: Rect, val card: Rect) {
         val taglineHeight get() = tagline.height
     }
 
@@ -73,7 +75,7 @@ class ModeGridTest {
                     inCard.single { listing.tagline in it.texts() }.boundsInRoot,
                     nodes.filter { node -> node.boundsInRoot.left >= name.left && node.boundsInRoot.top >= name.top && node.texts().any { it.startsWith("by ") } }
                         .minBy { it.boundsInRoot.top * 10_000 + it.boundsInRoot.left }.boundsInRoot,
-                    clickable.singleOrNull { it.contains(name.center) },
+                    clickable.single { it.contains(name.center) },
                 )
             }
         } finally {

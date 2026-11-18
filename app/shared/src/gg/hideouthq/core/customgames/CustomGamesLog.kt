@@ -261,7 +261,7 @@ internal val CustomGamesFetch.Problem.said: String
 
 /** A list as the log and a report name it: its sequence, its modes, and the Modlock it runs. */
 internal val CustomGamesFeed.said: String
-    get() = "sequence $sequence, ${counted(modes.size, "mode")}" + upcoming.size.takeIf { it > 0 }?.let { ", $it upcoming" }.orEmpty() + ", runtime ${runtime.said}"
+    get() = "sequence $sequence, ${counted(modes.size, "mode")}, runtime ${runtime.said}"
 
 private val ModeRuntime.said: String
     get() = "Modlock " + cli.entries.sortedBy { it.key }.joinToString { (os, artifact) -> "${os.feedKey} ${artifact.sha256.short}" } +

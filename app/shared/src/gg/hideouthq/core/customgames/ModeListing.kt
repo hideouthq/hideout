@@ -15,8 +15,7 @@ import java.time.format.DateTimeParseException
 /**
  * What a player sees of a mode and may choose for it, from whoever made it. Nothing in Hideout knows a mode's rules, so
  * this is all a mode is to the screens. A feed entry nests it as `listing`, and a mode author's build folder holds it as
- * `hideout.json`, so every kind of mode reads through the same [parseListing]. An upcoming mode's listing reads through
- * [parseUpcomingListing], which differs only in letting [released] go unsaid.
+ * `hideout.json`, so every kind of mode reads through the same [parseListing].
  */
 data class ModeListing(
     val name: String,
@@ -25,7 +24,7 @@ data class ModeListing(
     val players: IntRange,
     /** Never empty, except in a [plainListing]. */
     val creators: List<String>,
-    /** Null only for an upcoming mode, which may not have a date yet, and a [plainListing]. */
+    /** Null only for a [plainListing]. */
     val released: LocalDate?,
     /** Null for a kind this Hideout doesn't know, which then lists under All only. */
     val kind: ModeKind? = null,
@@ -205,12 +204,7 @@ fun plainListing(name: String): ModeListing = ModeListing(name, "", "", 1..MaxPl
  * image into an absolute address, or null to leave that image out. Unknown fields, unknown kinds, unknown section and
  * icon names, and settings with no `options`, which a later Hideout may draw, are skipped.
  */
-fun parseListing(json: JsonObject, art: (String) -> String?): ModeListing? = readListing(json, art)?.takeIf { it.released != null }
-
-/** The same rules as [parseListing], but an upcoming mode may leave out its release date. */
-fun parseUpcomingListing(json: JsonObject, art: (String) -> String?): ModeListing? = readListing(json, art)
-
-private fun readListing(json: JsonObject, art: (String) -> String?): ModeListing? {
+fun parseListing(json: JsonObject, art: (String) -> String?): ModeListing? {
     val wire = try {
         ListingJson.decodeFromJsonElement<WireListing>(json)
     } catch (e: IllegalArgumentException) {
@@ -229,7 +223,7 @@ private fun readListing(json: JsonObject, art: (String) -> String?): ModeListing
         description = text(wire.description, 2000, lines = true) ?: return null,
         players = players,
         creators = wire.creators.map { text(it, 48) ?: return null },
-        released = wire.released?.let { date(it) ?: return null },
+        released = date(wire.released ?: return null) ?: return null,
         kind = ModeKind.entries.firstOrNull { it.wire == wire.kind },
         minutes = wire.minutes?.let { it.range(MaxMinutes) ?: return null },
         curated = wire.curated,

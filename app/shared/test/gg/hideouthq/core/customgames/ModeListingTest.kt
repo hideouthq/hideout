@@ -74,20 +74,6 @@ class ModeListingTest {
     }
 
     @Test
-    fun anUpcomingListingMayLeaveOutOnlyItsReleaseDate() {
-        val upcoming = cases("upcoming")
-        assertEquals(3, upcoming.size)
-        for (file in upcoming) {
-            val listing = assertNotNull(parseUpcomingListing(json(file.readText())) { null }, file.name)
-            assertNull(listing.released)
-            assertNull(read(file), "${file.name} is no released mode's listing")
-        }
-        for (file in cases("invalid").filter { it.name != "no-released.json" }) {
-            assertNull(parseUpcomingListing(json(file.readText())) { null }, file.name)
-        }
-    }
-
-    @Test
     fun aStepIconThisHideoutDoesNotDrawShowsTheStepsNumber() {
         val minimal = cases.resolve("valid/minimal.json").readText().trimEnd().removeSuffix("}")
         val listing = assertNotNull(parseListing(json(minimal + ""","howToPlay":[{"title":"Run","body":"Fast.","icon":"rocket"},{"title":"Win","body":"First.","icon":"trophy"}]}""")) { null })

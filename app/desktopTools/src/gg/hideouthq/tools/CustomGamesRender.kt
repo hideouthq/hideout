@@ -60,16 +60,10 @@ private fun customGamesTargets(images: RemoteImages, folder: File): List<CustomG
             capture("page_compact")
         },
         CustomGamesTarget("library", 1440, 900, { app(Route.CustomGames) }) {
-            check(hasText("Coming soon")) { "upcoming modes carry their badge" }
             capture("library")
             moveTo(nodes().first { it.hasLabel("Bebop Wars") })
             advance(600)
             capture("bebop_hovered")
-            moveTo(nodes().first { it.hasLabel("Dodgeball") })
-            click()
-            advance(600)
-            check(!hasText("Host a game")) { "a Coming soon card opens no page and offers no Host" }
-            capture("coming_soon_clicked")
         },
         CustomGamesTarget("servers", 1440, 900, { app(Route.CustomGames) }) {
             clickLabel("Servers")
@@ -88,7 +82,6 @@ private fun customGamesTargets(images: RemoteImages, folder: File): List<CustomG
             capture("servers_compact")
         },
         CustomGamesTarget("discover", 1440, 2600, { app(Route.Discover) }) {
-            check(hasText("Coming soon")) { "Discover's custom games row shows the upcoming modes" }
             capture("discover")
         },
         CustomGamesTarget("library_wide", 1920, 900, { app(Route.CustomGames) }) {

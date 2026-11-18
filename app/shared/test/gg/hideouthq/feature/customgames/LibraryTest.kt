@@ -33,11 +33,9 @@ import kotlin.time.Instant
 class LibraryTest {
     private val bebop = FakeCustomGamesFeed.BebopWars
     private val arena = FakeCustomGamesFeed.SampleMode
-    private val released = FakeCustomGamesFeed.Placeholder.copy(upcoming = emptyList())
+    private val released = FakeCustomGamesFeed.Placeholder
     private val feed = released.copy(modes = listOf(bebop, arena))
     private val today = LocalDate.of(2026, 11, 6)
-
-    private val ModeCard.hosted get() = assertIs<ModeCard.Hostable>(this)
 
     @Test
     fun oneModeHidesTheFiltersSortAndSearch() {
@@ -47,34 +45,13 @@ class LibraryTest {
     }
 
     @Test
-    fun upcomingModesListAfterTheReleasedOnesAsComingSoonWithNothingToHostOrInstall() {
-        val modes = ModeList(feed = FakeCustomGamesFeed.Placeholder)
-        val view = libraryView(modes, ModeFilter(), today)
-        assertEquals(listOf("mode:bebop-wars", "upcoming:heaven-or-else", "upcoming:dodgeball", "upcoming:hero-roulette"), view.shown.map { it.key })
-        assertTrue(view.filtersShown)
-        for (card in view.shown.drop(1)) {
-            assertIs<ModeCard.ComingSoon>(card)
-            assertEquals(ModeBadge.ComingSoon, card.badge)
-            assertNull(modeCard(modes, card.key, today), "${card.key} opens no page, so it has no Host")
-            assertNull(modes.hostable(card.id))
-        }
-        assertEquals(emptyList(), view.installed.rows, "nothing upcoming is ever installed")
-        assertEquals(listOf(KindCount(null, 4), KindCount(ModeKind.Teams, 2), KindCount(ModeKind.FreeForAll, 2)), view.kinds)
-        assertEquals(listOf("Dodgeball"), libraryView(modes, ModeFilter(query = "parry"), today).shown.map { it.listing.name })
-        assertEquals("mode:bebop-wars", libraryView(modes, ModeFilter(sort = ModeSort.Newest), today).shown.first().key, "a mode with no date sorts after every dated one")
-        val (shelf, total) = shelf(modes, today)
-        assertEquals(view.shown, shelf, "Discover's row shows them too")
-        assertEquals(4, total)
-    }
-
-    @Test
     fun aTeamModeForAFixedEvenCountReadsAsTwoSides() {
-        val listings = FakeCustomGamesFeed.Placeholder.upcoming.associate { it.listing.name to it.listing }
-        assertEquals(PlayerCount.Sides(5), playerCount(listings.getValue("Heaven or Else")))
-        assertEquals(PlayerCount.Between(2..12), playerCount(listings.getValue("Dodgeball")))
+        val teams = bebop.listing.copy(players = 10..10, settings = emptyList())
+        assertEquals(PlayerCount.Sides(5), playerCount(teams))
+        assertEquals(PlayerCount.Between(2..12), playerCount(teams.copy(players = 2..12)))
         assertEquals(PlayerCount.Between(2..6), playerCount(bebop.listing))
-        assertEquals(PlayerCount.Exactly(10), playerCount(listings.getValue("Heaven or Else").copy(kind = ModeKind.FreeForAll)))
-        assertEquals(PlayerCount.Exactly(9), playerCount(listings.getValue("Heaven or Else").copy(players = 9..9)))
+        assertEquals(PlayerCount.Exactly(10), playerCount(teams.copy(kind = ModeKind.FreeForAll)))
+        assertEquals(PlayerCount.Exactly(9), playerCount(teams.copy(players = 9..9)))
     }
 
     @Test
@@ -98,8 +75,8 @@ class LibraryTest {
         val newer = bebop.copy(listing = bebop.listing.copy(released = LocalDate.of(2026, 11, 2)))
         val view = libraryView(ModeList(feed = feed.copy(modes = listOf(older, newer))), ModeFilter(sort = ModeSort.Newest), today)
         assertEquals(listOf(bebop.id, arena.id), view.shown.map { it.id })
-        assertTrue(view.shown.first().hosted.new)
-        assertFalse(view.shown.last().hosted.new)
+        assertTrue(view.shown.first().new)
+        assertFalse(view.shown.last().new)
     }
 
     @Test
@@ -108,7 +85,7 @@ class LibraryTest {
         val modes = ModeList(feed = released, folders = listOf(LibraryEntry.Folder("/dev/arena", FolderRead.Read(folder)), LibraryEntry.Folder("/dev/broken", FolderRead.BadListing)))
         val view = libraryView(modes, ModeFilter(), today)
         assertEquals(listOf("mode:bebop-wars", "folder:/dev/arena"), view.shown.map { it.key })
-        assertTrue(view.shown.last().hosted.folder)
+        assertTrue(view.shown.last().folder)
         assertEquals(2, view.installed.count)
     }
 
@@ -188,11 +165,11 @@ class LibraryTest {
     @Test
     fun aCardCarriesOneBadgeTheMostPressing() {
         val record = InstalledMode(bebop, 1, null)
-        assertEquals(ModeBadge.Update, ModeCard.Hostable("k", bebop, Install.Installed(record, arena), new = true, folder = false).badge)
-        assertEquals(ModeBadge.Installed, ModeCard.Hostable("k", bebop, Install.Updating(null), new = true, folder = false).badge, "a mode that is here is no longer news")
-        assertEquals(ModeBadge.New, ModeCard.Hostable("k", bebop, Install.NotInstalled, new = true, folder = false).badge)
-        assertNull(ModeCard.Hostable("k", bebop, Install.NotInstalled, new = false, folder = false).badge)
-        assertEquals(ModeBadge.Folder, ModeCard.Hostable("k", bebop, Install.NotInstalled, new = false, folder = true).badge)
+        assertEquals(ModeBadge.Update, ModeCard("k", bebop, Install.Installed(record, arena), new = true, folder = false).badge)
+        assertEquals(ModeBadge.Installed, ModeCard("k", bebop, Install.Updating(null), new = true, folder = false).badge, "a mode that is here is no longer news")
+        assertEquals(ModeBadge.New, ModeCard("k", bebop, Install.NotInstalled, new = true, folder = false).badge)
+        assertNull(ModeCard("k", bebop, Install.NotInstalled, new = false, folder = false).badge)
+        assertEquals(ModeBadge.Folder, ModeCard("k", bebop, Install.NotInstalled, new = false, folder = true).badge)
     }
 
     @Test

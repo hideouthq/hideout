@@ -24,7 +24,7 @@ Hideout is free software under the GPL. It's written in Kotlin with Compose Mult
 
 Host a mode on your PC and Hideout gives you a code like `P95-MAN-26D`, plus a link to paste in chat. When a friend opens it, Hideout downloads the mode for them and sends their Deadlock into your game. There's no Hideout account to make or log in to, and nobody types a console command.
 
-Your PC runs the server with [Modlock](https://github.com/paralin/modlock), and [Tailcat](https://github.com/tailscale/tailcat) connects your friends to it, so you don't forward any ports. The modes so far are Bebop Wars, Rooftop Rally and Pillars. Their source is in [hideouthq/custom-games](https://github.com/hideouthq/custom-games). Custom games are new and still being tested.
+Your PC runs the server with [Modlock](https://github.com/paralin/modlock), and [Tailcat](https://github.com/tailscale/tailcat) connects your friends to it, so you don't forward any ports. The modes so far are Bebop Wars, Rooftop Rally, Pillars and Shattered Arena. Their source is in [hideouthq/custom-games](https://github.com/hideouthq/custom-games). Custom games are new and still being tested.
 
 ## 3D previews before you install
 

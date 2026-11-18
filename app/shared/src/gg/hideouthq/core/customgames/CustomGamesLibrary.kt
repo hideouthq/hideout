@@ -15,23 +15,17 @@ sealed interface LibraryEntry {
     data class Folder(val path: String, val read: FolderRead) : LibraryEntry {
         override val key get() = "folder:$path"
     }
-
-    /** Announced by the feed, with nothing to host, install or join yet. */
-    data class Upcoming(val mode: UpcomingMode) : LibraryEntry {
-        override val key get() = "upcoming:${mode.id.value}"
-    }
 }
 
 /**
  * Every mode this player can see, local first: the feed's in its order, then installed modes it doesn't list, which
- * stay hostable with no network, then the feed's upcoming modes, then the player's folders. Each mode is [ModeList.hostable]'s, so every screen hosts
+ * stay hostable with no network, then the player's folders. Each mode is [ModeList.hostable]'s, so every screen hosts
  * the same version of it. Pure, over what [modes] holds.
  */
 fun library(modes: ModeList): List<LibraryEntry> {
     val ids = (modes.modes.map { it.id } + modes.installed.keys).distinct()
     val listed = ids.mapNotNull { id -> modes.hostable(id)?.let { LibraryEntry.Listed(it, modes.installOf(it), inFeed = modes.feed?.mode(id) != null) } }
-    val upcoming = modes.feed?.upcoming.orEmpty().filter { it.id !in modes.installed }.map { LibraryEntry.Upcoming(it) }
-    return listed + upcoming + modes.folders.orEmpty()
+    return listed + modes.folders.orEmpty()
 }
 
 /** A file that can't be read counts as no folders. */

@@ -38,13 +38,9 @@ value class GameRevision(val source: Long)
 
 data class Artifact(val url: String, val bytes: Long, val sha256: Sha256)
 
-/** [upcoming] are announced only: no id among them is also a mode's, so nothing finds one to host, install or join. */
-data class CustomGamesFeed(val sequence: Long, val runtime: ModeRuntime, val modes: List<Mode>, val upcoming: List<UpcomingMode> = emptyList()) {
+data class CustomGamesFeed(val sequence: Long, val runtime: ModeRuntime, val modes: List<Mode>) {
     fun mode(id: ModeId): Mode? = modes.firstOrNull { it.id == id }
 }
-
-/** A mode the feed announces before it ships: a listing with no version and no packages. */
-data class UpcomingMode(val id: ModeId, val listing: ModeListing)
 
 /** [cli] may lack an OS, which then cannot host, but always names at least one. */
 data class ModeRuntime(val cli: Map<DesktopOs, Artifact>, val host: Artifact, val platform: Artifact, val renderer: Artifact)
@@ -95,10 +91,9 @@ fun parseCustomGamesFeed(text: String): CustomGamesFeed? {
     if (wire.schema != SupportedSchema || wire.sequence <= 0) return null
     val runtime = parseRuntime(wire.runtime) ?: return null
     val modes = wire.modes.map { parseMode(it) ?: return null }
-    val upcoming = wire.upcoming.map { parseUpcoming(it) ?: return null }
-    val ids = modes.map { it.id } + upcoming.map { it.id }
+    val ids = modes.map { it.id }
     if (ids.distinct().size != ids.size) return null
-    return CustomGamesFeed(wire.sequence, runtime, modes, upcoming)
+    return CustomGamesFeed(wire.sequence, runtime, modes)
 }
 
 private fun parseRuntime(wire: WireRuntime): ModeRuntime? {
@@ -139,9 +134,6 @@ private fun parseMode(wire: WireMode): Mode? {
     return Mode(id, wire.version, listing, origin)
 }
 
-private fun parseUpcoming(wire: WireUpcoming): UpcomingMode? =
-    UpcomingMode(ModeId.parse(wire.id) ?: return null, parseUpcomingListing(wire.listing, ::feedArt) ?: return null)
-
 private fun feedArt(url: String): String? = url.takeIf { it.startsWith("https://") }
 
 private fun parseArtifact(wire: WireArtifact): Artifact? {
@@ -154,10 +146,7 @@ internal const val MaxArtifactBytes = 8L * 1024 * 1024 * 1024
 private val FeedJson = Json { ignoreUnknownKeys = true }
 
 @Serializable
-private data class WireFeed(val schema: Int, val sequence: Long, val runtime: WireRuntime, val modes: List<WireMode>, val upcoming: List<WireUpcoming> = emptyList())
-
-@Serializable
-private data class WireUpcoming(val id: String, val listing: JsonObject)
+private data class WireFeed(val schema: Int, val sequence: Long, val runtime: WireRuntime, val modes: List<WireMode>)
 
 @Serializable
 private data class WireRuntime(val cli: JsonObject, val host: WireArtifact, val platform: WireArtifact, val renderer: WireArtifact)

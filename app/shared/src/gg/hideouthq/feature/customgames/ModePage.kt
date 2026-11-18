@@ -135,7 +135,7 @@ private fun Gone(onBack: () -> Unit, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun Banner(card: ModeCard.Hostable, block: HostBlock?, onHost: () -> Unit, modifier: Modifier = Modifier) {
+private fun Banner(card: ModeCard, block: HostBlock?, onHost: () -> Unit, modifier: Modifier = Modifier) {
     val listing = card.mode.listing
     val art = listing.art
     Box(modifier.fillMaxWidth().height(320.dp)) {
@@ -161,7 +161,7 @@ private fun Banner(card: ModeCard.Hostable, block: HostBlock?, onHost: () -> Uni
 }
 
 @Composable
-private fun BoxScope.BannerText(card: ModeCard.Hostable, block: HostBlock?, onHost: () -> Unit) {
+private fun BoxScope.BannerText(card: ModeCard, block: HostBlock?, onHost: () -> Unit) {
     val listing = card.mode.listing
     val glass = HideoutTheme.colors
     Column(Modifier.align(Alignment.BottomStart).padding(start = 32.dp, bottom = 30.dp, end = 32.dp).widthIn(max = 470.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -199,7 +199,7 @@ private fun GlassChip(icon: ImageVector, text: String) {
 }
 
 @Composable
-private fun Body(card: ModeCard.Hostable, modal: WindowModal, modifier: Modifier = Modifier) {
+private fun Body(card: ModeCard, modal: WindowModal, modifier: Modifier = Modifier) {
     val listing = card.mode.listing
     Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.Top) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -330,7 +330,7 @@ private val StepIcon.vector: ImageVector
     }
 
 @Composable
-private fun Facts(card: ModeCard.Hostable, modifier: Modifier = Modifier) {
+private fun Facts(card: ModeCard, modifier: Modifier = Modifier) {
     val listing = card.mode.listing
     val settingsNote = stringResource(Res.string.cg_fact_settings_note)
     CgCard(modifier, gap = 0.dp) {
@@ -360,7 +360,7 @@ private fun Facts(card: ModeCard.Hostable, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun DownloadFact(card: ModeCard.Hostable) {
+private fun DownloadFact(card: ModeCard) {
     val key = stringResource(Res.string.cg_fact_download)
     when {
         card.folder -> Fact(stringResource(Res.string.cg_fact_folder), stringResource(Res.string.cg_badge_folder))

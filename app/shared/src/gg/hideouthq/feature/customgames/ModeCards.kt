@@ -12,7 +12,6 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -86,21 +85,20 @@ import kotlin.math.max
 fun ModeCardView(card: ModeCard, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val source = remember { MutableInteractionSource() }
     val states = source.collectInteractionStates()
-    val opens = card is ModeCard.Hostable
     val listing = card.listing
     val players = playersText(listing)
     val minutes = minutesText(listing, about = false)
     val label = listOfNotNull("${listing.name}.", listing.tagline.takeIf { it.isNotEmpty() }, listOfNotNull(players, minutes).joinToString(", ") + ".").joinToString(" ")
-    val target = if (opens) Modifier.semantics { contentDescription = label }.hideoutClickable(source, onClick = onClick) else Modifier.hoverable(source)
+    val target = Modifier.semantics { contentDescription = label }.hideoutClickable(source, onClick = onClick)
     if (LocalModCardStyle.current == ModCardStyle.UnderImage) {
-        UnderImageModeCard(card, players, minutes, states, opens, modifier.then(target))
+        UnderImageModeCard(card, players, minutes, states, modifier.then(target))
     } else {
-        OnImageModeCard(card, players, minutes, states, opens, modifier.then(target))
+        OnImageModeCard(card, players, minutes, states, modifier.then(target))
     }
 }
 
 @Composable
-private fun OnImageModeCard(card: ModeCard, players: String, minutes: String?, states: InteractionStates, opens: Boolean, modifier: Modifier) {
+private fun OnImageModeCard(card: ModeCard, players: String, minutes: String?, states: InteractionStates, modifier: Modifier) {
     val motion = HideoutTheme.motion
     val colors = HideoutTheme.colors
     val type = HideoutTheme.typography
@@ -109,7 +107,7 @@ private fun OnImageModeCard(card: ModeCard, players: String, minutes: String?, s
     val active = states.hovered || states.focusVisible
     val scale by animateFloatAsState(
         when {
-            !opens || !moves -> 1f
+            !moves -> 1f
             states.pressed -> HideoutMotion.PressScaleCard
             states.hovered -> HideoutMotion.HoverScaleCard
             else -> 1f
@@ -125,7 +123,7 @@ private fun OnImageModeCard(card: ModeCard, players: String, minutes: String?, s
             }
             .height(OnImageHeight)
             .clip(HideoutShapes.Card)
-            .then(if (opens) Modifier.focusRing(states.focusVisible, HideoutShapes.Card) else Modifier),
+            .focusRing(states.focusVisible, HideoutShapes.Card),
     ) {
         CardArt(card.id.value, listing.art, raised = states.hovered && moves, Modifier.fillMaxSize(), glyphTop = true)
         Box(
@@ -160,14 +158,14 @@ private fun OnImageModeCard(card: ModeCard, players: String, minutes: String?, s
 }
 
 @Composable
-private fun UnderImageModeCard(card: ModeCard, players: String, minutes: String?, states: InteractionStates, opens: Boolean, modifier: Modifier) {
+private fun UnderImageModeCard(card: ModeCard, players: String, minutes: String?, states: InteractionStates, modifier: Modifier) {
     val motion = HideoutTheme.motion
     val scheme = MaterialTheme.colorScheme
     val type = HideoutTheme.typography
     val moves = !motion.reduced
     val listing = card.listing
-    val scale by animateFloatAsState(if (opens && moves && states.pressed) HideoutMotion.PressScaleCard else 1f, motion.spatialFast(), label = "modeCardScale")
-    val ring by animateFloatAsState(if (opens && (states.hovered || states.focusVisible)) 1f else 0f, motion.effectsDefault(), label = "modeCardRing")
+    val scale by animateFloatAsState(if (moves && states.pressed) HideoutMotion.PressScaleCard else 1f, motion.spatialFast(), label = "modeCardScale")
+    val ring by animateFloatAsState(if (states.hovered || states.focusVisible) 1f else 0f, motion.effectsDefault(), label = "modeCardRing")
     Column(
         modifier.graphicsLayer {
             scaleX = scale
@@ -247,7 +245,6 @@ private fun ModeBadgeChip(badge: ModeBadge, modifier: Modifier = Modifier) {
         ModeBadge.Installed -> Res.string.cg_badge_installed to MaterialTheme.colorScheme.secondary
         ModeBadge.Update -> Res.string.cg_badge_update to MaterialTheme.colorScheme.primary
         ModeBadge.Folder -> Res.string.cg_badge_folder to MaterialTheme.colorScheme.primary
-        ModeBadge.ComingSoon -> Res.string.cg_badge_coming_soon to MaterialTheme.colorScheme.outline
     }
     GlassBadge(stringResource(text), modifier, dot = true, dotColor = dot)
 }

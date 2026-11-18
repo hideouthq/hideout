@@ -188,7 +188,7 @@ class BugReportTest {
             Available: yes, turned on
             Session: hosting on street, 2 players, guests 1 direct and 0 through the relay; this computer's game is in the match
             Game: hosting Bebop Wars (bebop-wars 0.1.0, from the list), started 2026-11-16T10:01:00Z
-            List: sequence 1, 1 mode, 3 upcoming, runtime Modlock linux $aaaa, windows $aaaa, host $aaaa, platform $aaaa, renderer $aaaa; the last read failed: unreachable, timed out
+            List: sequence 1, 1 mode, runtime Modlock linux $aaaa, windows $aaaa, host $aaaa, platform $aaaa, renderer $aaaa; the last read failed: unreachable, timed out
             - Installed: Bebop Wars (bebop-wars 0.0.9, from the list), 12.0 MB, last played never, version 0.1.0 available
             """,
         )

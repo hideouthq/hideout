@@ -7,7 +7,6 @@ import gg.hideouthq.core.customgames.Install
 import gg.hideouthq.core.customgames.InstalledMode
 import gg.hideouthq.core.customgames.LibraryEntry
 import gg.hideouthq.core.customgames.Mode
-import gg.hideouthq.core.customgames.ModeId
 import gg.hideouthq.core.customgames.ModeKind
 import gg.hideouthq.core.customgames.ModeList
 import gg.hideouthq.core.customgames.ModeListing
@@ -15,7 +14,6 @@ import gg.hideouthq.core.customgames.ModeSetting
 import gg.hideouthq.core.customgames.Session
 import gg.hideouthq.core.customgames.SettingValue
 import gg.hideouthq.core.customgames.Transfer
-import gg.hideouthq.core.customgames.UpcomingMode
 import gg.hideouthq.core.customgames.capacity
 import gg.hideouthq.core.customgames.library
 import java.time.LocalDate
@@ -31,20 +29,9 @@ enum class ModeSort { Featured, Newest }
 data class ModeFilter(val kind: ModeKind? = null, val sort: ModeSort = ModeSort.Featured, val query: String = "")
 
 /** [key] is the library entry's, so a folder and a feed mode of one id stay apart. */
-sealed interface ModeCard {
-    val key: String
-    val id: ModeId
-    val listing: ModeListing
-
-    data class Hostable(override val key: String, val mode: Mode, val install: Install, val new: Boolean, val folder: Boolean) : ModeCard {
-        override val id get() = mode.id
-        override val listing get() = mode.listing
-    }
-
-    data class ComingSoon(override val key: String, val mode: UpcomingMode) : ModeCard {
-        override val id get() = mode.id
-        override val listing get() = mode.listing
-    }
+data class ModeCard(val key: String, val mode: Mode, val install: Install, val new: Boolean, val folder: Boolean) {
+    val id get() = mode.id
+    val listing get() = mode.listing
 }
 
 data class KindCount(val kind: ModeKind?, val count: Int)
@@ -86,14 +73,13 @@ fun shelf(modes: ModeList, today: LocalDate): Pair<List<ModeCard>, Int> {
     return cards.take(ShelfSize) to cards.size
 }
 
-/** The card whose page [key] names. An upcoming mode has no page. */
-fun modeCard(modes: ModeList, key: String, today: LocalDate): ModeCard.Hostable? =
-    library(modes).firstOrNull { it.key == key }?.let { cardOf(it, today) } as? ModeCard.Hostable
+/** The card whose page [key] names. */
+fun modeCard(modes: ModeList, key: String, today: LocalDate): ModeCard? =
+    library(modes).firstOrNull { it.key == key }?.let { cardOf(it, today) }
 
 private fun cardOf(entry: LibraryEntry, today: LocalDate): ModeCard? = when (entry) {
-    is LibraryEntry.Listed -> ModeCard.Hostable(entry.key, entry.mode, entry.install, isNew(entry.mode.listing, today), folder = false)
-    is LibraryEntry.Folder -> (entry.read as? FolderRead.Read)?.let { ModeCard.Hostable(entry.key, it.mode, Install.NotInstalled, new = false, folder = true) }
-    is LibraryEntry.Upcoming -> ModeCard.ComingSoon(entry.key, entry.mode)
+    is LibraryEntry.Listed -> ModeCard(entry.key, entry.mode, entry.install, isNew(entry.mode.listing, today), folder = false)
+    is LibraryEntry.Folder -> (entry.read as? FolderRead.Read)?.let { ModeCard(entry.key, it.mode, Install.NotInstalled, new = false, folder = true) }
 }
 
 private fun ModeListing.matches(query: String): Boolean =
@@ -136,19 +122,16 @@ fun hostDialog(mode: Mode, download: Long?, choices: Choices): HostDialogView = 
     download = download,
 )
 
-enum class ModeBadge { New, Installed, Update, Folder, ComingSoon }
+enum class ModeBadge { New, Installed, Update, Folder }
 
 /** The one thing a card says about its mode, the most pressing: a waiting update before being installed, and New only for a mode not here yet. */
 val ModeCard.badge: ModeBadge?
-    get() = when (this) {
-        is ModeCard.ComingSoon -> ModeBadge.ComingSoon
-        is ModeCard.Hostable -> when {
-            folder -> ModeBadge.Folder
-            (install as? Install.Installed)?.update != null -> ModeBadge.Update
-            install !is Install.NotInstalled -> ModeBadge.Installed
-            new -> ModeBadge.New
-            else -> null
-        }
+    get() = when {
+        folder -> ModeBadge.Folder
+        (install as? Install.Installed)?.update != null -> ModeBadge.Update
+        install !is Install.NotInstalled -> ModeBadge.Installed
+        new -> ModeBadge.New
+        else -> null
     }
 
 /** Where an installed mode stands, most pressing first: a running update, then a failed one, then a dropped listing. */

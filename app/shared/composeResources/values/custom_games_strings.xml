@@ -36,7 +36,6 @@
     <string name="cg_badge_installed">Installed</string>
     <string name="cg_badge_update">Update</string>
     <string name="cg_badge_folder">Your folder</string>
-    <string name="cg_badge_coming_soon">Coming soon</string>
     <string name="cg_copy_details">Copy details for a bug report</string>
     <string name="cg_dismiss">Dismiss</string>
     <string name="cg_close">Close</string>

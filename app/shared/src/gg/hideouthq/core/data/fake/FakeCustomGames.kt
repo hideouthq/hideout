@@ -56,7 +56,6 @@ import gg.hideouthq.core.customgames.SharedPack
 import gg.hideouthq.core.customgames.StageResult
 import gg.hideouthq.core.customgames.StepIcon
 import gg.hideouthq.core.customgames.Transfer
-import gg.hideouthq.core.customgames.UpcomingMode
 import gg.hideouthq.core.customgames.download
 import gg.hideouthq.core.library.GameRoot
 import kotlinx.coroutines.CompletableDeferred
@@ -356,15 +355,6 @@ class FakeCustomGamesFeed(
             facts = listOf(ModeFact("To win", "First to 25", "Overtime if time runs out"), ModeFact("Arena", "The canal by the Curiosity Shop")),
         )
 
-        private fun upcoming(id: String, name: String, line: String, kind: ModeKind, players: IntRange) =
-            UpcomingMode(ModeId(id), ModeListing(name, line, line, players, listOf("Hideout team"), released = null, kind = kind, curated = true))
-
-        val Upcoming = listOf(
-            upcoming("heaven-or-else", "Heaven or Else", "Knock the other team off the platforms in the clouds. Every hit sends them flying.", ModeKind.Teams, 10..10),
-            upcoming("dodgeball", "Dodgeball", "One ball, and it's coming for you. Parry it at the right moment to send it on, faster every time. Miss and you're out.", ModeKind.FreeForAll, 2..12),
-            upcoming("hero-roulette", "Hero Roulette", "Every kill swaps your hero. First to twenty.", ModeKind.FreeForAll, 2..12),
-        )
-
         val BebopWars = Mode(
             ModeId("bebop-wars"),
             "0.1.0",
@@ -378,6 +368,6 @@ class FakeCustomGamesFeed(
             modes = listOf(SampleMode),
         )
 
-        val Placeholder = SampleModes.copy(modes = listOf(BebopWars), upcoming = Upcoming)
+        val Placeholder = SampleModes.copy(modes = listOf(BebopWars))
     }
 }

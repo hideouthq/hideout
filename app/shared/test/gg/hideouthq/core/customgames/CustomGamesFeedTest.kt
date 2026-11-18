@@ -38,38 +38,10 @@ class CustomGamesFeedTest {
     ) = """{"schema":$schema,"sequence":$sequence,"runtime":{"modlock":"$modlock","cli":$cli,"host":$host,"platform":$platform,"renderer":$renderer},"modes":[$modes]""" +
         (upcoming?.let { ""","upcoming":[$it]""" } ?: "") + "}"
 
-    private fun upcoming(id: String = "dodgeball", players: String = """{"min":2,"max":12}""") =
-        """{"id":"$id","listing":{"name":"Dodgeball","tagline":"One ball.","description":"One ball.","players":$players,"creators":["Hideout team"],"kind":"free-for-all"}}"""
-
     @Test
-    fun anUpcomingModeIsAListingThatNothingCanHostInstallOrJoin() {
-        val parsed = assertNotNull(parseCustomGamesFeed(feed(upcoming = upcoming())))
-        val dodgeball = parsed.upcoming.single()
-        assertEquals(ModeId("dodgeball"), dodgeball.id)
-        assertEquals("Dodgeball", dodgeball.listing.name)
-        assertNull(dodgeball.listing.released)
-        assertNull(parsed.mode(ModeId("dodgeball")), "no version and no packages, so it is no mode")
+    fun legacyAnnouncementsAreIgnored() {
+        val parsed = assertNotNull(parseCustomGamesFeed(feed(upcoming = """{"id":"placeholder"}""")))
         assertEquals(listOf(ModeId("arena")), parsed.modes.map { it.id })
-        val modes = ModeList(feed = parsed)
-        assertNull(modes.hostable(ModeId("dodgeball")))
-        assertNull(modes.shownFor(InviteOffer(null, ModeId("dodgeball"), OfferContent.Feed(Sha256.parse(hash)), Choices.None, 4)), "an invite naming it finds nothing to join")
-    }
-
-    @Test
-    fun aFeedWithoutUpcomingModesHasNone() {
-        assertEquals(emptyList(), assertNotNull(parseCustomGamesFeed(feed())).upcoming)
-    }
-
-    @Test
-    fun anUpcomingModeBreakingAListingRuleRefusesTheFeed() {
-        assertNull(parseCustomGamesFeed(feed(upcoming = upcoming(players = """{"min":2,"max":65}"""))))
-        assertNull(parseCustomGamesFeed(feed(upcoming = upcoming(id = "Not An Id"))))
-    }
-
-    @Test
-    fun anUpcomingModeCannotShareAnIdWithAModeOrAnother() {
-        assertNull(parseCustomGamesFeed(feed(upcoming = upcoming(id = "arena"))))
-        assertNull(parseCustomGamesFeed(feed(upcoming = upcoming() + "," + upcoming())))
     }
 
     @Test
