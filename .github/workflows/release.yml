@@ -102,7 +102,7 @@ jobs:
           $burn = "$env:RUNNER_TEMP\tools\wix-burn"
           dotnet tool install wix --version 5.0.2 --tool-path $burn
           if ($LASTEXITCODE) { throw 'could not install WiX Burn' }
-          & "$burn\wix.exe" extension add --global WixToolset.Bal.wixext/5.0.2
+          & "$burn\wix.exe" extension add --global WixToolset.BootstrapperApplications.wixext/5.0.2
           if ($LASTEXITCODE) { throw 'could not install the WiX bootstrapper extension' }
           $burn >> $env:GITHUB_PATH
       - uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0

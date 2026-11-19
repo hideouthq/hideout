@@ -11,7 +11,7 @@ internal fun bundle(settings: NativePackageSettings, msi: Path, work: Path, pack
     val source = work / "${settings.name}-Setup.wxs"
     source.writeText(bundleSource(settings, msi))
     val installer = packages / "${settings.name}-${settings.version}-Setup.exe"
-    runTool(listOf("wix.exe", "build", "-arch", "x64", "-ext", "WixToolset.Bal.wixext/5.0.2", "-out", installer.pathString, source.pathString))
+    runTool(listOf("wix.exe", "build", "-arch", "x64", "-ext", "WixToolset.BootstrapperApplications.wixext/5.0.2", "-out", installer.pathString, source.pathString))
     return installer
 }
 
