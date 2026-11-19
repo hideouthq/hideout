@@ -80,6 +80,40 @@ class PackageNativeTest {
     }
 
     @Test
+    fun theExeEmbedsTheMsiAndLeavesItsInstalledProductInChargeOfUpdatesAndUninstall() {
+        val installer = root / "Example-1.2.3.msi"
+        val document = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(bundleSource(settings, installer).byteInputStream())
+        val bundle = document.getElementsByTagName("Bundle").item(0) as Element
+        val msi = document.getElementsByTagName("MsiPackage").item(0) as Element
+        val ui = document.getElementsByTagName("bal:WixStandardBootstrapperApplication").item(0) as Element
+
+        assertEquals(upgradeUuid("com.example.app/setup").toString(), bundle.getAttribute("UpgradeCode"))
+        assertEquals(installer.toAbsolutePath().toString(), msi.getAttribute("SourceFile"))
+        assertEquals("yes", msi.getAttribute("Visible"))
+        assertEquals("yes", msi.getAttribute("Permanent"))
+        assertEquals("yes", msi.getAttribute("Compressed"))
+        assertEquals("keep", msi.getAttribute("Cache"))
+        assertEquals("", ui.getAttribute("LicenseUrl"))
+        assertEquals("[LocalAppDataFolder]Example\\Example.exe", ui.getAttribute("LaunchTarget"))
+    }
+
+    @Test
+    fun theExePreservesMetadataAndPathsContainingXmlCharacters() {
+        val configured = object : NativePackageSettings by settings {
+            override val vendor = "Example & \"Company\""
+            override val homepage = "https://example.com/?a=1&b=2"
+        }
+        val installer = root / "build & packages" / "Example.msi"
+        val document = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(bundleSource(configured, installer).byteInputStream())
+        val bundle = document.getElementsByTagName("Bundle").item(0) as Element
+        val msi = document.getElementsByTagName("MsiPackage").item(0) as Element
+
+        assertEquals(configured.vendor, bundle.getAttribute("Manufacturer"))
+        assertEquals(configured.homepage, bundle.getAttribute("AboutUrl"))
+        assertEquals(installer.toAbsolutePath().toString(), msi.getAttribute("SourceFile"))
+    }
+
+    @Test
     fun theWindowsExecutableNamesItsVersionPublisherAndIcon() {
         val script = windowsResourceScript(settings)
 

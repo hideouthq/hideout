@@ -14,14 +14,16 @@ import kotlin.io.path.relativeTo
 import kotlin.io.path.walk
 import kotlin.io.path.writeText
 
-internal fun msi(settings: NativePackageSettings, image: Path, work: Path, packages: Path) {
+internal fun msi(settings: NativePackageSettings, image: Path, work: Path, packages: Path): Path {
     work.createDirectories()
     val source = work / "${settings.name}.wxs"
     source.writeText(wixSource(settings, image, writePackageFormat(work, "msi")))
     val objects = work / "${settings.name}.wixobj"
     runTool(listOf("candle.exe", "-nologo", "-arch", "x64", "-out", objects.pathString, source.pathString))
     // ICE validation needs the Windows Installer service, which per-user builds and build machines may not have.
-    runTool(listOf("light.exe", "-nologo", "-sval", "-out", (packages / "${settings.name}-${settings.version}.msi").pathString, objects.pathString))
+    val installer = packages / "${settings.name}-${settings.version}.msi"
+    runTool(listOf("light.exe", "-nologo", "-sval", "-out", installer.pathString, objects.pathString))
+    return installer
 }
 
 /** Windows Installer replaces an older install with the same upgrade code, so it is derived from the id, which never changes. */

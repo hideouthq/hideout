@@ -69,7 +69,7 @@ plugins:
     id: gg.hideouthq.Hideout
     # core/customgames/Invite.kt reads the same scheme.
     urlScheme: hideout
-    version: 0.0.1
+    version: 0.1.0
     previewFile: ../../preview-build.properties
     description: Deadlock mod manager
     homepage: https://hideouthq.gg

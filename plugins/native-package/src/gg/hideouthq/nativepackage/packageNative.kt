@@ -27,7 +27,8 @@ fun packageNative(
     val main = checkNotNull(mainClass) { "Set settings.jvm.mainClass" }
     val packages = (outputDir / "package").createDirectories()
     if (System.getProperty("os.name").startsWith("Windows", ignoreCase = true)) {
-        msi(settings, image, outputDir / "msi", packages)
+        val installer = msi(settings, image, outputDir / "msi", packages)
+        bundle(settings, installer, outputDir / "bundle", packages)
     } else {
         appImage(settings, image, main, tools, outputDir / "appimage", packages)
         deb(settings, image, main, outputDir / "deb", packages)

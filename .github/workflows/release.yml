@@ -49,7 +49,7 @@ jobs:
           retention-days: 14
 
   msi:
-    name: MSI
+    name: Windows EXE and MSI
     runs-on: windows-2025
     permissions:
       contents: read
@@ -97,8 +97,16 @@ jobs:
           "GOTOOLCHAIN=local" >> $env:GITHUB_ENV
           "$tools\go\bin" >> $env:GITHUB_PATH
           "$tools\wix" >> $env:GITHUB_PATH
+      - name: WiX Burn 5.0.2
+        run: |
+          $burn = "$env:RUNNER_TEMP\tools\wix-burn"
+          dotnet tool install wix --version 5.0.2 --tool-path $burn
+          if ($LASTEXITCODE) { throw 'could not install WiX Burn' }
+          & "$burn\wix.exe" extension add --global WixToolset.Bal.wixext/5.0.2
+          if ($LASTEXITCODE) { throw 'could not install the WiX bootstrapper extension' }
+          $burn >> $env:GITHUB_PATH
       - uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
-      - name: Build the MSI
+      - name: Build the EXE and MSI
         env:
           HIDEOUT_BUILD_PREVIEW_URL: ${{ secrets.HIDEOUT_BUILD_PREVIEW_URL }}
           HIDEOUT_BUILD_PREVIEW_KEY: ${{ secrets.HIDEOUT_BUILD_PREVIEW_KEY }}
@@ -107,6 +115,15 @@ jobs:
           if (-not $env:HIDEOUT_BUILD_PREVIEW_URL -or -not $env:HIDEOUT_BUILD_PREVIEW_KEY) { throw 'the repository has no HIDEOUT_BUILD_PREVIEW_URL or HIDEOUT_BUILD_PREVIEW_KEY secret' }
           if (-not $env:HIDEOUT_BUILD_POSTHOG_KEY) { throw 'the repository has no HIDEOUT_BUILD_POSTHOG_KEY secret' }
           ./kotlin.bat do nativePackages -m desktopApp
+      - name: Check EXE installation and MSI updates
+        run: plugins/native-package/test/windows-installer.ps1
+      - if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-installer-logs
+          path: ${{ runner.temp }}/hideout-installer-check/*.log
+          if-no-files-found: ignore
+          retention-days: 14
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: msi
@@ -148,6 +165,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           mv feed/notes.md "$RUNNER_TEMP/notes.md"
-          assets=(packages/*.AppImage packages/*.deb packages/*.rpm packages/*.msi feed/*)
+          assets=(packages/*.AppImage packages/*.deb packages/*.rpm packages/*.msi packages/*-Setup.exe feed/*)
           gh release create "$GITHUB_REF_NAME" "${assets[@]}" --draft --title "Hideout $GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/notes.md" --repo "$GITHUB_REPOSITORY"
           diff <(basename -a "${assets[@]}" | sort) <(gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name' | sort)

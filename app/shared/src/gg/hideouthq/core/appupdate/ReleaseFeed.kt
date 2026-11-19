@@ -44,7 +44,6 @@ data class ReleasePackage(
 
 enum class ReleaseKind { Feature, Fixes }
 
-/** A headline card in What's new. [imageUrl] is null when the feed names none, or names one from anywhere but beside itself. */
 data class Highlight(val title: String, val text: String, val imageUrl: String?)
 
 data class ReleaseEntry(val area: String, val text: String)
@@ -133,13 +132,17 @@ private fun parsePackages(download: JsonObject, version: AppVersion): Map<Packag
 }
 
 private fun imageUrl(name: String?, feedUrl: String): String? {
-    if (name.isNullOrBlank() || name == "." || name == ".." || '/' in name || '\\' in name) return null
+    if (name == null) return null
+    if (name.startsWith(ReleaseArtBase)) return name.takeIf { ImageName.matches(it.removePrefix(ReleaseArtBase)) }
+    if (!ImageName.matches(name)) return null
     return feedUrl.substringBeforeLast('/') + "/" + name
 }
 
 private const val SupportedSchema = 1
 private const val MaxHighlights = 2
 private val Sha256Shape = Regex("[0-9a-f]{64}")
+private const val ReleaseArtBase = "https://hideouthq.gg/release-art/"
+private val ImageName = Regex("""[A-Za-z0-9@_+-]+(\.[A-Za-z0-9@_+-]+)*""")
 private val FeedJson = Json { ignoreUnknownKeys = true; explicitNulls = false }
 
 private inline fun <reified T> JsonElement.readAs(): T? = try {

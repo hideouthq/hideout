@@ -34,6 +34,7 @@ class Release(unittest.TestCase):
         self.module.write_text("dependencies:\n  - foo:\n    version: 9.9.9\nplugins:\n  native-package:\n    enabled: true\n    version: 1.4.0\n    name: Hideout\n")
         for size, name in enumerate(make_feed.package_files("1.4.0").values(), start=3):
             (self.packages / name).write_bytes(b"x" * size)
+        (self.packages / "Hideout-1.4.0-Setup.exe").write_bytes(b"setup")
         self.write_notes(entry())
 
     def write_notes(self, *versions, **top):
@@ -82,15 +83,17 @@ class FeedOutputTests(Release):
         self.assertEqual(0, self.run_full("--download-base", "http://127.0.0.1:8000/").returncode)
         self.assertEqual("http://127.0.0.1:8000/Hideout-1.4.0.msi", self.feed()["versions"][0]["download"]["msi"]["url"])
 
-    def test_every_listed_versions_art_is_copied_and_nothing_else(self):
+    def test_every_listed_versions_art_uses_the_website_without_release_assets(self):
         for name in ("1.4.0-a@2x.webp", "1.3.0-b@2x.webp", "unused.webp"):
             (self.notes / "art" / name).write_bytes(name.encode())
         self.write_notes(
             entry(highlights=[{"title": "A", "text": "Text.", "image": "1.4.0-a@2x.webp"}]),
             entry("1.3.0", highlights=[{"title": "B", "text": "Text.", "image": "1.3.0-b@2x.webp"}]))
         self.assertEqual(0, self.run_full().returncode)
-        self.assertEqual(["1.3.0-b@2x.webp", "1.4.0-a@2x.webp", "notes.md", "releases.json"], sorted(p.name for p in self.out.iterdir()))
-        self.assertEqual("1.4.0-a@2x.webp", self.feed()["versions"][0]["highlights"][0]["image"])
+        self.assertEqual(["notes.md", "releases.json"], sorted(p.name for p in self.out.iterdir()))
+        self.assertEqual(
+            ["https://hideouthq.gg/release-art/1.4.0-a@2x.webp", "https://hideouthq.gg/release-art/1.3.0-b@2x.webp"],
+            [version["highlights"][0]["image"] for version in self.feed()["versions"]])
 
     def test_notes_have_headings_in_order_area_items_and_inline_images(self):
         (self.notes / "art" / "a@2x.webp").write_bytes(b"a")
@@ -100,7 +103,7 @@ class FeedOutputTests(Release):
             improved=[{"area": "Stats", "text": "Ranks are faster."}]))
         self.assertEqual(0, self.run_full().returncode)
         self.assertEqual(
-            "### Skins\n\nSets of skins.\n\n![Skins](https://github.com/owner/name/releases/download/v1.4.0/a%402x.webp)\n\n"
+            "### Skins\n\nSets of skins.\n\n![Skins](https://hideouthq.gg/release-art/a@2x.webp)\n\n"
             "## New\n\n- **Library:** A thing.\n\n## Improved\n\n- **Stats:** Ranks are faster.\n\n## Fixed\n\n- **Install:** Installs no longer stop.\n",
             (self.out / "notes.md").read_text())
 
@@ -114,6 +117,7 @@ class FeedOutputTests(Release):
         self.module.write_text("plugins:\n  native-package:\n    version: 1.10.0\n")
         for name in make_feed.package_files("1.10.0").values():
             (self.packages / name).write_bytes(b"x")
+        (self.packages / "Hideout-1.10.0-Setup.exe").write_bytes(b"setup")
         self.assertEqual(0, self.run_full(version="1.10.0", tag="v1.10.0").returncode)
 
 
@@ -150,6 +154,13 @@ class RefusalTests(Release):
         (self.packages / name).unlink()
         self.assert_fails(self.run_full(), f"package {name} is missing")
 
+    def test_a_missing_or_empty_exe_installer(self):
+        name = "Hideout-1.4.0-Setup.exe"
+        (self.packages / name).write_bytes(b"")
+        self.assert_fails(self.run_full(), f"package {name} is empty")
+        (self.packages / name).unlink()
+        self.assert_fails(self.run_full(), f"package {name} is missing")
+
     def test_a_malformed_date(self):
         for bad in ("2026-13-01", "2026-02-30", "20261102", "2 Nov 2026", None):
             with self.subTest(date=bad):
@@ -162,7 +173,7 @@ class RefusalTests(Release):
     def test_highlights_on_a_fixes_release(self):
         self.assert_notes_refused("only a feature update", entry(kind="fixes", highlights=[{"title": "A", "text": "Text."}]))
 
-    def test_an_image_the_app_would_drop_or_github_would_rename(self):
+    def test_an_image_the_app_would_drop(self):
         for bad in ("art/a.webp", "https://example.test/a.webp", "a b.webp", "a~b.webp", "a#b.webp", ".a.webp", "a..webp", 7):
             with self.subTest(image=bad):
                 self.assert_notes_refused("must be a bare file name", entry(highlights=[{"title": "A", "text": "Text.", "image": bad}]))
@@ -171,8 +182,10 @@ class RefusalTests(Release):
         self.assert_notes_refused("image 'a.webp' is missing", entry(highlights=[{"title": "A", "text": "Text.", "image": "a.webp"}]))
 
     def test_an_image_named_like_a_release_file(self):
-        (self.notes / "art" / "releases.json").write_bytes(b"x")
-        self.assert_notes_refused("would collide", entry(highlights=[{"title": "A", "text": "Text.", "image": "releases.json"}]))
+        for name in ("releases.json", "Hideout-1.4.0-Setup.exe"):
+            with self.subTest(image=name):
+                (self.notes / "art" / name).write_bytes(b"x")
+                self.assert_notes_refused("would collide", entry(highlights=[{"title": "A", "text": "Text.", "image": name}]))
 
     def test_fields_make_feed_writes(self):
         self.assert_notes_refused("latest is written by make_feed", entry(), latest="1.4.0")

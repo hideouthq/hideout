@@ -199,13 +199,21 @@ class ReleaseFeedTest {
     }
 
     @Test
-    fun onlyBareImageNamesResolveAndOnlyBesideTheFeed() {
+    fun imagesResolveOnlyBesideTheFeedOrFromTheReleaseArtworkWebsite() {
         fun image(name: String): String? {
             val highlight = ""","highlights":[{"title":"T","text":"X","image":$name}]"""
             return assertNotNull(parse(feed("1.4.0", version("1.4.0", highlight)))).versions.single().highlights.single().imageUrl
         }
         assertEquals("https://github.com/hideouthq/hideout/releases/latest/download/a@2x.webp", image("\"a@2x.webp\""))
-        for (rejected in listOf("\"https://evil.test/a.webp\"", "\"art/a.webp\"", "\"../a.webp\"", "\"..\"", "\"a\\\\b.webp\"", "\"\"", "null")) {
+        assertEquals("https://hideouthq.gg/release-art/0.0.1-first-release@2x.webp", image("\"https://hideouthq.gg/release-art/0.0.1-first-release@2x.webp\""))
+        for (rejected in listOf(
+            "\"https://evil.test/a.webp\"", "\"art/a.webp\"", "\"../a.webp\"", "\"..\"", "\"a\\\\b.webp\"", "\"\"", "null",
+            "\"https://hideouthq.gg.evil.test/release-art/a.webp\"", "\"http://hideouthq.gg/release-art/a.webp\"",
+            "\"https://hideouthq.gg/release-art/../a.webp\"", "\"https://hideouthq.gg/release-art/a/b.webp\"",
+            "\"https://hideouthq.gg/release-art/a%2Fb.webp\"", "\"https://hideouthq.gg/release-art/a.webp?x=1\"",
+            "\"https://hideouthq.gg/release-art/a.webp#x\"", "\"https://hideouthq.gg/release-art/\"",
+            "\"a%2Fb.webp\"", "\"a.webp?x=1\"", "\"a..webp\"",
+        )) {
             assertNull(image(rejected), rejected)
         }
         val noImage = ""","highlights":[{"title":"T","text":"X"}]"""

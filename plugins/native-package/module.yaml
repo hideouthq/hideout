@@ -1,7 +1,7 @@
 product: jvm/amper-plugin
 
 description: |
-  Compiles a JVM desktop app with GraalVM native-image and packages the executable: an AppImage, DEB and RPM on Linux, and MSI on
+  Compiles a JVM desktop app with GraalVM native-image and packages the executable: an AppImage, DEB and RPM on Linux, and EXE and MSI on
   Windows. JAVA_HOME must point at GraalVM for the module's JDK version.
 
 apply:

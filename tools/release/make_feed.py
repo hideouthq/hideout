@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 """Turns release-notes/releases.json and a folder of packages into the files a GitHub release carries.
 
-Writes OUT/releases.json (the feed Hideout reads), OUT/notes.md (the release's Markdown) and every image the feed names.
+Writes OUT/releases.json (the feed Hideout reads) and OUT/notes.md (the release's Markdown).
 --check validates the tag, the version and the notes without any packages, so a mistake fails before the build starts.
 """
 import argparse
 import hashlib
 import json
 import re
-import shutil
 import sys
 from datetime import date
 from pathlib import Path
@@ -19,8 +18,8 @@ SCHEMA = 1
 MAX_HIGHLIGHTS = 2
 VERSION = re.compile(r"\d+\.\d+\.\d+")
 DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
-# GitHub renames an asset with any other character, and gh reads '#' as a label, so such a name would not resolve.
 IMAGE_NAME = re.compile(r"[A-Za-z0-9@_+-]+(\.[A-Za-z0-9@_+-]+)*")
+ART_BASE = "https://hideouthq.gg/release-art"
 AREAS = {"Discover", "Browse", "Library", "Profiles", "Stats", "Crosshairs", "Autoexec", "Game config", "Settings", "Setup",
          "Install", "Game", "General"}
 GROUPS = {"new": "New", "improved": "Improved", "fixed": "Fixed"}
@@ -53,10 +52,6 @@ def module_version(text):
     return None
 
 
-def image_names(source):
-    return [h["image"] for v in source["versions"] for h in v.get("highlights", []) if "image" in h]
-
-
 def text_field(holder, field):
     value = holder.get(field)
     return isinstance(value, str) and bool(value.strip())
@@ -77,7 +72,7 @@ def entry_problems(where, group, items):
 def image_problems(where, name, art):
     if not isinstance(name, str) or not IMAGE_NAME.fullmatch(name):
         return [f"{where}: image {name!r} must be a bare file name of letters, digits, '@', '_', '+', '-' and single dots"]
-    if name in FEED_FILES or name.endswith((".msi", ".AppImage", ".deb", ".rpm")):
+    if name in FEED_FILES or name.endswith((".msi", ".exe", ".AppImage", ".deb", ".rpm")):
         return [f"{where}: image {name!r} would collide with a release file"]
     if not (art / name).is_file():
         return [f"{where}: image {name!r} is missing from {art}"]
@@ -175,7 +170,7 @@ def release_problems(version, tag, module_path):
 
 def package_problems(packages, version):
     problems = []
-    for name in package_files(version).values():
+    for name in [*package_files(version).values(), f"Hideout-{version}-Setup.exe"]:
         path = packages / name
         if not path.is_file():
             problems.append(f"package {name} is missing from {packages}")
@@ -206,16 +201,21 @@ def feed(source, version, repo, download):
         if entry["version"] == version:
             written["download"] = download
         written.update({field: entry[field] for field in entry if field not in written})
+        if "highlights" in entry:
+            written["highlights"] = [
+                {**highlight, **({"image": f"{ART_BASE}/{highlight['image']}"} if "image" in highlight else {})}
+                for highlight in entry["highlights"]
+            ]
         versions.append(written)
     return {"schema": SCHEMA, "latest": version, "notesUrl": f"https://github.com/{repo}/releases", "versions": versions}
 
 
-def notes_markdown(entry, base):
+def notes_markdown(entry):
     parts = []
     for highlight in entry.get("highlights", []):
         parts += [f"### {highlight['title']}", highlight["text"]]
         if "image" in highlight:
-            parts.append(f"![{highlight['title']}]({base}/{quote(highlight['image'])})")
+            parts.append(f"![{highlight['title']}]({ART_BASE}/{highlight['image']})")
     for group, heading in GROUPS.items():
         if entry.get(group):
             parts += [f"## {heading}", "\n".join(f"- **{item['area']}:** {item['text']}" for item in entry[group])]
@@ -236,10 +236,8 @@ def write_release(source, args):
     out = Path(args.out)
     base = (args.download_base or f"https://github.com/{args.repo}/releases/download/{args.tag}").rstrip("/")
     out.mkdir(parents=True, exist_ok=True)
-    for name in set(image_names(source)):
-        shutil.copyfile(Path(args.notes) / "art" / name, out / name)
     entry = next(entry for entry in source["versions"] if entry["version"] == args.version)
-    (out / "notes.md").write_text(notes_markdown(entry, base), encoding="utf-8")
+    (out / "notes.md").write_text(notes_markdown(entry), encoding="utf-8")
     document = feed(source, args.version, args.repo, download_block(Path(args.packages), args.version, base))
     (out / "releases.json").write_text(json.dumps(document, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
@@ -253,7 +251,7 @@ def parse_args(argv):
     parser.add_argument("--packages", help="the folder with the built packages")
     parser.add_argument("--out", help="an empty or new folder for the release's files")
     parser.add_argument("--module", default=str(ROOT / "app/desktopApp/module.yaml"), help="the module.yaml that declares the version")
-    parser.add_argument("--download-base", help="where the packages and images are served, for a local test feed")
+    parser.add_argument("--download-base", help="where the packages are served, for a local test feed")
     parser.add_argument("--check", action="store_true", help="only validate the tag, the version and the notes")
     args = parser.parse_args(argv)
     if not args.check and not (args.repo and args.packages and args.out):
