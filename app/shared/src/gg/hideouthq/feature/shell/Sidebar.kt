@@ -45,7 +45,7 @@ import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
-const val DiscordInvite = "https://discord.com/invite/deadlockgame"
+const val DiscordInvite = "https://discord.gg/369ndAKXmr"
 
 @Composable
 fun Sidebar(

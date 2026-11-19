@@ -6,11 +6,9 @@
 
 **Mods and custom games for Deadlock, on Windows and Linux.**
 
-[![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-2F8F5B?style=flat-square)](LICENSE) [![Runs on Windows and Linux](https://img.shields.io/badge/runs_on-Windows_%7C_Linux-F1DFB8?style=flat-square)](#download) [![Website: hideouthq.gg](https://img.shields.io/badge/site-hideouthq.gg-7FE3D0?style=flat-square)](https://hideouthq.gg)
+[![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-2F8F5B?style=flat-square)](LICENSE) [![Runs on Windows and Linux](https://img.shields.io/badge/runs_on-Windows_%7C_Linux-F1DFB8?style=flat-square)](#download) [![Website: hideouthq.gg](https://img.shields.io/badge/site-hideouthq.gg-7FE3D0?style=flat-square)](https://hideouthq.gg) [![Discord](https://img.shields.io/badge/Discord-5865F2?style=flat-square&logo=discord&logoColor=white)](https://discord.gg/369ndAKXmr)
 
 [Website](https://hideouthq.gg) · [Custom games](https://hideouthq.gg/custom-games) · [Switching from another manager](https://hideouthq.gg/switch) · [Report a bug](https://github.com/hideouthq/hideout/issues)
-
-<!-- TODO: add the Discord invite to the row above once there is a public one. -->
 
 </div>
 
@@ -64,7 +62,7 @@ Hideout takes over the mod files already in your game instead of downloading the
 
 <img align="right" src="docs/readme/helper-penguin.webp" width="170" alt="A Lil Helper standing next to a penguin">
 
-There's no public release yet. Until then, you can [build Hideout from source](#build-from-source).
+Download Hideout for [Windows](https://github.com/hideouthq/hideout/releases/download/v0.1.0/Hideout-0.1.0-Setup.exe) or [Linux](https://github.com/hideouthq/hideout/releases/tag/v0.1.0).
 
 > [!WARNING]
 > **Windows gets less testing than Linux.**
