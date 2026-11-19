@@ -105,7 +105,7 @@
             <ImageControl X="1" Y="1" Width="237" Height="338" ImageId="ArtWelcome" />
             <ImageControl X="264" Y="78" Width="272" Height="56" ImageId="HeadWelcome" />
             <Label X="264" Y="140" Width="268" Height="176" FontId="Body" DisablePrefix="yes">#(loc.HelpText)</Label>
-            <Button X="518" Y="6" Width="36" Height="32" TabStop="yes" FontId="Text" Name="HelpCloseButton">
+            <Button X="518" Y="6" Width="36" Height="32" TabStop="yes" FontId="Text" Name="HelpDismissButton">
                 <ButtonImage ImageId="CloseN" />
                 <ButtonHoverImage ImageId="CloseH" />
                 <ButtonSelectedImage ImageId="CloseP" />
@@ -198,7 +198,7 @@
                 <ButtonSelectedImage ImageId="P164P" />
                 <ButtonFocusImage ImageId="P164F" />
             </Button>
-            <Button X="518" Y="6" Width="36" Height="32" TabStop="yes" FontId="Text" Name="SuccessCloseButton">
+            <Button X="518" Y="6" Width="36" Height="32" TabStop="yes" FontId="Text" Name="SuccessDismissButton">
                 <ButtonImage ImageId="CloseN" />
                 <ButtonHoverImage ImageId="CloseH" />
                 <ButtonSelectedImage ImageId="CloseP" />
