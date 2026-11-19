@@ -69,6 +69,10 @@ Download Hideout for [Windows](https://github.com/hideouthq/hideout/releases/dow
 >
 > I'm mostly on Linux, so that's where Hideout gets tried first. For Windows, I test most things in a Windows VM, or a friend of mine who plays on Windows tries them. A VM isn't a real gaming PC, so some Windows bugs can still get past me. If you hit one, [open an issue](https://github.com/hideouthq/hideout/issues) and say which version of Windows you're on.
 
+## AI assistance
+
+I use a mix of local and cloud AI models to help develop Hideout, including implementation and code reviews. I also use AI extensively to write and run tests on Linux and in a Windows VM. Checks on other Linux distributions include installation and startup tests in containers.
+
 ## Build from source
 
 The checked-in `kotlin` wrapper downloads the Kotlin toolchain and the JDK, so there's no Gradle to set up.
