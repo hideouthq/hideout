@@ -42,6 +42,8 @@ interface NativePackageSettings {
     /** The ICO the MSI, its shortcuts and the Windows launcher show, holding each size Windows picks from. */
     val windowsIcon: Path
 
+    val windowsInstallerTheme: Path
+
     /** Options every native-image build gets, such as the garbage collector and build-time initialization. */
     val imageOptions: List<String>
 

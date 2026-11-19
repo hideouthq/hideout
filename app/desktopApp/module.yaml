@@ -76,6 +76,7 @@ plugins:
     vendor: Hideout
     linuxIcon: icons/hideout-512.png
     windowsIcon: icons/hideout.ico
+    windowsInstallerTheme: installer/theme.xml
     debDependencies: [libc6, libstdc++6, zlib1g, libasound2, libfontconfig1, libfreetype6, libgl1, libx11-6, libxext6, libxi6, libxrender1, libxtst6]
     noticeIndex: ../shared/composeResources/files/licenses/index.tsv
     linkHelper: ../../tools/link

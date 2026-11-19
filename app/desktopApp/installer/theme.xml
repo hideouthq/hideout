@@ -1,0 +1,241 @@
+<?xml version='1.0' encoding='utf-8'?>
+<Theme xmlns="http://wixtoolset.org/schemas/v4/thmutil" ImageFile="window-base-sprite.png">
+    <Font Id="Body" Height="-14" Weight="400" Foreground="CAC5CB" Background="210E10">Segoe UI</Font>
+    <Font Id="Status" Height="-13" Weight="400" Foreground="CAC5CB" Background="210E10">Segoe UI</Font>
+    <Font Id="Quiet" Height="-12" Weight="400" Foreground="BAA2A7" Background="210E10">Segoe UI</Font>
+    <Font Id="Percent" Height="-13" Weight="400" Foreground="BAA2A7" Background="210E10">Segoe UI</Font>
+    <Font Id="Link" Height="-13" Weight="400" Foreground="D0E37F" Background="210E10">Segoe UI</Font>
+    <Font Id="Primary" Height="-14" Weight="600" Foreground="1A191A">Segoe UI</Font>
+    <Font Id="Text" Height="-14" Weight="600" Foreground="CAC5CB">Segoe UI</Font>
+    <Font Id="TextHover" Height="-14" Weight="600" Foreground="E1E1E6">Segoe UI</Font>
+    <Image Id="ArtWelcome" ImageFile="art-welcome.png">
+        <AlternateResolution ImageFile="art-welcome@2x.png" />
+    </Image>
+    <Image Id="ArtProgress" ImageFile="art-progress.png">
+        <AlternateResolution ImageFile="art-progress@2x.png" />
+    </Image>
+    <Image Id="ArtDone" ImageFile="art-done.png">
+        <AlternateResolution ImageFile="art-done@2x.png" />
+    </Image>
+    <Image Id="ArtFailure" ImageFile="art-failure.png">
+        <AlternateResolution ImageFile="art-failure@2x.png" />
+    </Image>
+    <Image Id="HeadWelcome" ImageFile="headline-welcome.png">
+        <AlternateResolution ImageFile="headline-welcome@2x.png" />
+    </Image>
+    <Image Id="HeadProgress" ImageFile="headline-progress.png">
+        <AlternateResolution ImageFile="headline-progress@2x.png" />
+    </Image>
+    <Image Id="HeadDone" ImageFile="headline-done.png">
+        <AlternateResolution ImageFile="headline-done@2x.png" />
+    </Image>
+    <Image Id="HeadFailure" ImageFile="headline-failure.png">
+        <AlternateResolution ImageFile="headline-failure@2x.png" />
+    </Image>
+    <Image Id="CloseN" ImageFile="close-normal.png">
+        <AlternateResolution ImageFile="close-normal@2x.png" />
+    </Image>
+    <Image Id="CloseH" ImageFile="close-hover.png">
+        <AlternateResolution ImageFile="close-hover@2x.png" />
+    </Image>
+    <Image Id="CloseP" ImageFile="close-pressed.png">
+        <AlternateResolution ImageFile="close-pressed@2x.png" />
+    </Image>
+    <Image Id="CloseF" ImageFile="close-focus.png">
+        <AlternateResolution ImageFile="close-focus@2x.png" />
+    </Image>
+    <Image Id="P164N" ImageFile="primary-164-normal.png">
+        <AlternateResolution ImageFile="primary-164-normal@2x.png" />
+    </Image>
+    <Image Id="P164H" ImageFile="primary-164-hover.png">
+        <AlternateResolution ImageFile="primary-164-hover@2x.png" />
+    </Image>
+    <Image Id="P164P" ImageFile="primary-164-pressed.png">
+        <AlternateResolution ImageFile="primary-164-pressed@2x.png" />
+    </Image>
+    <Image Id="P164F" ImageFile="primary-164-focus.png">
+        <AlternateResolution ImageFile="primary-164-focus@2x.png" />
+    </Image>
+    <Image Id="P150N" ImageFile="primary-150-normal.png">
+        <AlternateResolution ImageFile="primary-150-normal@2x.png" />
+    </Image>
+    <Image Id="P150H" ImageFile="primary-150-hover.png">
+        <AlternateResolution ImageFile="primary-150-hover@2x.png" />
+    </Image>
+    <Image Id="P150P" ImageFile="primary-150-pressed.png">
+        <AlternateResolution ImageFile="primary-150-pressed@2x.png" />
+    </Image>
+    <Image Id="P150F" ImageFile="primary-150-focus.png">
+        <AlternateResolution ImageFile="primary-150-focus@2x.png" />
+    </Image>
+    <Image Id="P104N" ImageFile="primary-104-normal.png">
+        <AlternateResolution ImageFile="primary-104-normal@2x.png" />
+    </Image>
+    <Image Id="P104H" ImageFile="primary-104-hover.png">
+        <AlternateResolution ImageFile="primary-104-hover@2x.png" />
+    </Image>
+    <Image Id="P104P" ImageFile="primary-104-pressed.png">
+        <AlternateResolution ImageFile="primary-104-pressed@2x.png" />
+    </Image>
+    <Image Id="P104F" ImageFile="primary-104-focus.png">
+        <AlternateResolution ImageFile="primary-104-focus@2x.png" />
+    </Image>
+    <Image Id="T88N" ImageFile="text-88-normal.png">
+        <AlternateResolution ImageFile="text-88-normal@2x.png" />
+    </Image>
+    <Image Id="T88H" ImageFile="text-88-hover.png">
+        <AlternateResolution ImageFile="text-88-hover@2x.png" />
+    </Image>
+    <Image Id="T88P" ImageFile="text-88-pressed.png">
+        <AlternateResolution ImageFile="text-88-pressed@2x.png" />
+    </Image>
+    <Image Id="T88F" ImageFile="text-88-focus.png">
+        <AlternateResolution ImageFile="text-88-focus@2x.png" />
+    </Image>
+    <Image Id="Bar" ImageFile="progress-strip.png">
+        <AlternateResolution ImageFile="progress-strip@2x.png" />
+    </Image>
+    <Window Width="560" Height="340" HexStyle="90020000" SourceX="0" SourceY="0" FontId="Body" IconFile="hideout.ico" Caption="Hideout Setup">
+        <Page Name="Loading">
+            <ImageControl X="1" Y="1" Width="237" Height="338" ImageId="ArtWelcome" />
+            <ImageControl X="264" Y="78" Width="272" Height="56" ImageId="HeadWelcome" />
+            <Label X="264" Y="146" Width="268" Height="40" FontId="Body" DisablePrefix="yes">Getting setup ready…</Label>
+        </Page>
+        <Page Name="Help">
+            <ImageControl X="1" Y="1" Width="237" Height="338" ImageId="ArtWelcome" />
+            <ImageControl X="264" Y="78" Width="272" Height="56" ImageId="HeadWelcome" />
+            <Label X="264" Y="140" Width="268" Height="176" FontId="Body" DisablePrefix="yes">#(loc.HelpText)</Label>
+            <Button X="518" Y="6" Width="36" Height="32" TabStop="yes" FontId="Text" Name="HelpCloseButton">
+                <ButtonImage ImageId="CloseN" />
+                <ButtonHoverImage ImageId="CloseH" />
+                <ButtonSelectedImage ImageId="CloseP" />
+                <ButtonFocusImage ImageId="CloseF" />
+                <CloseWindowAction />
+                <Tooltip>Close</Tooltip>
+            </Button>
+        </Page>
+        <Page Name="Install">
+            <ImageControl X="1" Y="1" Width="237" Height="338" ImageId="ArtWelcome" />
+            <ImageControl X="264" Y="78" Width="272" Height="56" ImageId="HeadWelcome" />
+            <Label X="264" Y="146" Width="268" Height="60" FontId="Body" DisablePrefix="yes">Installs just for you. No admin prompt, and updates arrive on their own.</Label>
+            <Label X="264" Y="287" Width="110" Height="18" FontId="Quiet" DisablePrefix="yes">Version [WixBundleVersion]</Label>
+            <Button Name="InstallButton" X="376" Y="272" Width="164" Height="48" TabStop="yes" FontId="Primary" HoverFontId="Primary" SelectedFontId="Primary">
+                <Text>Install Hideout</Text>
+                <ButtonImage ImageId="P164N" />
+                <ButtonHoverImage ImageId="P164H" />
+                <ButtonSelectedImage ImageId="P164P" />
+                <ButtonFocusImage ImageId="P164F" />
+            </Button>
+            <Button X="518" Y="6" Width="36" Height="32" TabStop="yes" FontId="Text" Name="InstallCloseButton">
+                <ButtonImage ImageId="CloseN" />
+                <ButtonHoverImage ImageId="CloseH" />
+                <ButtonSelectedImage ImageId="CloseP" />
+                <ButtonFocusImage ImageId="CloseF" />
+                <CloseWindowAction />
+                <Tooltip>Close</Tooltip>
+            </Button>
+        </Page>
+        <Page Name="Progress">
+            <ImageControl X="1" Y="1" Width="237" Height="338" ImageId="ArtProgress" />
+            <ImageControl X="264" Y="78" Width="272" Height="56" ImageId="HeadProgress" />
+            <Label X="264" Y="160" Width="200" Height="20" FontId="Status" DisablePrefix="yes">Installing Hideout</Label>
+            <Label Name="OverallProgressText" X="500" Y="160" Width="36" Height="20" FontId="Percent" DisablePrefix="yes" />
+            <Progressbar Name="OverallCalculatedProgressbar" X="264" Y="188" Width="272" Height="6">
+                <ProgressbarImage ImageId="Bar" />
+            </Progressbar>
+            <Button Name="ProgressCancelButton" X="451" Y="276" Width="88" Height="38" TabStop="yes" FontId="Text" HoverFontId="TextHover" SelectedFontId="TextHover">
+                <Text>Cancel</Text>
+                <ButtonImage ImageId="T88N" />
+                <ButtonHoverImage ImageId="T88H" />
+                <ButtonSelectedImage ImageId="T88P" />
+                <ButtonFocusImage ImageId="T88F" />
+            </Button>
+            <Button X="518" Y="6" Width="36" Height="32" TabStop="yes" FontId="Text" Name="ProgressCloseButton">
+                <ButtonImage ImageId="CloseN" />
+                <ButtonHoverImage ImageId="CloseH" />
+                <ButtonSelectedImage ImageId="CloseP" />
+                <ButtonFocusImage ImageId="CloseF" />
+                <CloseWindowAction />
+                <Tooltip>Close</Tooltip>
+            </Button>
+        </Page>
+        <Page Name="Modify">
+            <ImageControl X="1" Y="1" Width="237" Height="338" ImageId="ArtWelcome" />
+            <ImageControl X="264" Y="78" Width="272" Height="56" ImageId="HeadWelcome" />
+            <Label X="264" Y="146" Width="268" Height="80" FontId="Body" DisablePrefix="yes">Repair your Hideout installation. To uninstall, open Apps in Windows Settings.</Label>
+            <Button Name="RepairButton" X="376" Y="272" Width="164" Height="48" TabStop="yes" FontId="Primary" HoverFontId="Primary" SelectedFontId="Primary" HideWhenDisabled="yes">
+                <Text>Repair Hideout</Text>
+                <ButtonImage ImageId="P164N" />
+                <ButtonHoverImage ImageId="P164H" />
+                <ButtonSelectedImage ImageId="P164P" />
+                <ButtonFocusImage ImageId="P164F" />
+            </Button>
+            <Button X="518" Y="6" Width="36" Height="32" TabStop="yes" FontId="Text" Name="ModifyCloseButton">
+                <ButtonImage ImageId="CloseN" />
+                <ButtonHoverImage ImageId="CloseH" />
+                <ButtonSelectedImage ImageId="CloseP" />
+                <ButtonFocusImage ImageId="CloseF" />
+                <CloseWindowAction />
+                <Tooltip>Close</Tooltip>
+            </Button>
+        </Page>
+        <Page Name="Success">
+            <ImageControl X="1" Y="1" Width="237" Height="338" ImageId="ArtDone" />
+            <ImageControl X="264" Y="78" Width="272" Height="56" ImageId="HeadDone" />
+            <Label X="264" Y="146" Width="268" Height="40" FontId="Body" DisablePrefix="yes">Hideout is in your Start menu and keeps itself up to date.</Label>
+            <Button Name="LaunchButton" X="390" Y="272" Width="150" Height="48" TabStop="yes" FontId="Primary" HoverFontId="Primary" SelectedFontId="Primary" HideWhenDisabled="yes">
+                <Text>Open Hideout</Text>
+                <ButtonImage ImageId="P150N" />
+                <ButtonHoverImage ImageId="P150H" />
+                <ButtonSelectedImage ImageId="P150P" />
+                <ButtonFocusImage ImageId="P150F" />
+            </Button>
+            <Label X="264" Y="244" Width="268" Height="20" FontId="Quiet" DisablePrefix="yes" VisibleCondition="WixStdBARestartRequired">Restart Windows to finish setup.</Label>
+            <Button Name="SuccessRestartButton" X="376" Y="272" Width="164" Height="48" TabStop="yes" FontId="Primary" HoverFontId="Primary" SelectedFontId="Primary" HideWhenDisabled="yes">
+                <Text>Restart Windows</Text>
+                <ButtonImage ImageId="P164N" />
+                <ButtonHoverImage ImageId="P164H" />
+                <ButtonSelectedImage ImageId="P164P" />
+                <ButtonFocusImage ImageId="P164F" />
+            </Button>
+            <Button X="518" Y="6" Width="36" Height="32" TabStop="yes" FontId="Text" Name="SuccessCloseButton">
+                <ButtonImage ImageId="CloseN" />
+                <ButtonHoverImage ImageId="CloseH" />
+                <ButtonSelectedImage ImageId="CloseP" />
+                <ButtonFocusImage ImageId="CloseF" />
+                <CloseWindowAction />
+                <Tooltip>Close</Tooltip>
+            </Button>
+        </Page>
+        <Page Name="Failure">
+            <ImageControl X="1" Y="1" Width="237" Height="338" ImageId="ArtFailure" />
+            <ImageControl X="264" Y="78" Width="272" Height="56" ImageId="HeadFailure" />
+            <Label X="264" Y="146" Width="268" Height="40" FontId="Body" DisablePrefix="yes">Hideout wasn’t installed. The setup log says what went wrong.</Label>
+            <Hypertext Name="FailureMessageText" X="264" Y="194" Width="268" Height="48" FontId="Status" TabStop="yes" HideWhenDisabled="yes" />
+            <Hypertext Name="FailureLogFileLink" X="264" Y="247" Width="150" Height="18" FontId="Link" TabStop="yes" HideWhenDisabled="yes">&lt;a href="#"&gt;Open setup log&lt;/a&gt;</Hypertext>
+            <Button Name="FailureCloseButton" X="436" Y="272" Width="104" Height="48" TabStop="yes" FontId="Primary" HoverFontId="Primary" SelectedFontId="Primary">
+                <Text>Close</Text>
+                <ButtonImage ImageId="P104N" />
+                <ButtonHoverImage ImageId="P104H" />
+                <ButtonSelectedImage ImageId="P104P" />
+                <ButtonFocusImage ImageId="P104F" />
+                <CloseWindowAction />
+            </Button>
+            <Button Name="FailureRestartButton" X="264" Y="272" Width="164" Height="48" TabStop="yes" FontId="Primary" HoverFontId="Primary" SelectedFontId="Primary" HideWhenDisabled="yes">
+                <Text>Restart Windows</Text>
+                <ButtonImage ImageId="P164N" />
+                <ButtonHoverImage ImageId="P164H" />
+                <ButtonSelectedImage ImageId="P164P" />
+                <ButtonFocusImage ImageId="P164F" />
+            </Button>
+            <Button X="518" Y="6" Width="36" Height="32" TabStop="yes" FontId="Text" Name="FailureDismissButton">
+                <ButtonImage ImageId="CloseN" />
+                <ButtonHoverImage ImageId="CloseH" />
+                <ButtonSelectedImage ImageId="CloseP" />
+                <ButtonFocusImage ImageId="CloseF" />
+                <CloseWindowAction />
+                <Tooltip>Close</Tooltip>
+            </Button>
+        </Page>
+    </Window>
+</Theme>

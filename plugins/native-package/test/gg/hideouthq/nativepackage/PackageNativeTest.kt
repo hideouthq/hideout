@@ -82,6 +82,8 @@ class PackageNativeTest {
     @Test
     fun theExeEmbedsTheMsiAndLeavesItsInstalledProductInChargeOfUpdatesAndUninstall() {
         val installer = root / "Example-1.2.3.msi"
+        settings.windowsInstallerTheme.writeText("theme")
+        (settings.windowsInstallerTheme.parent / "art & mascot.png").writeText("art")
         val document = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(bundleSource(settings, installer).byteInputStream())
         val bundle = document.getElementsByTagName("Bundle").item(0) as Element
         val msi = document.getElementsByTagName("MsiPackage").item(0) as Element
@@ -94,6 +96,10 @@ class PackageNativeTest {
         assertEquals("yes", msi.getAttribute("Compressed"))
         assertEquals("keep", msi.getAttribute("Cache"))
         assertEquals("", ui.getAttribute("LicenseUrl"))
+        assertEquals(settings.windowsInstallerTheme.toAbsolutePath().toString(), ui.getAttribute("ThemeFile"))
+        val payloads = document.getElementsByTagName("Payload")
+        assertEquals(1, payloads.length)
+        assertEquals((settings.windowsInstallerTheme.parent / "art & mascot.png").toAbsolutePath().toString(), (payloads.item(0) as Element).getAttribute("SourceFile"))
         assertEquals("[LocalAppDataFolder]Example\\Example.exe", ui.getAttribute("LaunchTarget"))
     }
 
@@ -239,6 +245,7 @@ internal fun testSettings(root: Path) = object : NativePackageSettings {
     override val vendor = "Example Vendor"
     override val linuxIcon = root / "example.png"
     override val windowsIcon = root / "example.ico"
+    override val windowsInstallerTheme = (root / "installer").createDirectories() / "theme.xml"
     override val imageOptions = listOf("-Ob")
     override val windowsImageOptions = listOf("--windows-only")
     override val pgoProfile = root / "example.iprof.gz"
