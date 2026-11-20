@@ -17,10 +17,10 @@ import gg.hideouthq.core.library.InstalledSource
 import gg.hideouthq.core.library.LoadPosition
 import gg.hideouthq.core.library.ManifestRecord
 import gg.hideouthq.core.library.ModIdentity
-import gg.hideouthq.core.library.PakNumber
 import gg.hideouthq.core.library.Placement
 import gg.hideouthq.core.library.SetFile
 import gg.hideouthq.core.library.SetOrigin
+import gg.hideouthq.core.library.Slot
 import gg.hideouthq.core.library.SubmissionIdentity
 import gg.hideouthq.core.library.SubmissionKind
 import gg.hideouthq.core.library.VpkPart
@@ -48,7 +48,7 @@ class AssessTest {
         GameSurvey(root, mounts.map(::CitadelPath), sets.toList(), emptyMap(), emptyList(), null, null)
 
     private fun held(id: String, path: String, tag: String, size: Long = 100) = ManifestRecord(
-        id, root, "Hideout's $id", Placement.On(PakNumber(path.substring(10, 12).toInt())),
+        id, root, "Hideout's $id", Placement.On(Slot(path.substring(10, 12).toInt())),
         listOf(InstalledSet(InstalledSource.Remote(SubmissionIdentity(SubmissionKind.Mod, 9, 90, null)), null, null, SetOrigin.Imported(image("a")), null, path.substringAfterLast('/'),
             listOf(SetFile(VpkPart.Directory, FileImage(size, image(tag, size).sha256))))),
     )

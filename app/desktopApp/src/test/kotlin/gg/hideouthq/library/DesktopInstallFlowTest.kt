@@ -5,7 +5,7 @@ import gg.hideouthq.core.library.AutoexecWrite
 import gg.hideouthq.core.library.ChoiceSync
 import gg.hideouthq.core.library.CitadelPath
 import gg.hideouthq.core.library.ChoiceAnswer
-import gg.hideouthq.core.library.PakNumber
+import gg.hideouthq.core.library.Slot
 import gg.hideouthq.core.library.Placement
 import gg.hideouthq.core.library.SetFile
 import gg.hideouthq.core.library.SetKey
@@ -986,7 +986,7 @@ class DesktopInstallFlowTest {
                     files = listOf(SetFile(VpkPart.Directory, FileImage(loneBytes.size.toLong(), sha256Hex(loneBytes)))),
                 ),
             ),
-        ).placed(Placement.On(PakNumber(5)))
+        ).placed(Placement.On(Slot(5)))
         runBlocking {
             store().use { store ->
                 val manifest = assertIs<ManifestLoad.Loaded>(store.load()).manifest
@@ -1011,7 +1011,7 @@ class DesktopInstallFlowTest {
         assertFalse("pak06_dir.vpk" in addonsNames(), "a chunk of the moving set is back, but not its directory")
 
         val restarted = library(scope = scope())
-        assertEquals(listOf(chunked.placed(Placement.On(PakNumber(6))), lone), (restarted.state.value.library as LibraryStatus.Ready).records, "the chunked set moves past lone, which loads first at the number it has")
+        assertEquals(listOf(chunked.placed(Placement.On(Slot(6))), lone), (restarted.state.value.library as LibraryStatus.Ready).records, "the chunked set moves past lone, which loads first at the number it has")
         assertEquals(foreign.keys + setOf("pak05_dir.vpk", "pak06_dir.vpk", "pak06_000.vpk", "pak06_001.vpk"), addonsNames())
         assertEquals(loneFile, fileKey(addons.resolve("pak05_dir.vpk")), "lone's own directory never moved")
         assertEquals(chunkedFiles.mapKeys { it.key.replace("pak02", "pak06") }, chunkedFiles.keys.associate { it.replace("pak02", "pak06") to fileKey(addons.resolve(it.replace("pak02", "pak06"))) })

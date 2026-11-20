@@ -39,4 +39,9 @@ class ForeignRootsTest {
             "deadworks_addons/vpks", "grimoire/replays", "addons/.disabled/addons2", "addons/pak01_dir.vpk", "replays", "cfg",
         ).forEach { assertNull(of(it), it) }
     }
+
+    @Test
+    fun noFolderHideoutLoadsSetsFromIsAnotherManagersPastAddons() {
+        assertEquals(listOf(ForeignRoot.Addons), SetFolder.Loading.mapNotNull { of(it.inCitadel) })
+    }
 }

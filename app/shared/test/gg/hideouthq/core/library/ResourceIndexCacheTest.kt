@@ -31,7 +31,7 @@ class ResourceIndexCacheTest {
         val source = ResourceIndexSource { _, _, _ -> reads++; ResourceIndex.Ready(mapOf("models/$reads.vmdl_c" to reads.toLong())) }
         val original = priorityRecord("a", 1)
         val first = ResourceIndexCache(storage, source).read(original, original.files.single())
-        val renumbered = original.placed(Placement.On(PakNumber(9)))
+        val renumbered = original.placed(Placement.On(Slot(9)))
         assertEquals(first, ResourceIndexCache(storage, source).read(renumbered, renumbered.files.single()), "reuse across a restart and a renumber")
         val renamed = original.placed(Placement.Off)
         assertEquals(first, ResourceIndexCache(storage, source).read(renamed, renamed.files.single()), "reuse across a move to the off folder")

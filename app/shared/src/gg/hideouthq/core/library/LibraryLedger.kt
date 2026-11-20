@@ -1041,13 +1041,13 @@ internal class LibraryLedger(
 
     private suspend fun twinned(entry: GameEntry, image: FileImage): Boolean = (attempt { ports.backups.holds(entry, image) } as? Attempt.Done)?.value == true
 
-    private suspend fun numberTaken(root: GameRoot, numbers: Iterable<PakNumber>, except: Set<String>): LibraryProblem? {
+    private suspend fun numberTaken(root: GameRoot, numbers: Iterable<Slot>, except: Set<String>): LibraryProblem? {
         val names = when (val listing = addonsNames(root)) {
             is FolderListing.Unreadable -> return LibraryProblem.AddonsUnreadable(listing.reason)
             is FolderListing.Listed -> listing.names.filter { it !in except }
         }
         for (number in numbers) {
-            val sharing = names.filter { number in PakNumbers.taken(listOf(it)) }
+            val sharing = names.filter { name -> PakNumbers.taken(listOf(name)).any { Slot.of(SetFolder.Addons, it) == number } }
             if (sharing.isNotEmpty()) return LibraryProblem.NumberTaken(number.value, sharing.sorted())
         }
         return null

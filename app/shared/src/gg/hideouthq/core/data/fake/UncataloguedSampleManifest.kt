@@ -8,11 +8,11 @@ import gg.hideouthq.core.library.InstalledSource
 import gg.hideouthq.core.library.LibraryManifest
 import gg.hideouthq.core.library.ManifestRecord
 import gg.hideouthq.core.library.OwnedDownload
-import gg.hideouthq.core.library.PakNumber
 import gg.hideouthq.core.library.Placement
 import gg.hideouthq.core.library.ProfileBook
 import gg.hideouthq.core.library.SetFile
 import gg.hideouthq.core.library.SetOrigin
+import gg.hideouthq.core.library.Slot
 import gg.hideouthq.core.library.SubmissionIdentity
 import gg.hideouthq.core.library.SubmissionKind
 import gg.hideouthq.core.library.VersionPosition
@@ -28,7 +28,7 @@ internal object UncataloguedSampleManifest {
         installId = "lilith",
         gameRoot = root,
         title = "Lilith, the Hell Warden",
-        placement = Placement.On(PakNumber(1)),
+        placement = Placement.On(Slot(1)),
         sets = listOf(
             InstalledSet(
                 source = InstalledSource.Remote(SubmissionIdentity(SubmissionKind.Mod, 551_201, 1_402_101, "a".repeat(32))),
@@ -46,7 +46,7 @@ internal object UncataloguedSampleManifest {
         installId = "werecat",
         gameRoot = root,
         title = "Night of the Werecat",
-        placement = Placement.On(PakNumber(2)),
+        placement = Placement.On(Slot(2)),
         sets = listOf(
             InstalledSet(
                 source = InstalledSource.Remote(SubmissionIdentity(SubmissionKind.Mod, 551_202, 1_402_102, "b".repeat(32))),
@@ -82,7 +82,7 @@ internal object UncataloguedSampleManifest {
         installId = "hudlock",
         gameRoot = root,
         title = "HUDlock 2.0",
-        placement = Placement.On(PakNumber(9)),
+        placement = Placement.On(Slot(9)),
         sets = listOf(
             InstalledSet(
                 source = InstalledSource.Remote(SubmissionIdentity(SubmissionKind.Mod, 551_204, 1_402_104, "e".repeat(32))),

@@ -6,10 +6,10 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 class PlanNumbersTest {
-    private fun numbers(vararg values: Int) = values.map(::PakNumber)
+    private fun numbers(vararg values: Int) = values.map(::Slot)
 
     private fun held(vararg numbers: Int?, files: List<Int> = numbers.map { 1 }, width: Int = numbers.size, stuck: Boolean = false, fixed: Boolean = false) =
-        Block(numbers.map { it?.let(::PakNumber) }, files, width, stuck, fixed)
+        Block(numbers.map { it?.let(::Slot) }, files, width, stuck, fixed)
 
     private fun fresh(sets: Int = 1, files: Int = 1, width: Int = sets) = Block(List(sets) { null }, List(sets) { files }, width)
 
@@ -92,13 +92,13 @@ class PlanNumbersTest {
 
     @Test
     fun ninetyNineModsFillEveryNumberAndAHundredthDoesNotFit() {
-        assertEquals(PakNumber.Range.map(::PakNumber), planNumbers(List(99) { fresh() }, emptySet()))
+        assertEquals((1..99).map(::Slot), planNumbers(List(99) { fresh() }, emptySet()))
         assertNull(planNumbers(List(100) { fresh() }, emptySet()))
     }
 
     @Test
     fun foreignNumbersLeavingNoRunWideEnoughGiveNoPlan() {
-        val everyThird = (3..99 step 3).map(::PakNumber).toSet()
+        val everyThird = (3..99 step 3).map(::Slot).toSet()
         assertNull(planNumbers(listOf(fresh(sets = 3)), everyThird))
         assertEquals(numbers(1), planNumbers(listOf(fresh(sets = 2)), everyThird))
     }
@@ -110,20 +110,20 @@ class PlanNumbersTest {
             val blocks = List(random.nextInt(1, 4)) {
                 val sets = random.nextInt(1, 4)
                 Block(
-                    held = List(sets) { if (random.nextInt(3) == 0) null else PakNumber(random.nextInt(1, 100)) },
+                    held = List(sets) { if (random.nextInt(3) == 0) null else Slot(random.nextInt(1, 100)) },
                     files = List(sets) { random.nextInt(1, 5) },
                     width = sets + random.nextInt(0, 2),
                     stuck = random.nextInt(4) == 0,
                 )
             }
-            val taken = PakNumber.Range.filter { random.nextInt(4) == 0 }.map(::PakNumber).toSet()
+            val taken = (1..99).filter { random.nextInt(4) == 0 }.map(::Slot).toSet()
             assertEquals(cheapest(blocks, taken), planNumbers(blocks, taken), "trial $trial")
         }
     }
 
-    private fun cheapest(blocks: List<Block>, taken: Set<PakNumber>): List<PakNumber>? {
-        fun fits(block: Block, first: Int) = first + block.width - 1 <= 99 && (first until first + block.width).none { PakNumber(it) in taken }
-        fun moved(block: Block, first: Int) = block.held.indices.filter { set -> block.held[set] != PakNumber(first + set) }
+    private fun cheapest(blocks: List<Block>, taken: Set<Slot>): List<Slot>? {
+        fun fits(block: Block, first: Int) = first + block.width - 1 <= 99 && (first until first + block.width).none { Slot(it) in taken }
+        fun moved(block: Block, first: Int) = block.held.indices.filter { set -> block.held[set] != Slot(first + set) }
         fun stuckMoved(block: Block, first: Int) = if (block.stuck) moved(block, first).size else 0
         fun renamed(block: Block, first: Int) = if (block.stuck) 0 else moved(block, first).sumOf { block.files[it] }
         var found: Pair<List<Int>, List<Int>>? = null
@@ -137,7 +137,7 @@ class PlanNumbersTest {
             for (first in from..99) if (fits(blocks[placed.size], first)) visit(placed + first)
         }
         visit(emptyList())
-        return found?.second?.map(::PakNumber)
+        return found?.second?.map(::Slot)
     }
 
     private fun compareLists(a: List<Int>, b: List<Int>): Int = a.zip(b).firstOrNull { (x, y) -> x != y }?.let { (x, y) -> x.compareTo(y) } ?: 0

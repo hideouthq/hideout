@@ -80,7 +80,7 @@ class ManifestCodecTest {
     fun theHandWrittenRecordShapeDecodesAndNamesItsFilesFromItsPlacement() {
         val on = decoded(manifestJson(recordJson())).records.single()
         assertEquals(SubmissionIdentity(SubmissionKind.Mod, 721_908, 1_829_854, "0332f45e5015186cb47219853f499a25"), on.remoteIdentity)
-        assertEquals(Placement.On(PakNumber(5)), on.placement)
+        assertEquals(Placement.On(Slot(5)), on.placement)
         assertEquals(listOf(SetFile(VpkPart.Directory, FileImage(1, hex64))), on.only.files)
         assertEquals(listOf("game/citadel/addons/pak05_dir.vpk"), on.files.map { it.relativePath(on) })
         val parked = decoded(manifestJson(recordJson(first = null), enabled = emptyList())).records.single()
@@ -89,13 +89,14 @@ class ManifestCodecTest {
     }
 
     @Test
-    fun aRecordsPlacementIsRequiredAndItsNumbersEndBy99() {
+    fun aRecordsPlacementIsRequiredAndItsSetsSitInOneLoadingFolder() {
         val text = manifestJson(recordJson())
         assertIs<ManifestDecode.Malformed>(ManifestCodec.decode(text.replace(""""placement":{"type":"On","first":5},""", "")), "a record that lost its placement fails rather than reading as off")
-        listOf(0, 100).forEach { assertIs<ManifestDecode.Malformed>(ManifestCodec.decode(manifestJson(recordJson(first = it))), "first $it") }
-        assertIs<ManifestDecode.Ok>(ManifestCodec.decode(manifestJson(recordJson(first = 99))))
+        listOf(0, 991).forEach { assertIs<ManifestDecode.Malformed>(ManifestCodec.decode(manifestJson(recordJson(first = it))), "first $it") }
+        listOf(99, 100, 990).forEach { assertIs<ManifestDecode.Ok>(ManifestCodec.decode(manifestJson(recordJson(first = it))), "first $it") }
         assertIs<ManifestDecode.Ok>(ManifestCodec.decode(manifestJson(recordJson(first = 98, twoSets = true))))
         assertIs<ManifestDecode.Malformed>(ManifestCodec.decode(manifestJson(recordJson(first = 99, twoSets = true))), "a second set past 99")
+        assertIs<ManifestDecode.Malformed>(ManifestCodec.decode(manifestJson(recordJson(first = 198, twoSets = true))), "a second set past hideout_addons2's 99")
         assertIs<ManifestDecode.Malformed>(ManifestCodec.decode(text.replace(""""type":"On"""", """"type":"Elsewhere"""")), "a placement this code does not know")
     }
 
@@ -331,7 +332,7 @@ class ManifestCodecTest {
         }
         assertEquals(local.files.map { it.part to it.image }, off.files.map { it.part to it.image })
         assertTrue(local.files.zip(off.files).all { (from, to) -> from.name != to.name }, "the off names follow the set's new key")
-        assertFailsWith<IllegalArgumentException>("a move of a mod that is on") { PendingChange.Relocate(local.placed(Placement.On(PakNumber(5))), token, RelocateStep.Linking, record) }
+        assertFailsWith<IllegalArgumentException>("a move of a mod that is on") { PendingChange.Relocate(local.placed(Placement.On(Slot(5))), token, RelocateStep.Linking, record) }
         assertFailsWith<IllegalArgumentException>("a move that changes a part's bytes") {
             PendingChange.Relocate(local, token, RelocateStep.Linking, off.withOnly { copy(files = files.map { it.copy(image = image) }) })
         }
@@ -404,7 +405,7 @@ class ManifestCodecTest {
     @Test
     fun everyArrangeStepRoundTripsBoundToTheRecordsAndBookItCommits() {
         val parked = second.placed(Placement.Off)
-        val moves = listOf(Move(record, record.placed(Placement.On(PakNumber(8)))), Move(parked, parked.placed(Placement.On(PakNumber(5)))))
+        val moves = listOf(Move(record, record.placed(Placement.On(Slot(8)))), Move(parked, parked.placed(Placement.On(Slot(5)))))
         val after = ProfileBook.main(moves.map { it.target })
         MoveStep.entries.forEach { step ->
             val change = PendingChange.Arrange(token, moves, after, step)
@@ -419,7 +420,7 @@ class ManifestCodecTest {
             LibraryManifest(records = listOf(record, parked), pending = PendingChange.Arrange(token, moves, ProfileBook.main(listOf(record, parked)), MoveStep.Anchoring))
         }
         assertFailsWith<IllegalArgumentException>("two moving mods on one number") {
-            PendingChange.Arrange(token, listOf(Move(record, record.placed(Placement.On(PakNumber(8)))), Move(parked, parked.placed(Placement.On(PakNumber(8))))), after, MoveStep.Anchoring)
+            PendingChange.Arrange(token, listOf(Move(record, record.placed(Placement.On(Slot(8)))), Move(parked, parked.placed(Placement.On(Slot(8))))), after, MoveStep.Anchoring)
         }
         assertFailsWith<IllegalArgumentException>("nothing moves") { PendingChange.Arrange(token, emptyList(), after, MoveStep.Anchoring) }
         val twoParts = parked.copy(sets = parked.sets + parked.only.copy(componentKey = "b/pak01_dir.vpk"))
@@ -427,12 +428,12 @@ class ManifestCodecTest {
             PendingChange.Arrange(token, listOf(Move(twoParts, twoParts.placed(Placement.Off, twoParts.sets.reversed()))), ProfileBook.main(listOf(twoParts)), MoveStep.Anchoring)
         }
         val stationary = oneSetRecord("install-3", record.gameRoot, InstalledSource.Remote(record.remoteIdentity.copy(submissionId = 10)), record.title, null, record.archive, 6, listOf(directory(image)))
-        val crowded = listOf(Move(record, record.placed(Placement.On(PakNumber(6)))))
+        val crowded = listOf(Move(record, record.placed(Placement.On(Slot(6)))))
         assertFailsWith<IllegalArgumentException>("a number a mod that stays on holds") {
             LibraryManifest(records = listOf(record, stationary), pending = PendingChange.Arrange(token, crowded, ProfileBook.main(crowded.map { it.target } + stationary), MoveStep.Anchoring))
         }
         val away = parked.copy(gameRoot = GameRoot("/other"))
-        val games = listOf(Move(record, record.placed(Placement.On(PakNumber(8)))), Move(away, away.placed(Placement.On(PakNumber(8)))))
+        val games = listOf(Move(record, record.placed(Placement.On(Slot(8)))), Move(away, away.placed(Placement.On(Slot(8)))))
         val spanning = PendingChange.Arrange(token, games, ProfileBook.main(games.map { it.target }), MoveStep.Linking)
         roundTrips(LibraryManifest(records = listOf(record, away), pending = spanning))
         assertEquals(setOf(record.gameRoot, away.gameRoot), spanning.gameRoots, "one arrangement spans every game")
@@ -464,7 +465,7 @@ class ManifestCodecTest {
             LibraryManifest(records = listOf(record), pending = PendingChange.Adopt(plan.copy(book = ProfileBook.main(listOf(record, claimed.record))), AdoptStep.Linking))
         }
         assertFailsWith<IllegalArgumentException>("a claimed number a mod on holds") {
-            LibraryManifest(records = listOf(record.placed(Placement.On(PakNumber(7)))), pending = PendingChange.Adopt(plan.copy(book = ProfileBook.main(listOf(record.placed(Placement.On(PakNumber(7))), claimed.record, parked.record))), AdoptStep.Linking))
+            LibraryManifest(records = listOf(record.placed(Placement.On(Slot(7)))), pending = PendingChange.Adopt(plan.copy(book = ProfileBook.main(listOf(record.placed(Placement.On(Slot(7))), claimed.record, parked.record))), AdoptStep.Linking))
         }
         assertFailsWith<IllegalArgumentException>("a record moved in part") {
             Adoption(claimed.record.withOnly { copy(files = files + SetFile(VpkPart.Chunk(0), FileImage(1, "f".repeat(64)))) }, listOf(CitadelPath("addons/pak07_dir.vpk"), CitadelPath("addons/x_000.vpk")))
@@ -653,7 +654,7 @@ class ManifestCodecTest {
         assertFailsWith<IllegalArgumentException>("an original placed for it but not registered") { LibraryManifest(records = listOf(record), pending = change) }
         assertFailsWith<IllegalArgumentException>("a book that does not follow what it commits") { LibraryManifest(records = listOf(record), originals = listOf(kept), pending = change.copy(book = ProfileBook.main(listOf(record)))) }
         assertFailsWith<IllegalArgumentException>("a missing file the Library never had") { change.copy(absent = setOf("game/citadel/addons/pak07_dir.vpk")) }
-        assertFailsWith<IllegalArgumentException>("two mods it commits on one number") { change.copy(target = listOf(record, second.placed(Placement.On(PakNumber(5))))) }
+        assertFailsWith<IllegalArgumentException>("two mods it commits on one number") { change.copy(target = listOf(record, second.placed(Placement.On(Slot(5))))) }
     }
 
     @Test

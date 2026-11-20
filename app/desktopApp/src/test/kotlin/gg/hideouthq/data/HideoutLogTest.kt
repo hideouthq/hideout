@@ -12,7 +12,7 @@ import gg.hideouthq.core.library.InstalledSource
 import gg.hideouthq.core.library.LibraryState
 import gg.hideouthq.core.library.LibraryStatus
 import gg.hideouthq.core.library.ManifestRecord
-import gg.hideouthq.core.library.PakNumber
+import gg.hideouthq.core.library.Slot
 import gg.hideouthq.core.library.Placement
 import gg.hideouthq.core.library.SetFile
 import gg.hideouthq.core.library.SetOrigin
@@ -87,7 +87,7 @@ class HideoutLogTest {
         addons.resolveSibling("gameinfo.gi").writeText("GameInfo\n{\n\tFileSystem\n\t{\n\t\tSearchPaths\n\t\t{\n\t\t\tGame citadel/modlock_dev/31bb65da30bd1ed1\n\t\t\tGame citadel\n\t\t}\n\t}\n}\n")
         val game = GameRoot("$home/Deadlock")
         val lash = ManifestRecord(
-            "lash", game, "Lash Gold", Placement.On(PakNumber(1)),
+            "lash", game, "Lash Gold", Placement.On(Slot(1)),
             listOf(InstalledSet(InstalledSource.Local("l1", "lash.vpk"), null, null, SetOrigin.Imported(FileImage(2048, "a".repeat(64))), null, "lash.vpk", listOf(SetFile(VpkPart.Directory, FileImage(2048, "a".repeat(64)))))),
         )
         val library = LibraryState(game = GameStatus.Ready(game, FoundVia.Chosen), library = LibraryStatus.Ready(listOf(lash)))

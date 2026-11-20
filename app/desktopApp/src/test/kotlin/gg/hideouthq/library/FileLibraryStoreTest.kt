@@ -2,7 +2,7 @@ package gg.hideouthq.library
 
 import gg.hideouthq.core.library.FileImage
 import gg.hideouthq.core.library.InstalledSet
-import gg.hideouthq.core.library.PakNumber
+import gg.hideouthq.core.library.Slot
 import gg.hideouthq.core.library.Placement
 import gg.hideouthq.core.library.SetFile
 import gg.hideouthq.core.library.SetOrigin
@@ -55,7 +55,7 @@ class FileLibraryStoreTest {
         installId = "install-$number",
         gameRoot = GameRoot("/games/Deadlock"),
         title = title,
-        placement = Placement.On(PakNumber(number)),
+        placement = Placement.On(Slot(number)),
         sets = listOf(
             InstalledSet(
                 source = InstalledSource.Remote(SubmissionIdentity(SubmissionKind.Mod, 721_908, 1_829_854, "0332f45e5015186cb47219853f499a25")),

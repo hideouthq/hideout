@@ -11,7 +11,7 @@ import gg.hideouthq.core.data.fake.SampleGameRoot
 import gg.hideouthq.core.data.fake.sampleLibraryManifest
 import gg.hideouthq.core.library.ChoiceSync
 import gg.hideouthq.core.library.FileImage
-import gg.hideouthq.core.library.PakNumber
+import gg.hideouthq.core.library.Slot
 import kotlinx.coroutines.CompletableDeferred
 import java.io.File
 import kotlin.math.abs
@@ -95,7 +95,7 @@ private fun checkTracking(out: File, reducedMotion: Boolean) {
         val first = samples.first()
         val largestError = samples.maxOf { (pointer, row) -> abs((row - first.second) - (pointer - first.first)) }
         check(largestError <= 2f) { "Dragged row must follow the pointer continuously; largest tracking error was $largestError dp" }
-        check(fixture.record(DragTitle)?.numbers?.single() == PakNumber(3)) { "The dragged row should finish two slots below its initial position" }
+        check(fixture.record(DragTitle)?.numbers?.single() == Slot(3)) { "The dragged row should finish two slots below its initial position" }
         check(handleY(NextTitle) < handleY("Faun Celeste") && handleY("Faun Celeste") < handleY(DragTitle))
         println("PASS: Dragged row follows the pointer continuously across row boundaries.")
     }
@@ -117,7 +117,7 @@ private fun checkReverse(out: File) {
         }
         dropAt(start.x, start.y)
         advance(900)
-        check(fixture.record("HUDlock 2.0")?.numbers?.single() == PakNumber(9)) { "Returning to the starting slot must preserve order" }
+        check(fixture.record("HUDlock 2.0")?.numbers?.single() == Slot(9)) { "Returning to the starting slot must preserve order" }
         check(fixture.files.linkedPaths.isEmpty() && fixture.files.removedPaths.isEmpty()) { "An unchanged drop must not move files" }
         capture("returned_to_start")
     }
@@ -137,7 +137,7 @@ private fun checkNeighbors(out: File) {
         }
         check(positions.any { it > firstY + 2f && it < secondY - 2f }) { "Displaced neighbors must animate between slots rather than teleport" }
         check(abs(positions.last() - firstY) <= 2f) { "The displaced row should settle into the open slot" }
-        check(fixture.record(DragTitle)?.numbers?.single() == PakNumber(1)) { "Dragging must only preview the order until release" }
+        check(fixture.record(DragTitle)?.numbers?.single() == Slot(1)) { "Dragging must only preview the order until release" }
         capture("neighbor_settled_while_held")
         dropAt(start.x, start.y + 32f)
         advance(900)
@@ -173,7 +173,7 @@ private fun checkPendingDrop(out: File) {
             for (distance in 8..60 step 4) heldMove(start.x, start.y + distance)
             dropAt(start.x, start.y + 60)
             advance(700)
-            check(fixture.record(DragTitle)?.numbers?.single() == PakNumber(1)) { "The held process scan must still block persistence" }
+            check(fixture.record(DragTitle)?.numbers?.single() == Slot(1)) { "The held process scan must still block persistence" }
             capture("awaiting_persistence")
             check(abs(handleY(DragTitle) - secondY) <= 2f && abs(handleY(NextTitle) - firstY) <= 2f) {
                 "Dropping must retain the requested visual order while persistence waits, not snap back to the original order"
@@ -189,7 +189,7 @@ private fun checkPendingDrop(out: File) {
             check(nodes().any { it.hasLabel("Applying…") }) { "A pending drop must show Applying feedback" }
             advance(1000)
             capture("still_applying")
-            check(fixture.record(DragTitle)?.numbers?.single() == PakNumber(1))
+            check(fixture.record(DragTitle)?.numbers?.single() == Slot(1))
             check(stableControls.all { (label, before) -> controlPixels(label) == before }) {
                 "Controls must remain undimmed throughout a slow reorder"
             }
@@ -198,7 +198,7 @@ private fun checkPendingDrop(out: File) {
             hold.complete(Unit)
         }
         advance(900)
-        check(fixture.record(DragTitle)?.numbers?.single() == PakNumber(3) && fixture.record(NextTitle)?.numbers?.single() == PakNumber(2)) { "Only the dragged row's files move, past $NextTitle, which keeps 02" }
+        check(fixture.record(DragTitle)?.numbers?.single() == Slot(3) && fixture.record(NextTitle)?.numbers?.single() == Slot(2)) { "Only the dragged row's files move, past $NextTitle, which keeps 02" }
         check(abs(handleY(DragTitle) - secondY) <= 2f) { "Acknowledging a successful drop must not move the row again" }
         check(nodes().none { it.hasLabel("Applying…") })
         check(stableControls.keys.all { label -> !nodes().single { it.hasLabel(label) }.config.contains(SemanticsProperties.Disabled) })
@@ -233,7 +233,7 @@ private fun checkPendingRedrag(out: File, acknowledgeDuringGesture: Boolean = fa
             }
             capture("immediate_drop")
             advance(700)
-            check(fixture.record(DragTitle)?.numbers?.single() == PakNumber(1))
+            check(fixture.record(DragTitle)?.numbers?.single() == Slot(1))
             capture("first_drop_pending")
             check(!nodes().single { it.hasLabel("Reorder HUDlock 2.0") }.config.contains(SemanticsProperties.Disabled)) {
                 "Another row must remain draggable while the first drop applies"
@@ -246,7 +246,7 @@ private fun checkPendingRedrag(out: File, acknowledgeDuringGesture: Boolean = fa
                 hold.complete(Unit)
                 advance(900)
                 capture("acknowledged_while_held")
-                check(fixture.record(DragTitle)?.numbers?.single() == PakNumber(3))
+                check(fixture.record(DragTitle)?.numbers?.single() == Slot(3))
                 check(abs(handleY("HUDlock 2.0") - heldY) <= 2f) {
                     "An earlier drop's acknowledgement must not cancel or move the active drag"
                 }
@@ -268,7 +268,7 @@ private fun checkPendingRedrag(out: File, acknowledgeDuringGesture: Boolean = fa
             if (!acknowledgeDuringGesture) {
                 val progress = if (fixture.container.modLibrary.state.value.saving) "Saving…" else "Applying…"
                 check(nodes().any { it.hasLabel(progress) }) { "Queued drops must show their actual saving or applying progress" }
-                check(fixture.record(DragTitle)?.numbers?.single() == PakNumber(1) && fixture.record("HUDlock 2.0")?.numbers?.single() == PakNumber(9))
+                check(fixture.record(DragTitle)?.numbers?.single() == Slot(1) && fixture.record("HUDlock 2.0")?.numbers?.single() == Slot(9))
             }
             if (navigateWhilePending) {
                 clickLabel("Browse")
@@ -283,10 +283,10 @@ private fun checkPendingRedrag(out: File, acknowledgeDuringGesture: Boolean = fa
         }
         advance(1600)
         if (navigateWhilePending) clickLabel("Library")
-        check(fixture.record("HUDlock 2.0")?.numbers?.single() == PakNumber(1))
-        check(fixture.record(DragTitle)?.numbers?.single() == PakNumber(3))
+        check(fixture.record("HUDlock 2.0")?.numbers?.single() == Slot(1))
+        check(fixture.record(DragTitle)?.numbers?.single() == Slot(3))
         check(fixture.record("Faun Celeste")?.enabled == false)
-        check(fixture.record(NextTitle)?.numbers?.single() == PakNumber(4))
+        check(fixture.record(NextTitle)?.numbers?.single() == Slot(4))
         check(nodes().none { it.hasLabel("Applying…") })
         capture("latest_order_persisted")
         println("PASS: Further drags work during Applying and the latest requested order persists.")
@@ -341,11 +341,11 @@ private fun checkFilteredDrag(out: File) {
         capture("dragging_while_filtered")
         dropAt(start.x, start.y + RowHeight)
         advance(900)
-        check(fixture.record(DragTitle)?.numbers?.single() == PakNumber(1)) { "A visible row above the drag must keep its place" }
+        check(fixture.record(DragTitle)?.numbers?.single() == Slot(1)) { "A visible row above the drag must keep its place" }
         check(handleY(DragTitle) < handleY("Faun Celeste") && handleY("Faun Celeste") < handleY(NextTitle)) { "The dragged row lands right after its visible target" }
-        check(fixture.record(NextTitle)?.numbers?.single() == PakNumber(2)) { "Dragged past a mod that is off, it keeps its number" }
+        check(fixture.record(NextTitle)?.numbers?.single() == Slot(2)) { "Dragged past a mod that is off, it keeps its number" }
         check(fixture.container.modLibrary.state.value.orderView?.sets == listOf("lilith", "faun-celeste", "werecat", "hudlock")) { "A row hidden by the search must keep its place in the full order" }
-        check(fixture.record("HUDlock 2.0")?.numbers?.single() == PakNumber(9))
+        check(fixture.record("HUDlock 2.0")?.numbers?.single() == Slot(9))
         capture("filtered_drop_applied")
     }
 }
@@ -366,7 +366,7 @@ private fun checkMoveToPosition(out: File) {
         key(Key.Enter)
         advance(700)
         check(handleY(NextTitle) < handleY(DragTitle)) { "Confirming must move the set to the typed position" }
-        check(fixture.record(NextTitle)?.numbers?.single() == PakNumber(2) && fixture.record(DragTitle)?.numbers?.single() == PakNumber(3)) { "Everyone else keeps their relative order, and only $DragTitle's files move" }
+        check(fixture.record(NextTitle)?.numbers?.single() == Slot(2) && fixture.record(DragTitle)?.numbers?.single() == Slot(3)) { "Everyone else keeps their relative order, and only $DragTitle's files move" }
         capture("position_applied")
     }
 }
@@ -380,9 +380,9 @@ private fun checkRegrab(out: File) {
         for (distance in 8..32 step 8) heldMove(start.x, start.y + distance)
         dropAt(start.x, start.y + 32)
         val deadline = System.nanoTime() + 3_000_000_000L
-        while ((fixture.record(title)?.numbers?.single() != PakNumber(2) || fixture.container.modLibrary.state.value.applying) && System.nanoTime() < deadline) runUiQueue(10)
+        while ((fixture.record(title)?.numbers?.single() != Slot(2) || fixture.container.modLibrary.state.value.applying) && System.nanoTime() < deadline) runUiQueue(10)
         advance(48)
-        check(fixture.record(title)?.numbers?.single() == PakNumber(2) && !fixture.container.modLibrary.state.value.applying) { "The first drop must be acknowledged before re-grabbing; order=${fixture.container.modLibrary.state.value.choiceSync}" }
+        check(fixture.record(title)?.numbers?.single() == Slot(2) && !fixture.container.modLibrary.state.value.applying) { "The first drop must be acknowledged before re-grabbing; order=${fixture.container.modLibrary.state.value.choiceSync}" }
         val actual = handle(title).center / scale
         println("Re-grab at y=${actual.y}, target=${start.y + RowHeight}, order=${fixture.container.modLibrary.state.value.choiceSync}")
         scene.sendPointerEvent(PointerEventType.Move, actual * scale, timeMillis = time)
@@ -411,7 +411,7 @@ private fun checkDropAroundForeignFile(out: File) {
         dropAt(start.x, start.y + 60)
         advance(1000)
         check(handleY(NextTitle) < handleY(DragTitle) && handleY(DragTitle) < handleY("HUDlock 2.0")) { "The drop keeps the order asked for" }
-        check(fixture.record(NextTitle)?.numbers?.single() == PakNumber(2) && fixture.record(DragTitle)?.numbers?.single() == PakNumber(4) && fixture.record("HUDlock 2.0")?.numbers?.single() == PakNumber(9)) {
+        check(fixture.record(NextTitle)?.numbers?.single() == Slot(2) && fixture.record(DragTitle)?.numbers?.single() == Slot(4) && fixture.record("HUDlock 2.0")?.numbers?.single() == Slot(9)) {
             "$DragTitle lands at 04, past the file at 03"
         }
         check(fixture.files.addonsFiles(SampleGameRoot)["pak03_dir.vpk"] == foreign) { "The file Hideout did not put there is untouched" }
@@ -452,7 +452,7 @@ private fun checkEdgeScroll(out: File) {
         check(abs(handleY("Sample mod 1") - top) < 20f) { "Scrolling upward must also retain the pointer-to-row offset" }
         dropAt(back.x, top)
         advance(1000)
-        check(fixture.record("Sample mod 1")?.numbers?.single() == PakNumber(1)) { "Dragging back through the top edge must restore the first slot" }
+        check(fixture.record("Sample mod 1")?.numbers?.single() == Slot(1)) { "Dragging back through the top edge must restore the first slot" }
         capture("scrolled_back_to_start")
     }
 }

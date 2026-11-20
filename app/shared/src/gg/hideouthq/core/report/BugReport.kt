@@ -221,7 +221,7 @@ private fun library(state: LibraryState): ReportSection {
                 "not yet found on GameBanana".takeIf { record.unasked },
                 "in ${record.gameRoot.path}, not the found game".takeIf { record.gameRoot != root },
             )
-            val placed = record.numbers.takeIf { it.isNotEmpty() }?.let { "on, ${it.first().stem}" + if (it.size > 1) "-${it.last().stem}" else "" } ?: "off"
+            val placed = record.numbers.takeIf { it.isNotEmpty() }?.let { "on, ${it.first().pak.stem}" + if (it.size > 1) "-${it.last().pak.stem}" else "" } ?: "off"
             Item(
                 "${index + 1}. ${record.named} [${record.installId}]: $placed" + flags.joinToString("") { ", $it" },
                 record.sets.map { set ->

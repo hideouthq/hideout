@@ -432,7 +432,7 @@ private fun Placement.toDto(): PlacementDto = when (this) {
 }
 
 private fun PlacementDto.toDomain(): Placement = when (this) {
-    is OnDto -> Placement.On(PakNumber(first))
+    is OnDto -> Placement.On(Slot(first))
     OffDto -> Placement.Off
 }
 

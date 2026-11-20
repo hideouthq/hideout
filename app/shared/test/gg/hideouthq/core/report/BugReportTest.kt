@@ -31,12 +31,12 @@ import gg.hideouthq.core.library.LibraryState
 import gg.hideouthq.core.library.LibraryStatus
 import gg.hideouthq.core.library.LoadingOwner
 import gg.hideouthq.core.library.ModLoading
-import gg.hideouthq.core.library.PakNumber
 import gg.hideouthq.core.library.Placement
 import gg.hideouthq.core.library.Profile
 import gg.hideouthq.core.library.ProfileBook
 import gg.hideouthq.core.library.ProfileColour
 import gg.hideouthq.core.library.ProfileId
+import gg.hideouthq.core.library.Slot
 import gg.hideouthq.core.library.SubmissionIdentity
 import gg.hideouthq.core.library.SubmissionKind
 import gg.hideouthq.core.library.VersionPosition
@@ -147,7 +147,7 @@ class BugReportTest {
 
     @Test
     fun filesInAddonsHideoutDidNotPutThereAreCalledOutAndAModsMissingFileIsListed() {
-        val both = state.copy(library = LibraryStatus.Ready(listOf(lash, haze.copy(placement = Placement.On(PakNumber(2))))))
+        val both = state.copy(library = LibraryStatus.Ready(listOf(lash, haze.copy(placement = Placement.On(Slot(2))))))
         val listing = FolderListing.Listed(
             listOf(file("readme.txt", 10), file("pak05_dir.vpk", 5000), file("pak01_dir.vpk", 4096), file("pak01_dir.vpk.hideout-ab12", 2048)),
         )

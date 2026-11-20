@@ -571,7 +571,7 @@ class LibraryViewModel(
                 row.enabled -> FilesPlace.GoingIn
                 else -> FilesPlace.GoingOut
             },
-            held = HeldFiles(record.editedFiles.map { it.name }, record.numbers.map { it.stem }).takeIf { row.held },
+            held = HeldFiles(record.editedFiles.map { it.name }, record.numbers.map { it.pak.stem }).takeIf { row.held },
             downloads = record.sets.map { set ->
                 DownloadDetail(
                     name = set.label(labels),

@@ -18,12 +18,12 @@ data class Move(val source: ManifestRecord, val target: ManifestRecord) {
 }
 
 /**
- * One mod to number, winner first: the number each of its sets' files hold in `addons` now, null when they hold none
- * (the set is off or new, or holds other bytes), how many files each set has, how many numbers the mod takes, more
- * than its sets when a replacement grows it, whether it is [stuck]: its files are not known to hold their bytes, so no
- * journal can move them, and whether it is [fixed] where it is, as a mod the user edited is until they decide.
+ * One mod to number, winner first: the slot each of its sets' files hold now, null when they hold none (the set is off
+ * or new, or holds other bytes), how many files each set has, how many slots the mod takes, more than its sets when a
+ * replacement grows it, whether it is [stuck]: its files are not known to hold their bytes, so no journal can move them,
+ * and whether it is [fixed] where it is, as a mod the user edited is until they decide.
  */
-internal class Block(val held: List<PakNumber?>, val files: List<Int>, val width: Int = held.size, val stuck: Boolean = false, val fixed: Boolean = false) {
+internal class Block(val held: List<Slot?>, val files: List<Int>, val width: Int = held.size, val stuck: Boolean = false, val fixed: Boolean = false) {
     init {
         require(held.isNotEmpty() && held.size == files.size && width >= held.size) { "a block numbers its sets once each and takes at least as many numbers" }
         require(!fixed || held.all { it != null }) { "a fixed block is on where it is" }
@@ -37,11 +37,11 @@ internal class Block(val held: List<PakNumber?>, val files: List<Int>, val width
  * lands on the number it holds, else its files, or more than every other file together when its block is stuck, so a
  * stuck block moves only when no plan leaves it.
  */
-internal fun planNumbers(blocks: List<Block>, taken: Set<PakNumber>): List<PakNumber>? {
+internal fun planNumbers(blocks: List<Block>, taken: Set<Slot>): List<Slot>? {
     if (blocks.isEmpty()) return emptyList()
-    val top = PakNumber.Range.last
+    val top = PakNumber.PerFolder
     val free = IntArray(top + 2)
-    for (first in top downTo PakNumber.Range.first) free[first] = if (PakNumber(first) in taken) 0 else free[first + 1] + 1
+    for (first in top downTo 1) free[first] = if (Slot(first) in taken) 0 else free[first + 1] + 1
 
     fun own(block: Block, first: Int): Long? {
         if (free[first] < block.width || block.fixed && block.held.first()?.value != first) return null
@@ -51,13 +51,13 @@ internal fun planNumbers(blocks: List<Block>, taken: Set<PakNumber>): List<PakNu
 
     val best = Array(blocks.size) { LongArray(top + 1) { Unplaced } }
     val previous = Array(blocks.size) { IntArray(top + 1) }
-    for (first in PakNumber.Range) own(blocks[0], first)?.let { best[0][first] = it }
+    for (first in 1..top) own(blocks[0], first)?.let { best[0][first] = it }
     for (index in 1 until blocks.size) {
         var cheapest = Unplaced
         var cheapestAt = 0
-        for (first in PakNumber.Range) {
+        for (first in 1..top) {
             val before = first - blocks[index - 1].width
-            if (before >= PakNumber.Range.first && best[index - 1][before] < cheapest) {
+            if (before >= 1 && best[index - 1][before] < cheapest) {
                 cheapest = best[index - 1][before]
                 cheapestAt = before
             }
@@ -67,13 +67,13 @@ internal fun planNumbers(blocks: List<Block>, taken: Set<PakNumber>): List<PakNu
             previous[index][first] = cheapestAt
         }
     }
-    var first = PakNumber.Range.filter { best.last()[it] != Unplaced }.minByOrNull { best.last()[it] } ?: return null
+    var first = (1..top).filter { best.last()[it] != Unplaced }.minByOrNull { best.last()[it] } ?: return null
     val firsts = IntArray(blocks.size)
     for (index in blocks.indices.reversed()) {
         firsts[index] = first
         first = previous[index][first]
     }
-    return firsts.map(::PakNumber)
+    return firsts.map(::Slot)
 }
 
 private const val Unplaced = Long.MAX_VALUE
@@ -92,7 +92,7 @@ internal data class Planned(val records: List<ManifestRecord>, val pastLimit: Se
  * as it is, on or off: the rest are numbered in their order around it where it is, else, when that cannot be, around it
  * wherever it falls among them. Pure.
  */
-internal fun planPlacement(records: List<ManifestRecord>, profile: Profile, taken: Set<PakNumber>, now: List<ManifestRecord> = records, stuck: Set<String> = emptySet()): Planned {
+internal fun planPlacement(records: List<ManifestRecord>, profile: Profile, taken: Set<Slot>, now: List<ManifestRecord> = records, stuck: Set<String> = emptySet()): Planned {
     val root = records.firstOrNull()?.gameRoot ?: return Planned(emptyList())
     val byId = records.associateBy { it.installId }
     val edited = records.filter { it.edited }
@@ -102,7 +102,7 @@ internal fun planPlacement(records: List<ManifestRecord>, profile: Profile, take
     }.toMap()
     val inOrder = wanted.filter { !it.edited || it.enabled }
     val around = edited - inOrder.toSet()
-    val room = PakNumber.Range.last - edited.sumOf { it.numbers.size }
+    val room = PakNumber.PerFolder - edited.sumOf { it.numbers.size }
     var width = 0
     val most = inOrder.indexOfFirst { record -> !record.edited && (width + record.sets.size).also { width = it } > room }.takeIf { it >= 0 } ?: inOrder.size
     val (kept, placed) = (most downTo 0).firstNotNullOf { fits ->
@@ -122,7 +122,7 @@ internal fun planPlacement(records: List<ManifestRecord>, profile: Profile, take
  * [around] holds: its [Block.fixed] ones where they are, else, when that cannot be, the rest around them; null when
  * neither fits.
  */
-internal fun placeAround(on: List<ManifestRecord>, around: List<ManifestRecord>, taken: Set<PakNumber>, block: (ManifestRecord) -> Block): List<ManifestRecord>? {
+internal fun placeAround(on: List<ManifestRecord>, around: List<ManifestRecord>, taken: Set<Slot>, block: (ManifestRecord) -> Block): List<ManifestRecord>? {
     val blocks = on.associateWith(block)
     fun place(on: List<ManifestRecord>, around: List<ManifestRecord>) = planNumbers(on.map(blocks::getValue), taken + around.flatMap { it.numbers })
         ?.let { firsts -> on.zip(firsts).map { (record, first) -> record.placed(Placement.On(first)) } }
@@ -149,9 +149,9 @@ fun Profile.onOrder(root: GameRoot): List<String> = orders[root].orEmpty().filte
  * The numbers the entries of `addons`, [addons] by name, take besides the files of [records] that are on and the
  * chunks beside a set of theirs the user edited, which are that edit's, as Keep my changes and Restore original take it.
  */
-internal fun foreignNumbers(addons: Collection<String>, records: List<ManifestRecord>): Set<PakNumber> {
+internal fun foreignNumbers(addons: Collection<String>, records: List<ManifestRecord>): Set<Slot> {
     val on = records.filter { it.enabled }
     val own = on.flatMapTo(HashSet()) { record -> record.files.map { it.name } }
-    val edited = on.flatMap { record -> record.sets.filter { it.edits.isNotEmpty() }.mapNotNull { record.numberOf(it)?.stem } }
-    return PakNumbers.taken(addons.filter { name -> name !in own && edited.none { VpkPart.named(name, it) != null } })
+    val edited = on.flatMap { record -> record.sets.filter { it.edits.isNotEmpty() }.mapNotNull { record.numberOf(it)?.pak?.stem } }
+    return PakNumbers.taken(addons.filter { name -> name !in own && edited.none { VpkPart.named(name, it) != null } }).mapTo(HashSet()) { Slot.of(SetFolder.Addons, it) }
 }

@@ -9,7 +9,7 @@ import gg.hideouthq.core.library.GameRoot
 import gg.hideouthq.core.library.InstalledSet
 import gg.hideouthq.core.library.InstalledSource
 import gg.hideouthq.core.library.ManifestRecord
-import gg.hideouthq.core.library.PakNumber
+import gg.hideouthq.core.library.Slot
 import gg.hideouthq.core.library.Placement
 import gg.hideouthq.core.library.Provider
 import gg.hideouthq.core.library.RetainResult
@@ -80,7 +80,7 @@ class NioCompatibilityTest {
     }
 
     private fun installMod(number: Int = 5, model: ByteArray = broken, installId: String = "mod"): ManifestRecord =
-        ManifestRecord(installId, root, "Test", Placement.On(PakNumber(number)), sets = listOf(placeSet(number, listOf(VpkFile(modelPath, model, 0), VpkFile("materials/test/test_color.vtex_c", texture)), installId)))
+        ManifestRecord(installId, root, "Test", Placement.On(Slot(number)), sets = listOf(placeSet(number, listOf(VpkFile(modelPath, model, 0), VpkFile("materials/test/test_color.vtex_c", texture)), installId)))
 
     private fun placeSet(number: Int, files: List<VpkFile>, installId: String = "mod", component: String = "test/pak01_dir.vpk", submission: Long = number + 100L): InstalledSet {
         val (dir, chunks) = vpk(files)
@@ -325,14 +325,14 @@ class NioCompatibilityTest {
 
         val body = placeSet(5, listOf(VpkFile(modelPath, model(current, data(keyValues = newBinding)))), "two", "body/pak01_dir.vpk", submission = 500)
         val old = placeSet(6, listOf(VpkFile(modelPath, broken, 0)), "two", "old/pak01_dir.vpk", submission = 500)
-        val models = ManifestRecord("two", root, "Two", Placement.On(PakNumber(5)), sets = listOf(body, old))
+        val models = ManifestRecord("two", root, "Two", Placement.On(Slot(5)), sets = listOf(body, old))
         val first = Provider(5, "game/citadel/addons/pak05_dir.vpk", "two", body.files[0].image)
         assertEquals(FindingKind.Repairable, checked(models).sets[1].findings.single().kind, "on its own, the later set's model would be repairable")
         assertEquals(emptyList(), checked(models, listOf(first)).sets[1].findings, "the earlier set's model is the one that loads")
 
         val table = placeSet(7, listOf(VpkFile("${sounds}_c", table("CTaggedSound_t"))), "voice", "table/pak01_dir.vpk", submission = 700)
         val voice = placeSet(8, listOf(VpkFile(modelPath, model(current, data(keyValues = oldBinding)))), "voice", "voice/pak01_dir.vpk", submission = 700)
-        val sound = ManifestRecord("voice", root, "Voice", Placement.On(PakNumber(7)), sets = listOf(table, voice))
+        val sound = ManifestRecord("voice", root, "Voice", Placement.On(Slot(7)), sets = listOf(table, voice))
         val rule = RuleIdentity(TaggedSoundBinding.id, TaggedSoundBinding.revision)
         assertEquals(FindingKind.Repairable, checked(sound).sets[1].findings.single { it.rule == rule }.kind)
         val shadowed = checked(sound, listOf(Provider(7, "game/citadel/addons/pak07_dir.vpk", "voice", table.files[0].image))).sets[1]
@@ -344,7 +344,7 @@ class NioCompatibilityTest {
         installGame()
         val body = placeSet(5, listOf(VpkFile(modelPath, vanilla)), "two", "body/pak01_dir.vpk", submission = 500)
         val old = placeSet(6, listOf(VpkFile(modelPath, broken, 0)), "two", "old/pak01_dir.vpk", submission = 500)
-        val on = ManifestRecord("two", root, "Two", Placement.On(PakNumber(5)), sets = listOf(body, old))
+        val on = ManifestRecord("two", root, "Two", Placement.On(Slot(5)), sets = listOf(body, old))
         val off = on.placed(Placement.Off)
         for ((from, to) in on.files.zip(off.files)) game.resolve(to.relativePath(off)).also { it.parent.createDirectories(); Files.move(game.resolve(from.relativePath(on)), it) }
         assertEquals(FindingKind.Repairable, checked(off).sets[1].findings.single().kind, "on its own, the later set's model would be repairable")

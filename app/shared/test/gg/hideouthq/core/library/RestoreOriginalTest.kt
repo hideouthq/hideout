@@ -205,7 +205,7 @@ class RestoreOriginalTest {
 
         world.processes.scan = ProcessScan.Seen()
         assertEquals(RestoreStage.Restored, restore(library, confirmed))
-        assertEquals(listOf(record, later.placed(Placement.On(PakNumber(1)))), world.store.manifest?.records, "the installed mod is turned on as it was asked")
+        assertEquals(listOf(record, later.placed(Placement.On(Slot(1)))), world.store.manifest?.records, "the installed mod is turned on as it was asked")
         assertContentEquals(patched, world.gameInfo(), "turning it on loads mods again")
     }
 

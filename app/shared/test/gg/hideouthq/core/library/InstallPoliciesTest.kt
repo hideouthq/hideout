@@ -34,8 +34,17 @@ class InstallPoliciesTest {
     @Test
     fun aPakNumberIsOneOf01To99AndNamesItsSetsFiles() {
         assertEquals("pak07", PakNumber(7).stem)
-        assertEquals(PakNumber(9), PakNumber(7) + 2)
         listOf(0, 100, -1).forEach { assertFailsWith<IllegalArgumentException>("$it") { PakNumber(it) } }
+    }
+
+    @Test
+    fun aSlotRunsOnThroughTheLoadingFoldersNinetyNineAtATime() {
+        assertEquals(SetFolder.Addons to PakNumber(99), Slot(99).let { it.folder to it.pak })
+        assertEquals(SetFolder.On(2) to PakNumber(1), Slot(100).let { it.folder to it.pak })
+        assertEquals(SetFolder.On(10) to PakNumber(99), Slot(990).let { it.folder to it.pak })
+        assertEquals(Slot(150), Slot.of(SetFolder.On(2), PakNumber(51)))
+        assertEquals(Slot(9), Slot(7) + 2)
+        listOf(0, 991, -1).forEach { assertFailsWith<IllegalArgumentException>("$it") { Slot(it) } }
     }
 
     private fun entry(name: String, kind: EntryKind = EntryKind.File, size: Long? = 10, encrypted: Boolean = false, index: Int = 0) =

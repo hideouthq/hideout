@@ -261,13 +261,13 @@ internal fun withFileName(title: String, fileName: String) = "$title ($fileName)
 
 internal fun withoutFileName(title: String, fileName: String) = title.removeSuffix(withFileName("", fileName))
 
-private fun claimed(mod: Incoming, addons: List<String>, mounted: Set<PakNumber>): PakNumber? {
+private fun claimed(mod: Incoming, addons: List<String>, mounted: Set<Slot>): Slot? {
     val first = mod.sets.first().files.first().path.takeIf { it.parent == CitadelPath.Addons }?.name?.let(PakNumbers::mounted) ?: return null
-    if (first.value + mod.sets.size - 1 > PakNumber.Range.last) return null
-    val numbers = mod.sets.indices.map { first + it }
-    val own = mod.sets.flatMapIndexed { offset, set -> set.files.map { file -> file.part.fileName(numbers[offset].stem).takeIf { file.path == CitadelPath.Addons.resolve(it) } ?: return null } }.toSet()
+    if (first.value + mod.sets.size - 1 > PakNumber.PerFolder) return null
+    val numbers = mod.sets.indices.map { Slot.of(SetFolder.Addons, first) + it }
+    val own = mod.sets.flatMapIndexed { offset, set -> set.files.map { file -> file.part.fileName(numbers[offset].pak.stem).takeIf { file.path == CitadelPath.Addons.resolve(it) } ?: return null } }.toSet()
     if (numbers.any { it in mounted }) return null
-    return first.takeIf { addons.none { name -> name !in own && PakNumbers.taken(listOf(name)).any { it in numbers } } }
+    return numbers.first().takeIf { addons.none { name -> name !in own && PakNumbers.taken(listOf(name)).any { Slot.of(SetFolder.Addons, it) in numbers } } }
 }
 
 private fun refill(list: List<String>, order: List<String>): List<String> {

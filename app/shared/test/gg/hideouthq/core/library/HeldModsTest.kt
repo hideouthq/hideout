@@ -49,7 +49,7 @@ class HeldModsTest {
     fun aChunkBesideASetTheUserEditedIsThatEditsAndTakesNoNumberOfAnotherMod() {
         val records = listOf(mod("h", 6, edited = true), mod("a", 7))
         val addons = listOf("pak06_dir.vpk", "pak06_000.vpk", "pak07_dir.vpk", "pak07_000.vpk", "pak09_dir.vpk")
-        assertEquals(setOf(PakNumber(7), PakNumber(9)), foreignNumbers(addons, records), "a chunk beside a set nobody edited is another tool's")
+        assertEquals(setOf(Slot(7), Slot(9)), foreignNumbers(addons, records), "a chunk beside a set nobody edited is another tool's")
     }
 
     @Test
@@ -65,7 +65,7 @@ class HeldModsTest {
         val records = listOf(mod("a", 3), mod("h", 2, edited = true), mod("b", 4), mod("x", null))
         val target = ProfileBook(main, listOf(profile(setOf("a", "b", "x"), listOf("x", "a", "h", "b")), Profile(ProfileId("other"), "Other", ProfileColour.Blue, setOf("h"), mapOf(root to listOf("h", "a", "b", "x")))))
         val held = setOf("h")
-        val placed = records.map { if (it.installId == "x") it.placed(Placement.On(PakNumber(1))) else it }
+        val placed = records.map { if (it.installId == "x") it.placed(Placement.On(Slot(1))) else it }
         val applied = target.holding(placed)
         assertTrue(applied.follows(placed))
         assertEquals(listOf("x", "h", "a", "b"), applied.activeProfile.orders.getValue(root), "the held mod takes the place its number gives it")

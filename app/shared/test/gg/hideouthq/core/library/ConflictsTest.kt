@@ -8,7 +8,7 @@ import kotlin.test.assertEquals
 class ConflictsTest {
     private fun managed(id: String, part: Int = 0) = Mounted.Managed(id, SetKey.of(InstalledSource.Local(id, "$id.zip"), "parts/${part}_dir.vpk"))
 
-    private fun mount(number: Int, by: Mounted) = Mount(PakNumber(number), by)
+    private fun mount(number: Int, by: Mounted) = Mount(Slot(number), by)
 
     private fun tree(vararg files: Pair<String, Long>) = ResourceIndex.Ready(files.toMap())
 
@@ -79,7 +79,7 @@ class ConflictsTest {
         val off = priorityRecord("off", null)
         val names = listOf("pak05_dir.vpk", "pak06_dir.vpk", "pak03_dir.vpk", "pak03_000.vpk", "623518_pak07_dir.vpk", "pak08_dir.vpk.hideout-t", "readme.txt")
         val addons = names.map { FolderEntry(it, EntryKind.File, FileStamp(1, 1)) }
-        val mounts = mounts(listOf(on.placed(Placement.On(PakNumber(1))), off), addons, now = listOf(on, off))
+        val mounts = mounts(listOf(on.placed(Placement.On(Slot(1))), off), addons, now = listOf(on, off))
         assertEquals(
             listOf(mount(1, Mounted.Managed("on", on.sets[0].key)), mount(2, Mounted.Managed("on", on.sets[1].key)), mount(3, Mounted.Foreign("pak03_dir.vpk", FileStamp(1, 1)))),
             mounts,

@@ -27,7 +27,7 @@ import gg.hideouthq.core.library.LibraryStatus
 import gg.hideouthq.core.library.ManifestRecord
 import gg.hideouthq.core.library.ResourceIndexSource
 import gg.hideouthq.core.library.OwnedDownload
-import gg.hideouthq.core.library.PakNumber
+import gg.hideouthq.core.library.Slot
 import gg.hideouthq.core.library.Placement
 import gg.hideouthq.core.library.SetFile
 import gg.hideouthq.core.library.SetFolder
@@ -80,18 +80,18 @@ internal class InstalledFixture(seed: List<ManifestRecord>? = null, indexes: Res
                 componentKey = "pak01_dir.vpk",
             )
             val lilith = ManifestRecord(
-                installId = "lilith", gameRoot = SampleGameRoot, title = "Lilith, the Hell Warden", placement = Placement.On(PakNumber(1)),
+                installId = "lilith", gameRoot = SampleGameRoot, title = "Lilith, the Hell Warden", placement = Placement.On(Slot(1)),
                 sets = listOf(
                     set(1_510_001, "lilith_hell_warden.zip", "Default", 1, listOf(VpkPart.Directory to 900_000L, VpkPart.Chunk(0) to 30_300_000L)),
                     set(1_510_003, "lilith_werewolf_cabezas.zip", "Werewolf Transform Lilith Cabezas", 3, listOf(VpkPart.Directory to 27_400_000L)),
                 ),
             )
-            return listOf(lilith) + many().take(1).map { it.placed(Placement.On(PakNumber(3))) }
+            return listOf(lilith) + many().take(1).map { it.placed(Placement.On(Slot(3))) }
         }
 
         fun many(): List<ManifestRecord> = (1..8).map { n ->
             ManifestRecord(
-                installId = "many$n", gameRoot = SampleGameRoot, title = "Sample mod $n", placement = Placement.On(PakNumber(n)),
+                installId = "many$n", gameRoot = SampleGameRoot, title = "Sample mod $n", placement = Placement.On(Slot(n)),
                 sets = listOf(
                     InstalledSet(
                         source = InstalledSource.Remote(SubmissionIdentity(SubmissionKind.Mod, 700_000L + n, 800_000L + n, null)),
@@ -178,7 +178,7 @@ internal fun checkInstalledSwitch(outDir: File) {
         capture("off")
         clickNode(switchOf(Lilith))
         awaitChange(fixture)
-        check(fixture.record(Lilith)?.enabled == true && fixture.record(Lilith)?.numbers?.single() == PakNumber(1)) { "Lilith should be on again under 01" }
+        check(fixture.record(Lilith)?.enabled == true && fixture.record(Lilith)?.numbers?.single() == Slot(1)) { "Lilith should be on again under 01" }
         check(fixture.files.addonsFiles(root).keys.containsAll(listOf("pak01_dir.vpk", "pak01_000.vpk"))) { "Lilith's files should be back in addons" }
         check(fixture.files.filesIn(root, LilithFolder).isEmpty()) { "The off folder should be empty" }
         check(hasText("3 of 4 on in Main · 184 MB"))

@@ -79,7 +79,7 @@ class ModLibraryReorderTest {
             val files = spec.suffixes.map { suffix -> SetFile(checkNotNull(VpkPart.parse(suffix)), Sha256.image(spec.bytes(set, suffix))) }
             InstalledSet(source, null, null, SetOrigin.Downloaded(archive), null, if (spec.sets == 1) "pak01_dir.vpk" else "part$set", files)
         }
-        return ManifestRecord(spec.id, root, "Mod ${spec.id}", number?.let { Placement.On(PakNumber(it)) } ?: Placement.Off, sets)
+        return ManifestRecord(spec.id, root, "Mod ${spec.id}", number?.let { Placement.On(Slot(it)) } ?: Placement.Off, sets)
     }
 
     private fun placedFiles(spec: Spec, record: ManifestRecord): List<Triple<Int, String, OwnedFile>> = record.sets.flatMap { set ->

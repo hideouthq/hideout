@@ -55,7 +55,7 @@ class BackupRestoreTest {
     private fun record(spec: Spec, number: Int? = spec.number, derivation: SetDerivation? = null): ManifestRecord {
         val files = spec.parts.map { part -> SetFile(checkNotNull(VpkPart.parse(part)), Sha256.image(bytesOf(spec.id, part))) }
         val source = InstalledSource.Remote(SubmissionIdentity(SubmissionKind.Mod, spec.mod, spec.mod * 10, null))
-        val placement = number?.let { Placement.On(PakNumber(it)) } ?: Placement.Off
+        val placement = number?.let { Placement.On(Slot(it)) } ?: Placement.Off
         return ManifestRecord(spec.id, root, "Mod ${spec.id}", placement, listOf(InstalledSet(source, null, null, SetOrigin.Imported(FileImage(1, "a".repeat(64))), null, "pak01_dir.vpk", files, derivation)))
     }
 
@@ -230,7 +230,7 @@ class BackupRestoreTest {
         assertEquals(BackupInfo(safety.id, safety.createdAt, BackupReason.BeforeRestore, mods = 4), safety)
 
         assertEquals(BackupStage.Done, restore(library, safety))
-        assertEquals(changed.records.map { if (it.installId == "c") it.placed(Placement.On(PakNumber(3))) else it }, world.manifest().records, "c, off since, comes back on at the lowest number free below a")
+        assertEquals(changed.records.map { if (it.installId == "c") it.placed(Placement.On(Slot(3))) else it }, world.manifest().records, "c, off since, comes back on at the lowest number free below a")
         assertEquals(changed.profiles, world.manifest().profiles)
         assertEquals(game.mapKeys { (path, _) -> path.replace("/pak04_", "/pak03_") }, world.game())
     }

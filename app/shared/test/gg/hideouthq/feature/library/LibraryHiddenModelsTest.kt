@@ -11,7 +11,7 @@ import gg.hideouthq.core.library.LibraryStatus
 import gg.hideouthq.core.library.ModelLoss
 import gg.hideouthq.core.library.Mount
 import gg.hideouthq.core.library.Mounted
-import gg.hideouthq.core.library.PakNumber
+import gg.hideouthq.core.library.Slot
 import gg.hideouthq.core.library.SetKey
 import gg.hideouthq.feature.withViewModels
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -39,9 +39,9 @@ class LibraryHiddenModelsTest {
         val laterHudlockPart = Mounted.Managed("hudlock", records.getValue("hudlock").sets.last().key)
         val report = ConflictReport(
             listOf(
-                ModelLoss("models/ivy.vmdl_c", Mount(PakNumber(2), werecat), Mount(PakNumber(1), lilith)),
-                ModelLoss("models/haze.vmdl_c", Mount(PakNumber(2), werecat), Mount(PakNumber(3), pak03)),
-                ModelLoss("models/hud.vmdl_c", Mount(PakNumber(10), laterHudlockPart), Mount(PakNumber(9), hudlock)),
+                ModelLoss("models/ivy.vmdl_c", Mount(Slot(2), werecat), Mount(Slot(1), lilith)),
+                ModelLoss("models/haze.vmdl_c", Mount(Slot(2), werecat), Mount(Slot(3), pak03)),
+                ModelLoss("models/hud.vmdl_c", Mount(Slot(10), laterHudlockPart), Mount(Slot(9), hudlock)),
             ),
         )
         val vm = LibraryViewModel(base.modLibrary, FolderOpener { _, _ -> true }, conflicts = flowOf(report)).also { viewModels.keep(it) }
@@ -65,8 +65,8 @@ class LibraryHiddenModelsTest {
         val before = InstalledSource.Local("hudlock-before", "hudlock_1.zip")
         val oldFirst = Mounted.Managed("hudlock", SetKey.of(before, "first/hud_dir.vpk"))
         val oldSecond = Mounted.Managed("hudlock", SetKey.of(before, "second/hud_dir.vpk"))
-        val werecatLoss = ModelLoss("models/ivy.vmdl_c", Mount(PakNumber(2), werecat), Mount(PakNumber(1), lilith))
-        val reports = MutableStateFlow(ConflictReport(listOf(werecatLoss, ModelLoss("models/hud.vmdl_c", Mount(PakNumber(10), oldSecond), Mount(PakNumber(9), oldFirst)))))
+        val werecatLoss = ModelLoss("models/ivy.vmdl_c", Mount(Slot(2), werecat), Mount(Slot(1), lilith))
+        val reports = MutableStateFlow(ConflictReport(listOf(werecatLoss, ModelLoss("models/hud.vmdl_c", Mount(Slot(10), oldSecond), Mount(Slot(9), oldFirst)))))
         val vm = LibraryViewModel(base.modLibrary, FolderOpener { _, _ -> true }, conflicts = reports).also { viewModels.keep(it) }
         backgroundScope.launch { vm.uiState.collect {} }
         runCurrent()
@@ -77,7 +77,7 @@ class LibraryHiddenModelsTest {
         runCurrent()
         assertEquals("hud", vm.uiState.value.query, "the rows keep coming after a report that lags")
         val now = Mounted.Managed("hudlock", hudlock)
-        reports.value = ConflictReport(listOf(werecatLoss, ModelLoss("models/hud.vmdl_c", Mount(PakNumber(10), now), Mount(PakNumber(9), lilith))))
+        reports.value = ConflictReport(listOf(werecatLoss, ModelLoss("models/hud.vmdl_c", Mount(Slot(10), now), Mount(Slot(9), lilith))))
         runCurrent()
         assertEquals(1, vm.uiState.value.rows.single { it.installId == "hudlock" }.hiddenModels, "the count shows once the report catches up")
     }
@@ -89,14 +89,14 @@ class LibraryHiddenModelsTest {
         val records = (base.modLibrary.state.value.library as LibraryStatus.Ready).records.associateBy { it.installId }
         val lilith = Mounted.Managed("lilith", records.getValue("lilith").sets.single().key)
         val werecat = Mounted.Managed("werecat", records.getValue("werecat").sets.single().key)
-        val ivy = ModelLoss("models/ivy.vmdl_c", Mount(PakNumber(2), werecat), Mount(PakNumber(1), lilith))
+        val ivy = ModelLoss("models/ivy.vmdl_c", Mount(Slot(2), werecat), Mount(Slot(1), lilith))
         val reports = MutableStateFlow(ConflictReport(listOf(ivy)))
         val vm = LibraryViewModel(base.modLibrary, FolderOpener { _, _ -> true }, conflicts = reports).also { viewModels.keep(it) }
         backgroundScope.launch { vm.uiState.collect {} }
         runCurrent()
         assertEquals(listOf<HiddenBy>(HiddenBy.Mod("lilith", "Lilith, the Hell Warden", kept = true)), vm.uiState.value.rows.single { it.installId == "werecat" }.hiddenBy)
         assertTrue(vm.uiState.value.rows.single { it.installId == "werecat" }.hiddenMeant, "the user kept Lilith on beside it")
-        reports.value = ConflictReport(listOf(ivy, ModelLoss("models/haze.vmdl_c", Mount(PakNumber(2), werecat), Mount(PakNumber(1), Mounted.Foreign("pak01_dir.vpk", FileStamp(1, 1))))))
+        reports.value = ConflictReport(listOf(ivy, ModelLoss("models/haze.vmdl_c", Mount(Slot(2), werecat), Mount(Slot(1), Mounted.Foreign("pak01_dir.vpk", FileStamp(1, 1))))))
         runCurrent()
         assertFalse(vm.uiState.value.rows.single { it.installId == "werecat" }.hiddenMeant, "a file nobody kept beside it hides a model too")
     }

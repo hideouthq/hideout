@@ -16,7 +16,7 @@ import gg.hideouthq.core.library.LibraryStatus
 import gg.hideouthq.core.library.Manager
 import gg.hideouthq.core.library.ManifestRecord
 import gg.hideouthq.core.library.ModLibrary
-import gg.hideouthq.core.library.PakNumber
+import gg.hideouthq.core.library.Slot
 import gg.hideouthq.core.library.Placement
 import gg.hideouthq.core.library.SetFile
 import gg.hideouthq.core.library.SetOrigin
@@ -95,7 +95,7 @@ class DesktopImportFlowTest {
 
     private val ownBytes = FakeVpk.directory(seed = 90)
     private val own = ManifestRecord(
-        "own", root, "Hideout's own", Placement.On(PakNumber(9)),
+        "own", root, "Hideout's own", Placement.On(Slot(9)),
         listOf(InstalledSet(InstalledSource.Remote(SubmissionIdentity(SubmissionKind.Mod, 1, 10, null)), null, null, SetOrigin.Imported(Sha256.image(ownBytes)), null, "pak09_dir.vpk", listOf(SetFile(VpkPart.Directory, Sha256.image(ownBytes))))),
     )
 

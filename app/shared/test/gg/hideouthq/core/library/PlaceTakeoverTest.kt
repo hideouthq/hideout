@@ -124,7 +124,7 @@ class PlaceTakeoverTest {
             mod("Shouting", Matched.Unpinned(null), LoadPosition(0, 9), "addons/PAK09_DIR.VPK"),
         ), LibraryManifest(), addons)
         assertEquals(listOf(false, true, false), placed.plan.adopted.map { it.claimed })
-        assertEquals(listOf(Placement.Off, Placement.On(PakNumber(7)), Placement.Off), placed.plan.adopted.map { it.record.placement })
+        assertEquals(listOf(Placement.Off, Placement.On(Slot(7)), Placement.Off), placed.plan.adopted.map { it.record.placement })
     }
 
     @Test

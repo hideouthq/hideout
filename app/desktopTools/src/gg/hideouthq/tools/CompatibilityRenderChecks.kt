@@ -29,7 +29,7 @@ import gg.hideouthq.core.library.InstalledSource
 import gg.hideouthq.core.library.LibraryManifest
 import gg.hideouthq.core.library.LibraryStatus
 import gg.hideouthq.core.library.ManifestRecord
-import gg.hideouthq.core.library.PakNumber
+import gg.hideouthq.core.library.Slot
 import gg.hideouthq.core.library.Placement
 import gg.hideouthq.core.library.RepairWork
 import gg.hideouthq.core.library.SetFile
@@ -106,7 +106,7 @@ private class CompatFixture(
     val records: List<ManifestRecord> = listOf(Werewolf, Ghost, Frank).mapIndexed { index, title ->
         val number = index + 1
         ManifestRecord(
-            "compat$number", SampleGameRoot, title, Placement.On(PakNumber(number)),
+            "compat$number", SampleGameRoot, title, Placement.On(Slot(number)),
             sets = listOf(InstalledSet(
                 source = InstalledSource.Remote(SubmissionIdentity(SubmissionKind.Mod, 900_000L + number, 1L + number, null)),
                 originalName = null, variant = variant,
@@ -415,7 +415,7 @@ private const val Lilith = "Lilith, the Hell Warden"
 private class ModPageFixture {
     private val bytes = ByteArray(48) { 9 }
     private val record = ManifestRecord(
-        "lilith1", SampleGameRoot, Lilith, Placement.On(PakNumber(1)),
+        "lilith1", SampleGameRoot, Lilith, Placement.On(Slot(1)),
         sets = listOf(InstalledSet(
             source = InstalledSource.Remote(SubmissionIdentity(SubmissionKind.Mod, 551_201L, 7L, null)),
             originalName = null, variant = null,

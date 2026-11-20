@@ -133,7 +133,7 @@ class FilePriorityTest {
     fun anUnavailableInstallationDoesNotInvalidateHealthyCachedMetadata() {
         val a = priorityRecord("a", 1)
         val b = priorityRecord("b", 2)
-        val broken = a.placed(Placement.On(PakNumber(3))).copy(installId = "broken")
+        val broken = a.placed(Placement.On(Slot(3))).copy(installId = "broken")
         val records = listOf(a, b, broken)
         val result = filePriority("a", records, snapshot(records), snapshot(records),
             indexes(a to setOf("shared"), b to setOf("shared")), unavailableInstalls = setOf("broken"))

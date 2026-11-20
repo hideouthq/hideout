@@ -17,13 +17,13 @@ class PlacementTest {
 
     private val hood = set("hood_dir.vpk", 0, 2)
     private val hat = set("hat/hat_dir.vpk")
-    private val mod = ManifestRecord("m", root, "Mod", Placement.On(PakNumber(46)), listOf(hood, hat))
+    private val mod = ManifestRecord("m", root, "Mod", Placement.On(Slot(46)), listOf(hood, hat))
 
     @Test
     fun aModThatIsOnNamesEachSetByItsNumberAndOneThatIsOffByItsKey() {
         assertEquals(listOf("pak46_dir.vpk", "pak46_000.vpk", "pak46_002.vpk", "pak47_dir.vpk"), mod.files.map { it.name })
-        assertEquals(listOf(PakNumber(46), PakNumber(47)), mod.numbers)
-        assertEquals(PakNumber(47), mod.numberOf(hat))
+        assertEquals(listOf(Slot(46), Slot(47)), mod.numbers)
+        assertEquals(Slot(47), mod.numberOf(hat))
         assertEquals(SetFolder.Addons, mod.setFolder())
 
         val off = mod.placed(Placement.Off)
@@ -38,9 +38,19 @@ class PlacementTest {
     }
 
     @Test
-    fun aBlockPastNinetyNineAPartOutOfOrderAndTwoSetsOfOneKeyAreRefused() {
-        assertFailsWith<IllegalArgumentException>("47 and 48 would end past 99") { mod.placed(Placement.On(PakNumber(99))) }
-        mod.placed(Placement.On(PakNumber(98)))
+    fun aModPastAddonsIsNamedFromPak01InTheNextLoadingFolder() {
+        val past = mod.placed(Placement.On(Slot(100)))
+        assertEquals(SetFolder.On(2), past.setFolder())
+        assertEquals(listOf("pak01_dir.vpk", "pak01_000.vpk", "pak01_002.vpk", "pak02_dir.vpk"), past.files.map { it.name })
+        assertEquals("game/citadel/hideout_addons2/pak02_dir.vpk", past.files.last().relativePath(past))
+        assertTrue(past.files.all { past.setFolder().admits(it.name) })
+    }
+
+    @Test
+    fun aBlockAcrossTwoFoldersAPartOutOfOrderAndTwoSetsOfOneKeyAreRefused() {
+        assertFailsWith<IllegalArgumentException>("47 and 48 would end past 99") { mod.placed(Placement.On(Slot(99))) }
+        assertFailsWith<IllegalArgumentException>("one set in hideout_addons2, one in hideout_addons3") { mod.placed(Placement.On(Slot(198))) }
+        mod.placed(Placement.On(Slot(98)))
         assertFailsWith<IllegalArgumentException>("a chunk before the directory") { hood.copy(files = hood.files.reversed()) }
         assertFailsWith<IllegalArgumentException>("a chunk twice") { hood.copy(files = hood.files + hood.files.last()) }
         assertFailsWith<IllegalArgumentException>("no directory") { hood.copy(files = hood.files.drop(1)) }
@@ -63,13 +73,13 @@ class PlacementTest {
         assertEquals(mod.files.zip(off.files), turnedOff.moving.flatten())
         assertTrue(turnedOff.turned)
 
-        val renumbered = Move(mod, mod.placed(Placement.On(PakNumber(10))))
+        val renumbered = Move(mod, mod.placed(Placement.On(Slot(10))))
         assertEquals(listOf(listOf("pak46_dir.vpk" to "pak10_dir.vpk", "pak46_000.vpk" to "pak10_000.vpk", "pak46_002.vpk" to "pak10_002.vpk"), listOf("pak47_dir.vpk" to "pak11_dir.vpk")), renumbered.moving.map { set -> set.map { (from, to) -> from.name to to.name } })
 
         val swapped = Move(mod, mod.placed(mod.placement, listOf(hat, hood)))
         assertEquals(listOf(listOf("pak46_dir.vpk" to "pak47_dir.vpk", "pak46_000.vpk" to "pak47_000.vpk", "pak46_002.vpk" to "pak47_002.vpk"), listOf("pak47_dir.vpk" to "pak46_dir.vpk")), swapped.moving.map { set -> set.map { (from, to) -> from.name to to.name } }, "an on mod's parts swap numbers")
 
-        val shifted = Move(mod, mod.placed(Placement.On(PakNumber(47)), listOf(hat, hood)))
+        val shifted = Move(mod, mod.placed(Placement.On(Slot(47)), listOf(hat, hood)))
         assertEquals(listOf(listOf("pak46_dir.vpk" to "pak48_dir.vpk", "pak46_000.vpk" to "pak48_000.vpk", "pak46_002.vpk" to "pak48_002.vpk")), shifted.moving.map { set -> set.map { (from, to) -> from.name to to.name } }, "a set that keeps its number does not move")
 
         assertEquals(emptyList(), Move(off, off.placed(Placement.Off, listOf(hat, hood))).moving, "an off mod's parts reorder moves no file")

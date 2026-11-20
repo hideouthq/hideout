@@ -40,7 +40,7 @@ fun alternatives(a: Map<String, Long>, b: Map<String, Long>): Boolean {
 /** Whether [paths], as [sharedFiles] gives them, include a model. */
 fun sharesModel(paths: List<String>): Boolean = paths.firstOrNull()?.endsWith(ModelExtension) == true
 
-data class Mount(val number: PakNumber, val by: Mounted)
+data class Mount(val number: Slot, val by: Mounted)
 
 sealed interface Mounted {
     data class Managed(val installId: String, val set: SetKey) : Mounted
@@ -55,7 +55,7 @@ sealed interface Mounted {
 internal fun mounts(placed: List<ManifestRecord>, addons: List<FolderEntry>, now: List<ManifestRecord>): List<Mount> {
     val own = now.filter { it.enabled }.flatMapTo(HashSet()) { record -> record.files.map { it.name } }
     val managed = placed.flatMap { record -> record.sets.mapNotNull { set -> record.numberOf(set)?.let { Mount(it, Mounted.Managed(record.installId, set.key)) } } }
-    val foreign = addons.filter { it.name !in own }.mapNotNull { entry -> PakNumbers.mounted(entry.name)?.let { Mount(it, Mounted.Foreign(entry.name, entry.stamp)) } }
+    val foreign = addons.filter { it.name !in own }.mapNotNull { entry -> PakNumbers.mounted(entry.name)?.let { Mount(Slot.of(SetFolder.Addons, it), Mounted.Foreign(entry.name, entry.stamp)) } }
     return (managed + foreign).sortedBy { it.number }
 }
 

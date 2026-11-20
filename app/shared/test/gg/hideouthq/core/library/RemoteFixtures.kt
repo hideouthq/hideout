@@ -18,7 +18,7 @@ internal fun oneSetRecord(
     componentKey: String = "pak01_dir.vpk",
 ) = ManifestRecord(installId, gameRoot, title, placedAt(number), listOf(InstalledSet(source, originalName, variant, origin(source, archive), version, componentKey, files)))
 
-internal fun placedAt(number: Int?): Placement = number?.let { Placement.On(PakNumber(it)) } ?: Placement.Off
+internal fun placedAt(number: Int?): Placement = number?.let { Placement.On(Slot(it)) } ?: Placement.Off
 
 internal fun directory(image: FileImage) = SetFile(VpkPart.Directory, image)
 

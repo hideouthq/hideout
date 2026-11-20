@@ -2,23 +2,45 @@ package gg.hideouthq.core.library
 
 import kotlin.jvm.JvmInline
 
-/** A number `addons` mounts a `pakNN_dir.vpk` under. Lower loads first and wins. */
+/** A number one folder mounts a `pakNN_dir.vpk` under. Lower loads first and wins. */
 @JvmInline
-value class PakNumber(val value: Int) : Comparable<PakNumber> {
+value class PakNumber(val value: Int) {
     init {
-        require(value in Range) { "a pak number is 01..99" }
+        require(value in 1..PerFolder) { "a pak number is 01..99" }
     }
-
-    override fun compareTo(other: PakNumber): Int = value.compareTo(other.value)
-
-    operator fun plus(offset: Int): PakNumber = PakNumber(value + offset)
 
     /** `pak07`: the stem of every file of a set on under this number. */
     val stem: String get() = "pak" + value.toString().padStart(2, '0')
 
     companion object {
-        /** The numbers one folder mounts: 01 to 99. */
-        val Range: IntRange = 1..99
+        /** How many numbers one folder mounts, Deadlock's own limit. */
+        const val PerFolder: Int = 99
+    }
+}
+
+/**
+ * Where a set that is on loads among Hideout's: 1 loads first and wins. Hideout's block mounts its loading folders one
+ * after another, each with its own `pak01`..`pak99`, so `addons` holds 1..99, `hideout_addons2` 100..198, and so on.
+ * The slot alone is the load order; its [folder] and [pak] number derive from it.
+ */
+@JvmInline
+value class Slot(val value: Int) : Comparable<Slot> {
+    init {
+        require(value in All) { "a slot is 1..${All.last}" }
+    }
+
+    override fun compareTo(other: Slot): Int = value.compareTo(other.value)
+
+    operator fun plus(offset: Int): Slot = Slot(value + offset)
+
+    val folder: SetFolder.On get() = SetFolder.Loading[(value - 1) / PakNumber.PerFolder]
+
+    val pak: PakNumber get() = PakNumber((value - 1) % PakNumber.PerFolder + 1)
+
+    companion object {
+        val All: IntRange = 1..PakNumber.PerFolder * SetFolder.Loading.size
+
+        fun of(folder: SetFolder.On, pak: PakNumber): Slot = Slot((folder.index - 1) * PakNumber.PerFolder + pak.value)
     }
 }
 
@@ -33,11 +55,11 @@ object PakNumbers {
      */
     fun taken(addonsNames: Collection<String>): Set<PakNumber> =
         addonsNames.mapNotNull { name -> Numbered.matchEntire(name)?.groupValues?.get(1)?.trimStart('0')?.takeIf { it.length <= 2 }?.toIntOrNull() }
-            .filter { it in PakNumber.Range }
+            .filter { it in 1..PakNumber.PerFolder }
             .mapTo(HashSet(), ::PakNumber)
 
     /** The number the game mounts [name] under when it is a bare `pakNN_dir.vpk`, whatever its case; null for any other name. */
-    fun mounted(name: String): PakNumber? = BareDirectory.matchEntire(name)?.groupValues?.get(1)?.toInt()?.takeIf { it in PakNumber.Range }?.let(::PakNumber)
+    fun mounted(name: String): PakNumber? = BareDirectory.matchEntire(name)?.groupValues?.get(1)?.toInt()?.takeIf { it in 1..PakNumber.PerFolder }?.let(::PakNumber)
 
     private val BareDirectory = Regex("""pak([0-9]{2})_dir\.vpk""", RegexOption.IGNORE_CASE)
 }

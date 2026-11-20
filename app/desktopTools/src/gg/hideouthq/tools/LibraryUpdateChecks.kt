@@ -27,7 +27,7 @@ import gg.hideouthq.core.library.LibraryStatus
 import gg.hideouthq.core.library.ManifestCodec
 import gg.hideouthq.core.library.ManifestRecord
 import gg.hideouthq.core.library.OwnedDownload
-import gg.hideouthq.core.library.PakNumber
+import gg.hideouthq.core.library.Slot
 import gg.hideouthq.core.library.Placement
 import gg.hideouthq.core.library.SetFile
 import gg.hideouthq.core.library.SetFolder
@@ -128,7 +128,7 @@ private class UpdateFixture {
     private fun record(n: Int, title: String, enabled: Boolean, version: VersionPosition = VersionPosition(1, 1)): ManifestRecord {
         val identity = SubmissionIdentity(SubmissionKind.Mod, 900_000L + n, 9_000L + n, Md5A)
         return ManifestRecord(
-            installId = "update$n", gameRoot = SampleGameRoot, title = title, placement = if (enabled) Placement.On(PakNumber(n)) else Placement.Off,
+            installId = "update$n", gameRoot = SampleGameRoot, title = title, placement = if (enabled) Placement.On(Slot(n)) else Placement.Off,
             sets = listOf(
                 InstalledSet(
                     source = InstalledSource.Remote(identity), originalName = "installed$n.zip", variant = null,
@@ -205,7 +205,7 @@ internal fun runLibraryUpdateChecks(outDir: File) {
         clickLabel("Update $Bride")
         advanceUntil("$Bride updated") { fixture.md5(Bride) == Md5B }
         check(fixture.bytes(Bride) == Sha256.image(fixture.new.getValue(1))) { "$Bride's new bytes are in addons" }
-        check(fixture.record(Bride).numbers == listOf(PakNumber(1))) { "$Bride keeps its place in the load order" }
+        check(fixture.record(Bride).numbers == listOf(Slot(1))) { "$Bride keeps its place in the load order" }
         capture("updated")
 
         check(nodes().any { it.hasLabel("Change the files of $Hud") }) { "A row to review offers Change files on the row, not only in its menu" }

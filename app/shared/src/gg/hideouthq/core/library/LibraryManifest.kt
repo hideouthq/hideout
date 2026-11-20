@@ -255,10 +255,10 @@ data class InstalledSet(
     val archiveName: String get() = (source as? InstalledSource.Local)?.fileName ?: originalName ?: download?.fileName ?: componentKey.substringAfterLast('/')
 }
 
-/** Where a mod's files are, and the only place a pak number lives. */
+/** Where a mod's files are, and the only place a slot lives. */
 sealed interface Placement {
-    /** In `addons`: set i of the mod under [first] + i, winner first. */
-    data class On(val first: PakNumber) : Placement
+    /** In [first]'s loading folder: set i of the mod at [first] + i, winner first. */
+    data class On(val first: Slot) : Placement
 
     /** In the mod's own `hideout_off` folder, each set under its [SetKey.offStem], holding no number. */
     data object Off : Placement
@@ -266,7 +266,7 @@ sealed interface Placement {
 
 /**
  * One installed mod: one Library entry and one place in the load order, in the game root it was installed into. Its
- * [sets] are winner first. While it is on they hold consecutive pak numbers in `addons` from [Placement.On.first],
+ * [sets] are winner first. While it is on they hold consecutive slots in one loading folder from [Placement.On.first],
  * and the lowest loads first, so it wins where two change the same files; while it is off they hold none and sit in
  * its own `hideout_off` folder. A record with nothing left to own is an uninstall, not a record. Several sets may
  * share one source archive, local or remote, told apart by their own [InstalledSet.componentKey].
@@ -305,7 +305,7 @@ data class ManifestRecord(
         require(sets.map { it.source.modId }.distinct().size == 1) { "every set of a record comes from one mod" }
         require(sets.map { it.source to it.componentKey }.distinct().size == sets.size) { "a component is installed once in a mod" }
         require(sets.map { it.key }.distinct().size == sets.size) { "two components of a mod share a key" }
-        (placement as? Placement.On)?.let { require(it.first.value + sets.size - 1 <= PakNumber.Range.last) { "a mod's numbers end by 99" } }
+        (placement as? Placement.On)?.let { require(it.first.pak.value + sets.size - 1 <= PakNumber.PerFolder) { "a mod's sets sit in one folder" } }
         require(declined.all { (fileId, parts) -> parts.isNotEmpty() && sets.any { it.fileId == fileId } && sets.none { it.fileId == fileId && it.componentKey in parts } }) {
             "a part left out is one of a file the mod has, and not installed"
         }
@@ -329,15 +329,15 @@ data class ManifestRecord(
     /** The submission whose page the mod has: its GameBanana file's, or the one a local mod is known to be from. */
     val submission: SubmissionRef? get() = sets.first().source.submission
 
-    /** The numbers the sets hold while the mod is on, lowest first; none while it is off. */
-    val numbers: List<PakNumber>
+    /** The slots the sets hold while the mod is on, lowest first; none while it is off. */
+    val numbers: List<Slot>
         get() = when (val placed = placement) {
             is Placement.On -> sets.indices.map { placed.first + it }
             Placement.Off -> emptyList()
         }
 
-    /** The number [set] holds while the mod is on; null while it is off. */
-    fun numberOf(set: InstalledSet): PakNumber? {
+    /** The slot [set] holds while the mod is on; null while it is off. */
+    fun numberOf(set: InstalledSet): Slot? {
         val index = sets.indexOf(set)
         require(index >= 0) { "the set is not one of the mod's" }
         return (placement as? Placement.On)?.let { it.first + index }
@@ -350,7 +350,7 @@ data class ManifestRecord(
     /** [set]'s files as the placement names them: `pakNN_<part>.vpk` while on, `<offStem>_<part>.vpk` while off. The only place a name is made. */
     fun filesOf(set: InstalledSet): List<OwnedFile> {
         val key = set.key
-        val stem = numberOf(set)?.stem ?: key.offStem(installId)
+        val stem = numberOf(set)?.pak?.stem ?: key.offStem(installId)
         return set.files.map { OwnedFile(key, it.part, it.part.fileName(stem), it.image) }
     }
 
@@ -369,15 +369,20 @@ data class SetProvenance(val source: InstalledSource, val origin: SetOrigin, val
 fun OwnedFile.relativePath(record: ManifestRecord): String = "${record.folder()}/$name"
 
 /**
- * The folder under a game root that a set's files are placed in: `addons`, where the game loads them, or the mod's own
- * `hideout_off` folder, where it does not. Every segment is fixed or a validated [SubmissionRef.modId], never a name
- * from an archive or the user.
+ * The folder under a game root that a set's files are placed in: a loading folder, where the game loads them, or the
+ * mod's own `hideout_off` folder, where it does not. Every segment is fixed or a validated [SubmissionRef.modId], never
+ * a name from an archive or the user.
  */
 sealed interface SetFolder {
     val segments: List<String>
 
-    data object Addons : SetFolder {
-        override val segments: List<String> = listOf("game", "citadel", "addons")
+    /**
+     * The [index]th folder Hideout's block mounts sets from: `addons`, then `hideout_addons2` onwards. No [ForeignRoot]
+     * matches those names, so an import never adopts or unmounts them, and Deadlock Mod Manager's `addons2` stays its own.
+     */
+    data class On(val index: Int) : SetFolder {
+        init { require(index in 1..LoadingFolders) { "Hideout loads sets from $LoadingFolders folders at most" } }
+        override val segments: List<String> get() = GameSegments + if (index == 1) "addons" else "hideout_addons$index"
     }
 
     data class Off(val modId: String) : SetFolder {
@@ -386,11 +391,19 @@ sealed interface SetFolder {
         override val segments: List<String> get() = listOf("game", "citadel", "hideout_off", modId)
     }
 
-    /** The segments every folder shares, which are Deadlock's and are never created by Hideout. */
     companion object {
+        /** The segments every folder shares, which are Deadlock's and are never created by Hideout. */
         val GameSegments: List<String> = listOf("game", "citadel")
+
+        /** Where every set loads while a library holds 99 or fewer. */
+        val Addons: On = On(1)
+
+        /** Every folder Hideout loads sets from, in the order its block mounts them. */
+        val Loading: List<On> = (1..LoadingFolders).map(::On)
     }
 }
+
+private const val LoadingFolders = 10
 
 /** The folder below `game/citadel`, as [gg.hideouthq.core.data.GameInventory.list] takes it. */
 val SetFolder.inCitadel: String get() = segments.drop(SetFolder.GameSegments.size).joinToString("/")
@@ -398,16 +411,16 @@ val SetFolder.inCitadel: String get() = segments.drop(SetFolder.GameSegments.siz
 /** The folder below the game root, `/`-separated. */
 internal val SetFolder.path: String get() = segments.joinToString("/")
 
-fun ManifestRecord.setFolder(): SetFolder = if (enabled) SetFolder.Addons else SetFolder.Off(modId)
+fun ManifestRecord.setFolder(): SetFolder = (placement as? Placement.On)?.first?.folder ?: SetFolder.Off(modId)
 
 fun ManifestRecord.folder(): String = setFolder().path
 
-/** Where [set] loads among what a compatibility check compares it with: its number while its mod is on, else its place in its mod from 1. */
+/** Where [set] loads among what a compatibility check compares it with: its slot while its mod is on, else its place in its mod from 1. */
 fun ManifestRecord.rank(set: InstalledSet): Int = numberOf(set)?.value ?: (sets.indexOf(set) + 1)
 
-/** Whether [name] is a final name Hideout gives a set's file here: `pakNN_<part>.vpk` only in `addons`, `<offStem>_<part>.vpk` only in an off folder. */
+/** Whether [name] is a final name Hideout gives a set's file here: `pakNN_<part>.vpk` only in a loading folder, `<offStem>_<part>.vpk` only in an off folder. */
 fun SetFolder.admits(name: String): Boolean = when (this) {
-    SetFolder.Addons -> OnName.matches(name)
+    is SetFolder.On -> OnName.matches(name)
     is SetFolder.Off -> OffName.matches(name)
 }
 

@@ -19,15 +19,13 @@ value class CitadelPath(val value: String) {
     fun within(folder: CitadelPath): Boolean = value == folder.value || value.startsWith(folder.value + "/")
 
     /**
-     * The set folder this path names a file in under a name Hideout gives there, `addons/pakNN_dir.vpk` or
-     * `hideout_off/<modId>/set-<hash>_000.vpk` ([SetFolder.admits]); null for any other path.
+     * The set folder this path names a file in under a name Hideout gives there, `addons/pakNN_dir.vpk`,
+     * `hideout_addons2/pakNN_dir.vpk` or `hideout_off/<modId>/set-<hash>_000.vpk` ([SetFolder.admits]); null for any other path.
      */
     val hideoutFolder: SetFolder?
         get() {
             val folder = parent?.value ?: return null
-            val set = if (folder == Addons.value) {
-                SetFolder.Addons
-            } else {
+            val set = SetFolder.Loading.firstOrNull { it.inCitadel == folder } ?: run {
                 val modId = folder.removePrefix("${HideoutOff.value}/").takeIf { it != folder && '/' !in it } ?: return null
                 runCatching { SetFolder.Off(modId) }.getOrNull() ?: return null
             }

@@ -43,7 +43,7 @@ class LibraryEventsTest {
     fun switchingProfileLogsTheSwitchAndTheModsItTurnedOnOnceTheirFilesMoved() {
         val before = ready.copy(library = LibraryStatus.Ready(listOf(haze, lash)), profiles = book)
         val switched = before.copy(profiles = book.copy(active = ranked.id))
-        val moved = switched.copy(library = LibraryStatus.Ready(listOf(haze.copy(placement = Placement.On(PakNumber(1))), lash.copy(placement = Placement.On(PakNumber(2))))))
+        val moved = switched.copy(library = LibraryStatus.Ready(listOf(haze.copy(placement = Placement.On(Slot(1))), lash.copy(placement = Placement.On(Slot(2))))))
 
         assertEquals(listOf("Switched to profile Ranked"), libraryEvents(before, switched))
         assertEquals(listOf("Turned on: Haze Hood (mod-102)"), libraryEvents(switched, moved))
@@ -51,9 +51,9 @@ class LibraryEventsTest {
 
     @Test
     fun turningModsOffAndOnAndReorderingThemEachLogOneLine() {
-        val both = ready.copy(library = LibraryStatus.Ready(listOf(lash, haze.copy(placement = Placement.On(PakNumber(2))))))
-        val lashOff = both.copy(library = LibraryStatus.Ready(listOf(lash.copy(placement = Placement.Off), haze.copy(placement = Placement.On(PakNumber(2))))))
-        val swapped = both.copy(library = LibraryStatus.Ready(listOf(lash.copy(placement = Placement.On(PakNumber(2))), haze.copy(placement = Placement.On(PakNumber(1))))))
+        val both = ready.copy(library = LibraryStatus.Ready(listOf(lash, haze.copy(placement = Placement.On(Slot(2))))))
+        val lashOff = both.copy(library = LibraryStatus.Ready(listOf(lash.copy(placement = Placement.Off), haze.copy(placement = Placement.On(Slot(2))))))
+        val swapped = both.copy(library = LibraryStatus.Ready(listOf(lash.copy(placement = Placement.On(Slot(2))), haze.copy(placement = Placement.On(Slot(1))))))
 
         assertEquals(listOf("Turned off: Lash Gold (mod-101)"), libraryEvents(both, lashOff))
         assertEquals(listOf("Turned on: Lash Gold (mod-101)"), libraryEvents(lashOff, both))

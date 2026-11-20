@@ -87,5 +87,8 @@ class CitadelPathTest {
         assertNull(CitadelPath("hideout_off/mod-1/pak07_dir.vpk").hideoutFolder)
         assertNull(CitadelPath("addons/${stem}_dir.vpk").hideoutFolder)
         assertNull(CitadelPath("addons/profile_1/pak07_dir.vpk").hideoutFolder)
+        assertEquals(SetFolder.On(2), CitadelPath("hideout_addons2/pak07_dir.vpk").hideoutFolder)
+        assertEquals(SetFolder.On(10), CitadelPath("hideout_addons10/pak07_000.vpk").hideoutFolder)
+        listOf("hideout_addons1", "hideout_addons02", "hideout_addons11", "addons2").forEach { assertNull(CitadelPath("$it/pak07_dir.vpk").hideoutFolder, it) }
     }
 }

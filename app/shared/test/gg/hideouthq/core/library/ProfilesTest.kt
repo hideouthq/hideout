@@ -925,7 +925,7 @@ class ProfilesTest {
             assertEquals(other, world.applied().active, "duringRelease=$duringRelease: the switch is made")
             assertEquals(ids.toSet(), world.applied().activeProfile.enabled, "duringRelease=$duringRelease: the edited mod stays on where it is")
             assertTrue(world.store.manifest!!.records.all { it.enabled })
-            assertEquals(Placement.On(PakNumber(2)), world.record("mod-2").placement)
+            assertEquals(Placement.On(Slot(2)), world.record("mod-2").placement)
             assertTrue(world.record("mod-2").edited)
             assertEquals(Sha256.image(damaged), world.files.addonsFiles(root)["pak02_dir.vpk"])
             assertEquals(mapOf(ids[1] to FilesDamage.Changed), library.ready().damaged)

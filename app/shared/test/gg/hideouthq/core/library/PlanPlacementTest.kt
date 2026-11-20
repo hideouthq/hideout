@@ -9,9 +9,9 @@ class PlanPlacementTest {
     private val root = GameRoot("/games/Deadlock")
     private val main = ProfileId("main")
 
-    private fun on(first: Int): Placement = Placement.On(PakNumber(first))
+    private fun on(first: Int): Placement = Placement.On(Slot(first))
 
-    private fun numbers(values: Set<Int>) = values.mapTo(HashSet(), ::PakNumber)
+    private fun numbers(values: Set<Int>) = values.mapTo(HashSet(), ::Slot)
 
     private fun mod(index: Int, files: List<Int>, placement: Placement = Placement.Off, edited: Boolean = false): ManifestRecord {
         val source = InstalledSource.Remote(SubmissionIdentity(SubmissionKind.Mod, 1_000L + index, 2_000L + index, null))

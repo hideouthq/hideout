@@ -158,7 +158,7 @@ class CompatRealFixturesTest {
         val source = gg.hideouthq.core.library.InstalledSource.Remote(gg.hideouthq.core.library.SubmissionIdentity(gg.hideouthq.core.library.SubmissionKind.Mod, 1, 1, null))
         val set = gg.hideouthq.core.library.InstalledSet(source, null, null, gg.hideouthq.core.library.SetOrigin.Downloaded(gg.hideouthq.core.library.ArchiveIdentity("/tmp/real.zip", 1, "a".repeat(64))), null, name,
             listOf(gg.hideouthq.core.library.SetFile(gg.hideouthq.core.library.VpkPart.Directory, image)))
-        val record = gg.hideouthq.core.library.ManifestRecord("real", gg.hideouthq.core.library.GameRoot(root.toString()), "Real", gg.hideouthq.core.library.Placement.On(gg.hideouthq.core.library.PakNumber(number)), sets = listOf(set))
+        val record = gg.hideouthq.core.library.ManifestRecord("real", gg.hideouthq.core.library.GameRoot(root.toString()), "Real", gg.hideouthq.core.library.Placement.On(gg.hideouthq.core.library.Slot(number)), sets = listOf(set))
         val temp = Files.createTempDirectory("hideout-real-compat")
         try {
             val port = NioCompatibility(temp.resolve("originals"), temp.resolve("staging"))
