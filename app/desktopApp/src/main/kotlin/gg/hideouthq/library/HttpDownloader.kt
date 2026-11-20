@@ -34,15 +34,18 @@ import java.nio.file.Path
 import java.nio.file.StandardOpenOption
 import java.security.MessageDigest
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
+import kotlin.time.TimeMark
+import kotlin.time.TimeSource
 
 class HttpDownloader(
     private val client: HttpClient,
     defaultFolder: Path,
     private val hideoutAreas: List<Path>,
-    private val attempts: Int = 4,
-    private val backoff: (attempt: Int) -> Duration = { (1L shl (it - 1)).seconds },
+    private val retry: RetryWindow = RetryWindow(),
+    private val time: TimeSource = TimeSource.Monotonic,
     private val busy: BusyHosts = BusyHosts(),
     private val stallNotice: Duration = StallNotice,
     private val progressEvery: Duration = ProgressEvery,
@@ -132,15 +135,16 @@ class HttpDownloader(
 
     private suspend fun attemptAll(file: RemoteFile, part: Path, target: Path, onPublished: (ArchiveIdentity) -> Unit, onProgress: (DownloadProgress) -> Unit): DownloadResult {
         var verificationRetried = false
-        var attempt = 0
+        var outage: TimeMark? = null
+        var tries = 0
         var told = 0
         var ranges = false
         val token = Any()
         val waiting: (Instant) -> Unit = { until -> onProgress(DownloadProgress(Files.size(part), file.sizeBytes, busyUntil = until)) }
         try {
             while (true) {
-                attempt++
                 busy.waitFor(token, Url(file.downloadUrl).host, waiting)
+                val had = Files.size(part)
                 when (val fetched = fetch(file, part, { ranges = ranges || it }, onProgress)) {
                     Fetch.Complete -> when (val checked = check(part, file)) {
                         is Check.Good -> return DownloadResult.Done(publish(part, target, file.fileName, checked).also(onPublished))
@@ -150,21 +154,22 @@ class HttpDownloader(
                             FileChannel.open(part, StandardOpenOption.WRITE).use { it.truncate(0) }
                         }
                     }
-                    Fetch.Restart -> {
-                        attempt--
-                        FileChannel.open(part, StandardOpenOption.WRITE).use { it.truncate(0) }
-                    }
+                    Fetch.Restart -> FileChannel.open(part, StandardOpenOption.WRITE).use { it.truncate(0) }
                     is Fetch.Busy -> {
-                        attempt--
                         val wait = busyWait(fetched.retryAfter, ++told) ?: return DownloadResult.Failed(DownloadProblem.Http(429))
                         busy.tooMany(token, fetched.host, wait)
                         busy.waitFor(token, fetched.host, waiting)
                     }
                     is Fetch.Retry -> {
                         val problem = (fetched.problem as? DownloadProblem.Network)?.copy(resumable = ranges && Files.size(part) > 0) ?: fetched.problem
-                        if (attempt >= attempts) return DownloadResult.Failed(problem)
+                        if (Files.size(part) > had) {
+                            outage = null
+                            tries = 0
+                        }
+                        val began = outage ?: time.markNow().also { outage = it }
+                        val wait = retry.wait(++tries, began.elapsedNow()) ?: return DownloadResult.Failed(problem)
                         onProgress(DownloadProgress(Files.size(part), file.sizeBytes, stalled = true))
-                        delay(backoff(attempt))
+                        delay(wait)
                     }
                     is Fetch.Fatal -> return DownloadResult.Failed(fetched.problem)
                 }
@@ -279,6 +284,16 @@ class HttpDownloader(
         const val ValidatorName = "download.part.validator"
         val Kept = setOf(408, 429, 500, 502, 503, 504)
     }
+}
+
+/**
+ * When a download tries again through an outage, a run of tries that bring no bytes: [first] after the first, twice as
+ * long after each next one up to [longest], and never again once the outage has lasted [window].
+ */
+class RetryWindow(private val window: Duration = 2.minutes, private val first: Duration = 1.seconds, private val longest: Duration = 30.seconds) {
+    /** The wait before the next try of an outage that has lasted [lasted] over [tries] tries; null once it has lasted [window]. */
+    fun wait(tries: Int, lasted: Duration): Duration? =
+        if (lasted >= window) null else minOf(first * (1 shl (tries - 1).coerceIn(0, 30)), longest, window - lasted)
 }
 
 private const val MaxNames = 100

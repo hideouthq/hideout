@@ -66,8 +66,11 @@ import kotlin.io.path.readBytes
 import kotlin.io.path.writeBytes
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.nanoseconds
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TestTimeSource
+import kotlin.time.TimeSource
 import org.junit.Assume.assumeTrue
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -255,9 +258,12 @@ class DesktopPortsTest {
     private fun file(md5: String? = this.md5, size: Long = body.size.toLong()) =
         RemoteFile(1_691_864, "bg_ivy.zip", size, md5, null, 1, 1, "https://gamebanana.com/dl/1691864")
 
-    private fun downloader(engine: MockEngine, folder: Path = home.resolve("downloads"), attempts: Int = 4, busy: BusyHosts = BusyHosts(), stallNotice: Duration = 200.milliseconds, progressEvery: Duration = ProgressEvery) =
+    private fun downloader(
+        engine: MockEngine, folder: Path = home.resolve("downloads"), outage: Duration = 2.minutes, time: TimeSource = TimeSource.Monotonic,
+        busy: BusyHosts = BusyHosts(), stallNotice: Duration = 200.milliseconds, progressEvery: Duration = ProgressEvery,
+    ) =
         HttpDownloader(
-            HttpClient(engine) { expectSuccess = false }, folder, hideoutAreas = listOf(home.resolve("data")), attempts = attempts, backoff = { Duration.ZERO },
+            HttpClient(engine) { expectSuccess = false }, folder, hideoutAreas = listOf(home.resolve("data")), retry = RetryWindow(outage, first = Duration.ZERO), time = time,
             busy = busy, stallNotice = stallNotice, progressEvery = progressEvery,
             busyWait = { retryAfter, tries -> tooManyWait(retryAfter, tries)?.div(BusyScale) },
         )
@@ -395,7 +401,7 @@ class DesktopPortsTest {
                 respond(channel, HttpStatusCode.OK, headersOf(HttpHeaders.ContentLength to listOf("${body.size}"), HttpHeaders.AcceptRanges to listOf("bytes")))
             } else respond(body.copyOfRange(100_000, body.size), HttpStatusCode.PartialContent, headersOf(HttpHeaders.ContentRange, "bytes 100000-299999/300000"))
         }
-        val once = downloader(engine, attempts = 1)
+        val once = downloader(engine, outage = Duration.ZERO)
         val failed = assertIs<DownloadResult.Failed>(once.download(once.defaultFolder, ivy, file()) {})
         assertEquals(true, assertIs<DownloadProblem.Network>(failed.problem).resumable, "the server serves ranges, so Try again goes on")
         assertEquals(100_000, Files.size(home.resolve("downloads/mod-628739/1691864/download.part")))
@@ -413,7 +419,7 @@ class DesktopPortsTest {
             if (++calls == 1) respond("slow down", HttpStatusCode.TooManyRequests, headersOf(HttpHeaders.RetryAfter, "1")) else respond(body)
         }
         val progress = mutableListOf<DownloadProgress>()
-        val held = downloader(engine, attempts = 1, busy = busy)
+        val held = downloader(engine, outage = Duration.ZERO, busy = busy)
         assertIs<DownloadResult.Done>(held.download(held.defaultFolder, ivy, file()) { progress += it })
         assertEquals(2, calls, "the wait is not one of the attempts")
         assertNotNull(progress.firstNotNullOfOrNull { it.busyUntil }, "it said until when")
@@ -427,7 +433,7 @@ class DesktopPortsTest {
             sent += System.nanoTime()
             if (sent.size == 1) respond("slow down", HttpStatusCode.TooManyRequests, headersOf(HttpHeaders.RetryAfter, "0")) else respond(body)
         }
-        val held = downloader(engine, attempts = 1)
+        val held = downloader(engine, outage = Duration.ZERO)
         assertIs<DownloadResult.Done>(held.download(held.defaultFolder, ivy, file()) {})
         assertEquals(2, sent.size)
         assertTrue((sent[1] - sent[0]).nanoseconds >= 2.seconds / BusyScale, "it waited the backoff")
@@ -450,7 +456,7 @@ class DesktopPortsTest {
                 respond(channel, HttpStatusCode.OK, headersOf(HttpHeaders.ContentLength to listOf("${body.size}"), HttpHeaders.AcceptRanges to listOf("bytes")))
             } else respond("slow down", HttpStatusCode.TooManyRequests, headersOf(HttpHeaders.RetryAfter, "86400"))
         }
-        val held = downloader(engine, attempts = 2, busy = busy)
+        val held = downloader(engine, busy = busy)
         assertEquals(DownloadResult.Failed(DownloadProblem.Http(429)), held.download(held.defaultFolder, ivy, file()) {})
         assertEquals(2, calls, "asked once more, not held for a day")
         assertEquals(emptyMap(), busy.hosts.value)
@@ -490,6 +496,61 @@ class DesktopPortsTest {
         }
         assertIs<DownloadResult.Done>(download(engine, file()))
         assertEquals(listOf(null, null, "bytes=100000-"), ranges)
+    }
+
+    @Test
+    fun anOutageShorterThanTwoMinutesIsWaitedOutAndTheDownloadGoesOnFromThePart() = runBlocking<Unit> {
+        val time = TestTimeSource()
+        val ranges = mutableListOf<String?>()
+        val engine = MockEngine { request ->
+            ranges += request.headers[HttpHeaders.Range]
+            when (ranges.size) {
+                1 -> respond(body.copyOf(100_000))
+                in 2..5 -> {
+                    time += 25.seconds
+                    if (ranges.size % 2 == 0) throw IOException("Connection refused") else respondError(HttpStatusCode.ServiceUnavailable)
+                }
+                else -> respond(body.copyOfRange(100_000, body.size), HttpStatusCode.PartialContent, headersOf(HttpHeaders.ContentRange, "bytes 100000-299999/300000"))
+            }
+        }
+        val progress = mutableListOf<DownloadProgress>()
+        assertIs<DownloadResult.Done>(download(engine, file(), downloader = downloader(engine, time = time)) { synchronized(progress) { progress += it } })
+        assertEquals(listOf(null) + List(5) { "bytes=100000-" }, ranges)
+        assertTrue(progress.any { it.stalled && it.doneBytes == 100_000L }, "it said it was stalled while it waited: $progress")
+    }
+
+    @Test
+    fun twoMinutesWithNoBytesFailTheDownloadAndKeepWhatItGot() = runBlocking<Unit> {
+        val time = TestTimeSource()
+        var calls = 0
+        val engine = MockEngine {
+            if (++calls == 1) return@MockEngine respond(body.copyOf(100_000), headers = headersOf(HttpHeaders.AcceptRanges, "bytes"))
+            time += 25.seconds
+            when (calls % 3) {
+                0 -> respondError(HttpStatusCode.ServiceUnavailable)
+                1 -> respondError(HttpStatusCode.RequestTimeout)
+                else -> throw IOException("Connection refused")
+            }
+        }
+        assertEquals(DownloadResult.Failed(DownloadProblem.Http(503)), download(engine, file(), downloader = downloader(engine, time = time)))
+        assertEquals(6, calls, "the first try after two minutes without bytes is the last")
+        assertEquals(100_000, Files.size(home.resolve("downloads/mod-628739/1691864/download.part")), "Try again goes on from it")
+    }
+
+    @Test
+    fun aConnectionThatKeepsDroppingWhileBytesStillComeIsNeverAnOutage() = runBlocking<Unit> {
+        val time = TestTimeSource()
+        var calls = 0
+        val engine = MockEngine { request ->
+            calls++
+            time += 50.seconds
+            val from = request.headers[HttpHeaders.Range]?.removePrefix("bytes=")?.removeSuffix("-")?.toInt() ?: 0
+            val to = minOf(from + 50_000, body.size)
+            if (from == 0) respond(body.copyOf(to))
+            else respond(body.copyOfRange(from, to), HttpStatusCode.PartialContent, headersOf(HttpHeaders.ContentRange, "bytes $from-299999/300000"))
+        }
+        assertIs<DownloadResult.Done>(download(engine, file(), downloader = downloader(engine, time = time)))
+        assertEquals(6, calls, "five minutes in all, each try bringing more")
     }
 
     private fun CoroutineScope.cutOff(whole: ByteArray, bytes: Int, vararg headers: Pair<String, String>): Pair<ByteChannel, Headers> {
@@ -544,7 +605,7 @@ class DesktopPortsTest {
                 else -> respond(body)
             }
         }
-        val twice = downloader(engine, attempts = 2)
+        val twice = downloader(engine)
         assertIs<DownloadResult.Done>(twice.download(twice.defaultFolder, ivy, file()) {})
         assertEquals(listOf(null, "bytes=100000-", null), ranges)
     }
