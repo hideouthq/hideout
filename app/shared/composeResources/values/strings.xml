@@ -327,7 +327,7 @@
     <string name="library_files_in_game">Files in the game</string>
     <string name="library_files">Files</string>
     <string name="library_off_note">Not in the game while it’s off. Hideout keeps its files in its own folder.</string>
-    <string name="library_past_limit_note">On, but not in the game: it’s past Deadlock’s 99-file limit. Move it up, or turn off a mod above it.</string>
+    <string name="library_past_limit_note">On, but not in the game. Hideout loads up to %1$d files, and up to %2$d from one mod. Move it up, or turn off a mod above it.</string>
     <string name="library_going_in_note">Goes into the game when Deadlock closes. Hideout keeps its files in its own folder until then.</string>
     <string name="library_going_out_note">Leaves the game when Deadlock closes.</string>
     <string name="library_files_location">%1$s · from %2$s</string>

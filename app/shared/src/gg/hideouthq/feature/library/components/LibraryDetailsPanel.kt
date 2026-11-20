@@ -39,8 +39,10 @@ import gg.hideouthq.core.designsystem.theme.HideoutMotion
 import gg.hideouthq.core.designsystem.theme.HideoutShapes
 import gg.hideouthq.core.designsystem.theme.HideoutTheme
 import gg.hideouthq.core.designsystem.theme.HideoutWeights
+import gg.hideouthq.core.library.PakNumber
 import gg.hideouthq.core.library.ProfileBook
 import gg.hideouthq.core.library.ProfileId
+import gg.hideouthq.core.library.Slot
 import gg.hideouthq.core.library.incomplete
 import gg.hideouthq.core.ui.CompatChip
 import gg.hideouthq.core.ui.ModLabels
@@ -253,12 +255,13 @@ private fun FilesBlock(detail: LibraryDetail, onOpenFolder: () -> Unit) {
         }
         when {
             detail.held != null || detail.files == FilesPlace.InGame -> null
-            detail.files == FilesPlace.Out -> if (detail.row.pastLimit) Res.string.library_past_limit_note else Res.string.library_off_note
-            detail.files == FilesPlace.GoingIn -> Res.string.library_going_in_note
-            else -> Res.string.library_going_out_note
+            detail.files == FilesPlace.Out && detail.row.pastLimit -> stringResource(Res.string.library_past_limit_note, Slot.All.last, PakNumber.PerFolder)
+            detail.files == FilesPlace.Out -> stringResource(Res.string.library_off_note)
+            detail.files == FilesPlace.GoingIn -> stringResource(Res.string.library_going_in_note)
+            else -> stringResource(Res.string.library_going_out_note)
         }?.let { note ->
             Text(
-                text = stringResource(note),
+                text = note,
                 style = HideoutTheme.typography.notice,
                 color = scheme.onSurfaceVariant,
                 modifier = Modifier

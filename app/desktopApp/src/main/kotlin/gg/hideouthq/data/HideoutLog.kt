@@ -61,10 +61,10 @@ class DesktopReportExport(
     override suspend fun export(title: String, library: LibraryState, customGames: CustomGamesFacts?, settings: SettingsSnapshot): String? {
         val target = saveTarget(title, File(home, "hideout-report-${LocalDate.now()}.txt"), saveAs) ?: return null
         val root = (library.game as? GameStatus.Ready)?.root
-        val addons = root?.let { NioGameInventory.list(it, SetFolder.Addons.inCitadel) }
+        val loading = root?.let { SetFolder.Loading.associateWith { folder -> NioGameInventory.list(it, folder.inCitadel) } }
         val gameInfo = root?.let { NioGameInventory.read(it, ConfigTarget.GameInfo.Path, MaxConfigBytes) }
         withContext(Dispatchers.IO) {
-            val facts = ReportFacts(Clock.System.now(), machine, library, settings, customGames, addons, gameInfo, root?.let { freeBytes(Path.of(it.path)) }, freeBytes(dataFolder), log.read())
+            val facts = ReportFacts(Clock.System.now(), machine, library, settings, customGames, loading, gameInfo, root?.let { freeBytes(Path.of(it.path)) }, freeBytes(dataFolder), log.read())
             replaceAtomically(target.toPath(), withoutUser(bugReport(facts), home).encodeToByteArray())
         }
         return target.name

@@ -38,6 +38,11 @@ internal fun libraryEvents(before: LibraryState, after: LibraryState): List<Stri
     val now = after.library as? LibraryStatus.Ready
     if (was == null && now != null) add("Read the install list: ${counted(now.records.size, "mod")}, ${now.records.count { it.enabled }} on")
     if (was != null && now != null) addAll(recordEvents(was, now))
+    val root = (after.game as? GameStatus.Ready)?.root
+    if (root != null && now != null) {
+        val past = now.records.overflowIn(root)
+        if (past != (was?.records?.overflowIn(root) ?: 0)) add("Mods load from ${counted(past + 1, "folder")}: ${SetFolder.Loading.take(past + 1).joinToString { it.inCitadel }}")
+    }
     if (now?.interrupted != null && now.interrupted != was?.interrupted) add("A change was interrupted and waits to be finished: ${now.interrupted}")
     if (was?.interrupted != null && now != null && now.interrupted == null) add("The interrupted change was finished")
     val profilesBefore = before.profiles
@@ -55,7 +60,7 @@ internal fun libraryEvents(before: LibraryState, after: LibraryState): List<Stri
     after.linesPutBack?.takeIf { it !== before.linesPutBack }?.let { add("Put Hideout's lines back in gameinfo.gi after ${it.manager} changed it") }
     if (after.choiceSync is ChoiceSync.Waiting && before.choiceSync !is ChoiceSync.Waiting) add("Changes wait for Deadlock to close")
     if (after.pastLimit != before.pastLimit && after.pastLimit.isNotEmpty()) {
-        add("Past Deadlock's 99-file limit, so not loading: ${after.pastLimit.joinToString { id -> now?.records?.firstOrNull { it.installId == id }?.named ?: id }}")
+        add("Past what Hideout can load, so not loading: ${after.pastLimit.joinToString { id -> now?.records?.firstOrNull { it.installId == id }?.named ?: id }}")
     }
 }
 

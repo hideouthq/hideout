@@ -11,8 +11,8 @@
     <string name="profile_library_saved_unknown">Saved: applies once Deadlock is known to be closed</string>
     <string name="profile_library_saved_custom_game">Saved: applies after the custom game, once Deadlock closes</string>
     <plurals name="profile_library_past_limit">
-        <item quantity="one">%1$d mod won’t load: it’s past Deadlock’s 99-file limit</item>
-        <item quantity="other">%1$d mods won’t load: they’re past Deadlock’s 99-file limit</item>
+        <item quantity="one">%1$d mod is past what Hideout can load</item>
+        <item quantity="other">%1$d mods are past what Hideout can load</item>
     </plurals>
     <string name="profile_library_row_past_limit">Not loading</string>
     <string name="profile_library_empty_title">Your library is empty</string>

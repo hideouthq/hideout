@@ -36,6 +36,7 @@ import gg.hideouthq.core.library.Profile
 import gg.hideouthq.core.library.ProfileBook
 import gg.hideouthq.core.library.ProfileColour
 import gg.hideouthq.core.library.ProfileId
+import gg.hideouthq.core.library.SetFolder
 import gg.hideouthq.core.library.Slot
 import gg.hideouthq.core.library.SubmissionIdentity
 import gg.hideouthq.core.library.SubmissionKind
@@ -43,6 +44,7 @@ import gg.hideouthq.core.library.VersionPosition
 import gg.hideouthq.core.library.directory
 import gg.hideouthq.core.library.oneSetRecord
 import kotlin.test.Test
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.time.Instant
 
@@ -167,6 +169,28 @@ class BugReportTest {
     }
 
     @Test
+    fun aFolderPastAddonsGetsItsOwnSectionWhileItHoldsAnythingAndAModThereSaysWhichFolder() {
+        val past = state.copy(library = LibraryStatus.Ready(listOf(lash, haze.copy(placement = Placement.On(Slot(102))))))
+        val listings = mapOf(
+            SetFolder.On(2) to FolderListing.Listed(listOf(file("pak03_dir.vpk", 2048), file("pak01_dir.vpk", 300))),
+            SetFolder.On(3) to FolderListing.Listed(emptyList()),
+        )
+        val text = report(past, FolderListing.Listed(listOf(file("pak01_dir.vpk", 2048))), past = listings)
+
+        assertSection(
+            text,
+            """
+            ## Files in game/citadel/hideout_addons2
+            Summary: 2 entries, 1 Hideout's, 1 not, 0 missing
+            - pak01_dir.vpk, 300 B: NOT Hideout's, it loads all the same
+            - pak03_dir.vpk, 2.0 KB: Hideout's, Haze Hood (mod-102)
+            """,
+        )
+        assertTrue("- 2. Haze Hood (mod-102) [haze]: on, hideout_addons2/pak03\n" in text, text)
+        assertFalse("hideout_addons3" in text, "an empty folder with nothing of Hideout's in it gets no section")
+    }
+
+    @Test
     fun customGamesShowTheSessionTheListAndTheInstalledModesWithoutTheInviteCode() {
         val code = InviteCode.parse("P95-MAN-26D")!!
         val mode = FakeCustomGamesFeed.BebopWars
@@ -206,14 +230,14 @@ class BugReportTest {
         )
     }
 
-    private fun report(state: LibraryState, addons: FolderListing, customGames: CustomGamesFacts? = null, gameInfo: FileRead? = null) = bugReport(
+    private fun report(state: LibraryState, addons: FolderListing, customGames: CustomGamesFacts? = null, gameInfo: FileRead? = null, past: Map<SetFolder.On, FolderListing> = emptyMap()) = bugReport(
         ReportFacts(
             savedAt = Instant.parse("2026-11-16T10:05:00Z"),
             machine = Machine("1.2.3", "appimage package, updates itself", "Linux 6.8 amd64 (Ubuntu 24.04)", "KDE, wayland", "en-GB", "Java 25, Substrate VM"),
             library = state,
             settings = SettingsSnapshot(null, InstallDefaults(), true, true, true, false, true, false, true, false, false, emptyList()),
             customGames = customGames,
-            addons = addons,
+            loading = mapOf(SetFolder.Addons to addons) + past,
             gameInfo = gameInfo,
             gameFreeBytes = 1_610_612_736,
             dataFreeBytes = null,

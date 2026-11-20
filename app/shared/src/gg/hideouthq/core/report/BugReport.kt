@@ -28,7 +28,9 @@ import gg.hideouthq.core.library.SearchOrderRead
 import gg.hideouthq.core.library.SetFolder
 import gg.hideouthq.core.library.admitsTemporary
 import gg.hideouthq.core.library.counted
+import gg.hideouthq.core.library.label
 import gg.hideouthq.core.library.named
+import gg.hideouthq.core.library.path
 import gg.hideouthq.core.library.reason
 import gg.hideouthq.core.library.said
 import gg.hideouthq.core.library.setFolder
@@ -47,8 +49,8 @@ data class Machine(val version: String, val build: String, val system: String, v
 
 /**
  * Everything a bug report shows, read as it is saved at [savedAt]: [customGames] is null where this build has none,
- * [addons] and [gameInfo] are the found game's `addons` folder and `gameinfo.gi` as read then, null without a game, and
- * [log] Hideout's log, oldest first.
+ * [loading] and [gameInfo] are the found game's loading folders, `addons` first, and `gameinfo.gi` as read then, null
+ * without a game, and [log] Hideout's log, oldest first.
  */
 data class ReportFacts(
     val savedAt: Instant,
@@ -56,7 +58,7 @@ data class ReportFacts(
     val library: LibraryState,
     val settings: SettingsSnapshot,
     val customGames: CustomGamesFacts?,
-    val addons: FolderListing?,
+    val loading: Map<SetFolder.On, FolderListing>?,
     val gameInfo: FileRead?,
     val gameFreeBytes: Long?,
     val dataFreeBytes: Long?,
@@ -79,10 +81,7 @@ private sealed interface ReportEntry {
  * a maintainer reads one: the computer, the game, its files, the library and what it does, custom games, the settings, then the log.
  */
 fun bugReport(facts: ReportFacts): String = render(
-    listOf(
-        hideout(facts.savedAt, facts.machine),
-        game(facts),
-        addons(facts),
+    listOf(hideout(facts.savedAt, facts.machine), game(facts)) + loading(facts) + listOf(
         library(facts.library),
         profiles(facts.library),
         work(facts.library),
@@ -163,20 +162,30 @@ private fun searchPaths(file: FileRead): String = when (file) {
 }
 
 /**
- * Every entry of `addons` and whose it is: a file of a mod Hideout has on there, a temporary of one of its changes, or
- * not Hideout's. Files Hideout did not put there load all the same, so they are what a mod that "does nothing" most often
- * meets. A file a mod that is on should have and that is not there is listed too.
+ * Every entry of each loading folder and whose it is: a file of a mod Hideout has on there, a temporary of one of its
+ * changes, or not Hideout's. Files Hideout did not put there load all the same, so they are what a mod that "does
+ * nothing" most often meets. A file a mod that is on should have and that is not there is listed too. A folder past
+ * `addons` that holds nothing and should hold nothing gets no section.
  */
-private fun addons(facts: ReportFacts): ReportSection {
-    val title = "Files in ${SetFolder.Addons.segments.joinToString("/")}"
+private fun loading(facts: ReportFacts): List<ReportSection> {
     val root = (facts.library.game as? GameStatus.Ready)?.root
-    val listing = facts.addons
-    if (root == null || listing == null) return ReportSection(title, listOf(Fact("Listing", "no game found")))
+    val listings = facts.loading
+    if (root == null || listings == null) return listOf(ReportSection(SetFolder.Addons.title, listOf(Fact("Listing", "no game found"))))
+    val records = (facts.library.library as? LibraryStatus.Ready)?.records.orEmpty().filter { it.gameRoot == root }
+    return listings.mapNotNull { (folder, listing) ->
+        val placed = records.filter { it.setFolder() == folder }
+        if (folder != SetFolder.Addons && placed.isEmpty() && (listing as? FolderListing.Listed)?.entries?.isEmpty() == true) null else files(folder, listing, placed)
+    }
+}
+
+private val SetFolder.On.title: String get() = "Files in $path"
+
+private fun files(folder: SetFolder.On, listing: FolderListing, records: List<ManifestRecord>): ReportSection {
+    val title = folder.title
     if (listing is FolderListing.Unreadable) return ReportSection(title, listOf(Fact("Listing", "couldn't be read: ${listing.reason}")))
     val entries = (listing as FolderListing.Listed).entries.sortedBy { it.name.lowercase() }
-    val records = (facts.library.library as? LibraryStatus.Ready)?.records.orEmpty().filter { it.gameRoot == root && it.setFolder() == SetFolder.Addons }
     val owned = records.flatMap { record -> record.files.map { file -> file.name to (record to file) } }.toMap()
-    val unknown = entries.count { it.name !in owned && !SetFolder.Addons.admitsTemporary(it.name) }
+    val unknown = entries.count { it.name !in owned && !folder.admitsTemporary(it.name) }
     val items = entries.map { entry ->
         val size = when (entry.kind) {
             EntryKind.File -> entry.stamp?.let { sizeText(it.sizeBytes) } ?: "file"
@@ -187,7 +196,7 @@ private fun addons(facts: ReportFacts): ReportSection {
         val whose = owned[entry.name]?.let { (record, file) ->
             "Hideout's, ${record.named}" + entry.stamp?.takeIf { it.sizeBytes != file.sizeBytes }?.let { ", but Hideout wrote ${sizeText(file.sizeBytes)}" }.orEmpty()
         } ?: when {
-            SetFolder.Addons.admitsTemporary(entry.name) -> "a temporary of a change Hideout is making"
+            folder.admitsTemporary(entry.name) -> "a temporary of a change Hideout is making"
             entry.name.endsWith(".vpk", ignoreCase = true) -> "NOT Hideout's, it loads all the same"
             else -> "not Hideout's"
         }
@@ -217,12 +226,12 @@ private fun library(state: LibraryState): ReportSection {
                 ready.damaged[record.installId]?.let { if (it == FilesDamage.Missing) "files missing" else "files changed" },
                 "files unreadable".takeIf { record.installId in ready.unchecked },
                 "changed outside Hideout, held as it is".takeIf { record.edited },
-                "past Deadlock's 99-file limit, not loading".takeIf { record.installId in state.pastLimit },
+                "past what Hideout can load, not loading".takeIf { record.installId in state.pastLimit },
                 "uninstalled, files not gone yet".takeIf { record.installId in state.leaving },
                 "not yet found on GameBanana".takeIf { record.unasked },
                 "in ${record.gameRoot.path}, not the found game".takeIf { record.gameRoot != root },
             )
-            val placed = record.numbers.takeIf { it.isNotEmpty() }?.let { "on, ${it.first().pak.stem}" + if (it.size > 1) "-${it.last().pak.stem}" else "" } ?: "off"
+            val placed = record.numbers.takeIf { it.isNotEmpty() }?.let { "on, ${it.first().folder.label(it.first().pak.stem)}" + if (it.size > 1) "-${it.last().pak.stem}" else "" } ?: "off"
             Item(
                 "${index + 1}. ${record.named} [${record.installId}]: $placed" + flags.joinToString("") { ", $it" },
                 record.sets.map { set ->

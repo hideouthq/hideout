@@ -61,6 +61,16 @@ class LibraryEventsTest {
     }
 
     @Test
+    fun howManyFoldersModsLoadFromIsLoggedWhenItChanges() {
+        val off = ready.copy(library = LibraryStatus.Ready(listOf(lash, haze)))
+        val past = ready.copy(library = LibraryStatus.Ready(listOf(lash, haze.copy(placement = Placement.On(Slot(100))))))
+
+        assertEquals(listOf("Turned on: Haze Hood (mod-102)", "Mods load from 2 folders: addons, hideout_addons2"), libraryEvents(off, past))
+        assertEquals(listOf("Turned off: Haze Hood (mod-102)", "Mods load from 1 folder: addons"), libraryEvents(past, off))
+        assertEquals("Mods load from 2 folders: addons, hideout_addons2", libraryEvents(LibraryState(), past).last(), "a library read past addons says so")
+    }
+
+    @Test
     fun aProblemIsLoggedWhenItIsFirstShownAndNotAgainWhileItStays() {
         val failed = ready.copy(operations = mapOf("mod-7" to Operation("mod-7", OperationStage.Failed(LibraryProblem.NoFiles), "Seven")))
 
