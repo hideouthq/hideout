@@ -281,7 +281,7 @@ class ModLibrary(
             logLeftInPlace(preserved.files, preserved.conflict)
         },
         fence = ::untouchable,
-        gameIdentity = ::gameIdentity,
+        gameBuild = ::gameBuild,
     )
 
     @Volatile
@@ -1216,7 +1216,7 @@ class ModLibrary(
         }
         result.second?.let { refreshLoading(it) }
         val problem = result.first ?: LibraryProblem.LoadingNotVerified.takeIf { state.value.loading !is ModLoading.Loads }
-        // Deadlock starting again keeps a rewrite waiting for it; any other failure is told in place of the wait.
+        // Deadlock starting again keeps the rewrite waiting for it to close.
         if (problem != null && problem != LibraryProblem.GameRunning) {
             mutableState.update { state -> state.copy(rewrite = state.rewrite?.takeUnless { it.outcome == RewriteOutcome.WaitingForGame }) }
         }
@@ -2476,7 +2476,6 @@ class ModLibrary(
         }
     }
 
-    /** [sets], each with the library mod it is a copy of. A file is read again only once its listed size or time changes. */
     private suspend fun withCopies(root: GameRoot, entries: List<OnEntry>, sets: List<Leftover>): List<Leftover> {
         val records = ledger.manifest.records.filter { it.gameRoot == root }
         val stamps = entries.associate { it.relativePath to it.entry.stamp }
@@ -2935,21 +2934,15 @@ class ModLibrary(
         return null
     }
 
-    /**
-     * What took Hideout's lines out of [bytes], [root]'s `gameinfo.gi`, while its mods are wanted there and Hideout did
-     * not write the file as it is now: an update when the game's build changed since Hideout last wrote it, else another
-     * program, named when its own lines are there or it alone is open. Null when the file is Hideout's or keeps its lines.
-     */
     private suspend fun rewriteOf(root: GameRoot, bytes: ByteArray): RewrittenBy? {
         val receipt = ledger.manifest.receipt(root)?.takeIf { it.lines.mods && it.written != null } ?: return null
         if (receipt.written == Sha256.image(bytes)) return null
         if (GameInfoPatch.withBlock(bytes, receipt.lines, ledger.manifest.records.overflowIn(root)) !is GameInfoEdit.Patched) return null
         GameInfoPatch.heldBy(bytes).firstOrNull()?.let { return RewrittenBy.AnotherProgram(it) }
-        if (receipt.game != null && gameIdentity(root).let { it != null && it != receipt.game }) return RewrittenBy.GameUpdate
+        if (receipt.game != null && gameBuild(root).let { it != null && it != receipt.game }) return RewrittenBy.GameUpdate
         return RewrittenBy.AnotherProgram((state.value.managers as? ManagerActivity.Seen)?.open?.singleOrNull())
     }
 
-    /** Hideout put back the lines [by] took out, finishing the rewrite that waited for Deadlock to close if there was one. */
     private fun putBack(by: RewrittenBy) = mutableState.update { state ->
         val waiting = state.rewrite?.takeIf { it.outcome == RewriteOutcome.WaitingForGame }
         state.copy(rewrite = waiting?.copy(outcome = RewriteOutcome.PutBack) ?: GameInfoRewrite(by, RewriteOutcome.PutBack))
@@ -3282,13 +3275,13 @@ class ModLibrary(
         compatWake.trySend(Unit)
     }
 
-    private suspend fun gameIdentity(root: GameRoot): String? = (attempt { compatibility.game(root) } as? Attempt.Done)?.value
+    private suspend fun gameBuild(root: GameRoot): String? = (attempt { compatibility.game(root) } as? Attempt.Done)?.value
 
     private suspend fun keysFor(root: GameRoot): Map<String, CheckKey> {
         val manifest = ledger.manifest
         val records = manifest.records.filter { it.gameRoot == root }
         if (records.isEmpty()) return emptyMap()
-        val game = gameIdentity(root)
+        val game = gameBuild(root)
         val enabled = records.filter { it.enabled }
         val owned = enabled.flatMap { record -> record.files.map { it.relativePath(record) } }.toSet()
         val foreign = (onListing(root) as? OnListing.Listed)?.entries?.filter { it.relativePath !in owned }?.mapNotNull { entry ->

@@ -30,7 +30,6 @@ class NeedsTest {
     private val shop = SubmissionRef(SubmissionKind.Mod, 551_230)
     private val shopFile = RemoteFile(301, "compact_shop.zip", 1_000, null, null, 5, 1, "https://gamebanana.com/dl/301")
 
-    /** The sample catalogue's mods under the GameBanana ids the sample library installed them from. */
     private val installedAs = mapOf("werecat" to "mod-551202", "faun-celeste" to "mod-551203", "compact-shop" to shop.modId)
 
     @Test

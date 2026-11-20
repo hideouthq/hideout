@@ -151,7 +151,6 @@ class LibraryViewModel(
     /** Lets the profile's own view drop the mods turned off in it, once Library is no longer on screen. */
     fun forgetTurnedOff() { local.update { it.copy(turnedOff = emptySet()) } }
 
-    /** Keeps [ids] listed in the profile's own view after they turn off there, so rows don't leave from under the pointer. */
     private fun keepListed(ids: Collection<String>) {
         local.update { if (it.scope == LibraryScope.Profile) it.copy(turnedOff = it.turnedOff + ids) else it }
     }
@@ -713,7 +712,6 @@ class LibraryViewModel(
         val layoutReady: Boolean = false,
         val filter: LibraryFilter = LibraryFilter.All,
         val scope: LibraryScope = LibraryScope.All,
-        /** Mods turned off while the profile's own view showed them, which it keeps listing until [scope] changes or Library leaves. */
         val turnedOff: Set<String> = emptySet(),
         val compatOpen: CompatRequest? = null,
         val followed: Set<String> = emptySet(),

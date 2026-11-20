@@ -300,7 +300,6 @@ fun Modifier.pictureRing(color: Color, strength: () -> Float): Modifier = drawWi
     }
 }
 
-/** A card's star: whether its mod is [starred], the star's [label], and what [onToggle] does when pressed. */
 class CardFavourite(val starred: Boolean, val label: String, val onToggle: (Boolean) -> Unit)
 
 @Composable

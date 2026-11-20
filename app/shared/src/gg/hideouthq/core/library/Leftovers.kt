@@ -13,7 +13,6 @@ data class Leftover(val slot: Slot, val files: List<LeftoverFile>, val copyOf: S
 
     val folder: SetFolder.On get() = slot.folder
 
-    /** Its directory's name, as the folder lists it. */
     val name: String get() = files.first().name
 
     val sizeBytes: Long get() = files.sumOf { it.sizeBytes }
@@ -22,10 +21,8 @@ data class Leftover(val slot: Slot, val files: List<LeftoverFile>, val copyOf: S
     val paths: List<CitadelPath> get() = files.map { CitadelPath("${folder.inCitadel}/${it.name}") }
 }
 
-/** One file of a [Leftover]: which part of its set it is, its name and the size its folder listed. */
 data class LeftoverFile(val part: VpkPart, val name: String, val sizeBytes: Long)
 
-/** How taking [Leftover]s into the library or out of the game ended. */
 sealed interface LeftoverOutcome {
     data object Added : LeftoverOutcome
 
@@ -35,11 +32,7 @@ sealed interface LeftoverOutcome {
     data class Refused(val problem: LibraryProblem) : LeftoverOutcome
 }
 
-/**
- * The [Leftover]s among [loading], in load order, besides [owned], the paths below the game root of every file Hideout's
- * records name. Only plain files count, as Hideout never acts through a link. A chunk with no directory of its number
- * beside it loads nothing, and the game mounts no other name, such as `631628_pak07_dir.vpk`, so neither is one.
- */
+/** A chunk with no directory of its number beside it loads nothing, and the game mounts no name like `631628_pak07_dir.vpk`. */
 internal fun leftovers(loading: List<OnEntry>, owned: Set<String>): List<Leftover> {
     val foreign = loading.filter { it.entry.kind == EntryKind.File && it.relativePath !in owned }
     return foreign.mapNotNull { entry -> entry.mounted?.let { it to entry } }.distinctBy { it.first }.sortedBy { it.first }.map { (slot, directory) ->
@@ -50,10 +43,6 @@ internal fun leftovers(loading: List<OnEntry>, owned: Set<String>): List<Leftove
     }
 }
 
-/**
- * The record among [records] with a set of [set]'s very bytes, part for part. [image] reads a file of [set], null when
- * it cannot, and is asked only when a set of the same sizes is held, so a listing with no such set reads nothing.
- */
 internal suspend fun copyOf(set: Leftover, records: List<ManifestRecord>, image: suspend (CitadelPath) -> FileImage?): ManifestRecord? {
     val sizes = set.files.mapTo(HashSet()) { it.part to it.sizeBytes }
     val alike = records.filter { record -> record.sets.any { held -> held.files.mapTo(HashSet()) { it.part to it.image.sizeBytes } == sizes } }
@@ -61,7 +50,6 @@ internal suspend fun copyOf(set: Leftover, records: List<ManifestRecord>, image:
     return holding(set.files.zip(set.paths) { file, path -> file.part to (image(path) ?: return null) }.toSet(), alike)
 }
 
-/** The record among [records] with a set of exactly [files], each part's size and SHA-256. */
 internal fun holding(files: Set<Pair<VpkPart, FileImage>>, records: List<ManifestRecord>): ManifestRecord? =
     records.firstOrNull { record -> record.sets.any { held -> held.files.mapTo(HashSet()) { it.part to it.image } == files } }
 

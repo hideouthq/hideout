@@ -45,7 +45,6 @@ import gg.hideouthq.resources.need_on
 import org.jetbrains.compose.resources.stringResource
 import gg.hideouthq.core.designsystem.theme.HideoutDimens.Changelog as WhatsNew
 
-/** What the mod needs, each a row in the style of What's new: a listed mod opens its page, a link opens the browser. */
 @Composable
 internal fun Needs(needs: List<Need>, canInstall: Boolean, onOpen: (Need) -> Unit, onInstall: (String) -> Unit, modifier: Modifier = Modifier) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(WhatsNew.HeaderGap)) {

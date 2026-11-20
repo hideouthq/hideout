@@ -314,7 +314,6 @@ class ShellViewModel(
     private fun putBack(automatic: Boolean) {
         viewModelScope.launch {
             val problem = modLibrary.reapply()
-            // Deadlock started meanwhile: the rewrite chip says the lines wait for it to close.
             if (automatic && problem == LibraryProblem.GameRunning) return@launch
             local.update { it.copy(failed = problem?.let(ShellNotice::ReapplyFailed)) }
         }

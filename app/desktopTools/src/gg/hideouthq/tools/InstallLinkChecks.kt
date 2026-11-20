@@ -24,7 +24,6 @@ import java.io.File
 
 private class InstallLinkCheck(val name: String, val run: (File) -> Unit)
 
-/** GameBanana's 1-click links, from the system to the mod page, rendered: the PNGs land in a folder per check. */
 fun main(args: Array<String>) {
     val checks = listOf(
         InstallLinkCheck("install_link_waits_for_setup", ::checkWaitsForSetup),

@@ -376,7 +376,6 @@ class ModDetailViewModel(
     private fun catalogue(): ViewerCatalogue = uiState.value.stageModel?.catalogue ?: ViewerCatalogue.Empty
 
     private class Staged(val scene: SceneSettings, val customBackdrop: ImageBitmap?, val picture: PictureNotice?)
-    /** [listed] holds the catalogue's title of each mod the page says this one needs, when the catalogue lists it. */
     private class Content(val header: ModHeader?, val detail: Loadable<ModDetail>, val listed: Map<String, String>)
     private class Selected(val content: Content, val file: FileSelection?, val entry: IndexEntry?, val preview: Loadable<PreviewModel>? = null, val load: PreviewLoad = PreviewLoad.Wanted)
 

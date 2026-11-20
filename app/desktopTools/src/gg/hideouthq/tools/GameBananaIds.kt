@@ -8,10 +8,6 @@ import gg.hideouthq.core.model.ModDetail
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-/**
- * [base] with the sample catalogue's mods listed under the GameBanana ids [ids] gives them, as the live catalogue lists
- * them, so a mod the sample library installed from such an id shows as installed, and a 1-click link finds its page.
- */
 internal fun withGameBananaIds(base: AppContainer, ids: Map<String, String>): AppContainer = AppContainer(
     catalog = GameBananaIds(base.catalog, ids),
     launcher = base.launcher,
@@ -26,7 +22,6 @@ internal fun withGameBananaIds(base: AppContainer, ids: Map<String, String>): Ap
     migration = base.migration, autoexec = base.autoexec, crosshairs = base.crosshairs, communityCrosshairs = base.communityCrosshairs,
 )
 
-/** Night of the Werecat as the sample library installed it, on in Main. */
 internal val InstalledWerecat = mapOf("werecat" to "mod-551202")
 
 private class GameBananaIds(private val catalog: CatalogRepository, private val ids: Map<String, String>) : CatalogRepository by catalog {

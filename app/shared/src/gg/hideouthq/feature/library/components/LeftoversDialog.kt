@@ -105,10 +105,6 @@ internal fun LeftoversDialog(state: LeftoversUi, modal: WindowModal, actions: Li
     }
 }
 
-/**
- * One set: its directory's name, where it is and how big, and [copyOf], the library mod it is a copy of, which only
- * lets it move out; with [actions] when there are others, so it can be taken on its own.
- */
 @Composable
 private fun LeftoverRow(set: Leftover, copyOf: String?, actions: LibraryActions?, enabled: Boolean) {
     val scheme = MaterialTheme.colorScheme

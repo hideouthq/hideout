@@ -81,10 +81,8 @@ data class LibraryUiState(
     val totalCount: Int get() = rows.size
     val visibleCount: Int get() = rows.count { it.visible }
 
-    /** From [FilterPillsFrom] mods, while a filter is chosen, or while an installed mod is a favourite, so its pill is there to pick. */
     val showFilters: Boolean get() = totalCount >= FilterPillsFrom || filter != LibraryFilter.All || filters.any { it.filter == LibraryFilter.Favourites }
 
-    /** The scope switch has a choice to offer: a mod the active profile leaves off, or the profile's own view to leave. */
     val showScope: Boolean get() = scope == LibraryScope.Profile || rows.any { !it.enabled }
 
     /**

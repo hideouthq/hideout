@@ -50,7 +50,7 @@ sealed interface Mounted {
 /**
  * What the loading folders mount with [placed] at their slots, lowest first: every set of a mod that is on, and every
  * bare `pakNN_dir.vpk` in `addons`, of [loading], that is not a file of the mods [now] has on, which may sit elsewhere
- * than [placed]. A foreign file past `addons` loads all the same, unseen here: its resources are read from `addons` only.
+ * than [placed]. A foreign file past `addons` loads all the same, unseen here.
  */
 internal fun mounts(placed: List<ManifestRecord>, loading: List<OnEntry>, now: List<ManifestRecord>): List<Mount> {
     val own = now.filter { it.enabled }.flatMapTo(HashSet()) { record -> record.files.map { it.relativePath(record) } }

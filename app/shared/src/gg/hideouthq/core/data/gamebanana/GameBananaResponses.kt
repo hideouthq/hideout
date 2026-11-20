@@ -149,7 +149,7 @@ internal fun parseProfile(text: String, key: SubmissionRef): SubmissionProfile {
 
 /**
  * Each entry is a list whose first item is a name and whose second is a link; how many items follow depends on the
- * endpoint. A link that is not a web address counts as none, and an entry with neither is left out.
+ * endpoint.
  */
 private fun requirements(field: JsonElement?): List<Requirement> = field.asList().mapNotNull { entry ->
     val items = entry.asList()

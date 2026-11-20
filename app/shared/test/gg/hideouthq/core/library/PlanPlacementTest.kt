@@ -30,7 +30,6 @@ class PlanPlacementTest {
 
     private class Library(val records: List<ManifestRecord>, val profile: Profile, val taken: Set<Int>, val stuck: Set<String>)
 
-    /** Up to [mods] mods of one to three sets, some on within the first [folders] loading folders, some edited unless not [editing]. */
     private fun library(random: Random, mods: Int = 45, folders: Int = 1, editing: Boolean = true): Library {
         val top = folders * PakNumber.PerFolder
         val widths = List(random.nextInt(1, mods)) { List(random.nextInt(1, 4)) { random.nextInt(1, 4) } }
@@ -74,7 +73,7 @@ class PlanPlacementTest {
         var fitting = 0
         repeat(600) { trial ->
             val library = library(random)
-            val (frozen, frozenPast) = Frozen.planPlacement(library.records, library.profile, library.taken, library.stuck)
+            val (frozen, frozenPast) = PlannerUpTo99.planPlacement(library.records, library.profile, library.taken, library.stuck)
             if (frozenPast.isNotEmpty()) return@repeat
             fitting++
             val planned = planPlacement(library.records, library.profile, numbers(library.taken), stuck = library.stuck)
@@ -137,8 +136,8 @@ class PlanPlacementTest {
         assertTrue(past > 50, "only $past of the libraries ran past addons")
     }
 
-    /** The planner as it was before Hideout loaded sets past `addons`, over plain numbers. Not to be changed with the planner. */
-    private object Frozen {
+    /** The planner before sets loaded past `addons`, the oracle for libraries that fit there. Not to change with the planner. */
+    private object PlannerUpTo99 {
         private const val Top = 99
         private const val Unplaced = Long.MAX_VALUE
         private const val StuckRename = 1 shl 20
@@ -185,7 +184,6 @@ class PlanPlacementTest {
             return firsts.toList()
         }
 
-        /** By install id, the first number each mod is placed on at, null for off; and the mods past the limit. */
         fun planPlacement(records: List<ManifestRecord>, profile: Profile, taken: Set<Int>, stuck: Set<String>): Pair<Map<String, Int?>, Set<String>> {
             val root = records.first().gameRoot
             val byId = records.associateBy { it.installId }

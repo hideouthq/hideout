@@ -140,8 +140,7 @@ internal class LibraryLedger(
     private val ids: () -> String,
     private val preserve: (Preserved) -> Unit,
     private val fence: suspend (GameRoot, gameMayRun: Boolean) -> String? = { _, _ -> null },
-    /** The game's build, which a `gameinfo.gi` receipt records with what Hideout wrote; null when it cannot be read. */
-    private val gameIdentity: suspend (GameRoot) -> String? = { null },
+    private val gameBuild: suspend (GameRoot) -> String? = { null },
 ) {
     @Volatile
     var authority: ManifestAuthority = ManifestAuthority.Uncertain(previous = null, reason = NotRead)
@@ -817,7 +816,7 @@ internal class LibraryLedger(
             is Attempt.Failed -> return failure(prepared.reason)
             is Attempt.Done -> prepared.value?.let { return failure(it) }
         }
-        val game = if (target is ConfigTarget.GameInfo) gameIdentity(root) else null
+        val game = if (target is ConfigTarget.GameInfo) gameBuild(root) else null
         val edit = PendingChange.ConfigEdit(root, target, ids(), from, Sha256.image(next))
         save(manifest.receipted().copy(pending = edit)).problem?.let { return it }
         fenced(root, target.whileGameRuns)?.let { return save(manifest.copy(pending = null)).problem ?: LibraryProblem.Interrupted(it) }
@@ -846,7 +845,7 @@ internal class LibraryLedger(
             is Attempt.Failed -> return Recovery.Waiting(recovered.reason)
             is Attempt.Done -> when (val result = recovered.value) {
                 is ConfigRecovery.Applied -> when (val target = edit.target) {
-                    is ConfigTarget.GameInfo -> gameIdentity(edit.gameRoot).let { game ->
+                    is ConfigTarget.GameInfo -> gameBuild(edit.gameRoot).let { game ->
                         receipt?.copy(written = edit.to, lines = target.lines, game = game) ?: GameConfigReceipt(edit.gameRoot, edit.to, target.lines, game)
                     }
                     ConfigTarget.Autoexec -> receipt
@@ -1070,7 +1069,6 @@ internal class LibraryLedger(
 
     private suspend fun twinned(entry: GameEntry, image: FileImage): Boolean = (attempt { ports.backups.holds(entry, image) } as? Attempt.Done)?.value == true
 
-    /** Refused when an entry of a loading folder, other than the files at [except] by path, takes one of [numbers]. */
     private suspend fun numberTaken(root: GameRoot, numbers: Iterable<Slot>, except: Set<String>): LibraryProblem? {
         val entries = when (val listing = onListing(root)) {
             is OnListing.Unreadable -> return LibraryProblem.AddonsUnreadable(listing.reason)

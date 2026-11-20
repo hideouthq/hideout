@@ -238,10 +238,7 @@ object GameInfoPatch {
         data class Failed(val problem: GameInfoProblem) : Parse
     }
 
-    /**
-     * [entries] are every leaf of SearchPaths; [leaves] the unconditional ones, which are all the engine is sure to read.
-     * [addonsFrom] is where the first entry that loads `addons` starts.
-     */
+    /** [entries] are every leaf of SearchPaths; [leaves] the unconditional ones, which are all the engine is sure to read. */
     private class View(
         val base: KvLeaf,
         val coveredBy: LoadingOwner?,

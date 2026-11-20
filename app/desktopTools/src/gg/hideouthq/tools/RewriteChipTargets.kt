@@ -38,7 +38,6 @@ internal val rewriteChipTargets: List<Target> = listOf(
     Target("rewrite_program_open_narrow", 840, 700, scale = 1f, interact = { openChip(Back) }) { RewriteApp(Rewrite.ManagerOpen) },
 )
 
-/** How `gameinfo.gi` lost the block Hideout wrote on build 1, with an app update waiting beside it. */
 private enum class Rewrite { Update, WhileRunning, ManagerOpen }
 
 private class GameBuild(private val id: String) : CompatibilityPort by CompatibilityPort.Unavailable {

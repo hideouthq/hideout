@@ -123,9 +123,8 @@ internal fun planPlacement(records: List<ManifestRecord>, profile: Profile, take
 /**
  * [on] placed on in their order at the numbers [planNumbers] gives each one's [block], around [taken] and the numbers
  * [around] holds: its [Block.fixed] ones where they are, else, when that cannot be, the rest around them; null when
- * neither fits in any number of loading folders. It plans within the folders the blocks hold numbers in, `addons` at
- * least, and opens the next one only when neither fits there. So a library that fits in `addons` is planned in `addons`
- * alone, and one that shrinks keeps its folders rather than renaming its sets back.
+ * neither fits in any number of loading folders. It opens a folder past the ones the blocks already use only when
+ * nothing fits there, so a library that shrinks keeps its folders rather than renaming its sets back.
  */
 internal fun placeAround(on: List<ManifestRecord>, around: List<ManifestRecord>, taken: Set<Slot>, block: (ManifestRecord) -> Block): List<ManifestRecord>? {
     val blocks = on.associateWith(block)
@@ -179,10 +178,8 @@ data class OnEntry(val folder: SetFolder.On, val entry: FolderEntry) {
     val mounted: Slot? get() = PakNumbers.mounted(entry.name)?.let { Slot.of(folder, it) }
 }
 
-/** What every folder in [SetFolder.Loading] holds, `addons` first. */
 internal sealed interface OnListing {
     data class Listed(val entries: List<OnEntry>) : OnListing
 
-    /** One of them is a link or cannot be read, so which slots are free is not known. */
     data class Unreadable(val reason: String) : OnListing
 }

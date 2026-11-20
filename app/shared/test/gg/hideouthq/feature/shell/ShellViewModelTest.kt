@@ -98,7 +98,6 @@ class ShellViewModelTest {
         override suspend fun game(root: GameRoot): String = id
     }
 
-    /** A library whose `gameinfo.gi` holds the block Hideout last wrote, on build `build:1`, with Deadlock closed. */
     private inner class Rewrites(private val scope: TestScope) {
         val root = SampleGameRoot
         val files = sampleGameFiles()
@@ -117,13 +116,11 @@ class ShellViewModelTest {
             scope.runCurrent()
         }
 
-        /** Steam updates Deadlock to [build], shipping a `gameinfo.gi` without Hideout's lines. */
         fun update(build: String = "build:2") {
             this.build.id = build
             rewrite()
         }
 
-        /** Something outside Hideout writes `gameinfo.gi` without Hideout's lines, in bytes Hideout never wrote. */
         fun rewrite() {
             files.writeGameInfo(root, withoutHideoutBlock(gameInfo()).decodeToString().replace("\r\n", "\n").encodeToByteArray())
             settle()

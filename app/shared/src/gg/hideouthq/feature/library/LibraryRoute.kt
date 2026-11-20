@@ -94,14 +94,10 @@ interface LibraryActions {
     fun useOriginal(installId: String)
     fun repairAll()
     fun checkCompatibility()
-    /** Opens the review of the sets that load and are not Hideout's. */
     fun reviewLeftovers()
     fun closeLeftovers()
-    /** Takes the leftovers at [slots] into the library. */
     fun addLeftovers(slots: List<Slot>)
-    /** Takes the leftovers at [slots] out of the game. */
     fun moveLeftoversOut(slots: List<Slot>)
-    /** Opens the folder the last Move out took files to. */
     fun openMovedFolder()
 }
 

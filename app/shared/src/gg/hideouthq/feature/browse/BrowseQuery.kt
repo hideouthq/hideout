@@ -6,7 +6,7 @@ import gg.hideouthq.core.model.Mod
 import gg.hideouthq.core.model.ModCategory
 
 internal object BrowseQuery {
-    /** [categories] are the labels the screens show for each category, which search matches against; [favourites], the mod ids the user starred. */
+    /** [categories] are the labels the screens show for each category, which search matches against. */
     fun results(
         mods: List<Mod>, heroes: Map<String, Hero>, filters: BrowseFilters, mature: MatureMods, today: CalendarDate, categories: Map<ModCategory, String>,
         favourites: Set<String> = emptySet(),

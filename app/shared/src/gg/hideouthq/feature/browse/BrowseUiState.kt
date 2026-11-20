@@ -54,6 +54,5 @@ data class BrowseUiState(
     val viewerFilters: Boolean,
     val mature: MatureMods = MatureMods.Blurred,
     val freshness: CatalogFreshness = CatalogFreshness(),
-    /** The user starred a mod, so the panel offers to show only those. */
     val hasFavourites: Boolean = false,
 )

@@ -286,12 +286,7 @@ class HttpDownloader(
     }
 }
 
-/**
- * When a download tries again through an outage, a run of tries that bring no bytes: [first] after the first, twice as
- * long after each next one up to [longest], and never again once the outage has lasted [window].
- */
 class RetryWindow(private val window: Duration = 2.minutes, private val first: Duration = 1.seconds, private val longest: Duration = 30.seconds) {
-    /** The wait before the next try of an outage that has lasted [lasted] over [tries] tries; null once it has lasted [window]. */
     fun wait(tries: Int, lasted: Duration): Duration? =
         if (lasted >= window) null else minOf(first * (1 shl (tries - 1).coerceIn(0, 30)), longest, window - lasted)
 }

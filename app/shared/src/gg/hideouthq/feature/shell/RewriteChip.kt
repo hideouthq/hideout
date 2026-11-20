@@ -45,10 +45,7 @@ import gg.hideouthq.resources.mod_lines_waiting
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
-/**
- * Says what took the lines that load the mods out of `gameinfo.gi` and what Hideout did. It stands out only while the
- * mods are off, and goes once its panel has been opened and closed.
- */
+/** Stands out only while the mods are off, and goes once its panel has been opened and closed. */
 @Composable
 internal fun RewriteChip(rewrite: GameInfoRewrite, expanded: Boolean, onToggle: () -> Unit, onRead: () -> Unit, modifier: Modifier = Modifier) {
     var wasOpen by remember { mutableStateOf(false) }

@@ -51,7 +51,6 @@ internal fun LibraryHeader(
     profileName: String,
     note: String? = null,
     noteWarns: Boolean = false,
-    /** A link after the note, such as "Review…", and what it does. */
     noteAction: String? = null,
     onNoteAction: () -> Unit = {},
     modifier: Modifier = Modifier,

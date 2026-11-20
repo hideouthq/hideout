@@ -137,7 +137,6 @@ private fun copyOfAMod(out: File) {
     println("Leftovers copy_of_a_mod passed")
 }
 
-/** Clicks the [label] closest to the text that holds [near], as a dialog repeats a label the pane behind it has. */
 private fun Script.clickNear(label: String, near: String) {
     val anchor = nodes().first { node -> node.config.getOrElseNullable(SemanticsProperties.Text) { null }?.any { near in it.text } == true }.boundsInRoot.center
     clickNode(nodes().filter { it.hasLabel(label) && it.config.contains(SemanticsActions.OnClick) }.minBy { (it.boundsInRoot.center - anchor).getDistance() })

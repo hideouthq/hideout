@@ -164,8 +164,7 @@ private fun searchPaths(file: FileRead): String = when (file) {
 /**
  * Every entry of each loading folder and whose it is: a file of a mod Hideout has on there, a temporary of one of its
  * changes, or not Hideout's. Files Hideout did not put there load all the same, so they are what a mod that "does
- * nothing" most often meets. A file a mod that is on should have and that is not there is listed too. A folder past
- * `addons` that holds nothing and should hold nothing gets no section.
+ * nothing" most often meets. A file a mod that is on should have and that is not there is listed too.
  */
 private fun loading(facts: ReportFacts): List<ReportSection> {
     val root = (facts.library.game as? GameStatus.Ready)?.root
