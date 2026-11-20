@@ -22,9 +22,10 @@ data class BrowseFilters(
     val currentPatch: Boolean = true,
     val blurMature: Boolean = true,
     val updated: UpdatedWithin = UpdatedWithin.Any,
+    val favourites: Boolean = false,
 ) {
     /** A filter the user set narrows the results, beyond the search words. A search looks through every category. */
-    val narrowed: Boolean get() = heroIds.isNotEmpty() || only3d || updated != UpdatedWithin.Any
+    val narrowed: Boolean get() = heroIds.isNotEmpty() || only3d || updated != UpdatedWithin.Any || favourites
 }
 
 /** What Browse does with mature mods: leaves them out (Settings), or lists them with the cover blurred or as it is (the panel). */
@@ -53,4 +54,6 @@ data class BrowseUiState(
     val viewerFilters: Boolean,
     val mature: MatureMods = MatureMods.Blurred,
     val freshness: CatalogFreshness = CatalogFreshness(),
+    /** The user starred a mod, so the panel offers to show only those. */
+    val hasFavourites: Boolean = false,
 )

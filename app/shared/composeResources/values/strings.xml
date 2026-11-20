@@ -281,6 +281,10 @@
     <string name="menu_show_files">Show files in folder</string>
     <string name="menu_open_page">Open mod page</string>
     <string name="menu_uninstall">Uninstall</string>
+    <string name="favourite_add">Favourite</string>
+    <string name="favourite_remove">Remove from favourites</string>
+    <string name="favourite_named">Favourite %1$s</string>
+    <string name="favourites">Favourites</string>
     <string name="library_turn_all_off">Turn all off</string>
     <string name="library_turn_on">Turn on</string>
     <string name="library_turn_off">Turn off</string>

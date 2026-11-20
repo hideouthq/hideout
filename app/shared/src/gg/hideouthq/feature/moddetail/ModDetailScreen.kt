@@ -68,6 +68,7 @@ interface ModDetailActions : StageActions, SoundStageActions {
     fun changeFiles()
     fun cancelInstall()
     fun setProfile(profile: ProfileId, selected: Boolean)
+    fun setFavourite(favourite: Boolean)
     fun showInLibrary() = Unit
     fun showFiles() = Unit
     fun uninstall() = Unit

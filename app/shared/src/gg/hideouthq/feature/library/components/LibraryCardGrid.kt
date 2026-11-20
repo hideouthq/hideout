@@ -196,11 +196,14 @@ internal fun LibraryCard(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(if (under) HideoutDimens.Card.UnderLineGap else 0.dp)) {
-                Text(
-                    row.title,
-                    style = if (under) HideoutTheme.typography.titleCard.copy(fontSize = 14.5.sp, fontWeight = HideoutWeights.Label) else HideoutTheme.typography.titleCard,
-                    color = titleInk, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                )
+                Row(horizontalArrangement = Arrangement.spacedBy(HideoutDimens.Library.NoteGap), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        row.title,
+                        style = if (under) HideoutTheme.typography.titleCard.copy(fontSize = 14.5.sp, fontWeight = HideoutWeights.Label) else HideoutTheme.typography.titleCard,
+                        color = titleInk, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false),
+                    )
+                    if (row.favourite) FavouriteMark(if (under) scheme.primary else titleInk)
+                }
                 if (row.compatPlace || row.damage != null || row.hiddenModels > 0) {
                     Row(Modifier.height(HideoutDimens.Chip.HeightSmall), horizontalArrangement = Arrangement.spacedBy(HideoutDimens.Library.NoteGap), verticalAlignment = Alignment.CenterVertically) {
                         row.damage?.let { DamageChip(it) }

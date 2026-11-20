@@ -88,13 +88,13 @@ class LibraryViewModel(
     private val observations = catalog?.installedFiles ?: MutableStateFlow(emptyMap())
     private val checking = catalog?.freshness?.map { Checking(it.checking, it.busyUntil) }?.distinctUntilChanged() ?: flowOf(Checking())
 
-    private val inputs = combine(library.state, conflicts ?: flowOf(ConflictReport()), imports, ::Inputs)
+    private val inputs = combine(library.state, conflicts ?: flowOf(ConflictReport()), imports, preferences?.favourites ?: flowOf(emptySet()), ::Inputs)
 
     val uiState: StateFlow<LibraryUiState> = combine(inputs, local, catalogUpdates, observations, checking) { inputs, local, _, observed, checking ->
         build(inputs, local, observed, checking)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(StopTimeoutMillis), LibraryUiState())
 
-    private class Inputs(val state: LibraryState, val report: ConflictReport, val migration: MigrationState)
+    private class Inputs(val state: LibraryState, val report: ConflictReport, val migration: MigrationState, val favourites: Set<String>)
 
     private data class Checking(val running: Boolean = false, val busyUntil: Instant? = null)
 
@@ -236,6 +236,11 @@ class LibraryViewModel(
     override fun showFiles(installId: String) {
         val record = records().firstOrNull { it.installId == installId } ?: return
         viewModelScope.launch { folders.open(record.gameRoot, record.setFolder()) }
+    }
+
+    override fun setFavourite(installId: String, favourite: Boolean) {
+        val row = shown.rows.firstOrNull { it.installId == installId } ?: return
+        preferences?.let { prefs -> viewModelScope.launch { prefs.setFavourite(row.favouriteId, favourite) } }
     }
 
     override fun uninstall(installId: String) = library.uninstall(setOf(installId))
@@ -416,7 +421,7 @@ class LibraryViewModel(
                     }
                 },
                 visible = true,
-            )
+            ).let { it.copy(favourite = it.favouriteId in inputs.favourites) }
         }
 
         val scoped = all.filter { local.scopes(it) }
@@ -580,6 +585,7 @@ class LibraryViewModel(
         }
         val pills = buildList {
             add(FilterPill(LibraryFilter.All, rows.size))
+            rows.count { it.favourite }.takeIf { it > 0 }?.let { add(FilterPill(LibraryFilter.Favourites, it)) }
             ModCategory.entries.forEach { category -> byCategory[category]?.let { offer(LibraryFilter.Category(category), it) } }
             offer(LibraryFilter.Updates, rows.count { it.matchesFilter(LibraryFilter.Updates) })
         }
@@ -633,6 +639,7 @@ class LibraryViewModel(
         is LibraryFilter.Category -> group == filter.category
         LibraryFilter.Updates -> update == UpdateState.Available
         LibraryFilter.Review -> update == UpdateState.Review
+        LibraryFilter.Favourites -> favourite
     }
 
     private val LibraryRow.group: ModCategory get() = category ?: ModCategory.Other

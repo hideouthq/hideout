@@ -8,6 +8,7 @@ import gg.hideouthq.core.ui.ModLabels
 import gg.hideouthq.feature.library.FilterPill
 import gg.hideouthq.feature.library.LibraryFilter
 import gg.hideouthq.resources.Res
+import gg.hideouthq.resources.favourites
 import gg.hideouthq.resources.library_filter_all
 import gg.hideouthq.resources.library_filter_review
 import gg.hideouthq.resources.library_filter_updates
@@ -22,6 +23,7 @@ internal fun LibraryFilterPills(filters: List<FilterPill>, selected: LibraryFilt
                 is LibraryFilter.Category -> ModLabels.plural(filter.category)
                 LibraryFilter.Updates -> stringResource(Res.string.library_filter_updates)
                 LibraryFilter.Review -> stringResource(Res.string.library_filter_review)
+                LibraryFilter.Favourites -> stringResource(Res.string.favourites)
             }
             Pill(label, pill.filter == selected, { onSelect(pill.filter) }, count = pill.count, indicator = indicator, key = pill.filter)
         }

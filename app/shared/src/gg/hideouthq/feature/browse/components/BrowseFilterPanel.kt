@@ -37,6 +37,7 @@ import gg.hideouthq.feature.browse.HeroChip
 import gg.hideouthq.feature.browse.MatureMods
 import gg.hideouthq.feature.browse.UpdatedWithin
 import gg.hideouthq.resources.Res
+import gg.hideouthq.resources.favourites
 import gg.hideouthq.resources.filters_3d_preview
 import gg.hideouthq.resources.filters_all_heroes
 import gg.hideouthq.resources.filters_blur_mature
@@ -63,6 +64,7 @@ internal fun BrowseFilterPanel(
     heroCount: Int,
     viewerFilters: Boolean,
     mature: MatureMods,
+    hasFavourites: Boolean,
     actions: BrowseActions,
 ) {
     Column(Modifier.fillMaxSize()) {
@@ -86,6 +88,7 @@ internal fun BrowseFilterPanel(
             HideoutDivider()
             Column(verticalArrangement = Arrangement.spacedBy(HideoutDimens.Browse.ShowOnlyGap)) {
                 SectionLabel(stringResource(Res.string.filters_show_only), Modifier.padding(bottom = HideoutDimens.Browse.SectionLabelBottomPadding))
+                if (hasFavourites || filters.favourites) SwitchRow(stringResource(Res.string.favourites), filters.favourites, actions::setFavouritesOnly, icon = HideoutIcons.Star)
                 if (viewerFilters) SwitchRow(stringResource(Res.string.filters_3d_preview), filters.only3d, actions::setOnly3d, icon = HideoutIcons.Cube)
                 SwitchRow(stringResource(Res.string.filters_current_patch), filters.currentPatch, actions::setCurrentPatch, icon = HideoutIcons.Check)
                 if (mature != MatureMods.Hidden) SwitchRow(stringResource(Res.string.filters_blur_mature), mature == MatureMods.Blurred, actions::setBlurMature, icon = HideoutIcons.Shield)

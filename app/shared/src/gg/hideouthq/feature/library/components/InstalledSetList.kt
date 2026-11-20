@@ -320,6 +320,7 @@ private fun InstalledRow(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(row.title, style = HideoutTheme.typography.titleRow, color = scheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                if (row.favourite) FavouriteMark()
                 row.damage?.let { DamageChip(it) }
                 row.compat?.let { CompatChip(it, row.enabled, row.title, onClick = { actions.openCompat(row.installId) }) }
                 if (row.hiddenModels > 0) HiddenModelsChip(row) { actions.inspectFilePriority(row.installId) }

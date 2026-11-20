@@ -356,7 +356,7 @@ private fun checkMoveToPosition(out: File) {
         advance(900)
         openRowMenu(NextTitle)
         capture("menu_open")
-        repeat(5) { key(Key.DirectionDown) }
+        repeat(6) { key(Key.DirectionDown) }
         key(Key.Enter)
         advance(400)
         check(hasText("Move $NextTitle to position")) { "Enter on the keyboard-reached item must open the position dialog" }

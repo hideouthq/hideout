@@ -18,6 +18,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import gg.hideouthq.core.designsystem.component.HideoutIconButton
+import gg.hideouthq.core.designsystem.component.HideoutIconToggleButton
+import gg.hideouthq.core.designsystem.component.HideoutTooltip
 import gg.hideouthq.core.designsystem.component.HideoutMenu
 import gg.hideouthq.core.designsystem.component.InstallButton
 import gg.hideouthq.core.designsystem.component.MenuEntry
@@ -87,6 +89,13 @@ internal fun InstallBar(state: ModDetailUiState, actions: ModDetailActions, modi
                 HideoutIcons.Close, stringResource(Res.string.profile_install_cancel), actions::cancelInstall,
                 modifier = Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape), size = 48.dp,
             )
+            HideoutTooltip(stringResource(if (state.favourite) Res.string.favourite_remove else Res.string.favourite_add)) {
+                HideoutIconToggleButton(
+                    if (state.favourite) HideoutIcons.StarFilled else HideoutIcons.Star, stringResource(Res.string.favourite_add), state.favourite, actions::setFavourite,
+                    modifier = Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape), size = 48.dp,
+                    hoverColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                )
+            }
         }
         val transfer = (page.operation?.stage as? OperationStage.Downloading)?.progress
         val wait = ModLabels.installWait(page.status)

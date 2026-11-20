@@ -144,7 +144,8 @@ class ModDetailViewModel(
             customBackdrop = staged.customBackdrop,
             picture = staged.picture,
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(StopTimeoutMillis), cachedState())
+    }.combine(preferences?.favourites?.map { modId in it } ?: flowOf(false)) { state, favourite -> state.copy(favourite = favourite) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(StopTimeoutMillis), cachedState())
 
     init {
         preferences?.let { saved ->
@@ -185,6 +186,10 @@ class ModDetailViewModel(
         val mod = catalog.cachedMod(modId) ?: return ModDetailUiState()
         val heroes = listOfNotNull(mod.heroId?.let(catalog::cachedHero)).associateBy { it.id }
         return ModDetailUiState(loading = true, header = mod.toHeader(heroes))
+    }
+
+    override fun setFavourite(favourite: Boolean) {
+        preferences?.let { saved -> viewModelScope.launch { saved.setFavourite(modId, favourite) } }
     }
 
     /** Asks for the mod page's details again after they failed to load. */

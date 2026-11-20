@@ -40,7 +40,7 @@ class BrowseViewModel(
     start: BrowseStart,
     private val categories: Map<ModCategory, String>,
     library: ModLibrary? = null,
-    preferences: Preferences? = null,
+    private val preferences: Preferences? = null,
 ) : ViewModel(), BrowseActions {
     private val filters = MutableStateFlow(
         BrowseFilters(
@@ -57,17 +57,18 @@ class BrowseViewModel(
     private val availableFilters = filters.map(::effective).distinctUntilChanged()
     private val resultFilters = availableFilters.map { it.copy(heroQuery = "", showAllHeroes = false) }.distinctUntilChanged()
     private val hideMature = preferences?.hideMature?.filterNotNull() ?: flowOf(false)
+    private val favourites = preferences?.favourites ?: flowOf(emptySet())
 
-    private val results = combine(catalog.mods, catalog.heroes, resultFilters, hideMature) { mods, heroes, filters, hidden ->
+    private val results = combine(catalog.mods, catalog.heroes, resultFilters, hideMature, favourites) { mods, heroes, filters, hidden, starred ->
         val heroMap = heroes.associateBy { it.id }
         val mature = when {
             hidden -> MatureMods.Hidden
             filters.blurMature -> MatureMods.Blurred
             else -> MatureMods.Shown
         }
-        val items = BrowseQuery.results(mods, heroMap, filters, mature, catalog.today, categories)
-            .map { it.toCatalogItem(heroMap).copy(blurred = it.mature && mature == MatureMods.Blurred) }
-        Results(items, heroes, mature)
+        val items = BrowseQuery.results(mods, heroMap, filters, mature, catalog.today, categories, starred)
+            .map { it.toCatalogItem(heroMap).copy(blurred = it.mature && mature == MatureMods.Blurred, favourite = it.id in starred) }
+        Results(items, heroes, mature, starred.isNotEmpty())
     }
 
     private val badges = library?.state?.map { state ->
@@ -84,7 +85,7 @@ class BrowseViewModel(
     }?.distinctUntilChanged() ?: flowOf(emptyMap())
 
     private val badgedResults = combine(results, badges) { results, badges ->
-        Results(results.items.map { it.copy(installation = badges[it.id]) }, results.heroes, results.mature)
+        Results(results.items.map { it.copy(installation = badges[it.id]) }, results.heroes, results.mature, results.hasFavourites)
     }
 
     val uiState: StateFlow<BrowseUiState> = combine(badgedResults, catalog.popularHeroIds, availableFilters) { results, popular, filters ->
@@ -99,6 +100,7 @@ class BrowseViewModel(
             selectedHeroes = heroes.filter { it.id in filters.heroIds }.map { HeroChip(it.id, it.name, true) },
             viewerFilters = catalog.previewsAvailable,
             mature = results.mature,
+            hasFavourites = results.hasFavourites,
         )
     }
         .combine(catalog.freshness) { state, freshness -> state.copy(freshness = freshness) }
@@ -136,6 +138,11 @@ class BrowseViewModel(
     override fun setCurrentPatch(value: Boolean) = filters.update { it.copy(currentPatch = value) }
     override fun setBlurMature(value: Boolean) = filters.update { it.copy(blurMature = value) }
     override fun setUpdated(value: UpdatedWithin) = filters.update { it.copy(updated = value) }
+    override fun setFavouritesOnly(value: Boolean) = filters.update { it.copy(favourites = value) }
+
+    override fun setFavourite(modId: String, favourite: Boolean) {
+        preferences?.let { viewModelScope.launch { it.setFavourite(modId, favourite) } }
+    }
 
     override fun toggleHero(heroId: String, selected: Boolean) = filters.update {
         it.copy(heroIds = if (selected) it.heroIds + heroId else it.heroIds - heroId)
@@ -160,6 +167,7 @@ class BrowseViewModel(
             currentPatch = defaults.currentPatch,
             blurMature = defaults.blurMature,
             updated = defaults.updated,
+            favourites = defaults.favourites,
         )
     }
 
@@ -168,5 +176,5 @@ class BrowseViewModel(
     /** Checks the catalogue for new and changed mods now, or tries loading it again after it failed. */
     override fun refresh() = catalog.refresh()
 
-    private class Results(val items: List<CatalogItem>, val heroes: List<Hero>, val mature: MatureMods)
+    private class Results(val items: List<CatalogItem>, val heroes: List<Hero>, val mature: MatureMods, val hasFavourites: Boolean)
 }

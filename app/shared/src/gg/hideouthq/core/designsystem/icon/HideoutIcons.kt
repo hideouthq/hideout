@@ -78,6 +78,9 @@ object HideoutIcons {
     val Server: ImageVector by lazy { strokedIcon("Server", "M4 4.5h16v6H4zM4 13.5h16v6H4zM7.5 7.5h.01M7.5 16.5h.01M11 7.5h5M11 16.5h5") }
     val Grid: ImageVector by lazy { strokedIcon("Grid", "M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z") }
 
+    val Star: ImageVector by lazy { strokedIcon("Star", StarPath) }
+    val StarFilled: ImageVector by lazy { filledIcon("StarFilled", StarPath) }
+
     val Shield: ImageVector by lazy { strokedIcon("Shield", "M12 3l8 3v6c0 5-3.5 8-8 9c-4.5-1-8-4-8-9V6z") }
 
     val Warning: ImageVector by lazy { strokedIcon("Warning", "M12 4l9 16H3zM12 10v4M12 17h.01") }
@@ -224,6 +227,7 @@ object HideoutIcons {
 private const val SectionStrokeWidth = 2f
 private const val ObjectiveStrokeWidth = 2f
 private const val PatronPath = "M4 8l4.5 4L12 5l3.5 7L20 8l-2 11H6z"
+private const val StarPath = "M12 3.5l2.6 5.3l5.9.9l-4.3 4.1l1 5.8L12 16.9l-5.2 2.7l1-5.8l-4.3-4.1l5.9-.9z"
 
 private const val ViewportSize = 24f
 internal const val DefaultStrokeWidth = 1.8f

@@ -40,6 +40,7 @@ import gg.hideouthq.feature.browse.components.BrowseGrid
 import gg.hideouthq.feature.browse.components.ResultLine
 import gg.hideouthq.feature.browse.components.SuggestionStrip
 import gg.hideouthq.resources.Res
+import gg.hideouthq.resources.favourites
 import gg.hideouthq.resources.filters_3d_preview
 import gg.hideouthq.resources.browse_open_filters
 import gg.hideouthq.resources.search_catalogue
@@ -57,6 +58,8 @@ interface BrowseActions {
     fun setCurrentPatch(value: Boolean)
     fun setBlurMature(value: Boolean)
     fun setUpdated(value: UpdatedWithin)
+    fun setFavouritesOnly(value: Boolean)
+    fun setFavourite(modId: String, favourite: Boolean)
     fun clearPanel()
     fun clearAll()
     fun refresh()
@@ -81,7 +84,7 @@ fun BrowseScreen(state: BrowseUiState, actions: BrowseActions, onOpenMod: (Strin
         },
         scrolled = gridState.firstVisibleItemIndex > 0 || gridState.firstVisibleItemScrollOffset > 0,
         staggered = true,
-        sidePanel = { BrowseFilterPanel(filters, state.heroChips, state.heroCount, state.viewerFilters, state.mature, actions) },
+        sidePanel = { BrowseFilterPanel(filters, state.heroChips, state.heroCount, state.viewerFilters, state.mature, state.hasFavourites, actions) },
     ) {
         state.loadError?.let { error ->
             CatalogLoadError(error, actions::refresh, Modifier.fillMaxWidth().padding(HideoutDimens.MainPane.ContentPadding))
@@ -134,6 +137,7 @@ fun BrowseScreen(state: BrowseUiState, actions: BrowseActions, onOpenMod: (Strin
                     coverModifier = Modifier.cover(item.id),
                     titleModifier = Modifier.title(item.id),
                     decorationModifier = Modifier.decoration(item.id),
+                    onFavourite = { actions.setFavourite(item.id, it) },
                 )
             },
         )
@@ -144,5 +148,9 @@ fun BrowseScreen(state: BrowseUiState, actions: BrowseActions, onOpenMod: (Strin
 private fun activeFilters(state: BrowseUiState, actions: BrowseActions): List<ActiveFilter> {
     val heroes = state.selectedHeroes.map { ActiveFilter("hero-${it.id}", it.name) { actions.toggleHero(it.id, false) } }
     val preview = stringResource(Res.string.filters_3d_preview)
-    return heroes + listOfNotNull(ActiveFilter("only3d", preview) { actions.setOnly3d(false) }.takeIf { state.filters.only3d })
+    val favourites = stringResource(Res.string.favourites)
+    return heroes + listOfNotNull(
+        ActiveFilter("favourites", favourites) { actions.setFavouritesOnly(false) }.takeIf { state.filters.favourites },
+        ActiveFilter("only3d", preview) { actions.setOnly3d(false) }.takeIf { state.filters.only3d },
+    )
 }

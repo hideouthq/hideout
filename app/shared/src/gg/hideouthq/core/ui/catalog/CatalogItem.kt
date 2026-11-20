@@ -23,6 +23,7 @@ data class CatalogItem(
     val waveform: List<Float>? = null,
     val installation: InstallStatus? = null,
     val blurred: Boolean = false,
+    val favourite: Boolean = false,
 )
 
 fun Mod.toCatalogItem(heroes: Map<String, Hero>): CatalogItem {

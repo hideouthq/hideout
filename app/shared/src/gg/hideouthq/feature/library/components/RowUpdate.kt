@@ -2,6 +2,7 @@ package gg.hideouthq.feature.library.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -14,6 +15,7 @@ import gg.hideouthq.core.designsystem.component.ButtonVariant
 import gg.hideouthq.core.designsystem.component.ChipSize
 import gg.hideouthq.core.designsystem.component.ChipTone
 import gg.hideouthq.core.designsystem.component.HideoutButton
+import gg.hideouthq.core.designsystem.component.HideoutIcon
 import gg.hideouthq.core.designsystem.component.HideoutIconButton
 import gg.hideouthq.core.designsystem.component.HideoutTooltip
 import gg.hideouthq.core.designsystem.component.StatusChip
@@ -26,6 +28,7 @@ import gg.hideouthq.feature.library.LibraryActions
 import gg.hideouthq.feature.library.LibraryRow
 import gg.hideouthq.feature.library.UpdateState
 import gg.hideouthq.resources.Res
+import gg.hideouthq.resources.favourite_add
 import gg.hideouthq.resources.install_dialog_set_files
 import gg.hideouthq.resources.library_damage_changed
 import gg.hideouthq.resources.library_damage_missing
@@ -116,6 +119,11 @@ internal fun RowUpdateActions(row: LibraryRow, actions: LibraryActions, modifier
 internal fun DamageChip(damage: FilesDamage) {
     val text = stringResource(if (damage == FilesDamage.Changed) Res.string.library_damage_changed else Res.string.library_damage_missing)
     StatusChip(text, ChipTone.Warning, leadingIcon = HideoutIcons.Warning, size = ChipSize.Small)
+}
+
+@Composable
+internal fun FavouriteMark(tint: Color = MaterialTheme.colorScheme.primary) {
+    HideoutIcon(HideoutIcons.StarFilled, stringResource(Res.string.favourite_add), size = HideoutDimens.Icon.Small, tint = tint)
 }
 
 @Composable

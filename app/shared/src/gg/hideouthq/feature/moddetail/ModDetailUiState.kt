@@ -44,6 +44,7 @@ data class ModDetailUiState(
     val customBackdrop: ImageBitmap? = null,
     /** What became of the last Save image, shown for a few seconds. */
     val picture: PictureNotice? = null,
+    val favourite: Boolean = false,
 ) {
     /** The selected file's catalogue facts, with or without a preview; with nothing selected, the only file. */
     val selectedVersion: PreviewVariant?

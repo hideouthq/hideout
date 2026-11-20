@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.Dp
 import gg.hideouthq.core.designsystem.component.CoverArt
 import gg.hideouthq.core.designsystem.component.GlassBadge
 import gg.hideouthq.core.designsystem.component.GlassBadgeSize
+import gg.hideouthq.core.designsystem.component.CardFavourite
 import gg.hideouthq.core.designsystem.component.ModCard
 import gg.hideouthq.core.designsystem.icon.HideoutIcons
 import gg.hideouthq.core.designsystem.theme.HideoutDimens
@@ -40,6 +41,7 @@ import gg.hideouthq.resources.badge_3d_preview
 import gg.hideouthq.resources.badge_mature
 import gg.hideouthq.resources.badge_sound_sample
 import gg.hideouthq.resources.downloads_count
+import gg.hideouthq.resources.favourite_named
 import org.jetbrains.compose.resources.stringResource
 
 private val MatureBlur = 28.dp
@@ -54,6 +56,7 @@ fun CatalogCard(
     coverModifier: Modifier = Modifier,
     titleModifier: Modifier = Modifier,
     decorationModifier: Modifier = Modifier,
+    onFavourite: ((Boolean) -> Unit)? = null,
 ) {
     val (badge, badgeLabel) = item.badge()
     val downloads = item.downloads?.let(ModLabels::count)
@@ -81,6 +84,7 @@ fun CatalogCard(
         badgeDescription = badgeLabel,
         titleModifier = titleModifier,
         decorationModifier = decorationModifier,
+        favourite = onFavourite?.let { CardFavourite(item.favourite, stringResource(Res.string.favourite_named, item.title), it) },
     )
 }
 

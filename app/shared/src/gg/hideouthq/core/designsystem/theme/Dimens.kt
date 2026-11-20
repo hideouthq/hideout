@@ -328,6 +328,7 @@ object HideoutDimens {
         val Gap = 12.dp
         val Badge = 28.dp
         val BadgeInset = 10.dp
+        val BadgeGap = 6.dp
         val BadgeHoverLift = 2.dp
         val StatGap = 4.dp
 

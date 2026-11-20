@@ -56,6 +56,7 @@ interface LibraryActions {
     fun turnAllOff()
     fun setEnabled(installId: String, enabled: Boolean, profile: ProfileId? = null)
     fun showFiles(installId: String)
+    fun setFavourite(installId: String, favourite: Boolean)
     /** Opens the `addons` folder of [installId]'s game, where files Hideout does not own sit. */
     fun showAddons(installId: String)
     /** Opens what shows [installId]'s models instead of it and what it shares files with. */

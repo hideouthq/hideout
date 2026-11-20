@@ -52,7 +52,7 @@ data class LibraryUiState(
     val scope: LibraryScope = LibraryScope.All,
     /** How many rows [scope] lists before the search and filter narrow them. */
     val scopedCount: Int = 0,
-    /** All, then one pill per category present among the rows [scope] lists and the search finds, with mods of none under Other, then Updates. */
+    /** All, Favourites, then one pill per category present among the rows [scope] lists and the search finds, with mods of none under Other, then Updates. */
     val filters: List<FilterPill> = emptyList(),
     val filter: LibraryFilter = LibraryFilter.All,
     /** Every installed set, by load order; rows the scope, search or filter hides have [LibraryRow.visible] false. */
@@ -76,7 +76,8 @@ data class LibraryUiState(
     val totalCount: Int get() = rows.size
     val visibleCount: Int get() = rows.count { it.visible }
 
-    val showFilters: Boolean get() = totalCount >= FilterPillsFrom || filter != LibraryFilter.All
+    /** From [FilterPillsFrom] mods, while a filter is chosen, or while an installed mod is a favourite, so its pill is there to pick. */
+    val showFilters: Boolean get() = totalCount >= FilterPillsFrom || filter != LibraryFilter.All || filters.any { it.filter == LibraryFilter.Favourites }
 
     /** The scope switch has a choice to offer: a mod the active profile leaves off, or the profile's own view to leave. */
     val showScope: Boolean get() = scope == LibraryScope.Profile || rows.any { !it.enabled }
@@ -157,6 +158,8 @@ sealed interface LibraryFilter {
 
     /** This game's mods whose files to review against what their GameBanana pages offer now. */
     data object Review : LibraryFilter
+
+    data object Favourites : LibraryFilter
 }
 
 data class FilterPill(val filter: LibraryFilter, val count: Int)
@@ -204,6 +207,8 @@ data class LibraryRow(
     val page: String?,
     /** An import brought it as a local mod and GameBanana is still to say who it is. */
     val finding: Boolean = false,
+    /** The user starred it, here or on its page. */
+    val favourite: Boolean = false,
     /** Mirrors [LibraryUiState.canInstall]: a different file may be installed over this set whatever Deadlock is doing. */
     val canInstall: Boolean = true,
     /** Its switch works now, even while this or another set is still being turned. */
@@ -227,6 +232,9 @@ data class LibraryRow(
     /** What shows those models instead, first loaded first. */
     val hiddenBy: List<HiddenBy> = emptyList(),
 ) {
+    /** What favourites know it by, the same id on its page and across an uninstall: its page's, or its own without one. */
+    val favouriteId: String get() = page ?: modId
+
     /** Its switch can be turned: one [held] as it is shows where its files are and waits for the user's choice in Details. */
     val canSwitch: Boolean get() = canToggle && !held
 

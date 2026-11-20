@@ -45,6 +45,7 @@ import gg.hideouthq.core.designsystem.icon.HideoutIcons
 import gg.hideouthq.core.designsystem.interaction.collectInteractionStates
 import gg.hideouthq.core.designsystem.interaction.focusRing
 import gg.hideouthq.core.designsystem.interaction.hideoutClickable
+import gg.hideouthq.core.designsystem.interaction.hideoutToggleable
 import gg.hideouthq.core.designsystem.theme.HideoutDimens
 import gg.hideouthq.core.designsystem.theme.HideoutMotion
 import gg.hideouthq.core.designsystem.theme.HideoutShapes
@@ -80,6 +81,9 @@ val ModCardStyle.gaps: ModCardGaps
  *
  * [titleModifier] and [decorationModifier] let a screen attach its transition (the title travels;
  * scrim, badges and subtitle fade) without the card knowing about navigation.
+ *
+ * With [favourite], a star in the top-right corner, beside any feature badge, stars the mod. It shows while the card
+ * is hovered or the star has keyboard focus, and stays once the mod is a favourite.
  */
 @Composable
 fun ModCard(
@@ -98,6 +102,7 @@ fun ModCard(
     scrimFraction: Float = CardScrim.Image,
     titleModifier: Modifier = Modifier,
     decorationModifier: Modifier = Modifier,
+    favourite: CardFavourite? = null,
 ) {
     val source = remember { MutableInteractionSource() }
     val states = source.collectInteractionStates()
@@ -105,7 +110,7 @@ fun ModCard(
     val colors = HideoutTheme.colors
     val type = HideoutTheme.typography
     if (LocalModCardStyle.current == ModCardStyle.UnderImage) {
-        UnderImageCard(title, subtitle, stat, onClick, cover, modifier, rank, libraryBadge, badgeIcon, badgeDescription, statDescription, titleModifier, decorationModifier)
+        UnderImageCard(title, subtitle, stat, onClick, cover, modifier, rank, libraryBadge, badgeIcon, badgeDescription, statDescription, titleModifier, decorationModifier, favourite)
         return
     }
     val scale by animateFloatAsState(
@@ -147,18 +152,11 @@ fun ModCard(
         if (libraryBadge != null) {
             Box(decorationModifier.then(badgeLift).align(Alignment.TopStart).padding(HideoutDimens.Card.BadgeInset)) { libraryBadge() }
         } else if (rank != null) {
-            GlassBadge(decorationModifier.then(badgeLift).align(Alignment.TopStart)) {
+            GlassBadge(decorationModifier.then(badgeLift).align(Alignment.TopStart).padding(HideoutDimens.Card.BadgeInset)) {
                 Text(rank.toString(), style = type.labelSection.copy(fontWeight = HideoutWeights.Heavy), color = colors.onImage)
             }
         }
-        if (badgeIcon != null) {
-            GlassBadge(
-                decorationModifier.then(badgeLift).align(Alignment.TopEnd)
-                    .semantics { if (badgeDescription != null) contentDescription = badgeDescription },
-            ) {
-                HideoutIcon(badgeIcon, contentDescription = null, size = HideoutDimens.Icon.Small, tint = colors.onImage)
-            }
-        }
+        TopEndBadges(decorationModifier.then(badgeLift).align(Alignment.TopEnd), favourite, states.hovered, badgeIcon, badgeDescription)
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
@@ -220,6 +218,7 @@ private fun UnderImageCard(
     statDescription: String?,
     titleModifier: Modifier,
     decorationModifier: Modifier,
+    favourite: CardFavourite?,
 ) {
     val source = remember { MutableInteractionSource() }
     val states = source.collectInteractionStates()
@@ -247,15 +246,11 @@ private fun UnderImageCard(
         ) {
             Box(Modifier.fillMaxWidth().fillMaxHeight().clip(shape), content = cover)
             if (rank != null) {
-                GlassBadge(decorationModifier.align(Alignment.TopStart)) {
+                GlassBadge(decorationModifier.align(Alignment.TopStart).padding(HideoutDimens.Card.BadgeInset)) {
                     Text(rank.toString(), style = type.labelSection.copy(fontWeight = HideoutWeights.Heavy), color = colors.onImage)
                 }
             }
-            if (badgeIcon != null) {
-                GlassBadge(decorationModifier.align(Alignment.TopEnd).semantics { if (badgeDescription != null) contentDescription = badgeDescription }) {
-                    HideoutIcon(badgeIcon, contentDescription = null, size = HideoutDimens.Icon.Small, tint = colors.onImage)
-                }
-            }
+            TopEndBadges(decorationModifier.align(Alignment.TopEnd), favourite, states.hovered, badgeIcon, badgeDescription)
         }
         Column(
             Modifier.fillMaxWidth().padding(horizontal = HideoutDimens.Card.UnderTextInset),
@@ -305,11 +300,43 @@ fun Modifier.pictureRing(color: Color, strength: () -> Float): Modifier = drawWi
     }
 }
 
+/** A card's star: whether its mod is [starred], the star's [label], and what [onToggle] does when pressed. */
+class CardFavourite(val starred: Boolean, val label: String, val onToggle: (Boolean) -> Unit)
+
+@Composable
+private fun TopEndBadges(modifier: Modifier, star: CardFavourite?, cardHovered: Boolean, badgeIcon: ImageVector?, badgeDescription: String?) {
+    if (star == null && badgeIcon == null) return
+    val colors = HideoutTheme.colors
+    Row(modifier.padding(HideoutDimens.Card.BadgeInset), horizontalArrangement = Arrangement.spacedBy(HideoutDimens.Card.BadgeGap)) {
+        if (star != null) FavouriteStar(star, cardHovered)
+        if (badgeIcon != null) {
+            GlassBadge(Modifier.semantics { if (badgeDescription != null) contentDescription = badgeDescription }) {
+                HideoutIcon(badgeIcon, contentDescription = null, size = HideoutDimens.Icon.Small, tint = colors.onImage)
+            }
+        }
+    }
+}
+
+@Composable
+private fun FavouriteStar(star: CardFavourite, cardHovered: Boolean) {
+    val source = remember { MutableInteractionSource() }
+    val states = source.collectInteractionStates()
+    val shown by animateFloatAsState(if (star.starred || cardHovered || states.focusVisible) 1f else 0f, HideoutTheme.motion.effectsFast(), label = "cardStar")
+    GlassBadge(
+        Modifier
+            .graphicsLayer { alpha = shown }
+            .focusRing(states.focusVisible, HideoutShapes.Full)
+            .semantics { contentDescription = star.label }
+            .hideoutToggleable(star.starred, source, role = Role.Checkbox, onValueChange = star.onToggle),
+    ) {
+        HideoutIcon(if (star.starred) HideoutIcons.StarFilled else HideoutIcons.Star, contentDescription = null, size = HideoutDimens.Icon.Small, tint = HideoutTheme.colors.onImage)
+    }
+}
+
 @Composable
 private fun GlassBadge(modifier: Modifier, content: @Composable () -> Unit) {
     Box(
         modifier = modifier
-            .padding(HideoutDimens.Card.BadgeInset)
             .size(HideoutDimens.Card.Badge)
             .background(HideoutTheme.colors.glass, HideoutShapes.Full),
         contentAlignment = Alignment.Center,

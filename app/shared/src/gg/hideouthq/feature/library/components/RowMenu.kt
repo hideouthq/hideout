@@ -17,6 +17,8 @@ import gg.hideouthq.feature.library.DragReorder
 import gg.hideouthq.feature.library.LibraryActions
 import gg.hideouthq.feature.library.LibraryRow
 import gg.hideouthq.resources.Res
+import gg.hideouthq.resources.favourite_add
+import gg.hideouthq.resources.favourite_remove
 import gg.hideouthq.resources.library_files_count
 import gg.hideouthq.resources.library_turn_off_selected
 import gg.hideouthq.resources.library_turn_on_selected
@@ -69,6 +71,10 @@ internal fun InstalledRowMenu(
             }
             add(MenuEntry.Item(stringResource(Res.string.menu_show_files), HideoutIcons.Folder, { actions.showFiles(row.installId) }))
             if (page != null) add(MenuEntry.Item(stringResource(Res.string.menu_open_page), HideoutIcons.OpenExternal, { actions.viewPage(page) }))
+            add(
+                if (row.favourite) MenuEntry.Item(stringResource(Res.string.favourite_remove), HideoutIcons.StarFilled, { actions.setFavourite(row.installId, false) })
+                else MenuEntry.Item(stringResource(Res.string.favourite_add), HideoutIcons.Star, { actions.setFavourite(row.installId, true) }),
+            )
             if (moves.isNotEmpty()) {
                 add(MenuEntry.Separator)
                 addAll(moves)

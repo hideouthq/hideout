@@ -38,6 +38,7 @@ class Preferences(private val storage: CacheStorage, private val clock: Clock = 
     private val publishedHostModeFolders = MutableStateFlow<Boolean?>(null)
     private val publishedAppearance = MutableStateFlow(Appearance())
     private val publishedNotifyServers = MutableStateFlow(false)
+    private val publishedFavourites = MutableStateFlow<Set<String>>(emptySet())
     private val changedGameFolder = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     val gameFolderChanges: SharedFlow<Unit> = changedGameFolder
 
@@ -62,7 +63,12 @@ class Preferences(private val storage: CacheStorage, private val clock: Clock = 
 
     suspend fun setNotifyServers(on: Boolean) = change { it.copy(notifyServers = on) }
 
-    /** Reads what the app opens with: [sidebarCollapsed], [setupDone], [preferredHeroes], [appearance] and [notifyServers]. */
+    /** The mods the user starred, by app-wide id such as "mod-721908", kept after one is uninstalled; empty before [readSetup]. */
+    val favourites: StateFlow<Set<String>> = publishedFavourites.asStateFlow()
+
+    suspend fun setFavourite(modId: String, favourite: Boolean) = change { it.copy(favourites = if (favourite) it.favourites + modId else it.favourites - modId) }
+
+    /** Reads what the app opens with: [sidebarCollapsed], [setupDone], [preferredHeroes], [appearance], [notifyServers] and [favourites]. */
     suspend fun readSetup() {
         mutex.withLock {
             val stored = load()
@@ -71,6 +77,7 @@ class Preferences(private val storage: CacheStorage, private val clock: Clock = 
             publishedHeroes.value = stored.preferredHeroes
             publishedAppearance.value = stored.appearance()
             publishedNotifyServers.value = stored.notifyServers
+            publishedFavourites.value = stored.favourites
         }
     }
 
@@ -237,6 +244,7 @@ class Preferences(private val storage: CacheStorage, private val clock: Clock = 
         publishedHostModeFolders.value = next.hostModeFolders
         publishedAppearance.value = next.appearance()
         publishedNotifyServers.value = next.notifyServers
+        publishedFavourites.value = next.favourites
     }
 
     private suspend fun load(): StoredPreferences {
@@ -300,6 +308,7 @@ private data class StoredPreferences(
     val appUpdateOpened: String? = null,
     val unfinishedInstalls: List<UnfinishedInstall> = emptyList(),
     val lastFiles: Map<String, List<Long>> = emptyMap(),
+    val favourites: Set<String> = emptySet(),
 ) {
     fun defaults() = InstallDefaults(askWhichVersion, keepDownloads, downloadFolder?.let(::DownloadFolder))
 
