@@ -1,5 +1,6 @@
 package gg.hideouthq.core.library
 
+import gg.hideouthq.core.data.GameInventory
 import gg.hideouthq.core.data.Preferences
 import gg.hideouthq.core.data.ProcessScan
 import gg.hideouthq.core.data.fake.FakeProcesses
@@ -47,10 +48,14 @@ class ModLibraryLeftoversTest {
         Leftover(Slot.of(SetFolder.Loading[1], PakNumber(3)), listOf(LeftoverFile(VpkPart.Directory, "pak03_dir.vpk", 0))),
     )
 
-    private inner class World(game: Boolean = false) : CrashWorld {
+    private inner class World(game: Boolean = false, extra: Map<String, ByteArray> = emptyMap()) : CrashWorld {
         override val files = InMemoryGameFiles().apply {
             putBytes(root, "$citadel/gameinfo.gi", HideoutGameInfo)
-            start.forEach { (path, bytes) -> putBytes(root, "$citadel/$path", bytes) }
+            (start + extra).forEach { (path, bytes) -> putBytes(root, "$citadel/$path", bytes) }
+        }
+        val reads = mutableListOf<String>()
+        private val inventory = object : GameInventory by files {
+            override suspend fun file(root: GameRoot, relativePath: String) = files.file(root, relativePath).also { reads += relativePath.removePrefix("$citadel/") }
         }
         override val store = InMemoryLibraryStore(LibraryManifest(records = listOf(heldMod("h", root, own))))
         val processes = FakeProcesses(ProcessScan.Seen(game = game))
@@ -60,7 +65,7 @@ class ModLibraryLeftoversTest {
 
         override fun TestScope.open(scope: CoroutineScope): ModLibrary = started(
             ModLibrary(
-                FixedGameLocator(listOf(root)), Preferences(MemoryStorage()), store, files, files.ports(processes = processes, log = log::add), scope,
+                FixedGameLocator(listOf(root)), Preferences(MemoryStorage()), store, inventory, files.ports(processes = processes, log = log::add), scope,
                 ids = { "id${++next}" }, watch = testWatchTiming, clock = object : Clock { override fun now() = this@ModLibraryLeftoversTest.now },
             ),
         )
@@ -79,6 +84,43 @@ class ModLibraryLeftoversTest {
         val library = with(World()) { library() }
 
         assertEquals(listOf(listOf("addons/pak05_dir.vpk", "addons/pak05_000.vpk"), listOf("hideout_addons2/pak03_dir.vpk")), library.leftovers().map { set -> set.paths.map { it.value } })
+    }
+
+    @Test
+    fun aSetWithTheBytesOfALibraryModIsItsCopyAndOnlyMovesOutWhileOneOfTheSameSizesStillComesIn() = runTest {
+        val sameSize = FakeVpk.directory(seed = 2)
+        assertEquals(own.size, sameSize.size)
+        val world = World(extra = mapOf("addons/pak09_dir.vpk" to own, "addons/pak10_dir.vpk" to sameSize))
+        val library = with(world) { library() }
+
+        val found = library.leftovers().associateBy { it.name }
+        assertEquals(mapOf("pak05_dir.vpk" to null, "pak09_dir.vpk" to "h", "pak10_dir.vpk" to null, "pak03_dir.vpk" to null), found.mapValues { it.value.copyOf })
+        assertEquals(setOf("addons/pak09_dir.vpk", "addons/pak10_dir.vpk", "hideout_addons2/pak03_dir.vpk"), world.reads.filter { it in found.values.flatMap { set -> set.paths.map(CitadelPath::value) } }.toSet(), "a set of other sizes than every held set's is not read")
+
+        assertEquals(LeftoverOutcome.Refused(LibraryProblem.SameFileInstalled("Hideout's h", "h")), library.addLeftovers(listOf(found.getValue("pak09_dir.vpk"))))
+        assertEquals(listOf("h"), library.records().map { it.installId })
+        assertEquals(LeftoverOutcome.Added, library.addLeftovers(listOf(found.getValue("pak10_dir.vpk"))))
+        assertEquals(listOf("Hideout's h", "pak10_dir"), library.records().map { it.title })
+
+        val readsBefore = world.reads.count { it == "addons/pak09_dir.vpk" }
+        assertIs<LeftoverOutcome.Moved>(library.moveOut(listOf(found.getValue("pak05_dir.vpk"))))
+        assertEquals(readsBefore, world.reads.count { it == "addons/pak09_dir.vpk" }, "a copy that stays is not read again")
+        assertEquals("h", library.leftovers().single { it.name == "pak09_dir.vpk" }.copyOf)
+        assertIs<LeftoverOutcome.Moved>(library.moveOut(listOf(found.getValue("pak09_dir.vpk"))))
+        assertContentEquals(own, world.files.bytes(root, "$citadel/addons/pak01_dir.vpk"))
+    }
+
+    @Test
+    fun ofTwoSetsWithTheSameBytesAddedTogetherTheFirstComesInAndTheOtherIsItsCopy() = runTest {
+        val twin = FakeVpk.directory(seed = 11)
+        val world = World(extra = mapOf("addons/pak11_dir.vpk" to twin, "hideout_addons2/pak04_dir.vpk" to twin))
+        val library = with(world) { library() }
+
+        assertEquals(LeftoverOutcome.Added, library.addLeftovers(library.leftovers().filter { it.name == "pak11_dir.vpk" || it.name == "pak04_dir.vpk" }))
+
+        val added = library.records().single { it.title == "pak11_dir" }
+        assertEquals(listOf("h", added.installId), library.records().map { it.installId })
+        assertEquals(added.installId, library.leftovers().single { it.name == "pak04_dir.vpk" }.copyOf)
     }
 
     @Test

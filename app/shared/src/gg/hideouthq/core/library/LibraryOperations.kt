@@ -381,7 +381,7 @@ sealed interface LibraryProblem {
     data object ListingIncomplete : LibraryProblem
     data class LocalInputRefused(val reason: LocalRefusal) : LibraryProblem
 
-    /** Every complete part of the file handed to Hideout is installed already, from the very same file, as [title], mod [installId]. */
+    /** Every complete part of the file handed to Hideout, or the leftover set, is installed already, with the very same bytes, as [title], mod [installId]. */
     data class SameFileInstalled(val title: String, val installId: String) : LibraryProblem
     data object GameNotFound : LibraryProblem
     data object GameRunning : LibraryProblem

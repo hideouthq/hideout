@@ -31,6 +31,7 @@ class EditedFilesTest {
     private val stored = InMemoryGameFiles.Stored
     private val lockin = ProfileId("lockin")
     private val blackoutAt06 = "$addons/pak06_dir.vpk"
+    private val clownCopy = "$addons/pak89_dir.vpk"
 
     private class Mod(val id: String, val number: Int?, val sets: Int = 1)
 
@@ -64,7 +65,7 @@ class EditedFilesTest {
             putBytes(root, InMemoryGameFiles.GameInfo, HideoutGameInfo)
             for (record in records) for ((set, owned) in record.sets.withIndex()) putBytes(root, record.filesOf(owned).single().relativePath(record), bytes(record.installId, set))
             putBytes(root, "$addons/623518_pak01_dir.vpk", ByteArray(9) { 7 })
-            putBytes(root, "$addons/pak89_dir.vpk", bytes("clown", 0))
+            putBytes(root, clownCopy, bytes("clown", 0))
             putBytes(root, "$stored/${Sha256.image(bytes("blackout", 0)).sha256}", bytes("blackout", 0))
             if (edited) putBytes(root, blackoutAt06, rebuilt)
         }
@@ -206,11 +207,11 @@ class EditedFilesTest {
     fun aFileStillOneWithItsTwinIsNotReadAgainOnTheNextStart() = runTest {
         val world = World(edited = true, paused = false)
         with(world) { library() }
-        assertEquals(world.records.flatMap { record -> record.files.map { it.relativePath(record) } }.toSet(), world.reads.toSet(), "the first start reads each file once")
+        assertEquals(world.records.flatMap { record -> record.files.map { it.relativePath(record) } }.toSet() + clownCopy, world.reads.toSet(), "the first start reads each file once")
         world.reads.clear()
 
         val library = with(world) { library() }
-        assertEquals(emptyList(), world.reads, "the next one reads none")
+        assertEquals(listOf(clownCopy), world.reads, "the next one reads only the other tool's copy, to tell it is Clown's")
         assertEquals(mapOf("blackout" to FilesDamage.Changed), library.ready().damaged, "and still sees the edit")
     }
 
@@ -226,7 +227,7 @@ class EditedFilesTest {
             world.reads.clear()
 
             val library = with(world) { library() }
-            assertEquals(listOf(blackoutAt06), world.reads, "$case: only the file whose twin no longer has its size or time is read")
+            assertEquals(listOf(blackoutAt06, clownCopy), world.reads, "$case: only the file whose twin no longer has its size or time is read")
             assertEquals(mapOf<VpkPart, FileImage>(VpkPart.Directory to Sha256.image(edit)), world.record("blackout").sets.single().edits, case)
             assertEquals(mapOf("blackout" to FilesDamage.Changed), library.ready().damaged, case)
             assertNull(world.twin(bytes("blackout", 0)), "$case: the name of the old bytes, which the edit changed too, goes")
@@ -245,7 +246,7 @@ class EditedFilesTest {
         world.reads.clear()
 
         val restarted = with(world) { library() }
-        assertEquals(listOf(blackoutAt06), world.reads, "the backup vouched for nothing, so the next check reads the edited file")
+        assertEquals(listOf(blackoutAt06, clownCopy), world.reads, "the backup vouched for nothing, so the next check reads the edited file")
         assertEquals(mapOf<VpkPart, FileImage>(VpkPart.Directory to Sha256.image(sameSize)), world.record("blackout").sets.single().edits)
         assertEquals(mapOf("blackout" to FilesDamage.Changed), restarted.ready().damaged)
     }

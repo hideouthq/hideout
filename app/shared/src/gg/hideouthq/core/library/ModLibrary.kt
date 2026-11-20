@@ -14,6 +14,7 @@ import gg.hideouthq.core.data.ConfigRead
 import gg.hideouthq.core.data.Removal
 import gg.hideouthq.core.data.LocalArchiveSnapshot
 import gg.hideouthq.core.data.FileObservation
+import gg.hideouthq.core.data.FileStamp
 import gg.hideouthq.core.data.FileRead
 import gg.hideouthq.core.data.gamePath
 import gg.hideouthq.core.data.MaxConfigBytes
@@ -2468,12 +2469,30 @@ class ModLibrary(
     private suspend fun onListing(root: GameRoot): OnListing = ledger.onListing(root).also { listing ->
         val entries = (listing as? OnListing.Listed)?.entries
         val owned = ledger.manifest.namedRecords().filter { it.gameRoot == root }.flatMapTo(HashSet()) { record -> record.files.map { it.relativePath(record) } }
-        val found = entries?.let { leftovers(it, owned) }.orEmpty()
+        val found = entries?.let { withCopies(root, it, leftovers(it, owned)) }.orEmpty()
         mutableState.update { state ->
             val ready = state.library as? LibraryStatus.Ready
             if (ready == null || (state.game as? GameStatus.Ready)?.root != root) state else state.copy(library = ready.copy(loading = entries, leftovers = found))
         }
     }
+
+    /** [sets], each with the library mod it is a copy of. A file is read again only once its listed size or time changes. */
+    private suspend fun withCopies(root: GameRoot, entries: List<OnEntry>, sets: List<Leftover>): List<Leftover> {
+        val records = ledger.manifest.records.filter { it.gameRoot == root }
+        val stamps = entries.associate { it.relativePath to it.entry.stamp }
+        val known = leftoverImages.value
+        val read = HashMap<Pair<String, FileStamp>, FileImage>()
+        return sets.map { set ->
+            set.copy(copyOf = copyOf(set, records) { path ->
+                val gamePath = CitadelFile(root, path).gamePath
+                val key = gamePath to (stamps[gamePath] ?: return@copyOf null)
+                val image = known[key] ?: ((attempt { inventory.file(root, gamePath) } as? Attempt.Done)?.value as? FileObservation.Present)?.let { FileImage(it.sizeBytes, it.sha256) }
+                image?.also { read[key] = it }
+            }?.installId)
+        }.also { leftoverImages.value = read }
+    }
+
+    private val leftoverImages = MutableStateFlow<Map<Pair<String, FileStamp>, FileImage>>(emptyMap())
 
     private fun stuck(): Set<String> = (state.value.library as? LibraryStatus.Ready)?.let { it.damaged.keys + it.unchecked }.orEmpty()
 
@@ -2632,7 +2651,8 @@ class ModLibrary(
      * Takes [sets] into the library as local mods the way an import takes over another manager's files: one that loads
      * from `addons` under its own bare number is claimed where it is, on, and no file is touched; any other comes in
      * through its off folder and the saved choices turn it on where Hideout places it. GameBanana is asked later who
-     * each one is. Refused while Deadlock may run, and for a set the game would not mount whole. The files are read
+     * each one is. Refused while Deadlock may run, for a set the game would not mount whole, and for one whose bytes a
+     * library mod holds already; of several sets with the same bytes only the first comes in. The files are read
      * before the library is held, and the change proves they still hold those bytes.
      */
     suspend fun addLeftovers(sets: List<Leftover>): LeftoverOutcome {
@@ -2654,14 +2674,18 @@ class ModLibrary(
             val files = whole.members.map { IncomingFile(CitadelPath(it.vpk.path), it.part, it.vpk.image) }
             Incoming(set.name.substringBeforeLast('.'), ClaimedMod(claim, title = null, selfReported = true).matched(1), set.name, LoadPosition(0, set.slot.value), listOf(IncomingSet(set.paths.first().value, files)))
         }
+        val images = incoming.map { mod -> mod.sets.single().files.mapTo(HashSet()) { it.part to it.image } }
         val outcome = underLock {
             writableIn(root)?.let { return@underLock LeftoverOutcome.Refused(it) }
+            val held = ledger.manifest.records.filter { it.gameRoot == root }
+            images.firstNotNullOfOrNull { holding(it, held) }?.let { return@underLock LeftoverOutcome.Refused(LibraryProblem.SameFileInstalled(it.title, it.installId)) }
             saveAdmittedLocked()
             val addons = when (val listed = onListing(root)) {
                 is OnListing.Unreadable -> return@underLock LeftoverOutcome.Refused(LibraryProblem.AddonsUnreadable(listed.reason))
                 is OnListing.Listed -> listed.entries.filter { it.folder == SetFolder.Addons }.map { it.entry.name }
             }
-            val takeover = Takeover(migration = null, root, manager = null, addonsMount = 0, incoming, emptyList(), emptyList(), unmount = emptySet(), autoexec = null, duplicates = emptyList(), manifests = emptyList())
+            val once = incoming.filterIndexed { index, _ -> images.indexOf(images[index]) == index }
+            val takeover = Takeover(migration = null, root, manager = null, addonsMount = 0, once, emptyList(), emptyList(), unmount = emptySet(), autoexec = null, duplicates = emptyList(), manifests = emptyList())
             val changed = changing { ledger.adopt(placeTakeover(takeover, ledger.manifest, addons, emptyList(), ids).plan) }
             publishRecords(ledger.uncertainty ?: (changed as? ChangeOutcome.Refused)?.interrupted)
             when (changed) {

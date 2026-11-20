@@ -3,9 +3,10 @@ package gg.hideouthq.core.library
 /**
  * A set Hideout does not own that the game mounts from one of its loading folders at [slot]: a bare `pakNN_dir.vpk`
  * and every `pakNN_NNN.vpk` chunk of its number beside it, directory first. Another manager, a copy made by hand or an
- * uninstall that stopped halfway left it there.
+ * uninstall that stopped halfway left it there. [copyOf] is the install id of a library mod with a set of these very
+ * bytes, which adding it would hold twice; null when none has.
  */
-data class Leftover(val slot: Slot, val files: List<LeftoverFile>) {
+data class Leftover(val slot: Slot, val files: List<LeftoverFile>, val copyOf: String? = null) {
     init {
         require(files.firstOrNull()?.part == VpkPart.Directory && files.map { it.part } == files.map { it.part }.distinct().sorted()) { "a leftover is its directory, then each chunk once in order" }
     }
@@ -48,5 +49,20 @@ internal fun leftovers(loading: List<OnEntry>, owned: Set<String>): List<Leftove
         Leftover(slot, (listOf(VpkPart.Directory to directory) + chunks).map { (part, on) -> LeftoverFile(part, on.entry.name, on.entry.stamp?.sizeBytes ?: 0) })
     }
 }
+
+/**
+ * The record among [records] with a set of [set]'s very bytes, part for part. [image] reads a file of [set], null when
+ * it cannot, and is asked only when a set of the same sizes is held, so a listing with no such set reads nothing.
+ */
+internal suspend fun copyOf(set: Leftover, records: List<ManifestRecord>, image: suspend (CitadelPath) -> FileImage?): ManifestRecord? {
+    val sizes = set.files.mapTo(HashSet()) { it.part to it.sizeBytes }
+    val alike = records.filter { record -> record.sets.any { held -> held.files.mapTo(HashSet()) { it.part to it.image.sizeBytes } == sizes } }
+    if (alike.isEmpty()) return null
+    return holding(set.files.zip(set.paths) { file, path -> file.part to (image(path) ?: return null) }.toSet(), alike)
+}
+
+/** The record among [records] with a set of exactly [files], each part's size and SHA-256. */
+internal fun holding(files: Set<Pair<VpkPart, FileImage>>, records: List<ManifestRecord>): ManifestRecord? =
+    records.firstOrNull { record -> record.sets.any { held -> held.files.mapTo(HashSet()) { it.part to it.image } == files } }
 
 private val ChunkName = Regex("""pak([0-9]{2})_([0-9]{3})\.vpk""", RegexOption.IGNORE_CASE)
