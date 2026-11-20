@@ -411,6 +411,9 @@ val SetFolder.inCitadel: String get() = segments.drop(SetFolder.GameSegments.siz
 /** The folder below the game root, `/`-separated. */
 internal val SetFolder.path: String get() = segments.joinToString("/")
 
+/** [name] as a log line or a problem shows something in this folder: alone in `addons`, after the folder's name past it. */
+fun SetFolder.On.label(name: String): String = if (this == SetFolder.Addons) name else "$inCitadel/$name"
+
 fun ManifestRecord.setFolder(): SetFolder = (placement as? Placement.On)?.first?.folder ?: SetFolder.Off(modId)
 
 fun ManifestRecord.folder(): String = setFolder().path

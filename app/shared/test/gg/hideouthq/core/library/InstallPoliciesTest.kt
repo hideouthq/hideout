@@ -22,7 +22,7 @@ class InstallPoliciesTest {
             "pak00_dir.vpk",
             "pakage.vpk",
         )
-        assertEquals(setOf(1, 3, 4, 5, 6, 8), PakNumbers.taken(addons).map { it.value }.toSet())
+        assertEquals(setOf(1, 3, 4, 5, 6, 8), addons.mapNotNull(PakNumbers::taken).map { it.value }.toSet())
     }
 
     @Test

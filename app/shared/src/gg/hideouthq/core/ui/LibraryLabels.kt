@@ -198,7 +198,7 @@ object LibraryLabels {
         is LibraryProblem.FileMissing -> stringResource(Res.string.problem_file_missing, problem.path)
         is LibraryProblem.FileChanged -> stringResource(Res.string.problem_file_changed, problem.path)
         is LibraryProblem.FileUnreadable -> stringResource(Res.string.problem_file_unreadable, problem.path)
-        is LibraryProblem.NumberTaken -> stringResource(Res.string.problem_number_taken, problem.number.toString().padStart(2, '0'), problem.names.joinToString())
+        is LibraryProblem.NumberTaken -> stringResource(Res.string.problem_number_taken, problem.number.pak.value.toString().padStart(2, '0'), problem.names.joinToString())
         LibraryProblem.LoadOrderChanged -> "Your mods changed since this order was shown, so nothing was moved. Try again."
         is LibraryProblem.BackupFailed -> stringResource(Res.string.problem_backup_failed)
         is LibraryProblem.BackupUnreadable -> stringResource(Res.string.problem_backup_unreadable)

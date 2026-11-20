@@ -44,19 +44,17 @@ value class Slot(val value: Int) : Comparable<Slot> {
     }
 }
 
-/** The `NN` in `pakNN_dir.vpk`: which numbers the entries of a game's `addons` take. */
+/** The `NN` in `pakNN_dir.vpk`: which numbers the entries of a loading folder take. */
 object PakNumbers {
     private val Numbered = Regex("""pak([0-9]+).*""", RegexOption.IGNORE_CASE)
 
     /**
-     * Every number an entry in `addons` starts with (`pak7_dir.vpk`, `PAK07_000.VPK`, a folder or link named `pak07`,
-     * a temporary copy). A name such as `631628_pak07_dir.vpk` or `set-3fa94c0d12be_dir.vpk` takes nothing: the game
-     * does not mount it under a number.
+     * The number an entry of a loading folder named [name] starts with (`pak7_dir.vpk`, `PAK07_000.VPK`, a folder or
+     * link named `pak07`, a temporary copy). A name such as `631628_pak07_dir.vpk` or `set-3fa94c0d12be_dir.vpk` takes
+     * none: the game does not mount it under a number.
      */
-    fun taken(addonsNames: Collection<String>): Set<PakNumber> =
-        addonsNames.mapNotNull { name -> Numbered.matchEntire(name)?.groupValues?.get(1)?.trimStart('0')?.takeIf { it.length <= 2 }?.toIntOrNull() }
-            .filter { it in 1..PakNumber.PerFolder }
-            .mapTo(HashSet(), ::PakNumber)
+    fun taken(name: String): PakNumber? =
+        Numbered.matchEntire(name)?.groupValues?.get(1)?.trimStart('0')?.takeIf { it.length <= 2 }?.toIntOrNull()?.takeIf { it in 1..PakNumber.PerFolder }?.let(::PakNumber)
 
     /** The number the game mounts [name] under when it is a bare `pakNN_dir.vpk`, whatever its case; null for any other name. */
     fun mounted(name: String): PakNumber? = BareDirectory.matchEntire(name)?.groupValues?.get(1)?.toInt()?.takeIf { it in 1..PakNumber.PerFolder }?.let(::PakNumber)

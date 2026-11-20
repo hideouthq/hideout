@@ -267,7 +267,7 @@ private fun claimed(mod: Incoming, addons: List<String>, mounted: Set<Slot>): Sl
     val numbers = mod.sets.indices.map { Slot.of(SetFolder.Addons, first) + it }
     val own = mod.sets.flatMapIndexed { offset, set -> set.files.map { file -> file.part.fileName(numbers[offset].pak.stem).takeIf { file.path == CitadelPath.Addons.resolve(it) } ?: return null } }.toSet()
     if (numbers.any { it in mounted }) return null
-    return numbers.first().takeIf { addons.none { name -> name !in own && PakNumbers.taken(listOf(name)).any { Slot.of(SetFolder.Addons, it) in numbers } } }
+    return numbers.first().takeIf { addons.none { name -> name !in own && PakNumbers.taken(name)?.let { Slot.of(SetFolder.Addons, it) } in numbers } }
 }
 
 private fun refill(list: List<String>, order: List<String>): List<String> {

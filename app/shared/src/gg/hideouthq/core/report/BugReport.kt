@@ -31,6 +31,7 @@ import gg.hideouthq.core.library.counted
 import gg.hideouthq.core.library.named
 import gg.hideouthq.core.library.reason
 import gg.hideouthq.core.library.said
+import gg.hideouthq.core.library.setFolder
 import gg.hideouthq.core.library.shownProblems
 import gg.hideouthq.core.library.sizeText
 import kotlin.time.Instant
@@ -173,7 +174,7 @@ private fun addons(facts: ReportFacts): ReportSection {
     if (root == null || listing == null) return ReportSection(title, listOf(Fact("Listing", "no game found")))
     if (listing is FolderListing.Unreadable) return ReportSection(title, listOf(Fact("Listing", "couldn't be read: ${listing.reason}")))
     val entries = (listing as FolderListing.Listed).entries.sortedBy { it.name.lowercase() }
-    val records = (facts.library.library as? LibraryStatus.Ready)?.records.orEmpty().filter { it.gameRoot == root && it.enabled }
+    val records = (facts.library.library as? LibraryStatus.Ready)?.records.orEmpty().filter { it.gameRoot == root && it.setFolder() == SetFolder.Addons }
     val owned = records.flatMap { record -> record.files.map { file -> file.name to (record to file) } }.toMap()
     val unknown = entries.count { it.name !in owned && !SetFolder.Addons.admitsTemporary(it.name) }
     val items = entries.map { entry ->

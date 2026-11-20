@@ -1,5 +1,7 @@
 package gg.hideouthq.core.library
 
+import gg.hideouthq.core.data.FolderEntry
+
 /** A move of committed [source] to [target]: another placement, its sets in another order, or both. Every file keeps its bytes. */
 data class Move(val source: ManifestRecord, val target: ManifestRecord) {
     init {
@@ -9,12 +11,9 @@ data class Move(val source: ManifestRecord, val target: ManifestRecord) {
         require(target != source) { "a move changes something" }
     }
 
-    /** Whether it turns the mod on or off. */
-    val turned: Boolean get() = source.enabled != target.enabled
-
     /** Each set whose files change path, its files paired part by part from source to target; none when only an off mod's sets change order. */
     val moving: List<List<Pair<OwnedFile, OwnedFile>>>
-        get() = source.sets.map { set -> source.filesOf(set).zip(target.filesOf(set)) }.filter { pairs -> turned || pairs.any { (from, to) -> from.name != to.name } }
+        get() = source.sets.map { set -> source.filesOf(set).zip(target.filesOf(set)) }.filter { pairs -> pairs.any { (from, to) -> from.relativePath(source) != to.relativePath(target) } }
 }
 
 /**
@@ -146,12 +145,37 @@ internal fun fileOrder(records: List<ManifestRecord>): List<String> = onLoadOrde
 fun Profile.onOrder(root: GameRoot): List<String> = orders[root].orEmpty().filter { it in enabled }
 
 /**
- * The numbers the entries of `addons`, [addons] by name, take besides the files of [records] that are on and the
- * chunks beside a set of theirs the user edited, which are that edit's, as Keep my changes and Restore original take it.
+ * The slots the entries of the loading folders take besides the files of [records] that are on, by path, and the chunks
+ * beside a set of theirs the user edited, in its folder, which are that edit's, as Keep my changes and Restore original
+ * take it.
  */
-internal fun foreignNumbers(addons: Collection<String>, records: List<ManifestRecord>): Set<Slot> {
+internal fun foreignNumbers(loading: List<OnEntry>, records: List<ManifestRecord>): Set<Slot> {
     val on = records.filter { it.enabled }
-    val own = on.flatMapTo(HashSet()) { record -> record.files.map { it.name } }
-    val edited = on.flatMap { record -> record.sets.filter { it.edits.isNotEmpty() }.mapNotNull { record.numberOf(it)?.pak?.stem } }
-    return PakNumbers.taken(addons.filter { name -> name !in own && edited.none { VpkPart.named(name, it) != null } }).mapTo(HashSet()) { Slot.of(SetFolder.Addons, it) }
+    val own = on.flatMapTo(HashSet()) { record -> record.files.map { it.relativePath(record) } }
+    val edited = on.flatMap { record -> record.sets.filter { it.edits.isNotEmpty() }.mapNotNull(record::numberOf) }
+    return loading.filter { entry -> entry.relativePath !in own && edited.none { it.folder == entry.folder && VpkPart.named(entry.entry.name, it.pak.stem) != null } }
+        .mapNotNullTo(HashSet()) { it.number }
+}
+
+/** One entry of a folder Hideout loads sets from, known by its path: a name in one folder never stands for the same name in another. */
+data class OnEntry(val folder: SetFolder.On, val entry: FolderEntry) {
+    /** Where it is under the game root, as [OwnedFile.relativePath] gives a file of Hideout's. */
+    val relativePath: String get() = "${folder.path}/${entry.name}"
+
+    /** How a problem names it: by name in `addons`, by its folder and name past it. */
+    val label: String get() = folder.label(entry.name)
+
+    /** The slot its name takes, as [PakNumbers.taken] reads it; null for a name that takes none. */
+    val number: Slot? get() = PakNumbers.taken(entry.name)?.let { Slot.of(folder, it) }
+
+    /** The slot the game mounts it at as a bare `pakNN_dir.vpk`; null for any other name. */
+    val mounted: Slot? get() = PakNumbers.mounted(entry.name)?.let { Slot.of(folder, it) }
+}
+
+/** What every folder in [SetFolder.Loading] holds, `addons` first. */
+internal sealed interface OnListing {
+    data class Listed(val entries: List<OnEntry>) : OnListing
+
+    /** One of them is a link or cannot be read, so which slots are free is not known. */
+    data class Unreadable(val reason: String) : OnListing
 }

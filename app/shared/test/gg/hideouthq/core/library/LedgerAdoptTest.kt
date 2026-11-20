@@ -143,7 +143,7 @@ class LedgerAdoptTest {
         val taken = World().apply { files.putBytes(root, parkedAt, bytes("someone")) }
         assertEquals(LibraryProblem.NameTaken(parkedAt), assertIs<ChangeOutcome.Refused>(taken.ledger().also { it.reload() }.adopt(plan)).problem)
         val number = World().apply { files.putBytes(root, "$citadel/addons/pak01_extra.vpk", bytes("someone")) }
-        assertEquals(LibraryProblem.NumberTaken(1, listOf("pak01_extra.vpk")), assertIs<ChangeOutcome.Refused>(number.ledger().also { it.reload() }.adopt(plan)).problem, "another entry on the claimed number")
+        assertEquals(LibraryProblem.NumberTaken(Slot(1), listOf("pak01_extra.vpk")), assertIs<ChangeOutcome.Refused>(number.ledger().also { it.reload() }.adopt(plan)).problem, "another entry on the claimed number")
         for (world in listOf(changed, taken, number)) {
             assertEquals(emptyList(), world.store.saved)
             assertEquals(emptyList(), world.files.linkedPaths + world.files.removedPaths)

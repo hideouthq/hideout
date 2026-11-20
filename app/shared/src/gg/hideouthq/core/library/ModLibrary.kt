@@ -6,8 +6,6 @@ import gg.hideouthq.core.autoexec.AutoexecDocument
 import gg.hideouthq.core.autoexec.takeOver
 import gg.hideouthq.core.crosshair.Crosshair
 import gg.hideouthq.core.crosshair.HeroSettings
-import gg.hideouthq.core.data.FolderEntry
-import gg.hideouthq.core.data.FolderListing
 import gg.hideouthq.core.data.HeldFile
 import gg.hideouthq.core.data.HeroSettingsCopy
 import gg.hideouthq.core.data.ReticleRead
@@ -222,8 +220,8 @@ sealed interface LibraryStatus {
          * reads, a record in any game names or the pending change touches. Published whenever any of those changes.
          */
         val clearable: List<OwnedDownload> = emptyList(),
-        /** The found game's `addons` as Hideout last listed it; null when it could not be listed. */
-        val addons: List<FolderEntry>? = null,
+        /** What the found game's loading folders held when Hideout last listed them; null when one could not be listed. */
+        val loading: List<OnEntry>? = null,
     ) : LibraryStatus
 
     /** The manifest, or the game files it describes, cannot be trusted. Read-only: never an empty, writable library. */
@@ -1072,11 +1070,11 @@ class ModLibrary(
         for ((root, held) in ledger.manifest.records.groupBy { it.gameRoot }.toSortedMap(compareBy { it.path })) {
             if (wanted.onOrder(root) == onLoadOrder(held)) continue
             if (attempt { locator.check(root.path) } != Attempt.Done(FolderCheck.Valid(root))) return Plan.Failed(LibraryProblem.GameNotFound)
-            val names = when (val listed = addonsNames(root)) {
-                is FolderListing.Unreadable -> return Plan.Failed(LibraryProblem.AddonsUnreadable(listed.reason))
-                is FolderListing.Listed -> listed.names
+            val loading = when (val listed = onListing(root)) {
+                is OnListing.Unreadable -> return Plan.Failed(LibraryProblem.AddonsUnreadable(listed.reason))
+                is OnListing.Listed -> listed.entries
             }
-            val planned = planPlacement(held, wanted, foreignNumbers(names, held), stuck = stuck())
+            val planned = planPlacement(held, wanted, foreignNumbers(loading, held), stuck = stuck())
             moves += movesBetween(held, planned.records)
             past += planned.pastLimit
         }
@@ -2283,9 +2281,9 @@ class ModLibrary(
         val cache = resourceIndexes ?: return true
         val ready = state.value.library as? LibraryStatus.Ready ?: return true
         val records = ready.records.filter { it.gameRoot == target }
-        val addons = (addonsNames(target) as? FolderListing.Listed)?.entries ?: return true
+        val loading = (onListing(target) as? OnListing.Listed)?.entries ?: return true
         val unreadable = ready.damaged.keys + ready.unchecked
-        val mounts = profileMounts(records, active, addons, unreadable)
+        val mounts = profileMounts(records, active, loading, unreadable)
         val files = mounts.mapNotNull { mount ->
             val by = mount.by as? Mounted.Managed ?: return@mapNotNull null
             val record = records.first { it.installId == by.installId }
@@ -2406,13 +2404,13 @@ class ModLibrary(
     private suspend fun roomFor(record: ManifestRecord, count: Int, closed: Boolean): Room {
         if (!record.enabled) return Room.Ready
         val held = ledger.manifest.records.filter { it.gameRoot == record.gameRoot }
-        val names = when (val listed = addonsNames(record.gameRoot)) {
-            is FolderListing.Unreadable -> return Room.Unknown(LibraryProblem.AddonsUnreadable(listed.reason))
-            is FolderListing.Listed -> listed.names
+        val loading = when (val listed = onListing(record.gameRoot)) {
+            is OnListing.Unreadable -> return Room.Unknown(LibraryProblem.AddonsUnreadable(listed.reason))
+            is OnListing.Listed -> listed.entries
         }
         val on = held.filter { it.enabled }.sortedBy { it.numbers.first() }
         val stuck = stuck() - record.installId
-        val wanted = placeAround(on, emptyList(), foreignNumbers(names, held)) { mod ->
+        val wanted = placeAround(on, emptyList(), foreignNumbers(loading, held)) { mod ->
             val width = if (mod.installId == record.installId) maxOf(mod.sets.size, count) else mod.sets.size
             Block(mod.sets.map(mod::numberOf), mod.sets.map { it.files.size }, width = width, stuck = mod.installId in stuck, fixed = mod.edited && mod.installId != record.installId)
         } ?: return Room.None
@@ -2431,10 +2429,10 @@ class ModLibrary(
             is UnpackResult.Failed -> refused(LibraryProblem.ExtractionFailed(result.reason))
         }
 
-    private suspend fun addonsNames(root: GameRoot): FolderListing = ledger.addonsNames(root).also { listing ->
+    private suspend fun onListing(root: GameRoot): OnListing = ledger.onListing(root).also { listing ->
         mutableState.update { state ->
             val ready = state.library as? LibraryStatus.Ready
-            if (ready == null || (state.game as? GameStatus.Ready)?.root != root) state else state.copy(library = ready.copy(addons = (listing as? FolderListing.Listed)?.entries))
+            if (ready == null || (state.game as? GameStatus.Ready)?.root != root) state else state.copy(library = ready.copy(loading = (listing as? OnListing.Listed)?.entries))
         }
     }
 
@@ -2552,11 +2550,11 @@ class ModLibrary(
                 is InstallOutcome.Refused -> return interruptedOr(installed.problem).also { publishRecords(installed.interrupted) }
             }
         }
-        val names = when (val listed = addonsNames(root)) {
-            is FolderListing.Unreadable -> return TakeoverOutcome.Refused(ImportProblem.GameUnreadable(listed.reason))
-            is FolderListing.Listed -> listed.names
+        val addons = when (val listed = onListing(root)) {
+            is OnListing.Unreadable -> return TakeoverOutcome.Refused(ImportProblem.GameUnreadable(listed.reason))
+            is OnListing.Listed -> listed.entries.filter { it.folder == SetFolder.Addons }.map { it.entry.name }
         }
-        val placed = placeTakeover(takeover, ledger.manifest, names, copied.map { it.installId }, ids)
+        val placed = placeTakeover(takeover, ledger.manifest, addons, copied.map { it.installId }, ids)
         val plan = placed.plan
         if (plan.adopted.isNotEmpty() || plan.book != ledger.manifest.profiles || plan.target != ledger.manifest.chosen()) {
             val outcome = changing { ledger.adopt(plan) }
@@ -2702,7 +2700,7 @@ class ModLibrary(
         val checked = attempt { checkLocked(ledger.manifest.records.filter { it.installId in recheck }) }.orElse { recheck.associateWith { Checked(FilesCheck.Unknown, stored = false) } }
         val records = ledger.manifest.records
         val ids = records.map { it.installId }.toSet()
-        (state.value.game as? GameStatus.Ready)?.let { addonsNames(it.root) }
+        (state.value.game as? GameStatus.Ready)?.let { onListing(it.root) }
         mutableState.update { state ->
             val current = state.library as? LibraryStatus.Ready
             val library = if (current == null || ready == null) state.library else current.copy(
@@ -2854,7 +2852,7 @@ class ModLibrary(
             is ManifestLoad.Unreadable -> LibraryStatus.Blocked(loaded.reason)
         }
         mutableState.update { it.copy(library = status).confirmed(renew = true) }
-        (state.value.game as? GameStatus.Ready)?.let { addonsNames(it.root) }
+        (state.value.game as? GameStatus.Ready)?.let { onListing(it.root) }
     }
 
     private suspend fun reconcile(): LibraryStatus = attempt {
@@ -3101,9 +3099,9 @@ class ModLibrary(
         if (records.isEmpty()) return emptyMap()
         val game = (attempt { compatibility.game(root) } as? Attempt.Done)?.value
         val enabled = records.filter { it.enabled }
-        val owned = enabled.flatMap { record -> record.files.map { it.name } }.toSet()
-        val foreign = (addonsNames(root) as? FolderListing.Listed)?.names?.filter { it !in owned }?.mapNotNull { name ->
-            PakNumbers.mounted(name)?.let { Provider(it.value, "${SetFolder.Addons.path}/$name") }
+        val owned = enabled.flatMap { record -> record.files.map { it.relativePath(record) } }.toSet()
+        val foreign = (onListing(root) as? OnListing.Listed)?.entries?.filter { it.relativePath !in owned }?.mapNotNull { entry ->
+            entry.mounted?.let { Provider(it.value, entry.relativePath) }
         }
         val mounted = enabled.flatMap(::providersOf) + (foreign ?: listOf(Provider.Unreadable))
         return records.associate { record ->
@@ -3495,7 +3493,7 @@ internal fun LibraryProblem.reason(): String = when (this) {
     is LibraryProblem.ReticleWriteFailed -> reason
     is LibraryProblem.ProcessesUnknown -> reason
     is LibraryProblem.NameTaken -> "another file is at $name"
-    is LibraryProblem.NumberTaken -> "files Hideout did not put there use number ${number.toString().padStart(2, '0')}: ${names.joinToString()}"
+    is LibraryProblem.NumberTaken -> "files Hideout did not put there use number ${number.pak.value.toString().padStart(2, '0')}: ${names.joinToString()}"
     is LibraryProblem.FileMissing -> "$path is missing"
     is LibraryProblem.FileChanged -> "$path changed after Hideout put it there"
     is LibraryProblem.FileUnreadable -> "$path could not be read"

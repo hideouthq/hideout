@@ -148,11 +148,11 @@ private data class Placed(val root: GameRoot, val records: List<ManifestRecord>,
 private fun placedFor(current: LibraryState): Placed? {
     val ready = current.library as? LibraryStatus.Ready ?: return null
     val root = (current.game as? GameStatus.Ready)?.root ?: return null
-    val addons = ready.addons ?: return null
+    val loading = ready.loading ?: return null
     val profile = (current.shownProfiles ?: current.profiles)?.activeProfile ?: return null
     val records = ready.records.filter { it.gameRoot == root }
     val stuck = ready.damaged.keys + ready.unchecked
-    return Placed(root, records, stuck, profileMounts(records, profile, addons, stuck))
+    return Placed(root, records, stuck, profileMounts(records, profile, loading, stuck))
 }
 
 private fun scopeFor(current: LibraryState): LibraryScope? {

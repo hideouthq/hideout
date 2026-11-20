@@ -415,8 +415,8 @@ sealed interface LibraryProblem {
     /** A file at [path] under the game folder could not be read. */
     data class FileUnreadable(val path: String) : LibraryProblem
 
-    /** Files Hideout did not put in `addons`, [names], appeared at [number] while a change was planned, so placing it would load two mods under one number. */
-    data class NumberTaken(val number: Int, val names: List<String>) : LibraryProblem
+    /** Files Hideout did not put in a loading folder, [names], appeared at [number] while a change was planned, so placing it would load two mods under one number. */
+    data class NumberTaken(val number: Slot, val names: List<String>) : LibraryProblem
 
     /**
      * The sets in the game changed since the order was shown, the new order is not a rearrangement of them, or another

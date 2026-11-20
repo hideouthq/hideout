@@ -180,7 +180,7 @@ class ModLibraryTest {
         return library.state.value.library.unlisted()
     }
 
-    private fun LibraryStatus.unlisted(): LibraryStatus = (this as? LibraryStatus.Ready)?.copy(addons = null) ?: this
+    private fun LibraryStatus.unlisted(): LibraryStatus = (this as? LibraryStatus.Ready)?.copy(loading = null) ?: this
 
     @Test
     fun aFreshManifestReconcilesToAnEmptyReadyLibrary() = runTest {

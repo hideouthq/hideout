@@ -1,5 +1,6 @@
 package gg.hideouthq.core.library
 
+import gg.hideouthq.core.data.FolderEntry
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -49,7 +50,7 @@ class HeldModsTest {
     fun aChunkBesideASetTheUserEditedIsThatEditsAndTakesNoNumberOfAnotherMod() {
         val records = listOf(mod("h", 6, edited = true), mod("a", 7))
         val addons = listOf("pak06_dir.vpk", "pak06_000.vpk", "pak07_dir.vpk", "pak07_000.vpk", "pak09_dir.vpk")
-        assertEquals(setOf(Slot(7), Slot(9)), foreignNumbers(addons, records), "a chunk beside a set nobody edited is another tool's")
+        assertEquals(setOf(Slot(7), Slot(9)), foreignNumbers(addons.map { OnEntry(SetFolder.Addons, FolderEntry(it, EntryKind.File)) }, records), "a chunk beside a set nobody edited is another tool's")
     }
 
     @Test

@@ -78,12 +78,19 @@ class ConflictsTest {
         val on = priorityRecord("on", 5, components = 2)
         val off = priorityRecord("off", null)
         val names = listOf("pak05_dir.vpk", "pak06_dir.vpk", "pak03_dir.vpk", "pak03_000.vpk", "623518_pak07_dir.vpk", "pak08_dir.vpk.hideout-t", "readme.txt")
-        val addons = names.map { FolderEntry(it, EntryKind.File, FileStamp(1, 1)) }
+        val addons = names.map { OnEntry(SetFolder.Addons, FolderEntry(it, EntryKind.File, FileStamp(1, 1))) }
         val mounts = mounts(listOf(on.placed(Placement.On(Slot(1))), off), addons, now = listOf(on, off))
         assertEquals(
             listOf(mount(1, Mounted.Managed("on", on.sets[0].key)), mount(2, Mounted.Managed("on", on.sets[1].key)), mount(3, Mounted.Foreign("pak03_dir.vpk", FileStamp(1, 1)))),
             mounts,
             "the mod's own files at 05 and 06 are where it is now, not files of someone else",
         )
+    }
+
+    @Test
+    fun aFileOfHideoutsPastAddonsDoesNotHideOneOfTheSameNameInAddons() {
+        val past = priorityRecord("past", 102)
+        val loading = listOf(SetFolder.Addons, SetFolder.On(2)).map { OnEntry(it, FolderEntry("pak03_dir.vpk", EntryKind.File, FileStamp(1, 1))) }
+        assertEquals(listOf(mount(3, Mounted.Foreign("pak03_dir.vpk", FileStamp(1, 1))), mount(102, Mounted.Managed("past", past.sets[0].key))), mounts(listOf(past), loading, now = listOf(past)))
     }
 }

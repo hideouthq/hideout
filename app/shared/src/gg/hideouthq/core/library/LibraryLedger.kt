@@ -1041,23 +1041,31 @@ internal class LibraryLedger(
 
     private suspend fun twinned(entry: GameEntry, image: FileImage): Boolean = (attempt { ports.backups.holds(entry, image) } as? Attempt.Done)?.value == true
 
+    /** Refused when an entry of a loading folder, other than the files at [except] by path, takes one of [numbers]. */
     private suspend fun numberTaken(root: GameRoot, numbers: Iterable<Slot>, except: Set<String>): LibraryProblem? {
-        val names = when (val listing = addonsNames(root)) {
-            is FolderListing.Unreadable -> return LibraryProblem.AddonsUnreadable(listing.reason)
-            is FolderListing.Listed -> listing.names.filter { it !in except }
+        val entries = when (val listing = onListing(root)) {
+            is OnListing.Unreadable -> return LibraryProblem.AddonsUnreadable(listing.reason)
+            is OnListing.Listed -> listing.entries.filter { it.relativePath !in except }
         }
         for (number in numbers) {
-            val sharing = names.filter { name -> PakNumbers.taken(listOf(name)).any { Slot.of(SetFolder.Addons, it) == number } }
-            if (sharing.isNotEmpty()) return LibraryProblem.NumberTaken(number.value, sharing.sorted())
+            val sharing = entries.filter { it.number == number }
+            if (sharing.isNotEmpty()) return LibraryProblem.NumberTaken(number, sharing.map { it.label }.sorted())
         }
         return null
     }
 
-    /** What [root]'s `addons` holds, with a failure to look counted as unreadable. */
-    internal suspend fun addonsNames(root: GameRoot): FolderListing = when (val listing = attempt { inventory.list(root, SetFolder.Addons.inCitadel) }) {
-        is Attempt.Failed -> FolderListing.Unreadable(listing.reason)
-        is Attempt.Done -> listing.value
-    }
+    /** What [root]'s loading folders hold, with a failure to look at any counted as unreadable. A folder that is not there holds nothing. */
+    internal suspend fun onListing(root: GameRoot): OnListing = OnListing.Listed(
+        SetFolder.Loading.flatMap { folder ->
+            when (val listing = attempt { inventory.list(root, folder.inCitadel) }) {
+                is Attempt.Failed -> return OnListing.Unreadable(listing.reason)
+                is Attempt.Done -> when (val listed = listing.value) {
+                    is FolderListing.Unreadable -> return OnListing.Unreadable(listed.reason)
+                    is FolderListing.Listed -> listed.entries.map { OnEntry(folder, it) }
+                }
+            }
+        },
+    )
 
     private suspend fun relocate(source: ManifestRecord, target: ManifestRecord): ChangeOutcome {
         preflight(source, target)?.let { return ChangeOutcome.Refused(it) }
@@ -1226,7 +1234,7 @@ internal class LibraryLedger(
         for ((root, moves) in change.moves.groupBy { it.source.gameRoot }) {
             val landing = moves.flatMap { move -> move.moving.mapNotNull { pairs -> move.target.numberOf(move.target.setOf(pairs.first().second)) } }
             if (landing.isEmpty()) continue
-            numberTaken(root, landing, except = moves.filter { it.source.enabled }.flatMap { move -> move.source.files.map { it.name } }.toSet())?.let { return it }
+            numberTaken(root, landing, except = moves.filter { it.source.enabled }.flatMap { move -> move.source.files.map { it.relativePath(move.source) } }.toSet())?.let { return it }
         }
         return null
     }
@@ -1337,7 +1345,7 @@ internal class LibraryLedger(
         }
         val enabled = plan.adopted.filter { it.record.enabled }
         if (enabled.isEmpty()) return null
-        return numberTaken(root, enabled.flatMap { it.record.numbers }, except = enabled.filter { it.claimed }.flatMap { adoption -> adoption.record.files.map { it.name } }.toSet())
+        return numberTaken(root, enabled.flatMap { it.record.numbers }, except = enabled.filter { it.claimed }.flatMap { adoption -> adoption.record.files.map { it.relativePath(adoption.record) } }.toSet())
     }
 
     private suspend fun finishAdoption(change: PendingChange.Adopt): ChangeOutcome {
@@ -1404,11 +1412,11 @@ internal class LibraryLedger(
         uncertainty?.let { return MutationResult.Refused(LibraryProblem.Interrupted(it)) }
         if (backup.records.any { it.gameRoot != root }) return MutationResult.Refused(LibraryProblem.BackupUnreadable("it was made in another game folder"))
         val source = manifest.records.filter { it.gameRoot == root }
-        val names = when (val listing = addonsNames(root)) {
-            is FolderListing.Unreadable -> return MutationResult.Refused(LibraryProblem.AddonsUnreadable(listing.reason))
-            is FolderListing.Listed -> listing.names
+        val loading = when (val listing = onListing(root)) {
+            is OnListing.Unreadable -> return MutationResult.Refused(LibraryProblem.AddonsUnreadable(listing.reason))
+            is OnListing.Listed -> listing.entries
         }
-        val placed = planPlacement(backup.records, backup.profiles.activeProfile, foreignNumbers(names, source), now = source)
+        val placed = planPlacement(backup.records, backup.profiles.activeProfile, foreignNumbers(loading, source), now = source)
         if (placed.pastLimit.isNotEmpty()) return MutationResult.Refused(LibraryProblem.NoRoomInOrder(backup.records.filter { it.enabled }.sumOf { it.sets.size }))
         val target = placed.records
         val planned = try {
@@ -1427,7 +1435,7 @@ internal class LibraryLedger(
         }
         val change = planned.copy(absent = absent)
         change.swap().blocked()?.let { return MutationResult.Refused(it.first) }
-        val on = source.filter { it.enabled }.flatMap { record -> record.files.map { it.name } }.toSet()
+        val on = source.filter { it.enabled }.flatMap { record -> record.files.map { it.relativePath(record) } }.toSet()
         numberTaken(root, change.target.filter { it.enabled }.flatMap { it.numbers }, except = on)?.let { return MutationResult.Refused(it) }
         return MutationResult.Done(change)
     }

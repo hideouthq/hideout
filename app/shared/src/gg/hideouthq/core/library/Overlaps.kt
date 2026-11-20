@@ -1,7 +1,6 @@
 package gg.hideouthq.core.library
 
 import gg.hideouthq.core.data.FileStamp
-import gg.hideouthq.core.data.FolderEntry
 
 /**
  * The game files two or more of [parts] hold with different bytes, by the CRC-32 their trees record, packer files
@@ -49,22 +48,23 @@ sealed interface Mounted {
 }
 
 /**
- * What `addons` mounts with [placed] at their numbers, lowest number first: every set of a mod that is on, and every
- * bare `pakNN_dir.vpk` in [addons] that is not a file of the mods [now] has on, which may sit elsewhere than [placed].
+ * What the loading folders mount with [placed] at their slots, lowest first: every set of a mod that is on, and every
+ * bare `pakNN_dir.vpk` in `addons`, of [loading], that is not a file of the mods [now] has on, which may sit elsewhere
+ * than [placed]. A foreign file past `addons` loads all the same, unseen here: its resources are read from `addons` only.
  */
-internal fun mounts(placed: List<ManifestRecord>, addons: List<FolderEntry>, now: List<ManifestRecord>): List<Mount> {
-    val own = now.filter { it.enabled }.flatMapTo(HashSet()) { record -> record.files.map { it.name } }
+internal fun mounts(placed: List<ManifestRecord>, loading: List<OnEntry>, now: List<ManifestRecord>): List<Mount> {
+    val own = now.filter { it.enabled }.flatMapTo(HashSet()) { record -> record.files.map { it.relativePath(record) } }
     val managed = placed.flatMap { record -> record.sets.mapNotNull { set -> record.numberOf(set)?.let { Mount(it, Mounted.Managed(record.installId, set.key)) } } }
-    val foreign = addons.filter { it.name !in own }.mapNotNull { entry -> PakNumbers.mounted(entry.name)?.let { Mount(Slot.of(SetFolder.Addons, it), Mounted.Foreign(entry.name, entry.stamp)) } }
+    val foreign = loading.filter { it.folder == SetFolder.Addons && it.relativePath !in own }.mapNotNull { on -> on.mounted?.let { Mount(it, Mounted.Foreign(on.entry.name, on.entry.stamp)) } }
     return (managed + foreign).sortedBy { it.number }
 }
 
 /**
- * What `addons` mounts once [profile] places [records], one game's, around [addons]' other entries, the [stuck] mods and
- * the ones the user edited, which stay where they are; as they are when they do not fit.
+ * What the loading folders mount once [profile] places [records], one game's, around [loading]'s other entries, the
+ * [stuck] mods and the ones the user edited, which stay where they are; as they are when they do not fit.
  */
-internal fun profileMounts(records: List<ManifestRecord>, profile: Profile, addons: List<FolderEntry>, stuck: Set<String>): List<Mount> =
-    mounts(planPlacement(records, profile, foreignNumbers(addons.map { it.name }, records), stuck = stuck).records, addons, records)
+internal fun profileMounts(records: List<ManifestRecord>, profile: Profile, loading: List<OnEntry>, stuck: Set<String>): List<Mount> =
+    mounts(planPlacement(records, profile, foreignNumbers(loading, records), stuck = stuck).records, loading, records)
 
 /** A model [loser] holds at [path] that the game shows from [winner] instead, which mounts first with other bytes. */
 data class ModelLoss(val path: String, val loser: Mount, val winner: Mount)

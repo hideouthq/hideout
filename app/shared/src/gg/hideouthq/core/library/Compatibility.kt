@@ -47,7 +47,7 @@ data class InstallCheck(val installId: String, val basis: CheckBasis, val sets: 
 /**
  * A directory file whose copy of a resource wins over every set ranked after it: one of Hideout's sets, the
  * installation's own earlier sets included, belonging to [installId] and recorded as [image], or a `pakNN_dir.vpk` in
- * `addons` that Hideout does not own and nobody vouches for. [rank] orders them: the pak number of a set that is on or
+ * a loading folder that Hideout does not own and nobody vouches for. [rank] orders them: the slot of a set that is on or
  * of a foreign file, or a set's place in its mod while the mod is off ([ManifestRecord.rank]). [path] is under the
  * game root.
  */
@@ -57,7 +57,7 @@ data class Provider(val rank: Int, val path: String, val installId: String? = nu
     val name: String get() = path.substringAfterLast('/')
 
     companion object {
-        /** `addons` could not be listed: anything may load first, so no resource is known to win. */
+        /** A loading folder could not be listed: anything may load first, so no resource is known to win. */
         val Unreadable: Provider = Provider(0, "")
     }
 }

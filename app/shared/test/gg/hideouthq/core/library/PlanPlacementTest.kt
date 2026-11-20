@@ -1,5 +1,6 @@
 package gg.hideouthq.core.library
 
+import gg.hideouthq.core.data.FolderEntry
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -50,6 +51,16 @@ class PlanPlacementTest {
             (1..99).filterTo(HashSet()) { random.nextInt(12) == 0 },
             ids.filterTo(HashSet()) { random.nextInt(8) == 0 },
         )
+    }
+
+    @Test
+    fun anEntryTakesItsSlotInWhicheverLoadingFolderItSitsAndOnlyHideoutsOwnPathIsExempt() {
+        val past = mod(1, listOf(1), on(104))
+        val edited = mod(2, listOf(2), on(110), edited = true)
+        fun entries(folder: SetFolder.On, vararg names: String) = names.map { OnEntry(folder, FolderEntry(it, EntryKind.File)) }
+        val loading = entries(SetFolder.Addons, "pak05_dir.vpk", "pak11_000.vpk") + entries(SetFolder.On(2), "pak05_dir.vpk", "pak09_dir.vpk", "pak11_000.vpk", "pak11_001.vpk") +
+            entries(SetFolder.On(3), "pak01.txt")
+        assertEquals(setOf(Slot(5), Slot(11), Slot(108), Slot(199)), foreignNumbers(loading, listOf(past, edited)), "hideout_addons2/pak05_dir.vpk is the mod's, addons/pak05_dir.vpk is not, and the edit's chunk is in its own folder only")
     }
 
     @Test

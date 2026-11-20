@@ -71,7 +71,6 @@ class PlacementTest {
         val turnedOff = Move(mod, off)
         assertEquals(2, turnedOff.moving.size, "a toggle moves every set")
         assertEquals(mod.files.zip(off.files), turnedOff.moving.flatten())
-        assertTrue(turnedOff.turned)
 
         val renumbered = Move(mod, mod.placed(Placement.On(Slot(10))))
         assertEquals(listOf(listOf("pak46_dir.vpk" to "pak10_dir.vpk", "pak46_000.vpk" to "pak10_000.vpk", "pak46_002.vpk" to "pak10_002.vpk"), listOf("pak47_dir.vpk" to "pak11_dir.vpk")), renumbered.moving.map { set -> set.map { (from, to) -> from.name to to.name } })
@@ -83,5 +82,14 @@ class PlacementTest {
         assertEquals(listOf(listOf("pak46_dir.vpk" to "pak48_dir.vpk", "pak46_000.vpk" to "pak48_000.vpk", "pak46_002.vpk" to "pak48_002.vpk")), shifted.moving.map { set -> set.map { (from, to) -> from.name to to.name } }, "a set that keeps its number does not move")
 
         assertEquals(emptyList(), Move(off, off.placed(Placement.Off, listOf(hat, hood))).moving, "an off mod's parts reorder moves no file")
+    }
+
+    @Test
+    fun aMoveToTheSameNamesInTheNextLoadingFolderMovesEverySet() {
+        val past = mod.placed(Placement.On(Slot(145)))
+        val moved = Move(mod, past)
+        assertEquals(mod.files.map { it.name }, past.files.map { it.name }, "pak46 and pak47 in both folders")
+        assertEquals(mod.files.zip(past.files), moved.moving.flatten())
+        assertEquals(listOf("game/citadel/addons/pak46_dir.vpk" to "game/citadel/hideout_addons2/pak46_dir.vpk"), moved.moving.flatten().take(1).map { (from, to) -> from.relativePath(mod) to to.relativePath(past) })
     }
 }
