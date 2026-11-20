@@ -10,12 +10,14 @@ import java.nio.file.Path
 
 class NioGameFiles : NioTwinLinks<CitadelFile>(), GameFiles {
     override fun path(entry: CitadelFile, create: Boolean): Path {
+        val segments = SetFolder.GameSegments + entry.path.parent?.value?.split('/').orEmpty()
+        if (entry.path.movedOut) return gameFolder(entry.root, segments, create).resolve(entry.path.name)
         if (create) {
             val folder = entry.path.hideoutFolder ?: throw IOException("${entry.path.value} is not a name Hideout gives a file")
             return managedFolder(entry.root, folder, create = true).resolve(entry.path.name)
         }
         if (entry.path.offLimits) throw IOException("${entry.path.value} is in a folder Hideout leaves alone")
-        return gameFolder(entry.root, SetFolder.GameSegments + entry.path.parent?.value?.split('/').orEmpty()).resolve(entry.path.name)
+        return gameFolder(entry.root, segments).resolve(entry.path.name)
     }
 
     override fun emptied(entry: CitadelFile, file: Path) {

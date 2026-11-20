@@ -32,6 +32,9 @@ value class CitadelPath(val value: String) {
             return set.takeIf { it.admits(name) }
         }
 
+    /** Inside one of the folders of [HideoutMoved], which Hideout reaches into although they are [offLimits]. */
+    val movedOut: Boolean get() = value.startsWith(HideoutMoved.value + "/")
+
     /** Backup and staging folders, Hideout's and other managers', which hold copies of mods rather than mods. */
     val offLimits: Boolean get() = value.split('/').any { it.equals(Backups, ignoreCase = true) || it.equals(HideoutBackups.value, ignoreCase = true) || it.startsWith(StagingPrefix, ignoreCase = true) }
 
@@ -44,6 +47,9 @@ value class CitadelPath(val value: String) {
 
         /** Where Restore original moves what the user edited in a mod's files, a folder for each, which nothing in Hideout deletes. */
         val HideoutEdits: CitadelPath = CitadelPath("hideout_backups/edits")
+
+        /** Where Move out takes sets Hideout does not own out of the loading folders, a folder for each move, which nothing in Hideout deletes. */
+        val HideoutMoved: CitadelPath = CitadelPath("hideout_backups/moved")
 
         private const val Backups = "addons-backups"
         private const val StagingPrefix = ".dmm-"

@@ -3596,7 +3596,7 @@ private val PendingChange.installIds: Set<String>
         is PendingChange.Arrange -> moves.map { it.source.installId }.toSet()
         is PendingChange.Adopt -> plan.adopted.map { it.record.installId }.toSet()
         is PendingChange.Revert -> (source + target).map { it.installId }.toSet()
-        is PendingChange.ConfigEdit, is PendingChange.ArchiveRemoval -> emptySet()
+        is PendingChange.ConfigEdit, is PendingChange.ArchiveRemoval, is PendingChange.MoveOut -> emptySet()
     }
 
 /** [modId]'s install as one state shows it: its operation, else whether the library has it, unknown while the library cannot be read. */

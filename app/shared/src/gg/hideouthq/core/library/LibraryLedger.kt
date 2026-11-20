@@ -747,6 +747,10 @@ internal class LibraryLedger(
                 }
             }
             is PendingChange.Revert -> pending.swap().finish().waits()
+            is PendingChange.MoveOut -> when (pending.step) {
+                MoveOutStep.Linking -> undoMoveOut(pending).settling()
+                MoveOutStep.Releasing -> (finishMoveOut(pending) as? ChangeOutcome.Refused)?.interrupted.waiting() ?: Recovery.Settled
+            }
             is PendingChange.Arrange -> when (pending.step) {
                 MoveStep.Anchoring -> undoAnchors(pending).settling()
                 MoveStep.RollingBack -> undoArrange(pending).settling()
@@ -1429,6 +1433,60 @@ internal class LibraryLedger(
 
     private fun PendingChange.Adopt.setMoves(): SetMoves<CitadelFile> = SetMoves(ports.gameFiles) { fenced(plan.gameRoot) }
 
+    /** Takes [change]'s sets out of the loading folders through its journal, refused with nothing touched when a name it takes is not vacant. */
+    suspend fun moveOut(change: PendingChange.MoveOut): ChangeOutcome {
+        uncertainty?.let { return ChangeOutcome.Refused(LibraryProblem.Interrupted(it), it) }
+        if (manifest.pending != null) return ChangeOutcome.Refused(LibraryProblem.Interrupted(ChangeInFlight))
+        fenced(change.gameRoot)?.let { return ChangeOutcome.Refused(LibraryProblem.Interrupted(it)) }
+        for (file in change.sets.flatten()) vacant(change.gameRoot, CitadelFile(change.gameRoot, change.target(file)).gamePath)?.let { return ChangeOutcome.Refused(it) }
+        val linking = change.copy(step = MoveOutStep.Linking)
+        save(manifest.copy(pending = linking)).refusal(pending = false)?.let { return it }
+        return finishMoveOut(linking)
+    }
+
+    private suspend fun finishMoveOut(change: PendingChange.MoveOut): ChangeOutcome {
+        val moves = change.setMoves()
+        val sets = change.moved()
+        if (change.step == MoveOutStep.Linking) {
+            when (val linked = moves.anchor(sets.map { set -> set.sortedBy { it.isDirectory } })) {
+                is Linked.Undo -> return undoMoveOut(change).refusingChange(linked.problem)
+                is Linked.Wait -> return ChangeOutcome.Refused(LibraryProblem.Interrupted(linked.reason), linked.reason)
+                Linked.Done -> Unit
+            }
+            when (val saved = save(manifest.copy(pending = change.copy(step = MoveOutStep.Releasing)))) {
+                SaveResult.Saved -> Unit
+                is SaveResult.Refused -> return undoMoveOut(change).refusingChange(LibraryProblem.ManifestSave(saved.reason))
+                is SaveResult.Unconfirmed -> return ChangeOutcome.Refused(LibraryProblem.Interrupted(saved.reason), saved.reason)
+            }
+        }
+        val left = mutableListOf<String>()
+        for (set in sets) {
+            when (val released = moves.release(listOf(set))) {
+                Linked.Done -> Unit
+                is Linked.Wait -> return ChangeOutcome.Refused(LibraryProblem.Interrupted(released.reason), released.reason)
+                is Linked.Undo -> for (file in set) {
+                    if ((attempt { ports.gameFiles.inspect(file.source, file.source) } as? Attempt.Done)?.value != EntryState.Absent) left += file.sourcePath
+                }
+            }
+        }
+        save(manifest.copy(pending = null)).refusal(pending = true)?.let { return it }
+        report(Preserved(left))
+        return ChangeOutcome.Done
+    }
+
+    private suspend fun undoMoveOut(change: PendingChange.MoveOut): Undone =
+        change.setMoves().dropAnchors(change.moved().map { set -> set.sortedByDescending { it.isDirectory } }).cleared()
+
+    private fun PendingChange.MoveOut.moved(): List<List<Moved<CitadelFile>>> = sets.map { set ->
+        set.map { file ->
+            val source = CitadelFile(gameRoot, file.path)
+            val target = CitadelFile(gameRoot, target(file))
+            Moved(source, target, target, file.image, file.isDirectory, source.gamePath, target.gamePath, target.gamePath)
+        }
+    }
+
+    private fun PendingChange.MoveOut.setMoves(): SetMoves<CitadelFile> = SetMoves(ports.gameFiles) { fenced(gameRoot) }
+
     /**
      * What making [root]'s Library the same as [backup]'s would change now, read only: the backup's mods, each on or
      * off as its book has it, the ones that are on at the numbers the planner gives its order against the files as they
@@ -1566,7 +1624,7 @@ internal class LibraryLedger(
             is PendingChange.Arrange -> change.committed
             is PendingChange.Adopt -> change.plan.adopted.map { it.record }
             is PendingChange.Revert -> change.source + change.target
-            is PendingChange.ConfigEdit, is PendingChange.ArchiveRemoval, null -> emptyList()
+            is PendingChange.ConfigEdit, is PendingChange.ArchiveRemoval, is PendingChange.MoveOut, null -> emptyList()
         }
         return (manifest.records + pendingRecords).none { record -> record.installId != except && record.sets.any { it.download?.path.equals(path, ignoreCase = true) } }
     }

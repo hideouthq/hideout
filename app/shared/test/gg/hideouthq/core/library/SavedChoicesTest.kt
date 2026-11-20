@@ -199,6 +199,7 @@ class SavedChoicesTest {
         is PendingChange.Install -> "install-${record.installId}"
         is PendingChange.Adopt -> "adopt-${plan.migration.value}"
         is PendingChange.Revert -> token.value
+        is PendingChange.MoveOut -> "move-out-${folder.value}"
     }
 
     private val start = mapOf("a" to 3, "b" to 5, "c" to null, "d" to 9, "e" to 3, "f" to null)

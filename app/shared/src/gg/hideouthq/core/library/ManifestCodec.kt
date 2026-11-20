@@ -227,6 +227,13 @@ private data class PendingRevertDto(
 @Serializable
 private data class AdoptionDto(val record: RecordDto, val sources: List<String>)
 
+@Serializable
+@SerialName("MoveOut")
+private data class PendingMoveOutDto(val gameRoot: String, val folder: String, val sets: List<List<OutFileDto>>, val step: MoveOutStep) : PendingDto
+
+@Serializable
+private data class OutFileDto(val path: String, val image: ImageDto, val directory: Boolean)
+
 private enum class RemovalStepDto { Anchoring, Releasing, Settled }
 
 private enum class OutcomeKind { Removed, Absent, Preserved }
@@ -396,6 +403,9 @@ private fun LibraryManifest.toDto() = ManifestFileDto(
             absent = change.absent.sorted(),
             missing = change.missing.sorted(),
         )
+        is PendingChange.MoveOut -> PendingMoveOutDto(
+            change.gameRoot.path, change.folder.value, change.sets.map { set -> set.map { OutFileDto(it.path.value, it.image.toDto(), it.isDirectory) } }, change.step,
+        )
     },
 )
 
@@ -544,6 +554,11 @@ private fun ManifestFileDto.toDomain(): LibraryManifest {
                     change.book.toDomain(), change.choices?.toDomain(), change.originals.map { it.toDomain() }, change.registered.toSet(),
                     change.repairChoices.associate { it.installId to it.choice }, change.absent.toSet(), change.missing.toSet(),
                 )
+            }
+            is PendingMoveOutDto -> {
+                require(isPlainAbsolutePath(change.gameRoot)) { "a move out names a game root" }
+                val sets = change.sets.map { set -> set.map { OutFile(CitadelPath(it.path), it.image.toDomain(), it.directory) } }
+                PendingChange.MoveOut(GameRoot(change.gameRoot), CitadelPath(change.folder), sets, change.step)
             }
         },
     )

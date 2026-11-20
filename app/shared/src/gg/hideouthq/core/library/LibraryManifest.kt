@@ -619,6 +619,27 @@ sealed interface PendingChange {
     data class Adopt(val plan: AdoptionPlan, val step: AdoptStep) : PendingChange
 
     /**
+     * Taking [sets] Hideout does not own out of [gameRoot]'s loading folders into [folder], a folder of
+     * [CitadelPath.HideoutMoved], where each file keeps its path below `game/citadel`. As in [Adopt], every name a file
+     * takes is vacant, so it is its own anchor: during [MoveOutStep.Linking] each is linked from its file, each set's
+     * chunks first and directory last, and proven one file with it holding its [OutFile.image]; during
+     * [MoveOutStep.Releasing] the names in the loading folder go, each set's directory first, while each is still one
+     * file with its new name. Restarting from [MoveOutStep.Linking] undoes; from [MoveOutStep.Releasing] it finishes.
+     * Nothing is ever deleted: each file's bytes stay under its new name.
+     */
+    data class MoveOut(val gameRoot: GameRoot, val folder: CitadelPath, val sets: List<List<OutFile>>, val step: MoveOutStep) : PendingChange {
+        init {
+            require(folder.parent == CitadelPath.HideoutMoved) { "a move out has a folder of its own" }
+            require(sets.isNotEmpty() && sets.all { set -> set.count { it.isDirectory } == 1 }) { "each set moves whole, with its one directory" }
+            require(sets.flatten().all { file -> SetFolder.Loading.any { it.inCitadel == file.path.parent?.value } }) { "only a loading folder's files move out" }
+            require(sets.flatten().map { it.path }.let { it.distinct().size == it.size }) { "a file moves once" }
+        }
+
+        /** Where [file] goes: its own path below `game/citadel`, under [folder]. */
+        fun target(file: OutFile): CitadelPath = folder.resolve(file.path.value)
+    }
+
+    /**
      * Placing the committed records of [moves] as their targets have them, in every game at once, so that the applied
      * book becomes [after]: turned on at numbers, turned off, at other numbers, or with their sets in another order. A
      * switch that turns mods off and others on at the numbers they free is one change. Every file keeps its bytes. Each
@@ -735,6 +756,11 @@ sealed interface ConfigTarget {
 
 enum class AdoptStep { Linking, Releasing }
 
+enum class MoveOutStep { Linking, Releasing }
+
+/** One file [PendingChange.MoveOut] takes out of a loading folder: where it is, the bytes it held when the move began, and whether it is its set's directory. */
+data class OutFile(val path: CitadelPath, val image: FileImage, val isDirectory: Boolean)
+
 /**
  * One record an import makes of files already in the game: [record] as it is committed, and the path each of its
  * files has now, in [ManifestRecord.files] order. It is [claimed] when every file already sits at its own Hideout
@@ -792,7 +818,7 @@ val PendingChange.whileGameRuns: Boolean
         is PendingChange.Uninstall -> !record.enabled
         is PendingChange.Replace -> !source.enabled
         is PendingChange.ConfigEdit -> target.whileGameRuns
-        is PendingChange.Arrange, is PendingChange.Adopt, is PendingChange.Revert -> false
+        is PendingChange.Arrange, is PendingChange.Adopt, is PendingChange.Revert, is PendingChange.MoveOut -> false
     }
 
 val PendingChange.gameRoots: Set<GameRoot>
@@ -806,6 +832,7 @@ val PendingChange.gameRoots: Set<GameRoot>
         is PendingChange.Arrange -> moves.map { it.source.gameRoot }.toSet()
         is PendingChange.Adopt -> setOf(plan.gameRoot)
         is PendingChange.Revert -> setOf(gameRoot)
+        is PendingChange.MoveOut -> setOf(gameRoot)
     }
 
 /** A fresh token for one change, safe in a file name. Its anchors are named with it, so no two changes share one. */
@@ -970,7 +997,7 @@ data class LibraryManifest(
                 require(change.book.follows(committed) && change.choices?.target?.covers(committed) != false) { "a restore's books order exactly the records it commits" }
                 require(originals.map { it.id }.containsAll(change.registered)) { "the originals placed for a restore are registered with it" }
             }
-            is PendingChange.Install, is PendingChange.ConfigEdit, null -> Unit
+            is PendingChange.Install, is PendingChange.ConfigEdit, is PendingChange.MoveOut, null -> Unit
         }
         require(originals.map { it.id }.distinct().size == originals.size) { "an original is retained once" }
         require(originals.map { it.id }.containsAll(namedRecords().flatMap { it.sets }.mapNotNull { it.derivation?.original })) { "a repaired set names an original that is kept" }
@@ -985,7 +1012,7 @@ data class LibraryManifest(
         is PendingChange.Arrange -> change.moves.flatMap { listOf(it.source, it.target) }
         is PendingChange.Adopt -> change.plan.adopted.map { it.record }
         is PendingChange.Revert -> change.source + change.target
-        is PendingChange.ConfigEdit, is PendingChange.ArchiveRemoval, null -> emptyList()
+        is PendingChange.ConfigEdit, is PendingChange.ArchiveRemoval, is PendingChange.MoveOut, null -> emptyList()
     }
 
     fun receipt(root: GameRoot): GameConfigReceipt? = gameConfigs.firstOrNull { it.gameRoot == root }

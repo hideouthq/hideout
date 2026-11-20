@@ -570,10 +570,10 @@ class InMemoryGameFiles : GameInventory, ModInstaller, GameConfig {
         override fun isTwin(witness: CitadelFile, file: Node.File) = blocked(witness) == null && super.isTwin(witness, file)
 
         override fun blocked(entry: CitadelFile): String? =
-            if (entry.path.offLimits) "${entry.path.value} is in a folder Hideout leaves alone" else brokenFolder(entry.root, entry.gamePath.substringBeforeLast('/'))?.let { "$it is a link or not a folder" }
+            if (entry.path.offLimits && !entry.path.movedOut) "${entry.path.value} is in a folder Hideout leaves alone" else brokenFolder(entry.root, entry.gamePath.substringBeforeLast('/'))?.let { "$it is a link or not a folder" }
 
         override suspend fun link(existing: CitadelFile, created: CitadelFile): LinkResult =
-            if (created.path.hideoutFolder == null) LinkResult.Failed("${created.path.value} is not a name Hideout gives a file") else super.link(existing, created)
+            if (created.path.hideoutFolder == null && !created.path.movedOut) LinkResult.Failed("${created.path.value} is not a name Hideout gives a file") else super.link(existing, created)
     }
 
     private fun linkIn(root: GameRoot, folder: SetFolder): String? =

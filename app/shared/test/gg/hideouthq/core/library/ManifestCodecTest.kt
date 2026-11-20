@@ -478,6 +478,19 @@ class ManifestCodecTest {
     }
 
     @Test
+    fun everyMoveOutStepRoundTripsWithItsFolderAndWholeSets() {
+        val folder = CitadelPath.HideoutMoved.resolve("2026-11-20 (2)")
+        fun out(path: String, directory: Boolean) = OutFile(CitadelPath(path), FileImage(9L, "e".repeat(64)), directory)
+        val sets = listOf(listOf(out("addons/pak05_dir.vpk", true), out("addons/pak05_000.vpk", false)), listOf(out("hideout_addons2/PAK03_DIR.vpk", true)))
+        MoveOutStep.entries.forEach { step -> roundTrips(LibraryManifest(records = listOf(record), pending = PendingChange.MoveOut(record.gameRoot, folder, sets, step))) }
+
+        assertEquals(CitadelPath("hideout_backups/moved/2026-11-20 (2)/hideout_addons2/PAK03_DIR.vpk"), PendingChange.MoveOut(record.gameRoot, folder, sets, MoveOutStep.Linking).target(sets[1][0]))
+        assertFailsWith<IllegalArgumentException>("a folder of its own under moved") { PendingChange.MoveOut(record.gameRoot, CitadelPath.HideoutEdits.resolve("x"), sets, MoveOutStep.Linking) }
+        assertFailsWith<IllegalArgumentException>("a set without its directory") { PendingChange.MoveOut(record.gameRoot, folder, listOf(listOf(out("addons/pak05_000.vpk", false))), MoveOutStep.Linking) }
+        assertFailsWith<IllegalArgumentException>("only the loading folders") { PendingChange.MoveOut(record.gameRoot, folder, listOf(listOf(out("grimoire/pak05_dir.vpk", true))), MoveOutStep.Linking) }
+    }
+
+    @Test
     fun aRecordsOptionalFieldsRoundTripAndOlderRecordsHaveNone() {
         roundTrips(LibraryManifest(records = listOf(record.copy(sets = listOf(record.only.copy(version = VersionPosition(1, 3)))))))
         roundTrips(LibraryManifest(records = listOf(record.copy(reviewed = setOf(1_829_860L, 1_829_854L)))))
