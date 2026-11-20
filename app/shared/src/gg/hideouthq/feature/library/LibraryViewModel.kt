@@ -52,6 +52,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -99,6 +100,9 @@ class LibraryViewModel(
     private data class Checking(val running: Boolean = false, val busyUntil: Instant? = null)
 
     init {
+        viewModelScope.launch {
+            library.state.map { it.shownProfiles?.active }.distinctUntilChanged().drop(1).collect { forgetTurnedOff() }
+        }
         val prefs = preferences
         if (prefs == null) {
             local.update { it.copy(layoutReady = true) }

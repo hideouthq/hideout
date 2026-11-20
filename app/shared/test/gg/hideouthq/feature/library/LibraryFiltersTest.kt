@@ -5,6 +5,11 @@ import gg.hideouthq.core.data.CatalogRepository
 import gg.hideouthq.core.data.FolderOpener
 import gg.hideouthq.core.data.Preferences
 import gg.hideouthq.core.data.fake.MemoryStorage
+import gg.hideouthq.core.library.MutationResult
+import gg.hideouthq.core.library.NewProfile
+import gg.hideouthq.core.library.ProfileColour
+import gg.hideouthq.core.library.ProfileId
+import gg.hideouthq.core.library.ProfileSeed
 import gg.hideouthq.core.model.CalendarDate
 import gg.hideouthq.core.model.Mod
 import gg.hideouthq.core.model.ModCategory
@@ -16,6 +21,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -122,6 +128,25 @@ class LibraryFiltersTest {
         vm.setScope(LibraryScope.Profile)
         runCurrent()
         assertEquals(listOf("hudlock"), vm.visible(), "switching back lists what is on now")
+    }
+
+    @Test
+    fun switchingProfileInTheProfilesOwnViewListsWhatTheNewProfileTurnsOn() = withViewModels { viewModels ->
+        val base = AppContainer.fake()
+        val vm = LibraryViewModel(base.modLibrary, FolderOpener { _, _ -> true }, base.catalog, null).also { viewModels.keep(it) }
+        backgroundScope.launch { vm.uiState.collect {} }
+        runCurrent()
+        vm.setScope(LibraryScope.Profile)
+        vm.setEnabled("lilith", false)
+        runCurrent()
+        assertTrue("lilith" in vm.visible(), "turned off in Main, it stays listed")
+
+        val empty = assertIs<MutationResult.Done<ProfileId>>(
+            base.modLibrary.createProfile(NewProfile("Ranked", ProfileColour.Blue, ProfileSeed.Empty, activate = true)),
+        )
+        runCurrent()
+        assertEquals(empty.value, base.modLibrary.state.value.shownProfiles?.active)
+        assertEquals(emptyList(), vm.visible(), "Main's turned-off row is not Ranked's to list")
     }
 
     @Test
