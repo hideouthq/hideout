@@ -107,6 +107,7 @@ fun AppContent(state: HideoutAppState) {
                         catalog = state.container.catalog,
                         profileShares = state.container.profileShares,
                         profileImports = state.container.profileImports,
+                        installLinks = state.container.installLinks,
                         modal = state.modal,
                         keys = state.keys,
                         launcher = state.container.launcher,

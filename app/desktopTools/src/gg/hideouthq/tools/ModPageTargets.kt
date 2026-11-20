@@ -3,6 +3,7 @@ package gg.hideouthq.tools
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
+import gg.hideouthq.AppContainer
 import gg.hideouthq.core.navigation.Route
 
 internal val modPageTargets: List<Target> = listOf(
@@ -25,8 +26,8 @@ internal val modPageTargets: List<Target> = listOf(
         AppWith({ InstallDialogFixture.container() }, Route.ModDetail(InstallDialogFixture.Lilith.modId))
     },
     Target("discover_v4_compact", 1000, 1700, scale = 1f) { AppAt(Route.Discover) },
-    Target("detail_needs", 1440, 900, settleMillis = DetailMillis) { AppWith(NeedsFixture::container, Lilith) },
-    Target("detail_needs_compact", 1000, 680, scale = 1f, settleMillis = DetailMillis, interact = { pick("Details") }) { AppWith(NeedsFixture::container, Lilith) },
+    Target("detail_needs", 1440, 900, settleMillis = DetailMillis) { AppWith({ withGameBananaIds(AppContainer.fake(), InstalledWerecat) }, Lilith) },
+    Target("detail_needs_compact", 1000, 680, scale = 1f, settleMillis = DetailMillis, interact = { pick("Details") }) { AppWith({ withGameBananaIds(AppContainer.fake(), InstalledWerecat) }, Lilith) },
 )
 
 private val Lilith = Route.ModDetail("lilith")

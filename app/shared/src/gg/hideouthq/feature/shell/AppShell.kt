@@ -34,6 +34,8 @@ import gg.hideouthq.core.library.ModLibrary
 import gg.hideouthq.core.navigation.HideoutNavDisplay
 import gg.hideouthq.core.navigation.HideoutNavigator
 import gg.hideouthq.core.navigation.HistoryEntry
+import gg.hideouthq.core.navigation.Route
+import gg.hideouthq.core.sharing.InstallLinks
 import gg.hideouthq.core.sharing.ProfileImports
 import gg.hideouthq.core.sharing.ProfileShares
 import gg.hideouthq.core.ui.LibraryLabels
@@ -67,6 +69,7 @@ fun AppShell(
     catalog: CatalogRepository,
     profileShares: ProfileShares,
     profileImports: ProfileImports,
+    installLinks: InstallLinks,
     modal: WindowModal,
     keys: ShellKeys,
     launcher: GameLauncher,
@@ -86,6 +89,9 @@ fun AppShell(
 ) {
     val viewModel = viewModel { ShellViewModel(modLibrary, launcher, profileShares, profileImports, catalog::cachedMod) }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    LaunchedEffect(installLinks, viewModel) {
+        installLinks.incoming.collect { link -> viewModel.openInstallLink(link)?.let { navigator.navigate(Route.ModDetail(it)) } }
+    }
     val clipboard = LocalClipboard.current
     LaunchedEffect(state.shareLink) { state.shareLink?.let { link -> viewModel.linkCopied(link, clipboard.copyText(link.text)) } }
     val appUpdate by appUpdates.state.collectAsStateWithLifecycle()

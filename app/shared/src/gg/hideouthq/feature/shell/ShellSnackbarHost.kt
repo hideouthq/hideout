@@ -14,8 +14,11 @@ import androidx.compose.ui.text.AnnotatedString
 import gg.hideouthq.core.designsystem.component.HideoutSnackbar
 import gg.hideouthq.core.designsystem.theme.HideoutTheme
 import gg.hideouthq.core.library.Undoable
+import gg.hideouthq.core.sharing.InstallLink
 import gg.hideouthq.feature.imports.managerName
 import gg.hideouthq.resources.Res
+import gg.hideouthq.resources.install_link_not_a_mod
+import gg.hideouthq.resources.install_link_unreadable
 import gg.hideouthq.resources.library_turned_off
 import gg.hideouthq.resources.library_turned_off_in
 import gg.hideouthq.resources.library_turned_on
@@ -53,6 +56,12 @@ internal fun ShellSnackbarHost(snackbar: ShellSnackbar?, enabled: Boolean, onUnd
                 }
                 is SnackbarMessage.NothingToShare -> stringResource(Res.string.share_nothing, content.profile)
                 SnackbarMessage.CopyFailed -> stringResource(Res.string.share_copy_failed)
+                is SnackbarMessage.LinkRefused -> stringResource(
+                    when (content.why) {
+                        InstallLink.Refused.NotAMod -> Res.string.install_link_not_a_mod
+                        InstallLink.Refused.Unreadable -> Res.string.install_link_unreadable
+                    },
+                )
                 is SnackbarMessage.Edit -> when (val edit = content.undoes) {
                     is Undoable.Deleted -> edit.switchedTo?.let { stringResource(Res.string.profile_deleted_switched, edit.name, it) } ?: stringResource(Res.string.profile_deleted, edit.name)
                     is Undoable.Turned -> edit.profile?.let { profile ->

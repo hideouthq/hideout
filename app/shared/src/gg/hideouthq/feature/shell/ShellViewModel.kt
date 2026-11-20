@@ -3,10 +3,13 @@ package gg.hideouthq.feature.shell
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import gg.hideouthq.core.data.GameLauncher
+import gg.hideouthq.core.data.InstallStatus
 import gg.hideouthq.core.library.ChangeStage
 import gg.hideouthq.core.library.ChoiceSync
 import gg.hideouthq.core.library.GameActivity
 import gg.hideouthq.core.library.GameStatus
+import gg.hideouthq.core.library.InstallInput
+import gg.hideouthq.core.library.InstallRequest
 import gg.hideouthq.core.library.LibraryProblem
 import gg.hideouthq.core.library.LibraryState
 import gg.hideouthq.core.library.LibraryStatus
@@ -18,9 +21,11 @@ import gg.hideouthq.core.library.OperationStage
 import gg.hideouthq.core.library.ProfileColour
 import gg.hideouthq.core.library.ProfileId
 import gg.hideouthq.core.library.ProfileSeed
+import gg.hideouthq.core.library.installStatus
 import gg.hideouthq.core.library.profileNameProblem
 import gg.hideouthq.core.library.transfers
 import gg.hideouthq.core.model.Mod
+import gg.hideouthq.core.sharing.InstallLink
 import gg.hideouthq.core.sharing.ProfileImports
 import gg.hideouthq.core.sharing.ProfileShares
 import gg.hideouthq.core.sharing.longLink
@@ -33,6 +38,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -235,6 +241,26 @@ class ShellViewModel(
     fun linkCopied(link: ShareLink, copied: Boolean) {
         local.update { if (it.shareLink == link) it.copy(shareLink = null) else it }
         notify(if (copied) SnackbarMessage.Shared(link) else SnackbarMessage.CopyFailed)
+    }
+
+    /**
+     * Takes GameBanana's 1-click [link] and says which mod page to show. Once the library has read what is installed,
+     * the link's file goes into the active profile, unless the mod is installed or installing already. A link with
+     * nothing to install is said in a passing note, and no page opens.
+     */
+    fun openInstallLink(link: InstallLink): String? = when (link) {
+        is InstallLink.Refused -> {
+            notify(SnackbarMessage.LinkRefused(link))
+            null
+        }
+        is InstallLink.File -> link.submission.modId.also { viewModelScope.launch { installLinked(link) } }
+    }
+
+    private suspend fun installLinked(link: InstallLink.File) {
+        val state = modLibrary.state.first { it.library !is LibraryStatus.Loading }
+        val status = state.installStatus(link.submission.modId)
+        if (status != InstallStatus.NotInstalled && status !is InstallStatus.Failed) return
+        modLibrary.install(InstallRequest(InstallInput.Remote(link.submission, setOf(link.fileId)), setOfNotNull(state.shownProfiles?.active)))
     }
 
     override fun importProfile() {

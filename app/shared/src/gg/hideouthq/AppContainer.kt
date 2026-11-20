@@ -91,6 +91,8 @@ import gg.hideouthq.core.library.ResourceIndexCache
 import gg.hideouthq.core.library.ResourceIndexSource
 import gg.hideouthq.core.migration.Migration
 import gg.hideouthq.core.model.AppAbout
+import gg.hideouthq.core.sharing.InstallLink
+import gg.hideouthq.core.sharing.InstallLinks
 import gg.hideouthq.core.sharing.ProfileImports
 import gg.hideouthq.core.sharing.ProfileLink
 import gg.hideouthq.core.sharing.ProfileShares
@@ -172,11 +174,19 @@ class AppContainer(
     val profileShares: ProfileShares = ProfileShares.None,
     /** Profile links on their way to the import, from the menu or the system. */
     val profileImports: ProfileImports = ProfileImports(),
+    val installLinks: InstallLinks = InstallLinks(),
     val analytics: UsageAnalytics? = null,
 ) {
-    /** Hands a `hideout:` link from a launch or a second instance to its part of Hideout: profile links to the import, the rest to custom games. */
+    /**
+     * Hands a `hideout:` link from a launch or a second instance to its part of Hideout: profile links to the import,
+     * GameBanana's 1-click links to the shell, the rest to custom games.
+     */
     fun openAppLink(link: String) {
-        if (ProfileLink.isAppLink(link)) profileImports.open(link) else customGames?.openLink(link)
+        when {
+            ProfileLink.isAppLink(link) -> profileImports.open(link)
+            InstallLink.isAppLink(link) -> installLinks.open(InstallLink.parse(link))
+            else -> customGames?.openLink(link)
+        }
     }
 
     companion object {

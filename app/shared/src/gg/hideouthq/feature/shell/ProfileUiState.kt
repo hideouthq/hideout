@@ -6,6 +6,7 @@ import gg.hideouthq.core.library.ProfileColour
 import gg.hideouthq.core.library.ProfileId
 import gg.hideouthq.core.library.UndoToken
 import gg.hideouthq.core.library.Undoable
+import gg.hideouthq.core.sharing.InstallLink
 
 sealed interface ProfileEditor {
     data class New(
@@ -56,4 +57,6 @@ sealed interface SnackbarMessage {
     data class NothingToShare(val profile: String) : SnackbarMessage
 
     data object CopyFailed : SnackbarMessage
+
+    data class LinkRefused(val why: InstallLink.Refused) : SnackbarMessage
 }
