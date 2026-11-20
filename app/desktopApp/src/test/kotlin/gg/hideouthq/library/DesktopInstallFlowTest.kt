@@ -515,7 +515,7 @@ class DesktopInstallFlowTest {
 
     @Test
     fun anEditInterruptedWhileGameInfoWasMovedAsideIsPutBackOnTheNextStart() {
-        val patched = assertIs<GameInfoEdit.Patched>(GameInfoPatch.withBlock(valve, HideoutLines(mods = true, customGames = false))).bytes
+        val patched = assertIs<GameInfoEdit.Patched>(GameInfoPatch.withBlock(valve, HideoutLines(mods = true, customGames = false), 0)).bytes
         listOf("t1" to valve, "t2" to patched).forEach { (token, movedAside) ->
             leaveInterruptedEdit(token, patched, movedAside)
             citadel.resolve("gameinfo.gi.hideout-next-$token").writeBytes(patched)
@@ -529,7 +529,7 @@ class DesktopInstallFlowTest {
 
     @Test
     fun anUnknownDisplacedFileIsNeverInstalledAndTheSavedEditStaysPending() {
-        val patched = assertIs<GameInfoEdit.Patched>(GameInfoPatch.withBlock(valve, HideoutLines(mods = true, customGames = false))).bytes
+        val patched = assertIs<GameInfoEdit.Patched>(GameInfoPatch.withBlock(valve, HideoutLines(mods = true, customGames = false), 0)).bytes
         val foreignBytes = valve + "// not Hideout's edit\r\n".encodeToByteArray()
         val token = "t9"
         val edit = leaveInterruptedEdit(token, patched, foreignBytes)
@@ -1091,6 +1091,6 @@ class DesktopInstallFlowTest {
     }
 }
 
-private fun withoutHideoutBlock(bytes: ByteArray): ByteArray = (GameInfoPatch.withBlock(bytes, HideoutLines(mods = false, customGames = false)) as? GameInfoEdit.Patched)?.bytes ?: bytes
+private fun withoutHideoutBlock(bytes: ByteArray): ByteArray = (GameInfoPatch.withBlock(bytes, HideoutLines(mods = false, customGames = false), 0) as? GameInfoEdit.Patched)?.bytes ?: bytes
 
 private val Watch = WatchTiming(debounce = 200.milliseconds, period = 2.seconds)

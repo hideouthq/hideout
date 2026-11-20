@@ -521,4 +521,4 @@ internal fun checkSettingsTabMotion(outDir: File) {
     }
 }
 
-private fun withoutHideoutBlock(bytes: ByteArray): ByteArray = (GameInfoPatch.withBlock(bytes, HideoutLines(mods = false, customGames = false)) as? GameInfoEdit.Patched)?.bytes ?: bytes
+private fun withoutHideoutBlock(bytes: ByteArray): ByteArray = (GameInfoPatch.withBlock(bytes, HideoutLines(mods = false, customGames = false), overflow = 0) as? GameInfoEdit.Patched)?.bytes ?: bytes

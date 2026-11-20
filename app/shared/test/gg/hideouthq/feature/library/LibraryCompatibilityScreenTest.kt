@@ -55,7 +55,7 @@ import kotlin.test.assertTrue
 class LibraryCompatibilityScreenTest {
     private val root = GameRoot("/games/Deadlock")
     private val bytes = (1..4).associateWith { n -> ByteArray(20 + n) { n.toByte() } }
-    private val gameInfo = (GameInfoPatch.withBlock("\"GameInfo\"\n{\n\tFileSystem\n\t{\n\t\tSearchPaths\n\t\t{\n\t\t\tGame citadel\n\t\t}\n\t}\n}\n".encodeToByteArray(), HideoutLines(mods = true, customGames = false)) as GameInfoEdit.Patched).bytes
+    private val gameInfo = (GameInfoPatch.withBlock("\"GameInfo\"\n{\n\tFileSystem\n\t{\n\t\tSearchPaths\n\t\t{\n\t\t\tGame citadel\n\t\t}\n\t}\n}\n".encodeToByteArray(), HideoutLines(mods = true, customGames = false), 0) as GameInfoEdit.Patched).bytes
 
     private fun record(number: Int, enabled: Boolean = true): ManifestRecord = oneSetRecord(
         installId = "set$number",

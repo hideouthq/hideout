@@ -42,6 +42,7 @@ class ModLibraryCompatibilityTest {
     private val gameInfo = (GameInfoPatch.withBlock(
         "\"GameInfo\"\r\n{\r\n\tFileSystem\r\n\t{\r\n\t\tSearchPaths\r\n\t\t{\r\n\t\t\tGame\t\tcitadel\r\n\t\t\tGame\t\tcore\r\n\t\t}\r\n\t}\r\n}\r\n".encodeToByteArray(),
         HideoutLines(mods = true, customGames = false),
+        overflow = 0,
     ) as GameInfoEdit.Patched).bytes
 
     private val dirA = ByteArray(20) { 1 }

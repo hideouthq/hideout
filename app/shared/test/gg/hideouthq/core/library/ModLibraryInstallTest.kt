@@ -1096,7 +1096,7 @@ class ModLibraryInstallTest {
 
     @Test
     fun playingVanillaBesideAnotherToolsAddonsLineIsRefusedAndLeavesHideoutsBlock() = runTest {
-        val hideout = (GameInfoPatch.withBlock(vanillaInfo, HideoutLines(mods = true, customGames = false)) as GameInfoEdit.Patched).bytes.decodeToString()
+        val hideout = (GameInfoPatch.withBlock(vanillaInfo, HideoutLines(mods = true, customGames = false), 0) as GameInfoEdit.Patched).bytes.decodeToString()
         val marker = hideout.lines().first { "// Hideout start" in it }
         val eol = if ("\r\n" in hideout) "\r\n" else "\n"
         val beside = hideout.replace(marker, marker.replace("// Hideout start", "Game citadel/addons") + eol + marker).encodeToByteArray()

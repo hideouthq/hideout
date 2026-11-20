@@ -16,8 +16,12 @@ enum class GameInfoProblem {
 }
 
 sealed interface SearchPathsCheck {
-    /** [coveredBy] is null when no active entry loads `addons` ahead of the base game. [customGames] says an intact Hideout block ahead of it names the custom games paths. */
-    data class Read(val coveredBy: LoadingOwner?, val customGames: Boolean) : SearchPathsCheck
+    /**
+     * [coveredBy] is null when no active entry loads `addons` ahead of the base game. [customGames] says an intact Hideout
+     * block ahead of it names the custom games paths, and [overflow] how many loading folders past `addons` it mounts after
+     * an entry that loads `addons`.
+     */
+    data class Read(val coveredBy: LoadingOwner?, val customGames: Boolean, val overflow: Int = 0) : SearchPathsCheck
 
     data class Problem(val problem: GameInfoProblem) : SearchPathsCheck
 }
@@ -74,6 +78,7 @@ object GameInfoPatch {
     private const val EndMarker = "// Hideout end"
     private val DmmMarkers = setOf("// Deadlock Mod Manager - Start", "// Deadlock Mod Manager - End")
     private const val AddonsPath = "citadel/addons"
+    private val OverflowPaths = SetFolder.Loading.drop(1).map { "citadel/${it.inCitadel}" }
     private const val BasePath = "citadel"
     private const val GameKey = "Game"
     private const val ModKey = "Mod"
@@ -85,16 +90,19 @@ object GameInfoPatch {
 
     fun check(bytes: ByteArray): SearchPathsCheck = when (val read = read(bytes)) {
         is Parse.Failed -> SearchPathsCheck.Problem(read.problem)
-        is Parse.Done -> SearchPathsCheck.Read(read.view.coveredBy, read.view.customGames)
+        is Parse.Done -> SearchPathsCheck.Read(read.view.coveredBy, read.view.customGames, read.view.overflow)
     }
 
     /**
      * The file with Hideout's block exactly as [lines] asks, rendered afresh, or without it when it asks for nothing.
-     * While another tool's entry loads `addons`, Hideout adds no `addons` line of its own, keeps one its block has, and
-     * keeps the block where it is. `Mod` and `Write` defaults go in only where no unconditional entry outside Modlock's
-     * block gives them.
+     * While [lines] asks for mods, the block also mounts the first [overflow] loading folders past `addons`, in order,
+     * right after `addons` loads; with none it is the block as it always was. While another tool's entry loads `addons`,
+     * Hideout adds no `addons` line of its own, keeps one its block has, and keeps the block where it is, unless that
+     * would mount a folder past `addons` ahead of `addons`: then the block goes before the base game, after every entry
+     * that loads `addons`. `Mod` and `Write` defaults go in only where no unconditional entry outside Modlock's block
+     * gives them.
      */
-    fun withBlock(bytes: ByteArray, lines: HideoutLines): GameInfoEdit {
+    fun withBlock(bytes: ByteArray, lines: HideoutLines, overflow: Int): GameInfoEdit {
         val view = when (val read = read(bytes)) {
             is Parse.Failed -> return GameInfoEdit.Refused(read.problem)
             is Parse.Done -> read.view
@@ -104,14 +112,18 @@ object GameInfoPatch {
             is Parse.Failed -> return GameInfoEdit.Refused(again.problem)
             is Parse.Done -> again.view
         }
-        val paths = (if (lines.customGames) CustomGamesPaths else emptyList()) + listOfNotNull(AddonsPath.takeIf { lines.mods && (view.coveredBy != LoadingOwner.AnotherTool || view.hideoutLoads) })
+        val addons = AddonsPath.takeIf { lines.mods && (view.coveredBy != LoadingOwner.AnotherTool || view.hideoutLoads) }
+        val past = if (lines.mods) OverflowPaths.take(overflow) else emptyList()
+        val paths = (if (lines.customGames) CustomGamesPaths else emptyList()) + listOfNotNull(addons) + past
         if (paths.isEmpty()) return cleaned.asEditFrom(bytes)
         val base = retained.base
         val text = cleaned.latin1()
         val modlock = modlockBlock(text, retained)
         val leaves = retained.leaves.filter { modlock?.contains(it.start) != true }
         val baseLine = text.lastIndexOf('\n', base.key.start - 1) + 1
-        val kept = view.blocks.firstOrNull()?.first?.takeIf { view.coveredBy == LoadingOwner.AnotherTool && it < view.base.key.start }
+        val kept = view.blocks.firstOrNull()?.first?.takeIf { at ->
+            view.coveredBy == LoadingOwner.AnotherTool && at < view.base.key.start && (addons != null || past.isEmpty() || view.addonsFrom.let { it != null && it < at })
+        }
         val lineStart = kept ?: baseLine
         val indent = text.substring(baseLine, base.key.start)
         val separator = text.substring(base.key.end, base.value.start)
@@ -172,7 +184,7 @@ object GameInfoPatch {
         }
     }
 
-    fun takeOver(bytes: ByteArray, lines: HideoutLines, roots: Set<ForeignRoot>): GameInfoEdit {
+    fun takeOver(bytes: ByteArray, lines: HideoutLines, overflow: Int, roots: Set<ForeignRoot>): GameInfoEdit {
         val view = when (val read = read(bytes)) {
             is Parse.Failed -> return GameInfoEdit.Refused(read.problem)
             is Parse.Done -> read.view
@@ -183,7 +195,7 @@ object GameInfoPatch {
         val dmmTakenOver = roots.containsAll(ForeignRoot.keptBy(Manager.DeadlockModManager))
         val markerLines = if (dmmTakenOver) dmmMarkerLines(text) else emptyList()
         val cleaned = removeRanges(bytes, entryLines + markerLines)
-        val loaded = when (val edit = withBlock(cleaned, lines)) {
+        val loaded = when (val edit = withBlock(cleaned, lines, overflow)) {
             is GameInfoEdit.Patched -> edit.bytes
             GameInfoEdit.Unchanged -> cleaned
             is GameInfoEdit.Refused -> return edit
@@ -226,8 +238,22 @@ object GameInfoPatch {
         data class Failed(val problem: GameInfoProblem) : Parse
     }
 
-    /** [entries] are every leaf of SearchPaths; [leaves] the unconditional ones, which are all the engine is sure to read. */
-    private class View(val base: KvLeaf, val coveredBy: LoadingOwner?, val hideoutLoads: Boolean, val customGames: Boolean, val blocks: List<IntRange>, val leaves: List<KvLeaf>, val entries: List<KvLeaf>, val searchPaths: KvBlock)
+    /**
+     * [entries] are every leaf of SearchPaths; [leaves] the unconditional ones, which are all the engine is sure to read.
+     * [addonsFrom] is where the first entry that loads `addons` starts.
+     */
+    private class View(
+        val base: KvLeaf,
+        val coveredBy: LoadingOwner?,
+        val hideoutLoads: Boolean,
+        val customGames: Boolean,
+        val overflow: Int,
+        val addonsFrom: Int?,
+        val blocks: List<IntRange>,
+        val leaves: List<KvLeaf>,
+        val entries: List<KvLeaf>,
+        val searchPaths: KvBlock,
+    )
 
     private fun read(bytes: ByteArray): Parse {
         val text = bytes.latin1()
@@ -260,7 +286,9 @@ object GameInfoPatch {
             else -> LoadingOwner.AnotherTool
         }
         val customGames = CustomGamesPaths.all { path -> ahead.any { it.inBlock() && it.value.value.normalizedPath() == path } }
-        return Parse.Done(View(base, coveredBy, covering.any { it.inBlock() }, customGames, blocks, leaves, entries, searchPaths))
+        val addonsFrom = covering.firstOrNull()?.start
+        val overflow = addonsFrom?.let { from -> OverflowPaths.takeWhile { path -> ahead.any { it.inBlock() && it.start > from && it.value.value.normalizedPath() == path } }.size } ?: 0
+        return Parse.Done(View(base, coveredBy, covering.any { it.inBlock() }, customGames, overflow, addonsFrom, blocks, leaves, entries, searchPaths))
     }
 
     private fun hideoutBlocks(text: String, open: Int, close: Int): List<IntRange> {
@@ -277,6 +305,7 @@ object GameInfoPatch {
             var j = i + 1
             if (CustomGamesPaths.withIndex().all { (k, path) -> entryAt(j + k, GameKey, path) }) j += CustomGamesPaths.size
             if (entryAt(j, GameKey, AddonsPath)) j++
+            j += OverflowPaths.withIndex().takeWhile { (k, path) -> entryAt(j + k, GameKey, path) }.size
             if (entryAt(j, ModKey, BasePath)) j++
             if (entryAt(j, WriteKey, BasePath)) j++
             if (markerAt(j, EndMarker)) {

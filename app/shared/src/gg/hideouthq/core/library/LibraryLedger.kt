@@ -741,10 +741,10 @@ internal class LibraryLedger(
     suspend fun ensureLoading(root: GameRoot): LibraryProblem? = writeBlock(root, linesFor(root).copy(mods = true))
 
     /**
-     * Writes Hideout's block as [lines] asks, with the mounts of [unmount], the folders of the managers imported from,
-     * taken out first, and records [lines] as the receipt's intents.
+     * Writes Hideout's block as [lines] asks, mounting [overflow] loading folders past `addons`, with the mounts of
+     * [unmount], the folders of the managers imported from, taken out first, and records [lines] as the receipt's intents.
      */
-    suspend fun writeBlock(root: GameRoot, lines: HideoutLines, unmount: Set<ForeignRoot> = emptySet()): LibraryProblem? {
+    suspend fun writeBlock(root: GameRoot, lines: HideoutLines, unmount: Set<ForeignRoot> = emptySet(), overflow: Int = manifest.records.overflowIn(root)): LibraryProblem? {
         uncertainty?.let { return LibraryProblem.Interrupted(it) }
         repeat(2) {
             val current = when (val read = attempt { ports.gameConfig.read(root) }) {
@@ -755,7 +755,7 @@ internal class LibraryLedger(
                     is ConfigRead.Present -> config
                 }
             }
-            when (val edit = GameInfoPatch.takeOver(current.bytes, lines, unmount)) {
+            when (val edit = GameInfoPatch.takeOver(current.bytes, lines, overflow, unmount)) {
                 is GameInfoEdit.Refused -> return LibraryProblem.GameInfo(edit.problem)
                 GameInfoEdit.Unchanged -> return recordIntent(root, lines)
                 is GameInfoEdit.Patched -> when (val written = writeConfig(root, ConfigTarget.GameInfo(lines), current.image, edit.bytes)) {

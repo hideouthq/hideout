@@ -28,7 +28,7 @@ class GameInfoPatchTest {
     private fun searchPaths(lines: String) =
         "GameInfo\n{\n\tFileSystem\n\t{\n\t\tSearchPaths\n\t\t{\n$lines\t\t}\n\t}\n}\n".encodeToByteArray()
 
-    private fun with(bytes: ByteArray, lines: HideoutLines): ByteArray = when (val edit = GameInfoPatch.withBlock(bytes, lines)) {
+    private fun with(bytes: ByteArray, lines: HideoutLines, overflow: Int = 0): ByteArray = when (val edit = GameInfoPatch.withBlock(bytes, lines, overflow)) {
         is GameInfoEdit.Patched -> edit.bytes
         GameInfoEdit.Unchanged -> bytes
         is GameInfoEdit.Refused -> throw AssertionError("refused: ${edit.problem}")
@@ -55,7 +55,62 @@ class GameInfoPatchTest {
         assertEquals(expected(addons), with(valve, mods).text())
         assertEquals(expected(customGames), with(valve, games).text())
         assertEquals(expected(customGames + addons), with(valve, both).text())
-        assertEquals(GameInfoEdit.Unchanged, GameInfoPatch.withBlock(valve, none))
+        assertEquals(GameInfoEdit.Unchanged, GameInfoPatch.withBlock(valve, none, 0))
+    }
+
+    @Test
+    fun foldersPastAddonsLoadInOrderRightAfterItInEveryFileLayout() {
+        fun expected(lines: String) = valve.text().replace("\t\t\tGame\t\t\t\tcitadel\r\n", "\t\t\t// Hideout start\r\n$lines\t\t\tMod\t\t\t\tcitadel\r\n\t\t\tWrite\t\t\t\tcitadel\r\n\t\t\t// Hideout end\r\n\t\t\tGame\t\t\t\tcitadel\r\n")
+        val loading = listOf("addons", "hideout_addons2", "hideout_addons3").joinToString("") { "\t\t\tGame\t\t\t\tcitadel/$it\r\n" }
+        assertEquals(expected("\t\t\tGame\t\t\t\tcitadel/hideout_games/menus\r\n\t\t\tGame\t\t\t\tcitadel/hideout_games/mode\r\n$loading"), with(valve, both, 2).text())
+        assertEquals(SearchPathsCheck.Read(LoadingOwner.Hideout, customGames = true, overflow = 2), GameInfoPatch.check(with(valve, both, 2)))
+        assertContentEquals(with(valve, games), with(valve, games, 2), "no folder past addons while mods are off")
+
+        val lf = valve.text().replace("\r\n", "\n").encodeToByteArray()
+        assertEquals(with(valve, mods, 1).text().replace("\r\n", "\n"), with(lf, mods, 1).text())
+        for (file in listOf(valve, lf, byteArrayOf(0xEF.toByte(), 0xBB.toByte(), 0xBF.toByte()) + valve, anotherTool)) {
+            for (overflow in listOf(1, 2, 9)) {
+                val once = with(file, both, overflow)
+                assertEquals(GameInfoEdit.Unchanged, GameInfoPatch.withBlock(once, both, overflow), "$overflow twice changes nothing")
+                assertEquals(overflow, read(once).overflow)
+                assertContentEquals(with(file, both), with(once, both), "$overflow shrinks back to the block it always was")
+                assertContentEquals(file, with(once, none), "$overflow comes off to the exact bytes")
+            }
+        }
+    }
+
+    @Test
+    fun anOldBlockIsStillHideoutsAndALoadingRunWithAGapIsNot() {
+        val old = with(valve, mods)
+        assertEquals(SearchPathsCheck.Read(LoadingOwner.Hideout, customGames = false, overflow = 0), GameInfoPatch.check(old))
+        val grown = with(old, mods, 1)
+        assertContentEquals(with(valve, mods, 1), grown, "the old block is replaced, not joined by a second")
+        assertEquals(1, Regex("// Hideout start").findAll(grown.text()).count())
+
+        val gap = searchPaths("\t\t\t// Hideout start\n\t\t\tGame citadel/addons\n\t\t\tGame citadel/hideout_addons3\n\t\t\t// Hideout end\n\t\t\tGame citadel\n")
+        assertEquals(LoadingOwner.AnotherTool, read(gap).coveredBy, "a block that skips hideout_addons2 is someone else's edit")
+        assertContentEquals(gap, with(gap, none))
+    }
+
+    @Test
+    fun besideAnotherToolsAddonsLineFoldersPastAddonsAlwaysLoadAfterIt() {
+        val dmm = with(anotherTool, mods, 1)
+        assertEquals(
+            anotherTool.text().replace("            Game                citadel\n", "            // Hideout start\n            Game                citadel/hideout_addons2\n            // Hideout end\n            Game                citadel\n"),
+            dmm.text(),
+            "no addons line of Hideout's, and the file's own Mod and Write stand",
+        )
+        assertEquals(SearchPathsCheck.Read(LoadingOwner.AnotherTool, customGames = false, overflow = 1), GameInfoPatch.check(dmm))
+
+        val games = "\t\t\t// Hideout start\n\t\t\tGame citadel/hideout_games/menus\n\t\t\tGame citadel/hideout_games/mode\n\t\t\tMod citadel\n\t\t\tWrite citadel\n\t\t\t// Hideout end\n"
+        val grown = games.replace("mode\n", "mode\n\t\t\tGame citadel/hideout_addons2\n")
+        val after = searchPaths("\t\t\tGame citadel/addons\n$games\t\t\tGame citadel/grimoire\n\t\t\tGame citadel\n")
+        assertContentEquals(searchPaths("\t\t\tGame citadel/addons\n$grown\t\t\tGame citadel/grimoire\n\t\t\tGame citadel\n"), with(after, both, 1), "after that line, the block keeps its place")
+
+        val ahead = searchPaths("$games\t\t\tGame citadel/addons\n\t\t\tGame citadel\n")
+        assertEquals(GameInfoEdit.Unchanged, GameInfoPatch.withBlock(ahead, both, 0), "ahead of it, a block with nothing past addons stays")
+        assertContentEquals(searchPaths("\t\t\tGame citadel/addons\n$grown\t\t\tGame citadel\n"), with(ahead, both, 1), "and one with a folder past addons moves after it")
+        assertEquals(0, read(searchPaths("$grown\t\t\tGame citadel/addons\n\t\t\tGame citadel\n")).overflow, "a folder mounted ahead of addons is not loading past it")
     }
 
     @Test
@@ -72,7 +127,7 @@ class GameInfoPatchTest {
         for (file in listOf(valve, withBom, valve.text().replace("\r\n", "\n").encodeToByteArray())) {
             for (lines in listOf(mods, games, both)) {
                 val once = with(file, lines)
-                assertEquals(GameInfoEdit.Unchanged, GameInfoPatch.withBlock(once, lines), "$lines twice changes nothing")
+                assertEquals(GameInfoEdit.Unchanged, GameInfoPatch.withBlock(once, lines, 0), "$lines twice changes nothing")
                 assertContentEquals(file, with(once, none), "$lines comes off")
             }
         }
@@ -88,7 +143,7 @@ class GameInfoPatchTest {
     @Test
     fun anotherToolsAddonsLineGetsNoNewAddonsLineOfHideoutsKeepsAnOldOneAndTheCustomGamesPathsStillGoIn() {
         assertEquals(SearchPathsCheck.Read(LoadingOwner.AnotherTool, customGames = false), GameInfoPatch.check(anotherTool))
-        assertEquals(GameInfoEdit.Unchanged, GameInfoPatch.withBlock(anotherTool, mods))
+        assertEquals(GameInfoEdit.Unchanged, GameInfoPatch.withBlock(anotherTool, mods, 0))
         val withGames = with(anotherTool, both)
         val block = "            // Hideout start\n            Game                citadel/hideout_games/menus\n            Game                citadel/hideout_games/mode\n            // Hideout end\n"
         assertEquals(anotherTool.text().replace("            Game                citadel\n", block + "            Game                citadel\n"), withGames.text())
@@ -102,7 +157,7 @@ class GameInfoPatchTest {
             "and drops it only when mods are off",
         )
         val modsBeside = with(valve, mods).text().replace("\t\t\t// Hideout start", "\t\t\tGame citadel/addons\r\n\t\t\t// Hideout start").encodeToByteArray()
-        assertEquals(GameInfoEdit.Unchanged, GameInfoPatch.withBlock(modsBeside, mods))
+        assertEquals(GameInfoEdit.Unchanged, GameInfoPatch.withBlock(modsBeside, mods, 0))
     }
 
     @Test
@@ -183,7 +238,7 @@ class GameInfoPatchTest {
         assertEquals(SearchPathsCheck.Read(coveredBy = null, customGames = false), GameInfoPatch.check(misplaced))
         val fixed = with(misplaced, both)
         assertEquals(searchPaths("$block\t\t\tGame citadel\n").text(), fixed.text())
-        assertEquals(GameInfoEdit.Unchanged, GameInfoPatch.withBlock(fixed, both))
+        assertEquals(GameInfoEdit.Unchanged, GameInfoPatch.withBlock(fixed, both, 0))
     }
 
     @Test
@@ -221,9 +276,9 @@ class GameInfoPatchTest {
         assertEquals(SearchPathsCheck.Problem(GameInfoProblem.AmbiguousSearchPaths), GameInfoPatch.check(twice))
         assertEquals(SearchPathsCheck.Problem(GameInfoProblem.NoBaseGameEntry), GameInfoPatch.check(searchPaths("\t\t\tGame core\n")))
         val sameLine = "GameInfo { FileSystem { SearchPaths { Game citadel } } }".encodeToByteArray()
-        assertEquals(GameInfoEdit.Refused(GameInfoProblem.UnsupportedLayout), GameInfoPatch.withBlock(sameLine, games))
-        assertEquals(GameInfoEdit.Refused(GameInfoProblem.NoBaseGameEntry), GameInfoPatch.withBlock(searchPaths("\t\t\tGame core\n"), mods))
-        assertEquals(GameInfoEdit.Refused(GameInfoProblem.Unparseable), GameInfoPatch.withBlock("GameInfo { FileSystem { ".encodeToByteArray(), none))
+        assertEquals(GameInfoEdit.Refused(GameInfoProblem.UnsupportedLayout), GameInfoPatch.withBlock(sameLine, games, 0))
+        assertEquals(GameInfoEdit.Refused(GameInfoProblem.NoBaseGameEntry), GameInfoPatch.withBlock(searchPaths("\t\t\tGame core\n"), mods, 0))
+        assertEquals(GameInfoEdit.Refused(GameInfoProblem.Unparseable), GameInfoPatch.withBlock("GameInfo { FileSystem { ".encodeToByteArray(), none, 0))
     }
 
     private fun nested(onGameInfo: String, onFileSystem: String, onSearchPaths: String, lines: String) =
@@ -235,7 +290,7 @@ class GameInfoPatchTest {
         listOf(" [\$OSX]", "\n[\$OSX]").flatMap { listOf(Triple(it, "", ""), Triple("", it, ""), Triple("", "", it)) }.forEach { (onGameInfo, onFileSystem, onSearchPaths) ->
             val bytes = nested(onGameInfo, onFileSystem, onSearchPaths, lines)
             assertEquals(SearchPathsCheck.Problem(GameInfoProblem.AmbiguousSearchPaths), GameInfoPatch.check(bytes), bytes.text())
-            assertEquals(GameInfoEdit.Refused(GameInfoProblem.AmbiguousSearchPaths), GameInfoPatch.withBlock(bytes, both), bytes.text())
+            assertEquals(GameInfoEdit.Refused(GameInfoProblem.AmbiguousSearchPaths), GameInfoPatch.withBlock(bytes, both, 0), bytes.text())
         }
     }
 
@@ -251,7 +306,7 @@ class GameInfoPatchTest {
             ).encodeToByteArray()
         listOf(fileSystems, gameInfos).forEach { bytes ->
             assertEquals(SearchPathsCheck.Problem(GameInfoProblem.AmbiguousSearchPaths), GameInfoPatch.check(bytes), bytes.text())
-            assertEquals(GameInfoEdit.Refused(GameInfoProblem.AmbiguousSearchPaths), GameInfoPatch.withBlock(bytes, mods), bytes.text())
+            assertEquals(GameInfoEdit.Refused(GameInfoProblem.AmbiguousSearchPaths), GameInfoPatch.withBlock(bytes, mods, 0), bytes.text())
         }
     }
 
@@ -270,7 +325,7 @@ class GameInfoPatchTest {
     private val grimoireRoots = ForeignRoot.keptBy(Manager.Grimoire).toSet()
 
     private fun takenOver(bytes: ByteArray, lines: HideoutLines, roots: Set<ForeignRoot> = dmmRoots): ByteArray =
-        assertIs<GameInfoEdit.Patched>(GameInfoPatch.takeOver(bytes, lines, roots)).bytes
+        assertIs<GameInfoEdit.Patched>(GameInfoPatch.takeOver(bytes, lines, 0, roots)).bytes
 
     @Test
     fun takingOverDmmDropsItsMountsAndMarkersAndAddsHideoutsBlockAheadOfTheBaseGame() {
@@ -291,7 +346,7 @@ class GameInfoPatchTest {
     fun takingOverATakenOverFileChangesNothing() {
         listOf(mods, games, both, none).forEach { lines ->
             val once = takenOver(dmm, lines)
-            assertEquals(GameInfoEdit.Unchanged, GameInfoPatch.takeOver(once, lines, dmmRoots), lines.toString())
+            assertEquals(GameInfoEdit.Unchanged, GameInfoPatch.takeOver(once, lines, 0, dmmRoots), lines.toString())
         }
         assertEquals(SearchPathsCheck.Read(LoadingOwner.Hideout, customGames = true), GameInfoPatch.check(takenOver(dmm, both)))
         assertEquals(SearchPathsCheck.Read(coveredBy = null, customGames = false), GameInfoPatch.check(takenOver(dmm, none)))
@@ -355,20 +410,20 @@ class GameInfoPatchTest {
     @Test
     fun hideoutsOwnBlockIsKeptAndTheLinesAskedForDecideIt() {
         val loading = with(valve, both)
-        assertEquals(GameInfoEdit.Unchanged, GameInfoPatch.takeOver(loading, both, dmmRoots))
+        assertEquals(GameInfoEdit.Unchanged, GameInfoPatch.takeOver(loading, both, 0, dmmRoots))
         assertContentEquals(valve, takenOver(loading, none))
-        assertEquals(GameInfoEdit.Unchanged, GameInfoPatch.takeOver(valve, none, dmmRoots))
+        assertEquals(GameInfoEdit.Unchanged, GameInfoPatch.takeOver(valve, none, 0, dmmRoots))
         assertContentEquals(loading, takenOver(valve, both))
     }
 
     @Test
     fun aForeignMountThatSharesItsLineOrAFileWithBlockRefusesIsLeftAlone() {
         val shared = "GameInfo { FileSystem { SearchPaths { Game citadel/addons2 Game citadel } } }".encodeToByteArray()
-        assertEquals(GameInfoEdit.Refused(GameInfoProblem.UnsupportedLayout), GameInfoPatch.takeOver(shared, none, dmmRoots))
+        assertEquals(GameInfoEdit.Refused(GameInfoProblem.UnsupportedLayout), GameInfoPatch.takeOver(shared, none, 0, dmmRoots))
         val sameLineBase = searchPaths("\t\t\tGame citadel/grimoire\n\t\t\tWrite citadel Game citadel\n")
-        assertEquals(GameInfoEdit.Refused(GameInfoProblem.UnsupportedLayout), GameInfoPatch.takeOver(sameLineBase, mods, grimoireRoots))
-        assertEquals(GameInfoEdit.Refused(GameInfoProblem.Unparseable), GameInfoPatch.takeOver("GameInfo { FileSystem { ".encodeToByteArray(), mods, dmmRoots))
-        assertEquals(GameInfoEdit.Refused(GameInfoProblem.NoBaseGameEntry), GameInfoPatch.takeOver(searchPaths("\t\t\tGame citadel/addons\n"), mods, dmmRoots))
+        assertEquals(GameInfoEdit.Refused(GameInfoProblem.UnsupportedLayout), GameInfoPatch.takeOver(sameLineBase, mods, 0, grimoireRoots))
+        assertEquals(GameInfoEdit.Refused(GameInfoProblem.Unparseable), GameInfoPatch.takeOver("GameInfo { FileSystem { ".encodeToByteArray(), mods, 0, dmmRoots))
+        assertEquals(GameInfoEdit.Refused(GameInfoProblem.NoBaseGameEntry), GameInfoPatch.takeOver(searchPaths("\t\t\tGame citadel/addons\n"), mods, 0, dmmRoots))
     }
 
     @Test

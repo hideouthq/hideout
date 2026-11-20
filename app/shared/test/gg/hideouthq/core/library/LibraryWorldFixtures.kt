@@ -30,9 +30,9 @@ internal class FixedGameLocator(private val roots: List<GameRoot>) : GameLocator
 
 internal val VanillaGameInfo = "GameInfo\n{\n\tFileSystem\n\t{\n\t\tSearchPaths\n\t\t{\n\t\t\tGame\t\tcitadel\n\t\t\tGame\t\tcore\n\t\t}\n\t}\n}\n".encodeToByteArray()
 
-internal val HideoutGameInfo = (GameInfoPatch.withBlock(VanillaGameInfo, HideoutLines(mods = true, customGames = false)) as GameInfoEdit.Patched).bytes
+internal val HideoutGameInfo = (GameInfoPatch.withBlock(VanillaGameInfo, HideoutLines(mods = true, customGames = false), 0) as GameInfoEdit.Patched).bytes
 
-internal fun withoutHideoutBlock(bytes: ByteArray): ByteArray = (GameInfoPatch.withBlock(bytes, HideoutLines(mods = false, customGames = false)) as? GameInfoEdit.Patched)?.bytes ?: bytes
+internal fun withoutHideoutBlock(bytes: ByteArray): ByteArray = (GameInfoPatch.withBlock(bytes, HideoutLines(mods = false, customGames = false), 0) as? GameInfoEdit.Patched)?.bytes ?: bytes
 
 internal val LoadsAddonsGameInfo = "GameInfo\n{\n\tFileSystem\n\t{\n\t\tSearchPaths\n\t\t{\n\t\t\tGame citadel/addons\n\t\t\tGame citadel\n\t\t}\n\t}\n}\n".encodeToByteArray()
 

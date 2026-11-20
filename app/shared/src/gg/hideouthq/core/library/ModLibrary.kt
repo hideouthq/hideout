@@ -1414,7 +1414,7 @@ class ModLibrary(
         }
         if (!modded && coveredBy == LoadingOwner.AnotherTool) return LibraryProblem.AnotherToolLoadsMods
         val lines = if (modded) ledger.linesFor(root).copy(mods = true) else HideoutLines(mods = false, customGames = false)
-        val needsEdit = when (val edit = GameInfoPatch.withBlock(bytes, lines)) {
+        val needsEdit = when (val edit = GameInfoPatch.withBlock(bytes, lines, ledger.manifest.records.overflowIn(root))) {
             is GameInfoEdit.Refused -> return LibraryProblem.GameInfo(edit.problem)
             GameInfoEdit.Unchanged -> false
             is GameInfoEdit.Patched -> true
@@ -2753,7 +2753,7 @@ class ModLibrary(
         val lines = ledger.linesFor(root)
         if (managers.isEmpty() || !lines.mods || !state.value.filesFree) return
         val config = (attempt { ports.gameConfig.read(root) } as? Attempt.Done)?.value as? ConfigRead.Present ?: return
-        if (GameInfoPatch.takeOver(config.bytes, lines, managers.flatMap(ForeignRoot::keptBy).toSet()) !is GameInfoEdit.Patched) return
+        if (GameInfoPatch.takeOver(config.bytes, lines, ledger.manifest.records.overflowIn(root), managers.flatMap(ForeignRoot::keptBy).toSet()) !is GameInfoEdit.Patched) return
         val problem = underLock {
             when (val writable = writableLocked()) {
                 is Writable.Refused -> null
@@ -2769,7 +2769,7 @@ class ModLibrary(
         if (managers.isEmpty() || !lines.mods) return null
         val bytes = gameInfoBytes(root) { return it }
         val unmount = managers.flatMap(ForeignRoot::keptBy).toSet()
-        if (GameInfoPatch.takeOver(bytes, lines, unmount) !is GameInfoEdit.Patched) return null
+        if (GameInfoPatch.takeOver(bytes, lines, ledger.manifest.records.overflowIn(root), unmount) !is GameInfoEdit.Patched) return null
         ledger.writeBlock(root, lines, unmount)?.let { return it }
         val by = GameInfoPatch.heldBy(bytes).firstOrNull { it in managers }
         if (by != null) mutableState.update { it.copy(linesPutBack = LinesPutBack(by)) }

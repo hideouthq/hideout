@@ -32,7 +32,7 @@ class RestoreOriginalTest {
         "\"GameInfo\"\r\n{\r\n\t// the player's own note, kept byte for byte\r\n\tFileSystem\r\n\t{\r\n\t\tSearchPaths\r\n\t\t{\r\n" +
             "\t\t\tGame\t\tcitadel\r\n\t\t\tGame\t\tcitadel_tweaks\r\n\t\t\tGame\t\tcore\r\n\t\t}\r\n\t}\r\n}\r\n"
         ).encodeToByteArray()
-    private val patched = (GameInfoPatch.withBlock(edited, HideoutLines(mods = true, customGames = false)) as GameInfoEdit.Patched).bytes
+    private val patched = (GameInfoPatch.withBlock(edited, HideoutLines(mods = true, customGames = false), 0) as GameInfoEdit.Patched).bytes
     private val anotherTool = String(edited).replace("\t\t\tGame\t\tcitadel\r\n", "\t\t\tGame\t\tcitadel/addons\r\n\t\t\tGame\t\tcitadel\r\n").encodeToByteArray()
 
     private val vpk = ByteArray(12) { 3 }

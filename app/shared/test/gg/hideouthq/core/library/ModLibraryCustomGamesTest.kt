@@ -22,8 +22,8 @@ import kotlin.test.assertNull
 @OptIn(ExperimentalCoroutinesApi::class)
 class ModLibraryCustomGamesTest {
     private val root = GameRoot("/games/Deadlock")
-    private val withGames = (GameInfoPatch.withBlock(VanillaGameInfo, HideoutLines(mods = true, customGames = true)) as GameInfoEdit.Patched).bytes
-    private val gamesOnly = (GameInfoPatch.withBlock(VanillaGameInfo, HideoutLines(mods = false, customGames = true)) as GameInfoEdit.Patched).bytes
+    private val withGames = (GameInfoPatch.withBlock(VanillaGameInfo, HideoutLines(mods = true, customGames = true), 0) as GameInfoEdit.Patched).bytes
+    private val gamesOnly = (GameInfoPatch.withBlock(VanillaGameInfo, HideoutLines(mods = false, customGames = true), 0) as GameInfoEdit.Patched).bytes
 
     private inner class World(gameInfo: ByteArray = HideoutGameInfo) {
         val files = InMemoryGameFiles().apply { putBytes(root, InMemoryGameFiles.GameInfo, gameInfo) }

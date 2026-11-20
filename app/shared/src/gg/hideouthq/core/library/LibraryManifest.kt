@@ -416,6 +416,9 @@ fun SetFolder.On.label(name: String): String = if (this == SetFolder.Addons) nam
 
 fun ManifestRecord.setFolder(): SetFolder = (placement as? Placement.On)?.first?.folder ?: SetFolder.Off(modId)
 
+/** How many loading folders past `addons` [root]'s block mounts for these records: up to the last one a set that is on sits in. */
+fun List<ManifestRecord>.overflowIn(root: GameRoot): Int = filter { it.gameRoot == root && it.enabled }.maxOfOrNull { it.numbers.first().folder.index - 1 } ?: 0
+
 fun ManifestRecord.folder(): String = setFolder().path
 
 /** Where [set] loads among what a compatibility check compares it with: its slot while its mod is on, else its place in its mod from 1. */
