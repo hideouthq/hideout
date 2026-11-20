@@ -141,7 +141,7 @@ private data class DownloadDto(
 private data class ImageDto(val sizeBytes: Long, val sha256: String)
 
 @Serializable
-private data class ReceiptDto(val gameRoot: String, val written: ImageDto?, val intent: LoadingIntent, val customGames: Boolean = false)
+private data class ReceiptDto(val gameRoot: String, val written: ImageDto?, val intent: LoadingIntent, val customGames: Boolean = false, val game: String? = null)
 
 @Serializable
 private sealed interface PendingDto
@@ -324,7 +324,7 @@ private fun LibraryManifest.toDto() = ManifestFileDto(
     savedChoices = savedChoices?.toDto(),
     records = records.map { it.toDto() },
     downloads = downloads.map { it.toDto() },
-    gameConfigs = gameConfigs.map { ReceiptDto(it.gameRoot.path, it.written?.toDto(), it.lines.intent, it.lines.customGames) },
+    gameConfigs = gameConfigs.map { ReceiptDto(it.gameRoot.path, it.written?.toDto(), it.lines.intent, it.lines.customGames, it.game) },
     pending = when (val change = pending) {
         null -> null
         is PendingChange.Replace -> PendingReplaceDto(
@@ -497,7 +497,7 @@ private fun ManifestFileDto.toDomain(): LibraryManifest {
         savedChoices = savedChoices?.toDomain(),
         records = records,
         downloads = downloads.map { it.toDomain() },
-        gameConfigs = gameConfigs.map { GameConfigReceipt(GameRoot(it.gameRoot), it.written?.toDomain(), linesOf(it.intent, it.customGames)) },
+        gameConfigs = gameConfigs.map { GameConfigReceipt(GameRoot(it.gameRoot), it.written?.toDomain(), linesOf(it.intent, it.customGames), it.game) },
         pending = when (val change = pending) {
             null -> null
             is PendingReplaceDto -> PendingChange.Replace(

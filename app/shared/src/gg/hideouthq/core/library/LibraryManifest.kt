@@ -462,9 +462,10 @@ enum class LoadingIntent { Modded, Vanilla }
 /**
  * What Hideout did to one game's `gameinfo.gi`: the file exactly as Hideout last wrote it, evidence for a later restore
  * and never authorization to overwrite newer edits, and the block it asks for there. Its mods are off after Play vanilla or
- * Restore original, and its custom games paths are on while custom games are in use here.
+ * Restore original, and its custom games paths are on while custom games are in use here. [game] is the game's build,
+ * from its shipped files, when Hideout wrote [written], so a later rewrite can be told apart as an update's.
  */
-data class GameConfigReceipt(val gameRoot: GameRoot, val written: FileImage?, val lines: HideoutLines) {
+data class GameConfigReceipt(val gameRoot: GameRoot, val written: FileImage?, val lines: HideoutLines, val game: String? = null) {
     init {
         require(isPlainAbsolutePath(gameRoot.path)) { "the game root must be absolute, without . or .. or control characters" }
     }

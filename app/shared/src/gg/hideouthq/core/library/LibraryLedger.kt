@@ -140,6 +140,8 @@ internal class LibraryLedger(
     private val ids: () -> String,
     private val preserve: (Preserved) -> Unit,
     private val fence: suspend (GameRoot, gameMayRun: Boolean) -> String? = { _, _ -> null },
+    /** The game's build, which a `gameinfo.gi` receipt records with what Hideout wrote; null when it cannot be read. */
+    private val gameIdentity: suspend (GameRoot) -> String? = { null },
 ) {
     @Volatile
     var authority: ManifestAuthority = ManifestAuthority.Uncertain(previous = null, reason = NotRead)
@@ -811,6 +813,7 @@ internal class LibraryLedger(
             is Attempt.Failed -> return failure(prepared.reason)
             is Attempt.Done -> prepared.value?.let { return failure(it) }
         }
+        val game = if (target is ConfigTarget.GameInfo) gameIdentity(root) else null
         val edit = PendingChange.ConfigEdit(root, target, ids(), from, Sha256.image(next))
         save(manifest.receipted().copy(pending = edit)).problem?.let { return it }
         fenced(root, target.whileGameRuns)?.let { return save(manifest.copy(pending = null)).problem ?: LibraryProblem.Interrupted(it) }
@@ -828,7 +831,7 @@ internal class LibraryLedger(
                 is ReplaceResult.Failed -> return failed(result.reason)
             }
         }
-        if (problem == null && target is ConfigTarget.GameInfo) receipt = receipt?.copy(written = edit.to, lines = target.lines)
+        if (problem == null && target is ConfigTarget.GameInfo) receipt = receipt?.copy(written = edit.to, lines = target.lines, game = game)
         val cleared = save(manifest.receipted().copy(pending = null)).problem
         return if (problem == null && target == ConfigTarget.Autoexec) null else cleared ?: problem
     }
@@ -839,7 +842,9 @@ internal class LibraryLedger(
             is Attempt.Failed -> return Recovery.Waiting(recovered.reason)
             is Attempt.Done -> when (val result = recovered.value) {
                 is ConfigRecovery.Applied -> when (val target = edit.target) {
-                    is ConfigTarget.GameInfo -> receipt?.copy(written = edit.to, lines = target.lines) ?: GameConfigReceipt(edit.gameRoot, edit.to, target.lines)
+                    is ConfigTarget.GameInfo -> gameIdentity(edit.gameRoot).let { game ->
+                        receipt?.copy(written = edit.to, lines = target.lines, game = game) ?: GameConfigReceipt(edit.gameRoot, edit.to, target.lines, game)
+                    }
                     ConfigTarget.Autoexec -> receipt
                 } to Preserved(result.kept)
                 is ConfigRecovery.Undone -> receipt to Preserved(result.kept)

@@ -276,6 +276,7 @@ class ModLibrary(
             logLeftInPlace(preserved.files, preserved.conflict)
         },
         fence = ::untouchable,
+        gameIdentity = ::gameIdentity,
     )
 
     @Volatile
@@ -3112,11 +3113,13 @@ class ModLibrary(
         compatWake.trySend(Unit)
     }
 
+    private suspend fun gameIdentity(root: GameRoot): String? = (attempt { compatibility.game(root) } as? Attempt.Done)?.value
+
     private suspend fun keysFor(root: GameRoot): Map<String, CheckKey> {
         val manifest = ledger.manifest
         val records = manifest.records.filter { it.gameRoot == root }
         if (records.isEmpty()) return emptyMap()
-        val game = (attempt { compatibility.game(root) } as? Attempt.Done)?.value
+        val game = gameIdentity(root)
         val enabled = records.filter { it.enabled }
         val owned = enabled.flatMap { record -> record.files.map { it.relativePath(record) } }.toSet()
         val foreign = (onListing(root) as? OnListing.Listed)?.entries?.filter { it.relativePath !in owned }?.mapNotNull { entry ->

@@ -252,6 +252,7 @@ class ManifestCodecTest {
         listOf(null, image).forEach { roundTrips(LibraryManifest(pending = PendingChange.ConfigEdit(record.gameRoot, ConfigTarget.Autoexec, "q7w3", from = it, to = image.copy(sizeBytes = 4_200L)))) }
         roundTrips(LibraryManifest(gameConfigs = listOf(GameConfigReceipt(record.gameRoot, written = null, HideoutLines(mods = false, customGames = false)))))
         roundTrips(LibraryManifest(gameConfigs = listOf(GameConfigReceipt(record.gameRoot, written = null, HideoutLines(mods = false, customGames = true)))))
+        roundTrips(LibraryManifest(gameConfigs = listOf(receipt.copy(game = "pak01:${"e".repeat(64)}"))))
         assertTrue(""""published":["$chunk"]""" in ManifestCodec.encode(LibraryManifest(pending = pendingInstall(InstallStep.RollingBack(setOf(chunk))))), "a rollback names the off files it proved")
     }
 
