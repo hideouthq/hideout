@@ -29,6 +29,7 @@ import gg.hideouthq.core.designsystem.component.HideoutIconButton
 import gg.hideouthq.core.designsystem.component.HideoutMenu
 import gg.hideouthq.core.designsystem.component.HideoutTooltip
 import gg.hideouthq.core.designsystem.component.MenuEntry
+import gg.hideouthq.core.designsystem.component.SegmentedControl
 import gg.hideouthq.core.designsystem.icon.HideoutIcons
 import gg.hideouthq.core.designsystem.interaction.collectInteractionStates
 import gg.hideouthq.core.designsystem.interaction.focusRing
@@ -38,8 +39,11 @@ import gg.hideouthq.core.designsystem.theme.HideoutShapes
 import gg.hideouthq.core.ui.WindowModal
 import gg.hideouthq.feature.library.LibraryActions
 import gg.hideouthq.feature.library.LibraryLayout
+import gg.hideouthq.feature.library.LibraryScope
 import gg.hideouthq.resources.Res
 import gg.hideouthq.resources.library_more_actions
+import gg.hideouthq.resources.library_scope_all
+import gg.hideouthq.resources.library_scope_profile
 import gg.hideouthq.resources.library_turn_all_off
 import gg.hideouthq.resources.library_view_cards
 import gg.hideouthq.resources.library_view_list
@@ -58,6 +62,16 @@ internal fun LibraryViewToggle(layout: LibraryLayout, onLayout: (LibraryLayout) 
         ViewToggleSegment(HideoutIcons.ViewList, layout == LibraryLayout.List, stringResource(Res.string.library_view_list)) { onLayout(LibraryLayout.List) }
         ViewToggleSegment(HideoutIcons.Grid, layout == LibraryLayout.Cards, stringResource(Res.string.library_view_cards)) { onLayout(LibraryLayout.Cards) }
     }
+}
+
+@Composable
+internal fun LibraryScopeToggle(scope: LibraryScope, profileName: String, onScope: (LibraryScope) -> Unit, modifier: Modifier = Modifier) {
+    val all = stringResource(Res.string.library_scope_all)
+    val profile = stringResource(Res.string.library_scope_profile, profileName)
+    SegmentedControl(
+        LibraryScope.entries, scope, onScope, { if (it == LibraryScope.All) all else profile }, modifier,
+        labelMaxWidth = HideoutDimens.Library.SummaryNameMax,
+    )
 }
 
 @Composable

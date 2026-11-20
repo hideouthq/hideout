@@ -33,6 +33,16 @@ class DragReorderTest {
     }
 
     @Test
+    fun movingAmongTheShownRowsPassesTheHiddenOnesBetweenSoTheRowVisiblyMoves() {
+        val shown = listOf("a", "b", "d")
+        assertEquals(listOf("a", "d", "b", "c"), DragReorder.place(order, shown, "d", 1), "up one: above b, past the hidden c")
+        assertEquals(listOf("a", "c", "d", "b"), DragReorder.place(order, shown, "b", 2), "down one: below d, past the hidden c")
+        assertEquals(listOf("d", "a", "b", "c"), DragReorder.place(order, shown, "d", 0))
+        assertEquals(order, DragReorder.place(order, shown, "a", -1), "the first shown row has nowhere higher to go")
+        assertEquals(listOf("b", "a", "c", "d"), DragReorder.place(order, order, "a", 1), "with nothing hidden it is a plain move")
+    }
+
+    @Test
     fun startingOnAnUnknownIdLeavesTheOrderUntouchedAndNothingDragging() {
         val preview = DragReorder.start(order, "missing")
         assertNull(preview.draggingId)

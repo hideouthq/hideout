@@ -96,11 +96,13 @@ internal fun LibraryCardGrid(
     modifier: Modifier = Modifier,
     view: OrderView? = null,
 ) {
+    val order = rows.map { it.installId }
+    val visible = rows.filter { it.visible }.map { it.installId }
     AutoFillGrid(modifier) { columnWidth ->
         rows.forEach { row ->
             if (!row.visible) return@forEach
             key(row.installId) {
-                LibraryCard(row, row.installId in selectedIds, Modifier.width(columnWidth), onSelect, actions, modal, view, rows.size, if (row.installId in selectedIds) selectedIds.size else 1)
+                LibraryCard(row, row.installId in selectedIds, Modifier.width(columnWidth), onSelect, actions, modal, view, order, visible, if (row.installId in selectedIds) selectedIds.size else 1)
             }
         }
     }
@@ -115,7 +117,8 @@ internal fun LibraryCard(
     actions: LibraryActions,
     modal: WindowModal,
     view: OrderView?,
-    totalCount: Int,
+    order: List<String>,
+    visible: List<String>,
     menuCount: Int,
 ) {
     val source = remember { MutableInteractionSource() }
@@ -174,7 +177,7 @@ internal fun LibraryCard(
                 if (!selected) onSelect(row.installId, SelectGesture.Only)
                 menuOpen = true
             }
-            InstalledRowMenu(row, menuOpen, { menuOpen = false }, more, actions, modal, view, totalCount, menuCount)
+            InstalledRowMenu(row, menuOpen, { menuOpen = false }, more, actions, modal, view, order, visible, menuCount)
         }
         if (transferring != null) {
             ProgressBar(

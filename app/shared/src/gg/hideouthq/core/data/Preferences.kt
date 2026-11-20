@@ -111,6 +111,11 @@ class Preferences(private val storage: CacheStorage, private val clock: Clock = 
 
     suspend fun setLibraryLayout(value: String) = change { it.copy(libraryLayout = value) }
 
+    /** Whether Library lists every installed mod or only the active profile's, read as leniently as [libraryLayout]. */
+    suspend fun libraryScope(): String? = mutex.withLock { load().libraryScope }
+
+    suspend fun setLibraryScope(value: String) = change { it.copy(libraryScope = value) }
+
     /** Whether Library has once said that edits save while Deadlock runs. */
     suspend fun runningNoteSeen(): Boolean = mutex.withLock { load().runningNoteSeen }
 
@@ -267,6 +272,7 @@ private data class StoredPreferences(
     val keepDownloads: Boolean = true,
     val downloadFolder: String? = null,
     val libraryLayout: String? = null,
+    val libraryScope: String? = null,
     val sceneBackdrop: String? = null,
     val sceneLighting: String? = null,
     val sceneTurntable: Boolean = true,

@@ -13,6 +13,7 @@ import gg.hideouthq.core.designsystem.component.MenuEntry
 import gg.hideouthq.core.designsystem.icon.HideoutIcons
 import gg.hideouthq.core.library.OrderView
 import gg.hideouthq.core.ui.WindowModal
+import gg.hideouthq.feature.library.DragReorder
 import gg.hideouthq.feature.library.LibraryActions
 import gg.hideouthq.feature.library.LibraryRow
 import gg.hideouthq.resources.Res
@@ -39,7 +40,8 @@ internal fun InstalledRowMenu(
     actions: LibraryActions,
     modal: WindowModal,
     view: OrderView?,
-    totalCount: Int,
+    order: List<String>,
+    visible: List<String>,
     selectedCount: Int,
 ) {
     var positionView by remember { mutableStateOf<OrderView?>(null) }
@@ -50,10 +52,12 @@ internal fun InstalledRowMenu(
         }
         val update = row.updatePlan?.takeIf { row.canInstall && !row.busy }
         val page = row.page
+        val shownAt = visible.indexOf(row.installId)
+        val moveAmongShown = { to: Int -> view?.let { actions.moveSet(it, row.installId, DragReorder.place(order, visible, row.installId, to).indexOf(row.installId)) } }
         val moves = listOfNotNull(
-            MenuEntry.Item(stringResource(Res.string.order_move_up), HideoutIcons.ArrowUp, { view?.let { actions.moveSet(it, row.installId, row.rank - 2) } }).takeIf { row.draggable && row.rank > 1 },
-            MenuEntry.Item(stringResource(Res.string.order_move_down), HideoutIcons.ArrowDown, { view?.let { actions.moveSet(it, row.installId, row.rank) } }).takeIf { row.draggable && row.rank < totalCount },
-            MenuEntry.Item(stringResource(Res.string.order_move_to_position), HideoutIcons.Layers, { positionView = view }).takeIf { row.draggable && totalCount > 2 },
+            MenuEntry.Item(stringResource(Res.string.order_move_up), HideoutIcons.ArrowUp, { moveAmongShown(shownAt - 1) }).takeIf { row.draggable && shownAt > 0 },
+            MenuEntry.Item(stringResource(Res.string.order_move_down), HideoutIcons.ArrowDown, { moveAmongShown(shownAt + 1) }).takeIf { row.draggable && shownAt in 0 until visible.lastIndex },
+            MenuEntry.Item(stringResource(Res.string.order_move_to_position), HideoutIcons.Layers, { positionView = view }).takeIf { row.draggable && order.size > 2 },
         )
         val entries: List<MenuEntry> = if (selectedCount > 1) listOf(
             MenuEntry.Item(pluralStringResource(Res.plurals.library_turn_on_selected, selectedCount, selectedCount), HideoutIcons.Check, { actions.setSelectedEnabled(true) }),
@@ -87,7 +91,7 @@ internal fun InstalledRowMenu(
         visible = positionView != null,
         modal = modal,
         title = row.title,
-        totalCount = positionView?.sets?.size ?: totalCount,
+        totalCount = positionView?.sets?.size ?: order.size,
         initialPosition = positionView?.sets?.indexOf(row.installId)?.plus(1) ?: row.rank,
         onConfirm = { position -> positionView?.let { actions.moveSet(it, row.installId, position - 1) } },
         onDismiss = { positionView = null },

@@ -64,6 +64,8 @@ import kotlin.time.Instant
 private const val StopTimeoutMillis = 5_000L
 private const val StoredList = "list"
 private const val StoredCards = "cards"
+private const val StoredAll = "all"
+private const val StoredProfile = "profile"
 
 /**
  * [categories] are the labels rows show for each category, which search matches against; [conflicts], the models each
@@ -111,6 +113,7 @@ class LibraryViewModel(
             }
             viewModelScope.launch {
                 val stored = prefs.libraryLayout()
+                val scope = prefs.libraryScope()
                 local.update { current ->
                     current.copy(
                         layout = when (stored) {
@@ -118,6 +121,7 @@ class LibraryViewModel(
                             StoredList -> LibraryLayout.List
                             else -> current.layout
                         },
+                        scope = if (scope == StoredProfile) LibraryScope.Profile else current.scope,
                         layoutReady = true,
                     )
                 }
@@ -128,6 +132,21 @@ class LibraryViewModel(
     override fun setQuery(value: String) { local.update { it.copy(query = value) } }
 
     override fun setFilter(filter: LibraryFilter) { local.update { it.copy(filter = filter) } }
+
+    override fun setScope(scope: LibraryScope) {
+        local.update { it.copy(scope = scope, turnedOff = emptySet()) }
+        preferences?.let { prefs ->
+            viewModelScope.launch { prefs.setLibraryScope(if (scope == LibraryScope.Profile) StoredProfile else StoredAll) }
+        }
+    }
+
+    /** Lets the profile's own view drop the mods turned off in it, once Library is no longer on screen. */
+    fun forgetTurnedOff() { local.update { it.copy(turnedOff = emptySet()) } }
+
+    /** Keeps [ids] listed in the profile's own view after they turn off there, so rows don't leave from under the pointer. */
+    private fun keepListed(ids: Collection<String>) {
+        local.update { if (it.scope == LibraryScope.Profile) it.copy(turnedOff = it.turnedOff + ids) else it }
+    }
 
     override fun setLayout(layout: LibraryLayout) {
         local.update { it.copy(layout = layout, layoutReady = true) }
@@ -154,11 +173,14 @@ class LibraryViewModel(
         }
     }
 
-    /** Picks installed mod [installId] alone, letting go of the search and filter when they hide it. */
+    /** Picks installed mod [installId] alone, letting go of the search and filter when they hide it and listing it in the profile's own view. */
     fun show(installId: String) {
         local.update { local ->
-            val hidden = shown.rows.firstOrNull { it.installId == installId }?.let { !it.matches(local.query) || !it.matchesFilter(local.filter) } == true
-            (if (hidden) local.copy(query = "", filter = LibraryFilter.All) else local).copy(selection = Selection(listOf(installId), installId))
+            val row = shown.rows.firstOrNull { it.installId == installId }
+            val hidden = row != null && (!row.matches(local.query) || !row.matchesFilter(local.filter))
+            val cleared = if (hidden) local.copy(query = "", filter = LibraryFilter.All) else local
+            val listed = if (row != null && !cleared.scopes(row)) cleared.copy(turnedOff = cleared.turnedOff + installId) else cleared
+            listed.copy(selection = Selection(listOf(installId), installId))
         }
     }
 
@@ -169,7 +191,11 @@ class LibraryViewModel(
         }
     }
 
-    private fun Local.visibleIds(): List<String> = shown.rows.filter { it.matches(query) && it.matchesFilter(filter) }.map { it.installId }
+    private fun Local.visibleIds(): List<String> = shown.rows.filter { shows(it) }.map { it.installId }
+
+    private fun Local.scopes(row: LibraryRow): Boolean = scope == LibraryScope.All || row.enabled || row.installId in turnedOff
+
+    private fun Local.shows(row: LibraryRow): Boolean = scopes(row) && row.matches(query) && row.matchesFilter(filter)
 
     override fun clearSelection() {
         val current = shown.selectedIds
@@ -186,7 +212,9 @@ class LibraryViewModel(
         val book = state.shownProfiles ?: return
         val chosen = book.profiles.firstOrNull { it.id == (profile ?: book.active) } ?: return
         val changing = ids.filterTo(HashSet()) { (it in chosen.enabled) != enabled }
-        if (changing.isNotEmpty() && state.canEditChoices) library.setEnabledTogether(changing, enabled, chosen.id)
+        if (changing.isEmpty() || !state.canEditChoices) return
+        if (!enabled) keepListed(changing)
+        library.setEnabledTogether(changing, enabled, chosen.id)
     }
 
     /**
@@ -194,7 +222,9 @@ class LibraryViewModel(
      * may still be turning. A refusal is the library's [gg.hideouthq.core.library.LibraryState.choiceProblem].
      */
     override fun setEnabled(installId: String, enabled: Boolean, profile: ProfileId?) {
-        if (library.state.value.canEditChoices) library.setEnabled(installId, enabled, profile)
+        if (!library.state.value.canEditChoices) return
+        if (!enabled) keepListed(setOf(installId))
+        library.setEnabled(installId, enabled, profile)
     }
 
     override fun showAddons(installId: String) {
@@ -389,9 +419,8 @@ class LibraryViewModel(
             )
         }
 
-        val rows = all.map { row ->
-            row.copy(visible = row.matches(local.query) && row.matchesFilter(local.filter), draggable = draggable)
-        }
+        val scoped = all.filter { local.scopes(it) }
+        val rows = all.map { row -> row.copy(visible = local.shows(row), draggable = draggable) }
         val visibleIds = rows.filter { it.visible }.mapTo(HashSet()) { it.installId }
         fun pickable(ids: List<String>): List<String> = ids.filter { it in visibleIds }
         val firstShown = rows.firstOrNull { it.visible }?.installId
@@ -431,7 +460,9 @@ class LibraryViewModel(
             query = local.query,
             layout = local.layout,
             downloads = downloads,
-            filters = filterPills(all.filter { it.matches(local.query) }, local.filter, long = all.size >= FilterPillsFrom),
+            scope = local.scope,
+            scopedCount = scoped.size,
+            filters = filterPills(scoped.filter { it.matches(local.query) }, local.filter),
             filter = local.filter,
             rows = rows,
             selectedIds = selectedIds.toSet(),
@@ -542,16 +573,15 @@ class LibraryViewModel(
         return booked.map { if (it.gameRoot == shown.root) next.next() else it }
     }
 
-    private fun filterPills(rows: List<LibraryRow>, selected: LibraryFilter, long: Boolean): List<FilterPill> {
+    private fun filterPills(rows: List<LibraryRow>, selected: LibraryFilter): List<FilterPill> {
         val byCategory = rows.groupingBy { it.group }.eachCount()
-        fun MutableList<FilterPill>.offer(filter: LibraryFilter, count: Int, always: Boolean = false) {
-            if (always || count > 0 && (count < rows.size || filter == selected)) add(FilterPill(filter, count))
+        fun MutableList<FilterPill>.offer(filter: LibraryFilter, count: Int) {
+            if (count > 0 && (count < rows.size || filter == selected)) add(FilterPill(filter, count))
         }
         val pills = buildList {
             add(FilterPill(LibraryFilter.All, rows.size))
             ModCategory.entries.forEach { category -> byCategory[category]?.let { offer(LibraryFilter.Category(category), it) } }
             offer(LibraryFilter.Updates, rows.count { it.matchesFilter(LibraryFilter.Updates) })
-            listOf(LibraryFilter.On, LibraryFilter.Off).forEach { filter -> offer(filter, rows.count { it.matchesFilter(filter) }, always = long) }
         }
         return if (pills.none { it.filter == selected }) pills + FilterPill(selected, rows.count { it.matchesFilter(selected) }) else pills
     }
@@ -603,8 +633,6 @@ class LibraryViewModel(
         is LibraryFilter.Category -> group == filter.category
         LibraryFilter.Updates -> update == UpdateState.Available
         LibraryFilter.Review -> update == UpdateState.Review
-        LibraryFilter.On -> enabled
-        LibraryFilter.Off -> !enabled
     }
 
     private val LibraryRow.group: ModCategory get() = category ?: ModCategory.Other
@@ -631,6 +659,9 @@ class LibraryViewModel(
         val layout: LibraryLayout = LibraryLayout.List,
         val layoutReady: Boolean = false,
         val filter: LibraryFilter = LibraryFilter.All,
+        val scope: LibraryScope = LibraryScope.All,
+        /** Mods turned off while the profile's own view showed them, which it keeps listing until [scope] changes or Library leaves. */
+        val turnedOff: Set<String> = emptySet(),
         val compatOpen: CompatRequest? = null,
         val followed: Set<String> = emptySet(),
         val runningNote: Boolean = false,

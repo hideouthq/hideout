@@ -1,6 +1,7 @@
 package gg.hideouthq.feature.library
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,6 +42,8 @@ interface LibraryActions {
     fun viewPage(modId: String) = Unit
     fun setQuery(value: String)
     fun setFilter(filter: LibraryFilter)
+    /** Lists every installed mod or the active profile's, and keeps that choice for the next visit. */
+    fun setScope(scope: LibraryScope)
     fun setLayout(layout: LibraryLayout)
     fun select(installId: String, gesture: SelectGesture = SelectGesture.Only)
     /** Picks every visible row. */
@@ -132,6 +135,7 @@ fun LibraryRoute(
         }
     }
     val frame = LocalPaneFrame.current
+    DisposableEffect(viewModel) { onDispose(viewModel::forgetTurnedOff) }
     LaunchedEffect(show) {
         if (show != null) {
             viewModel.show(show)

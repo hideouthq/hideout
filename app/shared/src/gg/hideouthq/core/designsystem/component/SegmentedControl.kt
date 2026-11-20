@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.MaterialTheme
@@ -26,6 +27,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import gg.hideouthq.core.designsystem.interaction.collectInteractionStates
 import gg.hideouthq.core.designsystem.interaction.focusRing
@@ -49,6 +51,7 @@ fun <T : Any> SegmentedControl(
     segmentHeight: Dp = HideoutDimens.Segmented.SegmentHeight,
     segmentPadding: Dp = HideoutDimens.Segmented.SegmentHorizontalPadding,
     style: SegmentedStyle = SegmentedStyle.Pane,
+    labelMaxWidth: Dp = Dp.Unspecified,
 ) {
     val colors = segmentedColors(style)
     val indicator = rememberSelectionIndicatorState(selected, squash = true)
@@ -70,6 +73,7 @@ fun <T : Any> SegmentedControl(
                     coverage = { indicator.coverage(option) },
                     modifier = Modifier.height(segmentHeight).indicatorTarget(indicator, option),
                     horizontalPadding = segmentPadding,
+                    labelMaxWidth = labelMaxWidth,
                 )
             }
         },
@@ -154,6 +158,7 @@ private fun Segment(
     coverage: () -> Float,
     modifier: Modifier,
     horizontalPadding: Dp,
+    labelMaxWidth: Dp,
 ) {
     val source = remember { MutableInteractionSource() }
     val states = source.collectInteractionStates()
@@ -177,7 +182,7 @@ private fun Segment(
     ) {
         Row(Modifier.wrapContentWidth(unbounded = true), horizontalArrangement = Arrangement.spacedBy(HideoutDimens.Segmented.IconGap), verticalAlignment = Alignment.CenterVertically) {
             if (icon != null) HideoutIcon(icon, contentDescription = null, size = HideoutDimens.Segmented.Icon, tint = color)
-            Text(text = text, style = HideoutTheme.typography.labelChip, color = color, maxLines = 1, softWrap = false)
+            Text(text = text, Modifier.widthIn(max = labelMaxWidth), style = HideoutTheme.typography.labelChip, color = color, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
             if (count != null) Text(count, style = HideoutTheme.typography.captionCompact.copy(fontWeight = HideoutWeights.Label), color = MaterialTheme.colorScheme.outline, maxLines = 1)
         }
     }

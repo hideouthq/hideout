@@ -2,8 +2,10 @@ package gg.hideouthq.feature.library
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -73,6 +75,7 @@ import gg.hideouthq.feature.library.components.LibraryDetailsPanel
 import gg.hideouthq.feature.library.components.LibraryFilterPills
 import gg.hideouthq.feature.library.components.LibraryHeader
 import gg.hideouthq.feature.library.components.LibraryMoreMenu
+import gg.hideouthq.feature.library.components.LibraryScopeToggle
 import gg.hideouthq.feature.library.components.LibraryViewToggle
 import gg.hideouthq.feature.library.components.SelectionPanel
 import gg.hideouthq.feature.library.components.UpdatesBar
@@ -85,6 +88,9 @@ import gg.hideouthq.resources.library_importing_from
 import gg.hideouthq.resources.library_importing_from_file
 import gg.hideouthq.resources.library_importing_mods
 import gg.hideouthq.resources.library_importing_mods_file
+import gg.hideouthq.resources.library_scope_empty_message
+import gg.hideouthq.resources.library_scope_empty_title
+import gg.hideouthq.resources.library_scope_show_all
 import gg.hideouthq.resources.profile_library_add_file
 import gg.hideouthq.resources.profile_library_details_placeholder
 import gg.hideouthq.resources.profile_library_discover
@@ -191,8 +197,10 @@ fun LibraryScreen(
                     LibraryLayout.Cards -> LibraryCardGrid(rows = state.rows, selectedIds = state.selectedIds, onSelect = onSelect, actions = actions, modal = modal, view = state.orderView)
                 }
             }
+            val listed = !state.loading && state.blocked == null && state.rows.isNotEmpty()
+            val nothingOn = state.scope == LibraryScope.Profile && state.scopedCount == 0
             AnimatedVisibility(
-                visible = !state.loading && state.blocked == null && state.rows.isNotEmpty() && state.visibleCount == 0,
+                visible = listed && state.visibleCount == 0 && !nothingOn,
                 enter = fadeIn(motion.effectsDefault()),
                 exit = fadeOut(motion.exitFade()),
             ) {
@@ -201,6 +209,16 @@ fun LibraryScreen(
                     title = stringResource(Res.string.profile_library_no_results),
                     message = stringResource(Res.string.profile_library_no_results_hint),
                     tone = EmptyStateTone.Positive,
+                )
+            }
+            AnimatedVisibility(visible = listed && nothingOn, enter = fadeIn(motion.effectsDefault()), exit = fadeOut(motion.exitFade())) {
+                EmptyState(
+                    icon = HideoutIcons.Layers,
+                    title = stringResource(Res.string.library_scope_empty_title, state.profiles?.activeProfile?.name.orEmpty()),
+                    message = stringResource(Res.string.library_scope_empty_message),
+                    action = {
+                        HideoutButton(stringResource(Res.string.library_scope_show_all), { actions.setScope(LibraryScope.All) }, variant = ButtonVariant.Tonal)
+                    },
                 )
             }
             AnimatedVisibility(
@@ -222,18 +240,27 @@ fun LibraryScreen(
 
 @Composable
 private fun ScreenHeader(state: LibraryUiState, actions: LibraryActions, modal: WindowModal) {
+    val profileName = state.profiles?.activeProfile?.name.orEmpty()
     LibraryHeader(
         enabledCount = state.enabledCount,
         totalCount = state.totalCount,
         enabledSizeBytes = state.enabledSizeBytes,
         interrupted = state.interrupted,
-        profileName = state.profiles?.activeProfile?.name.orEmpty(),
+        profileName = profileName,
         note = state.note?.let { noteText(it) },
         noteWarns = state.note is LibraryNote.PastLimit,
         modifier = Modifier.staggeredEnter(0),
         trailing = if (state.isEmpty) null else ({
+            val motion = HideoutTheme.motion
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 HideoutButton(stringResource(Res.string.profile_library_add_file), actions::addFile, variant = ButtonVariant.Subtle, leadingIcon = HideoutIcons.Plus, enabled = state.canInstall)
+                AnimatedVisibility(
+                    visible = state.showScope,
+                    enter = expandHorizontally(motion.spatialDefault()) + fadeIn(motion.effectsDefault()),
+                    exit = shrinkHorizontally(motion.spatialDefault()) + fadeOut(motion.exitFade()),
+                ) {
+                    LibraryScopeToggle(state.scope, profileName, actions::setScope)
+                }
                 LibraryViewToggle(state.layout, actions::setLayout)
                 LibraryMoreMenu(canImport = state.importing == null, canTurnAllOff = state.enabledCount > 0, actions, modal)
             }

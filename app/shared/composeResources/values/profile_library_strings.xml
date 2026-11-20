@@ -24,6 +24,11 @@
     <string name="profile_library_details_placeholder">Pick a mod to see its details.</string>
     <string name="profile_library_no_results">No matching mods</string>
     <string name="profile_library_no_results_hint">Try another search or filter.</string>
+    <string name="library_scope_all">All mods</string>
+    <string name="library_scope_profile">In %1$s</string>
+    <string name="library_scope_empty_title">Nothing’s on in %1$s</string>
+    <string name="library_scope_empty_message">Mods you turn on in this profile show here. Pick some from all your mods.</string>
+    <string name="library_scope_show_all">Show all mods</string>
     <string name="library_finding">Finding on GameBanana…</string>
     <plurals name="library_importing_mods">
         <item quantity="one">Bringing %1$d mod over from %2$s</item>

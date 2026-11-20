@@ -197,7 +197,8 @@ internal fun InstalledSetList(
                         actions = actions,
                         modal = modal,
                         view = view,
-                        totalCount = ids.size,
+                        order = ids,
+                        visible = visibleIds,
                         onDragStart = {
                             val started = DragReorder.start(ids, row.installId, visibleIds, view)
                             preview = started.copy(accumulatedPx = offset.value - (started.startIndex - layoutIndex) * rowStridePx)
@@ -266,7 +267,8 @@ private fun InstalledRow(
     actions: LibraryActions,
     modal: WindowModal,
     view: OrderView?,
-    totalCount: Int,
+    order: List<String>,
+    visible: List<String>,
     selected: Boolean,
     menuCount: Int,
     raised: Boolean,
@@ -345,7 +347,7 @@ private fun InstalledRow(
                 },
                 modifier = Modifier.focusRequester(more),
             )
-            InstalledRowMenu(row, menuOpen, { menuOpen = false }, more, actions, modal, view, totalCount, menuCount)
+            InstalledRowMenu(row, menuOpen, { menuOpen = false }, more, actions, modal, view, order, visible, menuCount)
         }
     }
 }

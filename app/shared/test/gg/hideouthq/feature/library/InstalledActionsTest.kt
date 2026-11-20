@@ -617,9 +617,9 @@ class InstalledActionsTest {
         assertEquals(listOf(true, true, true), screen.ui.rows.map { it.draggable }, "a search must not disable ordering")
 
         screen.installed.setQuery("")
-        screen.installed.setFilter(LibraryFilter.Off)
+        screen.installed.setScope(LibraryScope.Profile)
         runCurrent()
-        assertEquals(listOf(true, true, true), screen.ui.rows.map { it.draggable }, "a category filter must not disable ordering either")
+        assertEquals(listOf(true, true, true), screen.ui.rows.map { it.draggable }, "nor must the profile's own view")
     }
 
     @Test
@@ -865,7 +865,7 @@ class InstalledActionsTest {
         assertEquals(listOf(false, true), screen.ui.rows.map { it.enabled })
         assertEquals(1, screen.shell.uiState.value.modsOn)
         assertEquals(1, screen.ui.enabledCount)
-        assertEquals(1, screen.ui.filters.single { it.filter == LibraryFilter.Off }.count)
+        assertTrue(screen.ui.showScope, "a mod off in the active profile offers its own view")
         screen.shell.undo()
         runCurrent()
         assertEquals(LibraryProblem.UndoExpired, screen.shell.uiState.value.profileProblem?.problem, "a newer saved edit invalidates the old Undo")

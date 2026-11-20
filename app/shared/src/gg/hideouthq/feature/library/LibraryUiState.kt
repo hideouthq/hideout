@@ -16,6 +16,9 @@ import kotlin.time.Instant
 
 enum class LibraryLayout { List, Cards }
 
+/** Which installed mods Library lists before any filter: every one, or those the active profile turns on. */
+enum class LibraryScope { All, Profile }
+
 /** How a click picks rows: this one only, this one added or taken away (Ctrl), or the run from the last one picked (Shift). */
 enum class SelectGesture { Only, Toggle, Range }
 
@@ -46,10 +49,13 @@ data class LibraryUiState(
     val layout: LibraryLayout = LibraryLayout.List,
     /** In claim order; a mod leaves this list once its record exists in the root. */
     val downloads: List<DownloadRow> = emptyList(),
-    /** All, then one pill per category present among [rows], with mods of none under Other, then Updates, On and Off; counts are of all rows regardless of search. */
+    val scope: LibraryScope = LibraryScope.All,
+    /** How many rows [scope] lists before the search and filter narrow them. */
+    val scopedCount: Int = 0,
+    /** All, then one pill per category present among the rows [scope] lists and the search finds, with mods of none under Other, then Updates. */
     val filters: List<FilterPill> = emptyList(),
     val filter: LibraryFilter = LibraryFilter.All,
-    /** Every installed set, by load order; rows the search or filter hides have [LibraryRow.visible] false. */
+    /** Every installed set, by load order; rows the scope, search or filter hides have [LibraryRow.visible] false. */
     val rows: List<LibraryRow> = emptyList(),
     /** The rows picked, every one visible; one picked row is also [selected], two or more are [several]. */
     val selectedIds: Set<String> = emptySet(),
@@ -71,6 +77,9 @@ data class LibraryUiState(
     val visibleCount: Int get() = rows.count { it.visible }
 
     val showFilters: Boolean get() = totalCount >= FilterPillsFrom || filter != LibraryFilter.All
+
+    /** The scope switch has a choice to offer: a mod the active profile leaves off, or the profile's own view to leave. */
+    val showScope: Boolean get() = scope == LibraryScope.Profile || rows.any { !it.enabled }
 
     /**
      * When several apply the most pressing wins: an import's mods are missing from the list until it runs, and its wait
@@ -148,10 +157,6 @@ sealed interface LibraryFilter {
 
     /** This game's mods whose files to review against what their GameBanana pages offer now. */
     data object Review : LibraryFilter
-
-    /** Mods on in the active profile. */
-    data object On : LibraryFilter
-    data object Off : LibraryFilter
 }
 
 data class FilterPill(val filter: LibraryFilter, val count: Int)

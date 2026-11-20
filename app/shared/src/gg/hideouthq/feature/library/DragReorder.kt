@@ -25,25 +25,30 @@ object DragReorder {
         return if (index < 0) DragPreview(order, visible = visible, view = view) else DragPreview(order, installId, index, visible = visible, view = view)
     }
 
-    /**
-     * Shifts the dragged row by whole rows of [DragPreview.visible], then places it in the full order immediately
-     * before or after the visible row it now sits next to, keeping every other id's relative order.
-     */
+    /** Shifts the dragged row by whole rows of [DragPreview.visible], then [place]s it there. */
     fun drag(preview: DragPreview, deltaY: Float, rowStridePx: Float): DragPreview {
         val draggingId = preview.draggingId ?: return preview
         if (rowStridePx <= 0f) return preview
         val accumulated = preview.accumulatedPx + deltaY
         val shift = (accumulated / rowStridePx).roundToInt()
-        val visible = preview.visible
-        val targetIndex = (preview.startIndex + shift).coerceIn(0, visible.lastIndex)
-        if (targetIndex == preview.startIndex) return preview.copy(order = preview.basis, accumulatedPx = accumulated)
-        val movedUp = targetIndex < preview.startIndex
-        val nextVisible = visible.toMutableList().apply { add(targetIndex, removeAt(preview.startIndex)) }
-        val neighbour = if (movedUp) nextVisible.getOrNull(targetIndex + 1) else nextVisible.getOrNull(targetIndex - 1)
-        val without = preview.basis.filter { it != draggingId }
-        val anchor = neighbour?.let(without::indexOf)?.takeIf { it >= 0 }
-        val order = if (anchor == null) preview.basis else without.toMutableList().apply { add(if (movedUp) anchor else anchor + 1, draggingId) }
-        return preview.copy(order = order, accumulatedPx = accumulated)
+        val targetIndex = (preview.startIndex + shift).coerceIn(0, preview.visible.lastIndex)
+        return preview.copy(order = place(preview.basis, preview.visible, draggingId, targetIndex), accumulatedPx = accumulated)
+    }
+
+    /**
+     * [order] with [id] moved to index [to] of [visible]: immediately before or after the visible row it then sits
+     * next to, past any hidden rows between, every other id keeping its relative order.
+     */
+    fun place(order: List<String>, visible: List<String>, id: String, to: Int): List<String> {
+        val from = visible.indexOf(id)
+        val target = to.coerceIn(0, visible.lastIndex)
+        if (from < 0 || target == from) return order
+        val movedUp = target < from
+        val nextVisible = visible.toMutableList().apply { add(target, removeAt(from)) }
+        val neighbour = if (movedUp) nextVisible.getOrNull(target + 1) else nextVisible.getOrNull(target - 1)
+        val without = order.filter { it != id }
+        val anchor = neighbour?.let(without::indexOf)?.takeIf { it >= 0 } ?: return order
+        return without.toMutableList().apply { add(if (movedUp) anchor else anchor + 1, id) }
     }
 
     fun offset(preview: DragPreview, layoutIndex: Int, rowStridePx: Float): Float = (preview.startIndex - layoutIndex) * rowStridePx + preview.accumulatedPx
