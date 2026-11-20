@@ -10,6 +10,7 @@ import gg.hideouthq.core.library.OrderView
 import gg.hideouthq.core.library.ProfileBook
 import gg.hideouthq.core.library.ProfileId
 import gg.hideouthq.core.library.ReinstallFrom
+import gg.hideouthq.core.library.Slot
 import gg.hideouthq.core.library.UpdatePlan
 import gg.hideouthq.core.library.inCitadel
 import gg.hideouthq.core.library.status
@@ -111,10 +112,12 @@ sealed interface LibraryNote {
 /**
  * The sets in the game's loading folders that load and are not Hideout's, and the dialog that reviews them: [open]
  * while it is on screen, [working] while a change it asked for runs, and [last], how the last one ended, until it
- * closes. [canChange] while files the game loads may change.
+ * closes. [canChange] while files the game loads may change. [copies] has, for each set at a slot that is a copy of a
+ * library mod, that mod's title: such a set can only be moved out.
  */
 data class LeftoversUi(
     val sets: List<Leftover> = emptyList(),
+    val copies: Map<Slot, String> = emptyMap(),
     val open: Boolean = false,
     val canChange: Boolean = false,
     val working: LeftoverAction? = null,

@@ -17,7 +17,8 @@ fun main(args: Array<String>) {
     oneSet(out)
     severalSets(out)
     whileRunning(out)
-    println("All 3 leftover render checks passed.")
+    copyOfAMod(out)
+    println("All 4 leftover render checks passed.")
 }
 
 private const val Citadel = "game/citadel"
@@ -33,6 +34,12 @@ private val severalSets: InMemoryGameFiles.() -> Unit = {
     putBytes(SampleGameRoot, "$Citadel/addons/pak42_000.vpk", ByteArray(4_000) { it.toByte() })
     putBytes(SampleGameRoot, "$Citadel/addons/pak42_001.vpk", ByteArray(4_000) { (it * 3).toByte() })
     putBytes(SampleGameRoot, "$Citadel/hideout_addons2/pak03_dir.vpk", FakeVpk.directory(seed = 3))
+}
+
+private val copyOfAMod: InMemoryGameFiles.() -> Unit = {
+    severalSets()
+    val werecat = sampleLibraryManifest().records.single { it.title == "Night of the Werecat" }.sets.single()
+    werecat.files.forEach { file -> putFile(SampleGameRoot, "$Citadel/addons/${file.part.fileName("pak43")}", file.image.sizeBytes, file.image.sha256) }
 }
 
 private fun oneSet(out: File) {
@@ -103,6 +110,31 @@ private fun whileRunning(out: File) {
         check(fixture.files.linkedPaths.isEmpty() && fixture.files.removedPaths.isEmpty())
     }
     println("Leftovers while_running passed")
+}
+
+private fun copyOfAMod(out: File) {
+    val fixture = InstalledFixture(sampleLibraryManifest().records, planted = copyOfAMod)
+    runCheck(out, "copy_of_a_mod", fixture.state()) {
+        advance(1_200)
+        check(hasText("4 mods in the game’s mod folders aren’t from Hideout and still load"))
+        clickLabel("Review…")
+        advance(600)
+        check(hasText("pak43_dir.vpk") && hasText("Same as Night of the Werecat in your library"))
+        check(!hasText("Add all to library") && hasText("Add 3 to library"))
+        capture("dialog")
+        clickLabel("Add 3 to library")
+        advance(900)
+        check(hasText("Added to your library.") && hasText("pak43_dir.vpk") && hasText("Same as Night of the Werecat in your library"))
+        check((fixture.container.modLibrary.state.value.library as LibraryStatus.Ready).records.none { it.title == "pak43_dir" })
+        check(!hasText("Add to library") && hasText("Move these out so they don’t load twice.")) { "a copy left alone offers only Move out" }
+        capture("copy_left")
+        clickNear("Move out", "Same as Night of the Werecat")
+        advance(900)
+        check(hasText("Everything that loads now is in your library.") && hasText("Nothing was deleted."))
+        check(fixture.files.identity(SampleGameRoot, "$Citadel/addons/pak02_dir.vpk") != null) { "the library's own Night of the Werecat stays" }
+        capture("after_move")
+    }
+    println("Leftovers copy_of_a_mod passed")
 }
 
 /** Clicks the [label] closest to the text that holds [near], as a dialog repeats a label the pane behind it has. */

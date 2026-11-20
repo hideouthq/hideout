@@ -55,6 +55,7 @@
     <string name="library_leftovers_review">Review…</string>
     <string name="leftovers_title">Mods Hideout didn’t add</string>
     <string name="leftovers_body">These load in Deadlock but aren’t in your library, usually left by another mod manager or an older install. Add them to turn them on and off here, or move them out so they stop loading.</string>
+    <string name="leftovers_body_copies">Your library has the same files already. Move these out so they don’t load twice.</string>
     <string name="leftovers_body_done">Everything that loads now is in your library.</string>
     <plurals name="leftovers_files">
         <item quantity="one">%1$d file</item>
@@ -63,6 +64,8 @@
     <string name="leftovers_add">Add to library</string>
     <string name="leftovers_add_all">Add all to library</string>
     <string name="leftovers_add_one">Add</string>
+    <string name="leftovers_add_some">Add %1$d to library</string>
+    <string name="leftovers_copy_of">Same as %1$s in your library</string>
     <string name="leftovers_move">Move out</string>
     <string name="leftovers_move_all">Move all out</string>
     <string name="leftovers_close">Close</string>

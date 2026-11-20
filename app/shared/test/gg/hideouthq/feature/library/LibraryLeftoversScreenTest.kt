@@ -19,6 +19,9 @@ import gg.hideouthq.core.library.HideoutLines
 import gg.hideouthq.core.library.InstallPorts
 import gg.hideouthq.core.library.LibraryManifest
 import gg.hideouthq.core.library.LibraryProblem
+import gg.hideouthq.core.library.ManifestRecord
+import gg.hideouthq.core.library.heldMod
+import gg.hideouthq.core.library.relativePath
 import gg.hideouthq.core.library.ModLibrary
 import gg.hideouthq.feature.withViewModels
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -28,6 +31,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -36,10 +40,12 @@ class LibraryLeftoversScreenTest {
     private val root = GameRoot("/games/Deadlock")
     private val gameInfo = (GameInfoPatch.withBlock("\"GameInfo\"\n{\n\tFileSystem\n\t{\n\t\tSearchPaths\n\t\t{\n\t\t\tGame citadel\n\t\t}\n\t}\n}\n".encodeToByteArray(), HideoutLines(mods = true, customGames = false), 0) as GameInfoEdit.Patched).bytes
 
-    private inner class Screen(game: Boolean) {
+    private val pak05 = FakeVpk.directory(seed = 5)
+
+    private inner class Screen(game: Boolean, private val held: List<ManifestRecord>) {
         val files = InMemoryGameFiles().apply {
             putBytes(root, InMemoryGameFiles.GameInfo, gameInfo)
-            putBytes(root, "${InMemoryGameFiles.Addons}/pak05_dir.vpk", FakeVpk.directory(seed = 5))
+            putBytes(root, "${InMemoryGameFiles.Addons}/pak05_dir.vpk", pak05)
             putBytes(root, "${InMemoryGameFiles.Addons}/pak06_dir.vpk", FakeVpk.directory(seed = 6))
             putBytes(root, "${InMemoryGameFiles.Addons}/631628_pak07_dir.vpk", FakeVpk.directory(seed = 7))
         }
@@ -50,7 +56,7 @@ class LibraryLeftoversScreenTest {
 
         fun TestScope.open(viewModels: androidx.lifecycle.ViewModelStore) {
             library = ModLibrary(
-                FakeGameLocator(listOf(root.path), mapOf(root.path to null)), Preferences(MemoryStorage()), InMemoryLibraryStore(LibraryManifest()), files,
+                FakeGameLocator(listOf(root.path), mapOf(root.path to null)), Preferences(MemoryStorage()), InMemoryLibraryStore(LibraryManifest(records = held)), files,
                 InstallPorts(FakeGameBanana(), FakeDownloader(files), files, files, processes, gameFiles = files.gameFiles), backgroundScope,
             ).also { it.start() }
             screen = LibraryViewModel(library, FolderOpener { _, folder -> opened += folder; true }).also { viewModels.put("library", it) }
@@ -61,8 +67,9 @@ class LibraryLeftoversScreenTest {
         val ui: LibraryUiState get() = screen.uiState.value
     }
 
-    private fun screen(game: Boolean = false, test: suspend TestScope.(Screen) -> Unit) = withViewModels { viewModels ->
-        val screen = Screen(game)
+    private fun screen(game: Boolean = false, held: List<ManifestRecord> = emptyList(), test: suspend TestScope.(Screen) -> Unit) = withViewModels { viewModels ->
+        val screen = Screen(game, held)
+        held.forEach { record -> record.files.forEach { screen.files.putBytes(root, it.relativePath(record), pak05) } }
         with(screen) { open(viewModels.store) }
         test(screen)
     }
@@ -102,6 +109,30 @@ class LibraryLeftoversScreenTest {
         assertEquals(LeftoverResult.Added, screen.ui.leftovers.last)
         assertEquals(listOf("pak05_dir", "pak06_dir"), screen.ui.rows.map { it.title })
         assertTrue(screen.ui.rows.all { it.enabled })
+    }
+
+    @Test
+    fun aCopyOfALibraryModNamesItAndAddAllLeavesItForMoveOut() = screen(held = listOf(heldMod("h", root, pak05))) { screen ->
+        val copy = screen.ui.leftovers.sets.single { it.name == "pak05_dir.vpk" }
+        assertEquals(mapOf(copy.slot to "Hideout's h"), screen.ui.leftovers.copies)
+        assertEquals(LibraryNote.Leftovers(2, "addons"), screen.ui.note, "a copy still loads, so the note counts it")
+
+        screen.screen.addLeftovers(screen.ui.leftovers.sets.map { it.slot })
+        runCurrent()
+
+        assertEquals(LeftoverResult.Added, screen.ui.leftovers.last)
+        assertEquals(listOf("Hideout's h", "pak06_dir"), screen.ui.rows.map { it.title })
+        assertEquals(listOf(copy.slot), screen.ui.leftovers.sets.map { it.slot })
+
+        screen.screen.addLeftovers(listOf(copy.slot))
+        runCurrent()
+        assertEquals(LeftoverResult.Added, screen.ui.leftovers.last, "Add does nothing for a copy")
+        assertEquals(2, screen.ui.rows.size)
+
+        screen.screen.moveLeftoversOut(listOf(copy.slot))
+        runCurrent()
+        assertIs<LeftoverResult.Moved>(screen.ui.leftovers.last)
+        assertNull(screen.ui.note)
     }
 
     @Test

@@ -42,11 +42,14 @@ import gg.hideouthq.resources.details_open_folder
 import gg.hideouthq.resources.leftovers_add
 import gg.hideouthq.resources.leftovers_add_all
 import gg.hideouthq.resources.leftovers_add_one
+import gg.hideouthq.resources.leftovers_add_some
 import gg.hideouthq.resources.leftovers_added
 import gg.hideouthq.resources.leftovers_adding
 import gg.hideouthq.resources.leftovers_body
+import gg.hideouthq.resources.leftovers_body_copies
 import gg.hideouthq.resources.leftovers_body_done
 import gg.hideouthq.resources.leftovers_close
+import gg.hideouthq.resources.leftovers_copy_of
 import gg.hideouthq.resources.leftovers_files
 import gg.hideouthq.resources.leftovers_move
 import gg.hideouthq.resources.leftovers_move_all
@@ -68,10 +71,15 @@ internal fun LeftoversDialog(state: LeftoversUi, modal: WindowModal, actions: Li
         val free = state.canChange && state.working == null
         Column(verticalArrangement = Arrangement.spacedBy(HideoutDimens.AlertDialog.Gap)) {
             Text(title, style = HideoutTheme.typography.titleDialog, color = scheme.onSurface)
-            Text(stringResource(if (sets.isEmpty()) Res.string.leftovers_body_done else Res.string.leftovers_body), style = HideoutTheme.typography.bodyDialog, color = scheme.onSurfaceVariant)
+            val body = when {
+                sets.isEmpty() -> Res.string.leftovers_body_done
+                sets.all { it.slot in state.copies } -> Res.string.leftovers_body_copies
+                else -> Res.string.leftovers_body
+            }
+            Text(stringResource(body), style = HideoutTheme.typography.bodyDialog, color = scheme.onSurfaceVariant)
             if (sets.isNotEmpty()) {
                 Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(HideoutDimens.InstallDialog.RowGap)) {
-                    sets.forEach { set -> key(set.slot) { LeftoverRow(set, actions.takeIf { several }, free) } }
+                    sets.forEach { set -> key(set.slot) { LeftoverRow(set, state.copies[set.slot], actions.takeIf { several }, free) } }
                 }
             }
             Status(state, actions::openMovedFolder)
@@ -81,18 +89,28 @@ internal fun LeftoversDialog(state: LeftoversUi, modal: WindowModal, actions: Li
             ) {
                 HideoutButton(stringResource(Res.string.leftovers_close), actions::closeLeftovers, Modifier.focusRequester(close), variant = ButtonVariant.Text)
                 if (sets.isNotEmpty()) {
-                    val all = sets.map { it.slot }
-                    HideoutButton(stringResource(if (several) Res.string.leftovers_move_all else Res.string.leftovers_move), { actions.moveLeftoversOut(all) }, variant = ButtonVariant.Tonal, enabled = free)
-                    HideoutButton(stringResource(if (several) Res.string.leftovers_add_all else Res.string.leftovers_add), { actions.addLeftovers(all) }, enabled = free)
+                    HideoutButton(stringResource(if (several) Res.string.leftovers_move_all else Res.string.leftovers_move), { actions.moveLeftoversOut(sets.map { it.slot }) }, variant = ButtonVariant.Tonal, enabled = free)
+                }
+                val addable = sets.filter { it.slot !in state.copies }.map { it.slot }
+                if (addable.isNotEmpty()) {
+                    val label = when {
+                        !several -> stringResource(Res.string.leftovers_add)
+                        addable.size == sets.size -> stringResource(Res.string.leftovers_add_all)
+                        else -> stringResource(Res.string.leftovers_add_some, addable.size)
+                    }
+                    HideoutButton(label, { actions.addLeftovers(addable) }, enabled = free)
                 }
             }
         }
     }
 }
 
-/** One set: its directory's name, where it is and how big; with [actions] when there are others, so it can be taken on its own. */
+/**
+ * One set: its directory's name, where it is and how big, and [copyOf], the library mod it is a copy of, which only
+ * lets it move out; with [actions] when there are others, so it can be taken on its own.
+ */
 @Composable
-private fun LeftoverRow(set: Leftover, actions: LibraryActions?, enabled: Boolean) {
+private fun LeftoverRow(set: Leftover, copyOf: String?, actions: LibraryActions?, enabled: Boolean) {
     val scheme = MaterialTheme.colorScheme
     val dimens = HideoutDimens.InstallDialog
     Row(
@@ -107,10 +125,11 @@ private fun LeftoverRow(set: Leftover, actions: LibraryActions?, enabled: Boolea
             Text(set.name, style = HideoutTheme.typography.titleSetting, color = scheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
             val files = set.files.size.takeIf { it > 1 }?.let { pluralStringResource(Res.plurals.leftovers_files, it, it) }
             Text(ModLabels.join(set.folder.inCitadel, files, ModLabels.size(set.sizeBytes)), style = HideoutTheme.typography.mono, color = scheme.outline, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (copyOf != null) Text(stringResource(Res.string.leftovers_copy_of, copyOf), style = HideoutTheme.typography.notice, color = scheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         if (actions != null) {
             HideoutButton(stringResource(Res.string.leftovers_move), { actions.moveLeftoversOut(listOf(set.slot)) }, variant = ButtonVariant.Text, size = ButtonSize.Small, enabled = enabled)
-            HideoutButton(stringResource(Res.string.leftovers_add_one), { actions.addLeftovers(listOf(set.slot)) }, variant = ButtonVariant.Text, size = ButtonSize.Small, enabled = enabled)
+            if (copyOf == null) HideoutButton(stringResource(Res.string.leftovers_add_one), { actions.addLeftovers(listOf(set.slot)) }, variant = ButtonVariant.Text, size = ButtonSize.Small, enabled = enabled)
         }
     }
 }

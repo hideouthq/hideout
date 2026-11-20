@@ -345,7 +345,8 @@ class LibraryViewModel(
     }
 
     private fun changeLeftovers(action: LeftoverAction, slots: List<Slot>, change: suspend (List<Leftover>) -> LeftoverOutcome) {
-        val sets = uiState.value.leftovers.sets.filter { it.slot in slots }
+        val leftovers = uiState.value.leftovers
+        val sets = leftovers.sets.filter { it.slot in slots && (action == LeftoverAction.Moving || it.slot !in leftovers.copies) }
         if (sets.isEmpty() || local.value.leftovers.working != null) return
         local.update { it.copy(leftovers = it.leftovers.copy(working = action, outcome = null)) }
         viewModelScope.launch {
@@ -519,6 +520,7 @@ class LibraryViewModel(
             importing = importing(inputs.migration),
             leftovers = LeftoversUi(
                 sets = status.leftovers.takeIf { status.interrupted == null }.orEmpty(),
+                copies = status.leftovers.mapNotNull { set -> set.copyOf?.let { id -> all.firstOrNull { it.installId == id }?.title ?: byInstallId[id]?.title }?.let { set.slot to it } }.toMap(),
                 open = local.leftovers.open,
                 canChange = state.canModify,
                 working = local.leftovers.working,
