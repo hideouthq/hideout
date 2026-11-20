@@ -18,6 +18,7 @@ import gg.hideouthq.core.data.fake.SampleGameRoot
 import gg.hideouthq.core.data.fake.sampleGameFiles
 import gg.hideouthq.core.library.ArchiveIdentity
 import gg.hideouthq.core.library.ChangeStage
+import gg.hideouthq.core.library.CitadelPath
 import gg.hideouthq.core.library.FileImage
 import gg.hideouthq.core.library.GameRoot
 import gg.hideouthq.core.library.InstalledSet
@@ -37,6 +38,7 @@ import gg.hideouthq.core.library.SubmissionKind
 import gg.hideouthq.core.library.SubmissionRef
 import gg.hideouthq.core.library.VersionPosition
 import gg.hideouthq.core.library.VpkPart
+import gg.hideouthq.core.library.citadelPath
 import gg.hideouthq.core.library.relativePath
 import gg.hideouthq.core.navigation.Route
 import java.io.File
@@ -52,7 +54,7 @@ internal class InstalledFixture(seed: List<ManifestRecord>? = null, indexes: Res
         seed.forEach { record -> record.files.forEach { putFile(SampleGameRoot, it.relativePath(record), it.sizeBytes, it.sha256) } }
         seed.flatMap { it.sets }.map { it.download!! }.forEach { putArchive(it.path, emptyList(), FileImage(it.sizeBytes, it.sha256)) }
     }.apply(planted)
-    val opened = mutableListOf<Pair<GameRoot, SetFolder>>()
+    val opened = mutableListOf<Pair<GameRoot, CitadelPath>>()
     val processes = FakeProcesses()
     private val opener = FolderOpener { root, folder -> opened += root to folder; true }
     val container: AppContainer = if (seed == null) {
@@ -215,12 +217,12 @@ internal fun checkInstalledMenu(outDir: File) {
         rightClickRow("Faun Celeste")
         clickLabel("Show files in folder")
         advance(Settle)
-        check(fixture.opened == listOf(SampleGameRoot to SetFolder.Addons, SampleGameRoot to SetFolder.Off(SubmissionRef(SubmissionKind.Mod, 551_203)))) {
+        check(fixture.opened == listOf(SampleGameRoot to CitadelPath.Addons, SampleGameRoot to SetFolder.Off(SubmissionRef(SubmissionKind.Mod, 551_203)).citadelPath)) {
             "Show files should open each set's own folder, got ${fixture.opened}"
         }
         clickLabel("Open folder")
         advance(Settle)
-        check(fixture.opened.last() == SampleGameRoot to SetFolder.Off(SubmissionRef(SubmissionKind.Mod, 551_203))) { "Details' Open folder opens the off folder too" }
+        check(fixture.opened.last() == SampleGameRoot to SetFolder.Off(SubmissionRef(SubmissionKind.Mod, 551_203)).citadelPath) { "Details' Open folder opens the off folder too" }
 
         openRowMenu(Lilith)
         key(Key.DirectionDown)

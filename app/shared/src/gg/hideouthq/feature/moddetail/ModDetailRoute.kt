@@ -20,6 +20,7 @@ import gg.hideouthq.core.data.ViewerFiles
 import gg.hideouthq.core.data.SoundSamplePlayer
 import gg.hideouthq.core.data.preview.PreviewRepository
 import gg.hideouthq.core.library.ModLibrary
+import gg.hideouthq.core.library.citadelPath
 import gg.hideouthq.core.library.setFolder
 import gg.hideouthq.core.model.ModCategory
 import gg.hideouthq.core.navigation.PreviewRequest
@@ -66,7 +67,7 @@ fun ModDetailRoute(
                 is Need.Named -> Unit
             }
             override fun showInLibrary() = onShowLibrary()
-            override fun showFiles() { viewModel.uiState.value.installation.record?.let { record -> scope.launch { folders.open(record.gameRoot, record.setFolder()) } } }
+            override fun showFiles() { viewModel.uiState.value.installation.record?.let { record -> scope.launch { folders.open(record.gameRoot, record.setFolder().citadelPath) } } }
             override fun uninstall() { viewModel.uiState.value.installation.record?.let { installations.uninstall(setOf(it.installId)) } }
             override fun openCompat() { compat = true }
             override fun chooseBackdrop() {

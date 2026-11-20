@@ -2,6 +2,7 @@ package gg.hideouthq.core.data
 
 import gg.hideouthq.core.library.ArchiveIdentity
 import gg.hideouthq.core.library.ChangeToken
+import gg.hideouthq.core.library.CitadelPath
 import gg.hideouthq.core.library.FileImage
 import gg.hideouthq.core.library.GameRoot
 import gg.hideouthq.core.library.SetFolder
@@ -63,6 +64,6 @@ sealed interface EntryState {
 
 /** Opens a game folder in the system's file manager. Read-only: it never creates, moves or deletes anything. */
 fun interface FolderOpener {
-    /** True when the folder was handed to the file manager; false when it is not there or is not a plain folder. */
-    suspend fun open(root: GameRoot, folder: SetFolder): Boolean
+    /** True when [folder], below `game/citadel`, was handed to the file manager; false when it is not there or is not a plain folder. */
+    suspend fun open(root: GameRoot, folder: CitadelPath): Boolean
 }

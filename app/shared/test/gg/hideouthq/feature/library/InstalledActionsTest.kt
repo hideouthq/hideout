@@ -18,6 +18,7 @@ import gg.hideouthq.core.data.fake.InMemoryLibraryStore
 import gg.hideouthq.core.data.fake.MemoryStorage
 import gg.hideouthq.core.library.ArchiveIdentity
 import gg.hideouthq.core.library.ChoiceSync
+import gg.hideouthq.core.library.CitadelPath
 import gg.hideouthq.core.library.FileImage
 import gg.hideouthq.core.library.FilesDamage
 import gg.hideouthq.core.library.GameActivity
@@ -51,6 +52,7 @@ import gg.hideouthq.core.library.SubmissionRef
 import gg.hideouthq.core.library.VersionPosition
 import gg.hideouthq.core.library.VpkPart
 import gg.hideouthq.core.library.archive
+import gg.hideouthq.core.library.citadelPath
 import gg.hideouthq.core.library.number
 import gg.hideouthq.core.library.oneSetRecord
 import gg.hideouthq.core.library.only
@@ -117,7 +119,7 @@ class InstalledActionsTest {
         val files = InMemoryGameFiles()
         val banana = FakeGameBanana()
         val processes = FakeProcesses()
-        val opened = mutableListOf<Pair<GameRoot, SetFolder>>()
+        val opened = mutableListOf<Pair<GameRoot, CitadelPath>>()
         val store = InMemoryLibraryStore(LibraryManifest(records = records, profiles = ProfileBook.main(records), downloads = records.mapNotNull { record ->
             (record.sets.first().source as? InstalledSource.Remote)?.let { OwnedDownload(it.identity, checkNotNull(record.sets.first().download)) }
         }))
@@ -277,7 +279,7 @@ class InstalledActionsTest {
         screen.installed.showFiles("set1")
         screen.installed.showFiles("set2")
         runCurrent()
-        assertEquals(listOf(root to SetFolder.Addons, root to SetFolder.Off(SubmissionRef(SubmissionKind.Mod, 102))), screen.opened)
+        assertEquals(listOf(root to CitadelPath.Addons, root to SetFolder.Off(SubmissionRef(SubmissionKind.Mod, 102)).citadelPath), screen.opened)
     }
 
     @Test
@@ -289,7 +291,7 @@ class InstalledActionsTest {
         assertTrue(detail.folderPath.endsWith("hideout_addons2"), detail.folderPath)
         screen.installed.showFiles("set3")
         runCurrent()
-        assertEquals<List<Pair<GameRoot, SetFolder>>>(listOf(root to SetFolder.On(2)), screen.opened)
+        assertEquals<List<Pair<GameRoot, CitadelPath>>>(listOf(root to SetFolder.On(2).citadelPath), screen.opened)
     }
 
     @Test

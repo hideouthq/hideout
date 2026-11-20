@@ -1,8 +1,8 @@
 package gg.hideouthq.library
 
+import gg.hideouthq.core.library.CitadelPath
 import gg.hideouthq.core.library.ConfigTarget
 import gg.hideouthq.core.library.GameRoot
-import gg.hideouthq.core.library.SetFolder
 import kotlinx.coroutines.runBlocking
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -116,7 +116,7 @@ class DesktopHandoffTest {
         val root = Files.createTempDirectory(Files.createDirectories(project.resolve("build/profiles/handoff-fixtures")), "case-")
         val addons = Files.createDirectories(root.resolve("game/citadel/addons"))
         val handoff = DesktopHandoff("Linux", start = { FinishedProcess(3) })
-        assertFalse(DesktopFolderOpener(handoff).open(GameRoot(root.toString()), SetFolder.Addons))
+        assertFalse(DesktopFolderOpener(handoff).open(GameRoot(root.toString()), CitadelPath.Addons))
         assertTrue(Files.isDirectory(addons))
         Files.list(addons).use { assertEquals(0L, it.count()) }
     }

@@ -7,6 +7,7 @@ import gg.hideouthq.core.data.FolderOpener
 import gg.hideouthq.core.data.Preferences
 import gg.hideouthq.core.library.ChangeStage
 import gg.hideouthq.core.library.ChoiceSync
+import gg.hideouthq.core.library.CitadelPath
 import gg.hideouthq.core.library.CompatLabel
 import gg.hideouthq.core.library.CompatStatus
 import gg.hideouthq.core.library.ConflictReport
@@ -28,13 +29,13 @@ import gg.hideouthq.core.library.ProfileId
 import gg.hideouthq.core.library.ReinstallFrom
 import gg.hideouthq.core.library.RepairChoice
 import gg.hideouthq.core.library.RepairWork
-import gg.hideouthq.core.library.SetFolder
 import gg.hideouthq.core.library.SourceState
 import gg.hideouthq.core.library.SubmissionRef
 import gg.hideouthq.core.library.UpdatePlan
 import gg.hideouthq.core.library.VersionSource
 import gg.hideouthq.core.library.Winner
 import gg.hideouthq.core.library.cancellable
+import gg.hideouthq.core.library.citadelPath
 import gg.hideouthq.core.library.folder
 import gg.hideouthq.core.library.reinstallFrom
 import gg.hideouthq.core.library.setFolder
@@ -233,13 +234,13 @@ class LibraryViewModel(
 
     override fun showAddons(installId: String) {
         val record = records().firstOrNull { it.installId == installId } ?: return
-        viewModelScope.launch { folders.open(record.gameRoot, SetFolder.Addons) }
+        viewModelScope.launch { folders.open(record.gameRoot, CitadelPath.Addons) }
     }
 
     /** Shows the set's folder, `addons` or its own off folder, in the file manager. */
     override fun showFiles(installId: String) {
         val record = records().firstOrNull { it.installId == installId } ?: return
-        viewModelScope.launch { folders.open(record.gameRoot, record.setFolder()) }
+        viewModelScope.launch { folders.open(record.gameRoot, record.setFolder().citadelPath) }
     }
 
     override fun setFavourite(installId: String, favourite: Boolean) {

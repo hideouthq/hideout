@@ -7,6 +7,7 @@ import gg.hideouthq.core.data.LinkResult
 import gg.hideouthq.core.data.Removal
 import gg.hideouthq.core.library.ArchiveIdentity
 import gg.hideouthq.core.library.ChangeToken
+import gg.hideouthq.core.library.CitadelPath
 import gg.hideouthq.core.library.FileImage
 import gg.hideouthq.core.library.GameRoot
 import gg.hideouthq.core.library.SetFolder
@@ -14,6 +15,7 @@ import gg.hideouthq.core.library.Sha256
 import gg.hideouthq.core.library.SubmissionIdentity
 import gg.hideouthq.core.library.SubmissionKind
 import gg.hideouthq.core.library.SubmissionRef
+import gg.hideouthq.core.library.citadelPath
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respondError
@@ -233,19 +235,19 @@ class NioLinksTest {
     fun theFileManagerIsGivenOnlyAPlainSetFolder() = runBlocking<Unit> {
         val opened = mutableListOf<File>()
         val opener = DesktopFolderOpener(DesktopHandoff(osName = "Windows", native = { opened += it; true }))
-        assertTrue(opener.open(root, SetFolder.Addons))
-        assertFalse(opener.open(root, SetFolder.Off(mod)), "an off folder that is not there")
+        assertTrue(opener.open(root, CitadelPath.Addons))
+        assertFalse(opener.open(root, SetFolder.Off(mod).citadelPath), "an off folder that is not there")
         off.createDirectories()
-        assertTrue(opener.open(root, SetFolder.Off(mod)))
+        assertTrue(opener.open(root, SetFolder.Off(mod).citadelPath))
         assertEquals(listOf(addons.toFile(), off.toFile()), opened)
 
         Files.delete(off)
         Files.createSymbolicLink(off, home.resolve("elsewhere").createDirectories())
-        assertFalse(opener.open(root, SetFolder.Off(mod)))
+        assertFalse(opener.open(root, SetFolder.Off(mod).citadelPath))
         assertEquals(2, opened.size)
 
         val fresh = home.resolve("fresh/game/citadel").createDirectories()
-        assertTrue(opener.open(GameRoot(home.resolve("fresh").toString()), SetFolder.Addons), "no mods folder yet: the folder it will be made in")
+        assertTrue(opener.open(GameRoot(home.resolve("fresh").toString()), CitadelPath.Addons), "no mods folder yet: the folder it will be made in")
         assertEquals(fresh.toFile(), opened.last())
     }
 

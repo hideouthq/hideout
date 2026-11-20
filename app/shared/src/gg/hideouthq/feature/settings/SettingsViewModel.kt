@@ -15,13 +15,13 @@ import gg.hideouthq.core.data.ReportExport
 import gg.hideouthq.core.data.Preferences
 import gg.hideouthq.core.data.StatsPreferences
 import gg.hideouthq.core.data.preview.PreviewFiles
+import gg.hideouthq.core.library.CitadelPath
 import gg.hideouthq.core.library.FolderCheck
 import gg.hideouthq.core.library.GameStatus
 import gg.hideouthq.core.library.LibraryState
 import gg.hideouthq.core.library.LibraryStatus
 import gg.hideouthq.core.library.ModLibrary
 import gg.hideouthq.core.library.RestoreConfirmation
-import gg.hideouthq.core.library.SetFolder
 import gg.hideouthq.core.model.Accent
 import gg.hideouthq.core.model.AppAbout
 import gg.hideouthq.core.model.ModCardStyle
@@ -166,7 +166,7 @@ internal class SettingsViewModel(
 
     fun openModsFolder() {
         val root = uiState.value.gameRoot ?: return
-        viewModelScope.launch { folders.open(root, SetFolder.Addons) }
+        viewModelScope.launch { folders.open(root, CitadelPath.Addons) }
     }
 
     fun askRestore() = local.update { it.copy(restore = library.restoreConfirmation()) }

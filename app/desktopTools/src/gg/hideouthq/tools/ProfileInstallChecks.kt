@@ -9,6 +9,8 @@ import gg.hideouthq.HideoutAppState
 import gg.hideouthq.core.data.FolderOpener
 import gg.hideouthq.core.data.fake.FakeDownloader
 import gg.hideouthq.core.library.*
+import gg.hideouthq.core.library.CitadelPath
+import gg.hideouthq.core.library.citadelPath
 import gg.hideouthq.core.navigation.Route
 import gg.hideouthq.feature.install.InstallDialogTags
 import java.io.File
@@ -54,7 +56,7 @@ private fun Script.clickButtonStarting(prefix: String) {
 
 private fun checkProfilePage(out: File, width: Int) {
     lateinit var downloads: FakeDownloader
-    val openedFolders = mutableListOf<Pair<GameRoot, SetFolder>>()
+    val openedFolders = mutableListOf<Pair<GameRoot, CitadelPath>>()
     val app = InstallDialogFixture.container(downloads = { downloads = it }, folders = FolderOpener { root, folder ->
         openedFolders += root to folder
         true
@@ -94,7 +96,7 @@ private fun checkProfilePage(out: File, width: Int) {
         check(hasText("Show in Library") && hasText("Show files in folder"))
         capture("installed_menu")
         clickLabel("Show files in folder")
-        check(openedFolders == listOf(before.gameRoot to before.setFolder()))
+        check(openedFolders == listOf(before.gameRoot to before.setFolder().citadelPath))
         clickButtonStarting("Installed")
         clickLabel("Change files…")
         checkDialogSelected("Default", true)

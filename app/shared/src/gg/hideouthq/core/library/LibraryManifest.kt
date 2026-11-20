@@ -408,6 +408,9 @@ private const val LoadingFolders = 10
 /** The folder below `game/citadel`, as [gg.hideouthq.core.data.GameInventory.list] takes it. */
 val SetFolder.inCitadel: String get() = segments.drop(SetFolder.GameSegments.size).joinToString("/")
 
+/** The folder below `game/citadel`, as [gg.hideouthq.core.data.FolderOpener] takes it. */
+val SetFolder.citadelPath: CitadelPath get() = CitadelPath(inCitadel)
+
 /** The folder below the game root, `/`-separated. */
 internal val SetFolder.path: String get() = segments.joinToString("/")
 
