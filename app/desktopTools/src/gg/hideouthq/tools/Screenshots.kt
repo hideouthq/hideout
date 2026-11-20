@@ -124,7 +124,7 @@ private val targets = listOf(
         AppWith({ InstalledFixture(InstalledFixture.many()).container }, Route.Library)
     },
     Target("rail_installed_menu", 840, 700, scale = 1f, interact = { openRowMenu("Lilith, the Hell Warden") }) { AppWith({ InstalledFixture().container }, Route.Library) },
-) + modPageTargets + statsTargets + onboardingTargets + crosshairsTargets + autoexecTargets + collectionTargets + appUpdateTargets
+) + modPageTargets + statsTargets + onboardingTargets + crosshairsTargets + autoexecTargets + collectionTargets + appUpdateTargets + rewriteChipTargets
 
 fun main(args: Array<String>) {
     val selected = selectTargets(args.getOrNull(1), targets.map { it.name })
