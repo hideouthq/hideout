@@ -226,6 +226,7 @@
     <string name="file_priority_relation_not_together">Not both enabled together</string>
     <string name="file_priority_currently_applied">Currently applied: %1$s</string>
     <string name="file_priority_move_above">Move above %1$s</string>
+    <string name="file_priority_kept_both">Kept both</string>
     <string name="file_priority_unchecked_reading">Reading %1$s…</string>
     <string name="file_priority_unchecked_unavailable">Couldn’t read the file list for %1$s.</string>
     <string name="file_priority_show_paths">Show files (%1$d)</string>

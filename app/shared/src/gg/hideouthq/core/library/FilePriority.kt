@@ -5,12 +5,14 @@ enum class FileIndexState { Reading, Unavailable }
 
 data class FileIndexIssue(val installId: String, val title: String, val state: FileIndexState)
 
+/** [kept] when the user chose to keep the two on together, from either record's [ManifestRecord.keptBeside]. */
 data class FilePriorityPeer(
     val installId: String,
     val title: String,
     val paths: List<String>,
     val chosen: FilePriorityRelation,
     val applied: FilePriorityRelation,
+    val kept: Boolean = false,
 )
 
 data class FilePriorityReport(
@@ -69,10 +71,12 @@ fun filePriority(
         }
     }
     val own = files[selected].orEmpty()
+    val keptBeside = records.single { it.installId == selected }.keptBeside
     val peers = candidates.filter { it.installId != selected }.mapNotNull { peer ->
         val shared = sharedFiles(listOf(own, files[peer.installId].orEmpty()))
         if (shared.isEmpty()) null else FilePriorityPeer(
             peer.installId, peer.title, shared, chosen.relation(selected, peer.installId), applied.relation(selected, peer.installId),
+            kept = peer.installId in keptBeside || selected in peer.keptBeside,
         )
     }.sortedWith(compareByDescending<FilePriorityPeer> { sharesModel(it.paths) }.thenByDescending { it.paths.size }
         .thenBy { chosen.order.indexOf(it.installId) }.thenBy { it.installId })

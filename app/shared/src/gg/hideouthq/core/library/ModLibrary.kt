@@ -580,6 +580,22 @@ class ModLibrary(
     }
 
     /**
+     * Records that installed mods [installId] and [other] overlap as the user means them to, as Keep both at the install
+     * question does, so the models one hides of the other count as meant; or forgets it when not [keep]. Only the install
+     * list changes, so Deadlock may run.
+     */
+    fun keepBeside(installId: String, other: String, keep: Boolean) {
+        scope.launch {
+            librarySetup.join()
+            underLock {
+                if (reloadLocked() != null) return@underLock
+                val saved = ledger.keepBeside(installId, other, keep)
+                if (saved !is SaveResult.Refused) publishRecords(interrupted = (saved as? SaveResult.Unconfirmed)?.reason)
+            }
+        }
+    }
+
+    /**
      * Cancels a question through [answer], or stops a cancellable install at its next step and releases extraction staging.
      * Returns false after file placement starts or when no cancellable operation remains. Download retention still applies.
      */

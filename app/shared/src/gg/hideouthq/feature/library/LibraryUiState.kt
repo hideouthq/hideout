@@ -252,7 +252,7 @@ data class LibraryRow(
 sealed interface HiddenBy {
     val name: String
 
-    /** Mod [installId]; [kept] when the user chose, at the swap question, to keep the two on together. */
+    /** Mod [installId]; [kept] when the user chose, at the swap question or in File priority, to keep the two on together. */
     data class Mod(val installId: String, override val name: String, val kept: Boolean) : HiddenBy
 
     data class Part(override val name: String) : HiddenBy

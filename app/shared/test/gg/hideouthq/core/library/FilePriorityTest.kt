@@ -45,6 +45,17 @@ class FilePriorityTest {
     }
 
     @Test
+    fun aPairKeptOnTogetherReadsAsKeptFromEitherRecord() {
+        val a = priorityRecord("a", 1)
+        val b = priorityRecord("b", 2).copy(keptBeside = setOf("a"))
+        val c = priorityRecord("c", 3)
+        val records = listOf(a, b, c)
+        val known = indexes(a to setOf("shared"), b to setOf("shared"), c to setOf("shared"))
+        assertEquals(mapOf("b" to true, "c" to false), filePriority("a", records, snapshot(records), snapshot(records), known).peers.associate { it.installId to it.kept })
+        assertEquals(mapOf("a" to true, "c" to false), filePriority("b", records, snapshot(records), snapshot(records), known).peers.associate { it.installId to it.kept })
+    }
+
+    @Test
     fun choicesAndAppliedOrderAreIndependent() {
         val a = priorityRecord("a", 1)
         val b = priorityRecord("b", 2)

@@ -349,6 +349,26 @@ internal class LibraryLedger(
         return if (kept == record) SaveResult.Saved else save(manifest.copy(records = manifest.records.map { if (it == record) kept else it }))
     }
 
+    /**
+     * Saves that installed mods [installId] and [other] are kept on together, on [installId]'s record, or forgets it on
+     * both records when not [keep]. It touches no file, so it may be saved while Deadlock runs.
+     */
+    suspend fun keepBeside(installId: String, other: String, keep: Boolean): SaveResult {
+        uncertainty?.let { return SaveResult.Unconfirmed(it) }
+        if (manifest.pending != null) return SaveResult.Refused(ChangeInFlight)
+        val records = manifest.records
+        if (records.none { it.installId == installId } || records.none { it.installId == other }) return SaveResult.Refused("the mod is not installed")
+        val kept = records.any { it.installId == installId && other in it.keptBeside || it.installId == other && installId in it.keptBeside }
+        if (kept == keep) return SaveResult.Saved
+        return save(manifest.copy(records = records.map { record ->
+            when (record.installId) {
+                installId -> record.copy(keptBeside = if (keep) record.keptBeside + other else record.keptBeside - other)
+                other -> record.copy(keptBeside = record.keptBeside - installId)
+                else -> record
+            }
+        }))
+    }
+
     /** Saves [choice] for [installId], or forgets it when null. It touches no file, so it may be saved while Deadlock runs. */
     suspend fun saveRepairChoice(installId: String, choice: RepairChoice?): SaveResult {
         uncertainty?.let { return SaveResult.Unconfirmed(it) }

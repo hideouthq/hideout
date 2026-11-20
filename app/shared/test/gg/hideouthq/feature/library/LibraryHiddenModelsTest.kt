@@ -82,6 +82,45 @@ class LibraryHiddenModelsTest {
         assertEquals(1, vm.uiState.value.rows.single { it.installId == "hudlock" }.hiddenModels, "the count shows once the report catches up")
     }
     @Test
+    fun keepBothInFilePriorityMakesTheHiddenModelsMeantAndUndoForgetsThePairOnEitherRecord() = withViewModels { viewModels ->
+        val sample = sampleLibraryManifest()
+        val keptAtInstall = sample.records.map { record -> if (record.installId == "lilith") record.copy(keptBeside = setOf("hudlock")) else record }
+        val store = InMemoryLibraryStore(sample.copy(records = keptAtInstall))
+        val base = AppContainer.fake(libraryStore = store)
+        val records = (base.modLibrary.state.value.library as LibraryStatus.Ready).records.associateBy { it.installId }
+        val lilith = Mounted.Managed("lilith", records.getValue("lilith").sets.single().key)
+        val werecat = Mounted.Managed("werecat", records.getValue("werecat").sets.single().key)
+        val hudlock = Mounted.Managed("hudlock", records.getValue("hudlock").sets.single().key)
+        val report = ConflictReport(listOf(
+            ModelLoss("models/ivy.vmdl_c", Mount(Slot(2), werecat), Mount(Slot(1), lilith)),
+            ModelLoss("models/hud.vmdl_c", Mount(Slot(9), hudlock), Mount(Slot(1), lilith)),
+        ))
+        val vm = LibraryViewModel(base.modLibrary, FolderOpener { _, _ -> true }, conflicts = flowOf(report)).also { viewModels.keep(it) }
+        backgroundScope.launch { vm.uiState.collect {} }
+        runCurrent()
+        fun meant(installId: String) = vm.uiState.value.rows.single { it.installId == installId }.hiddenMeant
+        fun keptBeside(installId: String) = store.manifest!!.records.single { it.installId == installId }.keptBeside
+        assertFalse(meant("werecat"))
+
+        base.modLibrary.keepBeside("werecat", "lilith", keep = true)
+        runCurrent()
+        assertTrue(meant("werecat"), "its chip turns quiet")
+        assertEquals(setOf("lilith"), keptBeside("werecat"), "saved with the mod, as the install question saves it")
+        assertEquals(setOf("hudlock"), keptBeside("lilith"))
+
+        base.modLibrary.keepBeside("werecat", "lilith", keep = false)
+        runCurrent()
+        assertFalse(meant("werecat"))
+        assertEquals(emptySet(), keptBeside("werecat"))
+
+        assertTrue(meant("hudlock"), "a pair kept at the install question")
+        base.modLibrary.keepBeside("hudlock", "lilith", keep = false)
+        runCurrent()
+        assertFalse(meant("hudlock"), "undone from the other mod's dialog")
+        assertEquals(emptySet(), keptBeside("lilith"))
+    }
+
+    @Test
     fun aModKeptBesideAnotherAtTheSwapQuestionHidesItsModelsAsMeantUntilAnythingElseDoes() = withViewModels { viewModels ->
         val sample = sampleLibraryManifest()
         val kept = sample.records.map { record -> if (record.installId == "lilith") record.copy(keptBeside = setOf("werecat")) else record }

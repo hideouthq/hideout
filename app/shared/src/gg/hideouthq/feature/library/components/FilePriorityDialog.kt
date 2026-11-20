@@ -3,6 +3,7 @@ package gg.hideouthq.feature.library.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -26,6 +27,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import gg.hideouthq.core.designsystem.component.ButtonSize
 import gg.hideouthq.core.designsystem.component.ButtonVariant
 import gg.hideouthq.core.designsystem.component.HideoutButton
+import gg.hideouthq.core.designsystem.component.HideoutIcon
+import gg.hideouthq.core.designsystem.icon.HideoutIcons
 import gg.hideouthq.core.designsystem.theme.HideoutDimens
 import gg.hideouthq.core.designsystem.theme.HideoutShapes
 import gg.hideouthq.core.designsystem.theme.HideoutTheme
@@ -45,6 +48,7 @@ import gg.hideouthq.resources.file_priority_close
 import gg.hideouthq.resources.file_priority_currently_applied
 import gg.hideouthq.resources.file_priority_foreign
 import gg.hideouthq.resources.file_priority_hide_paths
+import gg.hideouthq.resources.file_priority_kept_both
 import gg.hideouthq.resources.file_priority_loading
 import gg.hideouthq.resources.file_priority_more_paths
 import gg.hideouthq.resources.file_priority_move_above
@@ -60,6 +64,8 @@ import gg.hideouthq.resources.file_priority_title
 import gg.hideouthq.resources.file_priority_unchecked_reading
 import gg.hideouthq.resources.file_priority_unchecked_unavailable
 import gg.hideouthq.resources.parts_order_action
+import gg.hideouthq.resources.profile_undo
+import gg.hideouthq.resources.skin_swap_keep_both
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -109,10 +115,17 @@ internal fun FilePriorityDialog(
                     }
                     current?.peers.orEmpty().forEach { peer ->
                         key(peer.installId) {
-                            PeerRow(peer, lastTitle, canEditChoices = libraryState.canEditChoices, returnFocus = close, onMove = {
-                                shownId?.let { id -> filePriorities.moveAbove(id, peer.installId) }
-                                close.requestFocus()
-                            })
+                            PeerRow(
+                                peer, lastTitle, canEditChoices = libraryState.canEditChoices, returnFocus = close,
+                                onMove = {
+                                    shownId?.let { id -> filePriorities.moveAbove(id, peer.installId) }
+                                    close.requestFocus()
+                                },
+                                onKeep = { keep ->
+                                    shownId?.let { id -> library.keepBeside(id, peer.installId, keep) }
+                                    close.requestFocus()
+                                },
+                            )
                         }
                     }
                     val parts = lastHidden.filterIsInstance<HiddenBy.Part>()
@@ -142,7 +155,7 @@ internal fun FilePriorityDialog(
 }
 
 @Composable
-private fun PeerRow(peer: FilePriorityPeer, selectedTitle: String, canEditChoices: Boolean, returnFocus: FocusRequester, onMove: () -> Unit) {
+private fun PeerRow(peer: FilePriorityPeer, selectedTitle: String, canEditChoices: Boolean, returnFocus: FocusRequester, onMove: () -> Unit, onKeep: (Boolean) -> Unit) {
     var shownPaths by remember { mutableIntStateOf(0) }
     val scheme = MaterialTheme.colorScheme
     val type = HideoutTheme.typography
@@ -169,8 +182,25 @@ private fun PeerRow(peer: FilePriorityPeer, selectedTitle: String, canEditChoice
                 if (shownPaths >= peer.paths.size) returnFocus.requestFocus()
             }, variant = ButtonVariant.Text, size = ButtonSize.Small)
         }
-        if (peer.chosen == FilePriorityRelation.OtherFirst && canEditChoices) {
-            HideoutButton(stringResource(Res.string.file_priority_move_above, peer.title), onMove, variant = ButtonVariant.Tonal, size = ButtonSize.Small)
+        if (peer.chosen != FilePriorityRelation.NotTogether) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(HideoutDimens.AlertDialog.FooterGap),
+                verticalArrangement = Arrangement.spacedBy(HideoutDimens.AlertDialog.FooterGap),
+                itemVerticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (peer.chosen == FilePriorityRelation.OtherFirst && canEditChoices) {
+                    HideoutButton(stringResource(Res.string.file_priority_move_above, peer.title), onMove, variant = ButtonVariant.Tonal, size = ButtonSize.Small)
+                }
+                if (peer.kept) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(HideoutDimens.Library.NoteGap), verticalAlignment = Alignment.CenterVertically) {
+                        HideoutIcon(HideoutIcons.Check, contentDescription = null, size = HideoutDimens.Icon.Small, tint = scheme.outline)
+                        Text(stringResource(Res.string.file_priority_kept_both), style = type.captionSmall, color = scheme.onSurfaceVariant)
+                        HideoutButton(stringResource(Res.string.profile_undo), { onKeep(false) }, variant = ButtonVariant.Text, size = ButtonSize.Small)
+                    }
+                } else {
+                    HideoutButton(stringResource(Res.string.skin_swap_keep_both), { onKeep(true) }, variant = ButtonVariant.Tonal, size = ButtonSize.Small)
+                }
+            }
         }
     }
 }

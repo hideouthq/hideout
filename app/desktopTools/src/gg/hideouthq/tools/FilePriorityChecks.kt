@@ -84,6 +84,7 @@ private fun checkFilePriority(out: File, width: Int, cards: Boolean, unavailable
             check(hasText("Above ${chosen.title}"))
             check(!hasText("Currently applied:"))
             capture("priority_summary")
+            if (width == 1440 && !cards) keepBoth(chosen.installId, earlier.installId, store)
             val shown = paths - "readme.txt"
             clickLabel("Show files (${shown.size})")
             advance(500)
@@ -134,6 +135,27 @@ private fun checkFilePriority(out: File, width: Int, cards: Boolean, unavailable
         }
     }
     println("File priority $label passed")
+}
+
+private fun Script.keepBoth(chosen: String, earlier: String, store: InMemoryLibraryStore) {
+    fun keptBeside() = store.manifest!!.records.single { it.installId == chosen }.keptBeside
+    check(hasText("1 model hidden")) { "the row loses a model to the mod above it" }
+    clickLabel("Keep both")
+    advance(800)
+    check(hasText("Kept both") && labelled("Keep both").isEmpty())
+    check(keptBeside() == setOf(earlier)) { "Keep both saves the pair with the mod, got ${keptBeside()}" }
+    capture("kept_both")
+    clickNode(nodes().single { it.hasLabel("Close") && it.config.contains(SemanticsProperties.Text) })
+    advance(500)
+    check(hasText("1 model hidden"))
+    capture("kept_both_chip")
+    clickLabel("File priority…")
+    advance(500)
+    check(hasText("Kept both")) { "the dialog shows the pair as kept when it opens again" }
+    clickLabel("Undo")
+    advance(800)
+    check(keptBeside().isEmpty() && labelled("Keep both").size == 1)
+    capture("keep_both_undone")
 }
 
 private fun Script.revealPriorityLabel(label: String) {
