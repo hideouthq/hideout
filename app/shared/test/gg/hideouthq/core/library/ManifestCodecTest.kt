@@ -121,7 +121,8 @@ class ManifestCodecTest {
         val downloaded = record.only
         val imported = downloaded.copy(source = InstalledSource.Local("k", "mine.zip"), originalName = null, origin = SetOrigin.Imported(FileImage(4_096L, "d".repeat(64))))
         val adopted = downloaded.copy(origin = SetOrigin.Adopted(MigrationId("dmm-1")))
-        for (set in listOf(downloaded, imported, adopted)) roundTrips(LibraryManifest(records = listOf(record.copy(sets = listOf(set)))))
+        val found = imported.copy(origin = SetOrigin.Found(CitadelPath("hideout_addons2/pak03_dir.vpk")))
+        for (set in listOf(downloaded, imported, adopted, found)) roundTrips(LibraryManifest(records = listOf(record.copy(sets = listOf(set)))))
         assertEquals(record.archive, downloaded.download)
         assertNull(imported.download, "an imported set names no download")
         assertNull(adopted.download, "an adopted set names no download")
@@ -455,6 +456,7 @@ class ManifestCodecTest {
         val book = ProfileBook.main(listOf(record, claimed.record, parked.record))
         val plan = AdoptionPlan(record.gameRoot, migration, listOf(claimed, parked), book, book.withOrder(record.gameRoot, listOf("parked", "install-1", "claimed")))
         AdoptStep.entries.forEach { step -> roundTrips(LibraryManifest(records = listOf(record), pending = PendingChange.Adopt(plan, step))) }
+        roundTrips(LibraryManifest(records = listOf(record), pending = PendingChange.Adopt(plan.copy(migration = null), AdoptStep.Linking)))
 
         assertTrue(claimed.claimed && !parked.claimed)
         assertEquals(listOf(parked), plan.moving)

@@ -73,7 +73,10 @@ private fun gameEvent(before: GameStatus, after: GameStatus): String? = when (af
 private fun recordEvents(before: LibraryStatus.Ready, after: LibraryStatus.Ready): List<String> = buildList {
     val was = before.records.associateBy { it.installId }
     val now = after.records.associateBy { it.installId }
-    after.records.filter { it.installId !in was }.forEach { add("Installed ${it.named}: ${it.sources}") }
+    after.records.filter { it.installId !in was }.forEach { record ->
+        val found = record.sets.first().origin as? SetOrigin.Found
+        add(if (found == null) "Installed ${record.named}: ${record.sources}" else "Added ${found.path.name} from ${found.path.folder} to the library as ${record.named}")
+    }
     before.records.filter { it.installId !in now }.forEach { add("Uninstalled ${it.named}") }
     val kept = after.records.mapNotNull { record -> was[record.installId]?.let { it to record } }
     kept.filter { (old, new) -> old.provenance != new.provenance }.forEach { (old, new) -> add("Changed the files of ${new.named}: ${old.sources} to ${new.sources}") }
@@ -124,8 +127,11 @@ internal val InstalledSet.said: String
         is InstalledSource.Local -> "local file ${source.fileName}" + source.submission?.let { " of ${it.modId}" }.orEmpty()
     } + when (val origin = origin) {
         is SetOrigin.Adopted -> ", taken over by import ${origin.migration.value}"
+        is SetOrigin.Found -> ", found in ${origin.path.folder}"
         is SetOrigin.Downloaded, is SetOrigin.Imported -> ""
     }
+
+private val CitadelPath.folder: String get() = value.substringBeforeLast('/')
 
 internal val FoundVia.said: String
     get() = when (this) {

@@ -87,6 +87,9 @@ sealed interface SetOrigin {
 
     /** Files another manager had put in the game, taken over where they were by [migration], whose record keeps their old names. */
     data class Adopted(val migration: MigrationId) : SetOrigin
+
+    /** Files that loaded from [path], the set's directory below `game/citadel`, without being Hideout's, added from Library. */
+    data class Found(val path: CitadelPath) : SetOrigin
 }
 
 /** Which of the mod's current GameBanana files a set came from when it was installed: [index] of [count], most downloaded first. */
@@ -790,7 +793,7 @@ data class Adoption(val record: ManifestRecord, val sources: List<CitadelPath>) 
  */
 data class AdoptionPlan(
     val gameRoot: GameRoot,
-    val migration: MigrationId,
+    val migration: MigrationId?,
     val adopted: List<Adoption>,
     val book: ProfileBook,
     val target: ProfileBook,

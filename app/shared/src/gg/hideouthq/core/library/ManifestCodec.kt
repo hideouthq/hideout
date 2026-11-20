@@ -200,7 +200,7 @@ private data class MoveDto(val source: RecordDto, val placement: PlacementDto, v
 @SerialName("Adopt")
 private data class PendingAdoptDto(
     val gameRoot: String,
-    val migration: String,
+    val migration: String? = null,
     val adopted: List<AdoptionDto>,
     val book: BookDto,
     val target: BookDto,
@@ -311,16 +311,22 @@ private data class ImportedDto(val sizeBytes: Long, val sha256: String) : Origin
 @SerialName("Adopted")
 private data class AdoptedDto(val migration: String) : OriginDto
 
+@Serializable
+@SerialName("Found")
+private data class FoundOriginDto(val path: String) : OriginDto
+
 private fun SetOrigin.toDto(): OriginDto = when (this) {
     is SetOrigin.Downloaded -> DownloadedDto(archive.path, archive.sizeBytes, archive.sha256)
     is SetOrigin.Imported -> ImportedDto(image.sizeBytes, image.sha256)
     is SetOrigin.Adopted -> AdoptedDto(migration.value)
+    is SetOrigin.Found -> FoundOriginDto(path.value)
 }
 
 private fun OriginDto.toDomain(): SetOrigin = when (this) {
     is DownloadedDto -> SetOrigin.Downloaded(ArchiveIdentity(archivePath, archiveSizeBytes, archiveSha256))
     is ImportedDto -> SetOrigin.Imported(FileImage(sizeBytes, sha256))
     is AdoptedDto -> SetOrigin.Adopted(MigrationId(migration))
+    is FoundOriginDto -> SetOrigin.Found(CitadelPath(path))
 }
 
 private fun LibraryManifest.toDto() = ManifestFileDto(
@@ -387,7 +393,7 @@ private fun LibraryManifest.toDto() = ManifestFileDto(
         )
         is PendingChange.Arrange -> PendingArrangeDto(change.token.value, change.moves.map { MoveDto(it.source.toDto(), it.target.placement.toDto(), it.target.sets.map { set -> set.key.value }) }, change.after.toDto(), change.step)
         is PendingChange.Adopt -> with(change.plan) {
-            PendingAdoptDto(gameRoot.path, migration.value, adopted.map { AdoptionDto(it.record.toDto(), it.sources.map { path -> path.value }) }, book.toDto(), target.toDto(), change.step)
+            PendingAdoptDto(gameRoot.path, migration?.value, adopted.map { AdoptionDto(it.record.toDto(), it.sources.map { path -> path.value }) }, book.toDto(), target.toDto(), change.step)
         }
         is PendingChange.Revert -> PendingRevertDto(
             gameRoot = change.gameRoot.path,
@@ -545,7 +551,7 @@ private fun ManifestFileDto.toDomain(): LibraryManifest {
             is PendingAdoptDto -> {
                 require(isPlainAbsolutePath(change.gameRoot)) { "an adoption names a game root" }
                 val adopted = change.adopted.map { adoption -> Adoption(adoption.record.toDomain(), adoption.sources.map(::CitadelPath)) }
-                PendingChange.Adopt(AdoptionPlan(GameRoot(change.gameRoot), MigrationId(change.migration), adopted, change.book.toDomain(), change.target.toDomain()), change.step)
+                PendingChange.Adopt(AdoptionPlan(GameRoot(change.gameRoot), change.migration?.let(::MigrationId), adopted, change.book.toDomain(), change.target.toDomain()), change.step)
             }
             is PendingRevertDto -> {
                 require(isPlainAbsolutePath(change.gameRoot)) { "a restore names a game root" }

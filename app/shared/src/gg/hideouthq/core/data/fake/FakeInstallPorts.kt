@@ -233,7 +233,8 @@ fun InMemoryGameFiles.ports(
     processes: GameProcesses = FakeProcesses(),
     archives: ArchiveIndex = ArchiveIndex.Unavailable,
     heroSettings: HeroSettingsFiles = HeroSettingsFiles.Unavailable,
-): InstallPorts = InstallPorts(gameBanana, FakeDownloader(this), this, this, processes, gameFiles = gameFiles, archives = archives, backups = backups, heroSettings = heroSettings)
+    log: (String) -> Unit = {},
+): InstallPorts = InstallPorts(gameBanana, FakeDownloader(this), this, this, processes, gameFiles = gameFiles, archives = archives, backups = backups, heroSettings = heroSettings, log = log)
 
 class FixedInstallations(private val status: Flow<InstallStatus>) : ModInstallations {
     val installs: MutableList<String> = mutableListOf()

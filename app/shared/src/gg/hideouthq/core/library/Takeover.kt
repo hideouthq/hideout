@@ -13,7 +13,8 @@ data class LoadPosition(val mount: Int, val number: Int) : Comparable<LoadPositi
  * [ModLibrary.takeOver] carries it out and nothing else writes the game while it does.
  */
 data class Takeover(
-    val migration: MigrationId,
+    /** The import that hands these over; null for sets Library adds from the loading folders, each [SetOrigin.Found] where it loaded. */
+    val migration: MigrationId?,
     val root: GameRoot,
     /** The manager whose closing the import waits for besides Deadlock's; null for a bundle, which waits only for the game. */
     val manager: Manager?,
@@ -176,7 +177,7 @@ fun placeTakeover(takeover: Takeover, manifest: LibraryManifest, addons: List<St
     val adopted = incoming.map { mod ->
         val (sources, title) = sourcesAndTitle(mod.matched, mod.sets.size, mod.title, mod.fileName, held + made, ids)
         val first = if (mod.enabled) claimed(mod, addons, mounted) else null
-        val sets = mod.sets.mapIndexed { offset, set -> InstalledSet(sources[offset], null, null, SetOrigin.Adopted(takeover.migration), null, set.componentKey, set.files.map { SetFile(it.part, it.image) }) }
+        val sets = mod.sets.mapIndexed { offset, set -> InstalledSet(sources[offset], null, null, takeover.migration?.let(SetOrigin::Adopted) ?: SetOrigin.Found(set.files.first().path), null, set.componentKey, set.files.map { SetFile(it.part, it.image) }) }
         val record = ManifestRecord(ids(), root, title, first?.let(Placement::On) ?: Placement.Off, sets, unasked = sources.first() is InstalledSource.Local)
         Adoption(record.also { made += it }, mod.sets.flatMap { set -> set.files.map { it.path } })
     }

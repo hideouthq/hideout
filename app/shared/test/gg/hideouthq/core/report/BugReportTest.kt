@@ -20,6 +20,7 @@ import gg.hideouthq.core.data.InstallDefaults
 import gg.hideouthq.core.data.SettingsSnapshot
 import gg.hideouthq.core.data.fake.FakeCustomGamesFeed
 import gg.hideouthq.core.library.ArchiveIdentity
+import gg.hideouthq.core.library.CitadelPath
 import gg.hideouthq.core.library.EntryKind
 import gg.hideouthq.core.library.FileImage
 import gg.hideouthq.core.library.FoundVia
@@ -37,6 +38,7 @@ import gg.hideouthq.core.library.ProfileBook
 import gg.hideouthq.core.library.ProfileColour
 import gg.hideouthq.core.library.ProfileId
 import gg.hideouthq.core.library.SetFolder
+import gg.hideouthq.core.library.SetOrigin
 import gg.hideouthq.core.library.Slot
 import gg.hideouthq.core.library.SubmissionIdentity
 import gg.hideouthq.core.library.SubmissionKind
@@ -120,6 +122,15 @@ class BugReportTest {
             """,
         )
         assertTrue(text.endsWith("## Log\n2026-11-16T10:00:00Z Hideout 1.2.3 started\n"), text)
+    }
+
+    @Test
+    fun aModAddedFromTheGamesFoldersSaysWhereItWasFoundAndNamesNoImport() {
+        val found = lash.copy(sets = lash.sets.map { it.copy(source = InstalledSource.Local("k5", "pak05_dir.vpk"), originalName = null, version = null, origin = SetOrigin.Found(CitadelPath("addons/pak05_dir.vpk"))) })
+        val text = report(state.copy(library = LibraryStatus.Ready(listOf(haze, found))), FolderListing.Listed(listOf(file("pak01_dir.vpk", 2048))))
+
+        assertTrue("    local file pak05_dir.vpk, found in addons, part pak01_dir.vpk, 1 file, 2.0 KB\n" in text, text)
+        assertFalse("import" in text, text)
     }
 
     @Test

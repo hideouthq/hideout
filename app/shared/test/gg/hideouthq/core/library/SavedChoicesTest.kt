@@ -197,7 +197,7 @@ class SavedChoicesTest {
         is PendingChange.ArchiveRemoval -> token.value
         is PendingChange.ConfigEdit -> token
         is PendingChange.Install -> "install-${record.installId}"
-        is PendingChange.Adopt -> "adopt-${plan.migration.value}"
+        is PendingChange.Adopt -> "adopt-${plan.migration?.value}"
         is PendingChange.Revert -> token.value
         is PendingChange.MoveOut -> "move-out-${folder.value}"
     }

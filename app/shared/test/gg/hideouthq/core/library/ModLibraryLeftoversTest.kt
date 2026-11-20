@@ -54,12 +54,13 @@ class ModLibraryLeftoversTest {
         }
         override val store = InMemoryLibraryStore(LibraryManifest(records = listOf(heldMod("h", root, own))))
         val processes = FakeProcesses(ProcessScan.Seen(game = game))
+        val log = mutableListOf<String>()
         val identities = start.keys.associateWith { files.identity(root, "$citadel/$it") }
         private var next = 0
 
         override fun TestScope.open(scope: CoroutineScope): ModLibrary = started(
             ModLibrary(
-                FixedGameLocator(listOf(root)), Preferences(MemoryStorage()), store, files, files.ports(processes = processes), scope,
+                FixedGameLocator(listOf(root)), Preferences(MemoryStorage()), store, files, files.ports(processes = processes, log = log::add), scope,
                 ids = { "id${++next}" }, watch = testWatchTiming, clock = object : Clock { override fun now() = this@ModLibraryLeftoversTest.now },
             ),
         )
@@ -133,6 +134,21 @@ class ModLibraryLeftoversTest {
         assertTrue(second.enabled, "the saved choices turn on what loaded")
         assertContentEquals(start.getValue("hideout_addons2/pak03_dir.vpk"), world.files.bytes(root, "$citadel/${second.files.single().relativePath(second).removePrefix("$citadel/")}"))
         assertEquals(emptyList(), library.leftovers())
+    }
+
+    @Test
+    fun theLogSaysWhichSetsWereAddedAndFromWhereWithNoImportBehindThem() = runTest {
+        val world = World()
+        val library = with(world) { library() }
+
+        library.addLeftovers(library.leftovers())
+        runCurrent()
+
+        val added = world.log.filter { it.startsWith("Added ") }
+        assertEquals(2, added.size, "${world.log}")
+        assertTrue(added[0].startsWith("Added pak05_dir.vpk from addons to the library as pak05_dir (local-"), added[0])
+        assertTrue(added[1].startsWith("Added pak03_dir.vpk from hideout_addons2 to the library as pak03_dir (local-"), added[1])
+        assertTrue(world.log.none { "import" in it }, "${world.log}")
     }
 
     @Test

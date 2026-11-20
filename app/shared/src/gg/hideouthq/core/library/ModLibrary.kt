@@ -2622,7 +2622,7 @@ class ModLibrary(
             }
         }
         publishRecords(interrupted = null)
-        val adopted = SetOrigin.Adopted(takeover.migration)
+        val adopted = takeover.migration?.let(SetOrigin::Adopted)
         val records = ledger.manifest.records.filter { record -> record.gameRoot == root && record.sets.all { it.origin == adopted } } + copied
         val on = ledger.manifest.chosen().activeProfile.enabled
         return TakeoverOutcome.Done(on = records.count { it.installId in on }, off = records.count { it.installId !in on }, profiles = placed.profiles, commands = commands)
@@ -2661,7 +2661,7 @@ class ModLibrary(
                 is OnListing.Unreadable -> return@underLock LeftoverOutcome.Refused(LibraryProblem.AddonsUnreadable(listed.reason))
                 is OnListing.Listed -> listed.entries.filter { it.folder == SetFolder.Addons }.map { it.entry.name }
             }
-            val takeover = Takeover(MigrationId(ids()), root, manager = null, addonsMount = 0, incoming, emptyList(), emptyList(), unmount = emptySet(), autoexec = null, duplicates = emptyList(), manifests = emptyList())
+            val takeover = Takeover(migration = null, root, manager = null, addonsMount = 0, incoming, emptyList(), emptyList(), unmount = emptySet(), autoexec = null, duplicates = emptyList(), manifests = emptyList())
             val changed = changing { ledger.adopt(placeTakeover(takeover, ledger.manifest, addons, emptyList(), ids).plan) }
             publishRecords(ledger.uncertainty ?: (changed as? ChangeOutcome.Refused)?.interrupted)
             when (changed) {
