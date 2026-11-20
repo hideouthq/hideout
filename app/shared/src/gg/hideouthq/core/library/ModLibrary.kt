@@ -222,6 +222,8 @@ sealed interface LibraryStatus {
         val clearable: List<OwnedDownload> = emptyList(),
         /** What the found game's loading folders held when Hideout last listed them; null when one could not be listed. */
         val loading: List<OnEntry>? = null,
+        /** The sets in [loading] that the game loads and no record names, as that listing found them. */
+        val leftovers: List<Leftover> = emptyList(),
     ) : LibraryStatus
 
     /** The manifest, or the game files it describes, cannot be trusted. Read-only: never an empty, writable library. */
@@ -2463,9 +2465,12 @@ class ModLibrary(
         }
 
     private suspend fun onListing(root: GameRoot): OnListing = ledger.onListing(root).also { listing ->
+        val entries = (listing as? OnListing.Listed)?.entries
+        val owned = ledger.manifest.namedRecords().filter { it.gameRoot == root }.flatMapTo(HashSet()) { record -> record.files.map { it.relativePath(record) } }
+        val found = entries?.let { leftovers(it, owned) }.orEmpty()
         mutableState.update { state ->
             val ready = state.library as? LibraryStatus.Ready
-            if (ready == null || (state.game as? GameStatus.Ready)?.root != root) state else state.copy(library = ready.copy(loading = (listing as? OnListing.Listed)?.entries))
+            if (ready == null || (state.game as? GameStatus.Ready)?.root != root) state else state.copy(library = ready.copy(loading = entries, leftovers = found))
         }
     }
 
