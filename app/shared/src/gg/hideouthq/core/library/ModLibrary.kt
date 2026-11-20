@@ -2801,7 +2801,7 @@ class ModLibrary(
     private suspend fun refreshLoading(root: GameRoot) = loadingMutex.withLock {
         librarySetup.join()
         val library = state.value.library as? LibraryStatus.Ready
-        val intact = library?.records.orEmpty().count {
+        val intact = library?.records.orEmpty().filter {
             it.gameRoot == root && it.enabled && it.installId !in library?.damaged.orEmpty() && it.installId !in library?.unchecked.orEmpty()
         }
         val loading = when (val read = attempt { ports.gameConfig.read(root) }) {
@@ -2811,8 +2811,11 @@ class ModLibrary(
                 is ConfigRead.Unreadable -> ModLoading.Unreadable(GameInfoProblem.Unreadable)
                 is ConfigRead.Present -> when (val check = GameInfoPatch.check(config.bytes)) {
                     is SearchPathsCheck.Problem -> ModLoading.Unreadable(check.problem)
-                    is SearchPathsCheck.Read -> check.coveredBy?.let { ModLoading.Loads(it) }
-                        ?: ModLoading.Off(intact, vanilla = !ledger.linesFor(root).mods)
+                    is SearchPathsCheck.Read -> {
+                        val unmounted = intact.count { it.numbers.first().folder.index - 1 > check.overflow }
+                        check.coveredBy?.takeIf { unmounted == 0 }?.let { ModLoading.Loads(it) }
+                            ?: ModLoading.Off(if (check.coveredBy == null) intact.size else unmounted, vanilla = !ledger.linesFor(root).mods)
+                    }
                 }
             }
         }

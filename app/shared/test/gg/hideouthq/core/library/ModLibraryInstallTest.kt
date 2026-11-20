@@ -1016,6 +1016,27 @@ class ModLibraryInstallTest {
     }
 
     @Test
+    fun aBlockThatMountsAddonsButNotTheFolderPastItIsNotLoadingUntilReapply() = runTest {
+        val world = World(info = (GameInfoPatch.withBlock(vanillaInfo, HideoutLines(mods = true, customGames = false), 0) as GameInfoEdit.Patched).bytes)
+        fun seeded(id: String, mod: Long, number: Int) = oneSetRecord(
+            id, root, InstalledSource.Remote(SubmissionIdentity(SubmissionKind.Mod, mod, 6, null)), "Seeded $mod", null,
+            ArchiveIdentity("/downloads/$id.zip", 1, "a".repeat(64)), number,
+            listOf(SetFile(VpkPart.Directory, FileImage(1, "a".repeat(64)))),
+        )
+        val records = listOf(seeded("first", 8, 8), seeded("past", 9, 108), seeded("further", 10, 109))
+        world.store.save(LibraryManifest(records = records))
+        records.forEach { world.files.putFile(root, it.files.single().relativePath(it), 1, "a".repeat(64)) }
+        val library = with(world) { library() }
+        advanceTimeBy(200.milliseconds)
+        assertEquals(ModLoading.Off(notLoading = 2, vanilla = false), library.state.value.loading, "addons loads, but the two in hideout_addons2 do not")
+        assertTrue((library.state.value.loading as ModLoading.Off).alerts)
+
+        assertNull(library.reapply())
+        assertEquals(SearchPathsCheck.Read(LoadingOwner.Hideout, customGames = false, overflow = 1), GameInfoPatch.check(world.files.gameInfo(root)!!))
+        assertEquals(ModLoading.Loads(LoadingOwner.Hideout), library.state.value.loading)
+    }
+
+    @Test
     fun playingVanillaRemovesHideoutsBlockAndReapplyPutsItBack() = runTest {
         val world = World()
         seededIntact(world)

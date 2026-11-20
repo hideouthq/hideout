@@ -738,7 +738,7 @@ internal class LibraryLedger(
 
     fun linesFor(root: GameRoot): HideoutLines = manifest.receipt(root)?.lines ?: HideoutLines(mods = true, customGames = false)
 
-    suspend fun ensureLoading(root: GameRoot): LibraryProblem? = writeBlock(root, linesFor(root).copy(mods = true))
+    suspend fun ensureLoading(root: GameRoot, overflow: Int = manifest.records.overflowIn(root)): LibraryProblem? = writeBlock(root, linesFor(root).copy(mods = true), overflow = overflow)
 
     /**
      * Writes Hideout's block as [lines] asks, mounting [overflow] loading folders past `addons`, with the mounts of
@@ -1203,7 +1203,9 @@ internal class LibraryLedger(
      * Gives the applied book [after], with the mods the user edited where their files are ([ProfileBook.holding]), and
      * places the records of [moves] as their targets have them: through one [PendingChange.Arrange] when a file changes
      * path, else in one save, as when nothing moves or only an off mod's sets change order. Refused with nothing touched
-     * when a game cannot be changed now or its preflight fails.
+     * when a game cannot be changed now or its preflight fails. Before the journal is saved, a game where a mod turns on
+     * loads mods, and Hideout's block mounts every loading folder a set lands in; a folder that empties stays mounted
+     * until the block is next written.
      */
     suspend fun arrange(moves: List<Move>, after: ProfileBook): ChangeOutcome {
         uncertainty?.let { return ChangeOutcome.Refused(LibraryProblem.Interrupted(it), it) }
@@ -1214,8 +1216,10 @@ internal class LibraryLedger(
         val anchoring = PendingChange.Arrange(ChangeToken(ids()), moves, applied, MoveStep.Anchoring)
         for (root in anchoring.gameRoots) fenced(root)?.let { return ChangeOutcome.Refused(LibraryProblem.Interrupted(it)) }
         arrangePreflight(anchoring)?.let { return ChangeOutcome.Refused(it) }
-        for (root in moves.filter { it.target.enabled && !it.source.enabled }.map { it.source.gameRoot }.distinct()) {
-            ensureLoading(root)?.let { return ChangeOutcome.Refused(it) }
+        for (root in anchoring.gameRoots) {
+            val (was, will) = manifest.records.overflowIn(root) to records.overflowIn(root)
+            val turnsOn = moves.any { it.source.gameRoot == root && it.target.enabled && !it.source.enabled }
+            if (turnsOn || linesFor(root).mods && will > was) ensureLoading(root, maxOf(was, will))?.let { return ChangeOutcome.Refused(it) }
         }
         save(manifest.copy(pending = anchoring)).refusal(pending = false)?.let { return it }
         return finishArrange(anchoring)
