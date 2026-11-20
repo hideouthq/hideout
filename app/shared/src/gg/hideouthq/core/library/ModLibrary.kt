@@ -209,7 +209,7 @@ sealed interface LibraryStatus {
         val damaged: Map<String, FilesDamage> = emptyMap(),
         /** installIds of records with an owned file that could not be read, so whether it is intact is unknown. */
         val unchecked: Set<String> = emptySet(),
-        /** installIds of [damaged] records whose changed files the game's backups still hold as recorded, which Restore original puts back with no download. */
+        /** installIds of [damaged] records whose damaged sets the game's backups still hold as recorded, which a reinstall puts back with no download. */
         val stored: Set<String> = emptySet(),
         /** Why an interrupted change is still waiting to be finished or undone; nothing else changes until it is. */
         val interrupted: String? = null,
@@ -233,7 +233,7 @@ enum class FilesDamage { Missing, Changed }
 
 /**
  * Where [ModLibrary.reinstall] gets a mod's original files: the same GameBanana file, the file the user installed it from,
- * or, for files the user edited, the game's backups, which still hold them.
+ * or the game's backups, which still hold them.
  */
 enum class ReinstallFrom { Source, File, Backups }
 
@@ -509,9 +509,9 @@ class ModLibrary(
 
     /**
      * Puts back the original files of installed mod [installId]'s sets whose files are missing or changed, as one change
-     * that keeps every other set, its numbers, memberships and on or off. A set whose files the user edited comes back
-     * from the game's backups while they still hold its recorded files ([LibraryStatus.Ready.stored]); any other from
-     * the kept download while it holds its recorded bytes, else from the same GameBanana file downloaded again, else,
+     * that keeps every other set, its numbers, memberships and on or off. A set comes back from the game's backups while
+     * they still hold its recorded files ([LibraryStatus.Ready.stored]), with nothing downloaded or asked for; any other
+     * from the kept download while it holds its recorded bytes, else from the same GameBanana file downloaded again, else,
      * for a local mod, from [file], once it is the very file the mod was installed from. What the user edited moves to
      * [CitadelPath.HideoutEdits] as the original takes its place. A mod that is on waits for Deadlock to close; one that
      * is off does not. Nothing starts for a mod with nowhere to get its files from.
@@ -2064,7 +2064,7 @@ class ModLibrary(
         val looked = attempt { underLock { ledger.look(record) } }.orElse { return OperationStage.Failed(LibraryProblem.Unexpected(it)) }
         val damaged = record.sets.filter { set -> record.filesOf(set).any { looked.files[it]?.damage != null } }
         if (damaged.isEmpty()) return null
-        val stored = underLock { damaged.filter { set -> storedLocked(record, set, looked) } }
+        val stored = underLock { damaged.filter { set -> storedLocked(record, set) } }
         val defaults = preferences.installDefaults()
         val folder = defaults.downloadFolder ?: ports.downloader.defaultFolder
         val retention = if (defaults.keepDownloads) DownloadRetention.Keep else DownloadRetention.DiscardAfterInstall
@@ -2877,14 +2877,14 @@ class ModLibrary(
         if (ledger.noteEdits(seen) == SaveResult.Saved && ledger.manifest.edited != edited) wake.trySend(Unit)
         return looked.entries.associate { (record, look) ->
             val damaged = record.sets.filter { set -> record.filesOf(set).any { look.files[it]?.damage != null } }
-            record.installId to Checked(look.check, look.check == FilesCheck.Changed && damaged.all { storedLocked(record, it, look) })
+            record.installId to Checked(look.check, look.check.damage != null && damaged.all { storedLocked(record, it) })
         }
     }
 
     private class Checked(val check: FilesCheck, val stored: Boolean)
 
-    private suspend fun storedLocked(record: ManifestRecord, set: InstalledSet, looked: Looked): Boolean =
-        record.filesOf(set).any { looked.files[it] == FilesCheck.Changed } && set.files.all { attempt { ports.backups.has(record.gameRoot, it.image) } == Attempt.Done(true) }
+    private suspend fun storedLocked(record: ManifestRecord, set: InstalledSet): Boolean =
+        set.files.all { attempt { ports.backups.has(record.gameRoot, it.image) } == Attempt.Done(true) }
 
     private class CheckEntry(val key: CheckKey, val result: CheckResult) {
         val evidence: Set<FileEvidence> get() = (result as? CheckResult.Checked)?.check?.basis?.evidence.orEmpty()

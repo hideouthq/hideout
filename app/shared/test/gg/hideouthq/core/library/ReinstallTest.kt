@@ -197,6 +197,45 @@ class ReinstallTest {
     }
 
     @Test
+    fun aMissingFileTheBackupsHoldComesBackFromThemBeforeAnythingIsDownloaded() = runTest {
+        val world = World()
+        val chunk = world.default(VpkPart.Chunk(0))
+        val original = world.identity(chunk)
+        with(world) { seen() }
+        world.damage(FilesDamage.Missing)
+        world.files.rewriteArchive(defaultArchive.path, FileImage(1_000, "f".repeat(64)))
+        val library = with(world) { library() }
+        assertEquals(mapOf("lilith" to FilesDamage.Missing), library.ready().damaged)
+        assertEquals(setOf("lilith"), library.ready().stored)
+
+        reinstall(library)
+        assertNull(library.state.value.operations[lilith.modId])
+        assertEquals(world.record, world.stored())
+        world.assertOriginals()
+        assertEquals(original, world.identity(chunk), "the file comes back as the very file the backups kept")
+        assertEquals(emptyList(), world.downloader.requested, "the kept download no longer holds it, and nothing is downloaded instead")
+        assertEquals(0, world.banana.calls)
+        assertEquals(emptyMap(), library.ready().damaged)
+    }
+
+    @Test
+    fun aLocalModWhoseMissingFileTheBackupsHoldComesBackWithoutItsFile() = runTest {
+        val skin = neighbour("skin", 5)
+        val world = World(others = listOf(skin))
+        val path = skin.files.single().relativePath(skin)
+        val original = world.files.identity(root, path)
+        with(world) { seen() }
+        world.files.remove(root, path)
+        val library = with(world) { library() }
+        assertEquals(setOf("skin"), library.ready().stored)
+
+        reinstall(library, "skin")
+        assertEquals(skin, world.manifest().records.single { it.installId == "skin" })
+        assertEquals(original, world.files.identity(root, path))
+        assertEquals(emptyMap(), library.ready().damaged)
+    }
+
+    @Test
     fun theOriginalOfAnEditedFileIsPutBackAndTheEditMovesToTheEditsFolderWithNothingLeftBeside() = runTest {
         val world = World()
         world.damage(FilesDamage.Changed)
