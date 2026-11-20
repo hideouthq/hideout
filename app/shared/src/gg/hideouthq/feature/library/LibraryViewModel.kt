@@ -576,7 +576,7 @@ class LibraryViewModel(
                 DownloadDetail(
                     name = set.label(labels),
                     archiveName = set.archiveName,
-                    number = record.numberOf(set)?.value,
+                    number = record.numberOf(set)?.pak?.value,
                     files = record.filesOf(set).map { OwnedFileSummary(it.name, it.sizeBytes) },
                     componentPath = set.componentKey,
                 )

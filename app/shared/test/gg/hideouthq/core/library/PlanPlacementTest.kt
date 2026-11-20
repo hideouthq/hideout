@@ -30,15 +30,18 @@ class PlanPlacementTest {
 
     private class Library(val records: List<ManifestRecord>, val profile: Profile, val taken: Set<Int>, val stuck: Set<String>)
 
-    private fun library(random: Random): Library {
-        val widths = List(random.nextInt(1, 45)) { List(random.nextInt(1, 4)) { random.nextInt(1, 4) } }
-        val edited = widths.indices.filter { random.nextInt(8) == 0 }.toSet()
+    /** Up to [mods] mods of one to three sets, some on within the first [folders] loading folders, some edited unless not [editing]. */
+    private fun library(random: Random, mods: Int = 45, folders: Int = 1, editing: Boolean = true): Library {
+        val top = folders * PakNumber.PerFolder
+        val widths = List(random.nextInt(1, mods)) { List(random.nextInt(1, 4)) { random.nextInt(1, 4) } }
+        val edited = if (editing) widths.indices.filter { random.nextInt(8) == 0 }.toSet() else emptySet()
         val placements = arrayOfNulls<Placement>(widths.size)
         var next = 1
         for (index in widths.indices.shuffled(random)) {
             if (random.nextInt(3) == 0) continue
             val first = next + random.nextInt(0, 3)
-            if (first + widths[index].size - 1 > 99) continue
+            val last = first + widths[index].size - 1
+            if (last > top || Slot(first).folder != Slot(last).folder) continue
             placements[index] = on(first)
             next = first + widths[index].size
         }
@@ -48,10 +51,12 @@ class PlanPlacementTest {
         return Library(
             records,
             profile(ids.filterTo(HashSet()) { random.nextInt(10) < 7 }, order),
-            (1..99).filterTo(HashSet()) { random.nextInt(12) == 0 },
+            (1..top).filterTo(HashSet()) { random.nextInt(12) == 0 },
             ids.filterTo(HashSet()) { random.nextInt(8) == 0 },
         )
     }
+
+    private fun firsts(records: List<ManifestRecord>) = records.associate { it.installId to it.numbers.firstOrNull()?.value }
 
     @Test
     fun anEntryTakesItsSlotInWhicheverLoadingFolderItSitsAndOnlyHideoutsOwnPathIsExempt() {
@@ -77,6 +82,59 @@ class PlanPlacementTest {
             assertEquals(emptySet(), planned.pastLimit, "trial $trial")
         }
         assertTrue(fitting > 300, "only $fitting of the libraries fit in 99")
+    }
+
+    @Test
+    fun aHundredAndFiftySetOrderFillsAddonsAndRunsOnInTheNextFolder() {
+        val records = (1..150).map { mod(it, listOf(1)) }
+        val order = records.map { it.installId }
+        val planned = planPlacement(records, profile(order.toSet(), order), emptySet())
+        assertEquals(emptySet(), planned.pastLimit)
+        assertEquals(order.zip(1..150).toMap(), firsts(planned.records))
+        assertEquals(List(99) { SetFolder.Addons } + List(51) { SetFolder.On(2) }, planned.records.map { it.setFolder() })
+        assertEquals("game/citadel/hideout_addons2/pak51_dir.vpk", planned.records.last().let { it.files.single().relativePath(it) })
+    }
+
+    @Test
+    fun aModTurnedOnBelowNinetyNineSetsTakesTheNextFolderAndRenamesNothingElse() {
+        val records = (1..99).map { mod(it, listOf(1), on(it)) } + mod(100, listOf(2))
+        val order = records.map { it.installId }
+        val planned = planPlacement(records, profile(order.toSet(), order), emptySet())
+        assertEquals(listOf(Move(records.last(), records.last().placed(on(100)))), movesBetween(records, planned.records))
+    }
+
+    @Test
+    fun aLibraryPastAddonsThatShrinksToNinetyNineSetsRenamesNothing() {
+        val records = (1..100).map { mod(it, listOf(1), on(it)) }
+        val order = records.map { it.installId }
+        val planned = planPlacement(records, profile(order.toSet() - "m50", order), emptySet())
+        assertEquals(listOf(Move(records[49], records[49].placed(Placement.Off))), movesBetween(records, planned.records), "m100 stays in hideout_addons2 rather than fifty sets renaming down")
+    }
+
+    @Test
+    fun aModWithMoreSetsThanAFolderHoldsStaysOffAndTheModsBelowItLoad() {
+        val records = listOf(mod(1, List(100) { 1 })) + (2..3).map { mod(it, listOf(1)) }
+        val order = records.map { it.installId }
+        val planned = planPlacement(records, profile(order.toSet(), order), emptySet())
+        assertEquals(setOf("m1"), planned.pastLimit)
+        assertEquals(mapOf("m1" to null, "m2" to 1, "m3" to 2), firsts(planned.records))
+    }
+
+    @Test
+    fun everyModALibraryPastAddonsTurnsOnLoadsInItsOrderAndPlanningAgainMovesNothing() {
+        val random = Random(20261121)
+        var past = 0
+        repeat(150) { trial ->
+            val library = library(random, mods = 120, folders = 4, editing = false)
+            val taken = numbers(library.taken)
+            val planned = planPlacement(library.records, library.profile, taken, stuck = library.stuck)
+            assertEquals(emptySet(), planned.pastLimit, "trial $trial")
+            assertEquals(library.profile.onOrder(root), onLoadOrder(planned.records), "trial $trial")
+            assertTrue(planned.records.flatMap { it.numbers }.none { it in taken }, "trial $trial")
+            assertEquals(planned.records, planPlacement(planned.records, library.profile, taken, stuck = library.stuck).records, "trial $trial")
+            if (planned.records.any { record -> record.numbers.any { it.folder != SetFolder.Addons } }) past++
+        }
+        assertTrue(past > 50, "only $past of the libraries ran past addons")
     }
 
     /** The planner as it was before Hideout loaded sets past `addons`, over plain numbers. Not to be changed with the planner. */

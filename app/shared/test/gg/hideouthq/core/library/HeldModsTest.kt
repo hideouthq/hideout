@@ -37,13 +37,22 @@ class HeldModsTest {
     }
 
     @Test
-    fun theTopOfTheOrderFitsAroundAnEditedModAndTheRestIsPastTheLimit() {
+    fun theOrderRunsOnPastAnEditedModIntoTheNextFolder() {
         val many = (1..99).map { mod("m$it", null) }
         val records = many + mod("h", 50, edited = true)
         val order = many.take(49).map { it.installId } + "h" + many.drop(49).map { it.installId }
         val planned = planPlacement(records, profile(order.toSet(), order), emptySet())
-        assertEquals(setOf("m99"), planned.pastLimit, "the edited mod keeps its number, so 98 others fit")
-        assertEquals((1..49).associate { "m$it" to it } + ("h" to 50) + (50..98).associate { "m$it" to it + 1 } + ("m99" to null), numbers(planned))
+        assertEquals(emptySet(), planned.pastLimit)
+        assertEquals((1..49).associate { "m$it" to it } + ("h" to 50) + (50..99).associate { "m$it" to it + 1 }, numbers(planned), "the edited mod keeps its number and m99 takes the first of hideout_addons2")
+    }
+
+    @Test
+    fun modsThatFitAroundAnEditedModInAddonsStayThereRatherThanOpenTheNextFolder() {
+        val after = (1..20).map { mod("m$it", null) }
+        val records = listOf(mod("h", 90, edited = true)) + after
+        val order = records.map { it.installId }
+        val planned = planPlacement(records, profile(order.toSet(), order), emptySet())
+        assertEquals(mapOf("h" to 90) + (1..20).associate { "m$it" to it }, numbers(planned), "nine numbers follow 90, so the twenty go around it as they always have")
     }
 
     @Test

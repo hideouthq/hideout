@@ -191,12 +191,17 @@ class ModLibraryReorderTest {
                     assertContentEquals(spec.bytes(set, suffix), files.bytes(root, path), path)
                 }
             }
-            val ours = placed.filter { it.enabled }.flatMap { record -> record.files.map { it.name } }
-            assertEquals(strangers.keys + ours, files.addonsFiles(root).keys)
+            for (folder in SetFolder.Loading) {
+                val ours = placed.filter { it.setFolder() == folder }.flatMap { record -> record.files.map { it.name } }
+                assertEquals((if (folder == SetFolder.Addons) strangers.keys else emptySet()) + ours, files.filesIn(root, folder).keys, folder.path)
+            }
             strangers.forEach { (name, identity) -> assertEquals(identity, files.identity(root, "$addons/$name"), "$name is the same file") }
             assertEquals(elsewhereIdentity, files.identity(other, "$addons/pak03_dir.vpk"), "the other game is untouched")
-            assertContentEquals(gameInfo, files.gameInfo(root), "gameinfo.gi is untouched")
+            val past = placed.overflowIn(root)
+            if (past == 0) assertContentEquals(gameInfo, files.gameInfo(root), "gameinfo.gi is untouched") else assertEquals(past, overflow(), "the block mounts every loading folder a set is in")
         }
+
+        fun overflow() = assertIs<SearchPathsCheck.Read>(GameInfoPatch.check(checkNotNull(files.gameInfo(root)))).overflow
     }
 
     private fun ModLibrary.ready(): LibraryStatus.Ready = assertIs<LibraryStatus.Ready>(state.value.library)
@@ -425,73 +430,69 @@ class ModLibraryReorderTest {
     }
 
     @Test
-    fun aSwitchWithRoomForPartOfItsOrderPlacesTheTopAndLeavesTheRestPastTheLimit() = runTest {
+    fun aSwitchWithNoRoomLeftInAddonsLoadsTheRestOfItsOrderFromTheNextFolder() = runTest {
         val crowd = (4..99).associate { name(it, "dir") to ByteArray(4) }
         val world = World(HideoutGameInfo, switching, foreign = strangeFiles + crowd, book = ::rankedBook)
         val library = with(world) { library() }
         assertIs<MutationResult.Done<SwitchSummary>>(library.switchProfile(ranked))
         runCurrent()
-        assertEquals(ChoiceSync.Settled, library.state.value.choiceSync, "c's two sets take 02 and 03, and a has nowhere left")
-        world.assertWhole(mapOf("a" to null, "b" to null, "c" to 2))
-        assertEquals(setOf("a"), library.state.value.pastLimit)
-        assertEquals(ranked, world.manifest().savedChoices?.target?.active, "the switch stays saved with a on")
-        assertTrue("a" in world.manifest().savedChoices?.target?.activeProfile?.enabled.orEmpty())
+        assertEquals(ChoiceSync.Settled, library.state.value.choiceSync, "c's two sets take 02 and 03, and a goes on in hideout_addons2")
+        world.assertWhole(mapOf("a" to 100, "b" to null, "c" to 2))
+        assertEquals(emptySet(), library.state.value.pastLimit)
     }
 
     @Test
-    fun aHundredthSetTurnedOnStaysOutUntilAnotherIsTurnedOffOrItMovesUp() = runTest {
+    fun aHundredthSetTurnedOnLoadsFromTheNextFolderAndTurningAnotherOffMovesNothingBack() = runTest {
         val many = (1..99).map { Spec("m$it", 100L + it, it, listOf("dir")) } + Spec("x", 500, null, listOf("dir"))
         val world = World(HideoutGameInfo, many, foreign = emptyMap())
         val library = with(world) { library() }
         library.setEnabled("x", true)
         runCurrent()
-        assertEquals(ChoiceSync.Settled, library.state.value.choiceSync, "nothing is refused, so Play is never held")
-        assertEquals(setOf("x"), library.state.value.pastLimit)
-        assertEquals(0, world.store.arranges())
-        world.assertWhole(many.associate { it.id to it.number })
+        assertEquals(ChoiceSync.Settled, library.state.value.choiceSync)
+        assertEquals(emptySet(), library.state.value.pastLimit)
+        assertEquals(1, world.store.arranges())
+        world.assertWhole(many.associate { it.id to it.number } + ("x" to 100))
 
         val view = assertNotNull(library.state.value.orderView)
         library.reorder(view, listOf("x") + view.sets.filter { it != "x" })
         runCurrent()
         assertEquals(ChoiceSync.Settled, library.state.value.choiceSync)
-        assertEquals(setOf("m99"), library.state.value.pastLimit, "the top wins, so the last one goes out")
-        assertEquals(null, world.placement()["m99"])
-        assertEquals(1, world.store.arranges())
+        val shifted = (1..99).associate { "m$it" to it + 1 } + ("x" to 1)
+        world.assertWhole(shifted)
+        assertEquals(2, world.store.arranges())
 
         library.setEnabled("m98", false)
         runCurrent()
         assertEquals(ChoiceSync.Settled, library.state.value.choiceSync)
-        assertEquals(emptySet(), library.state.value.pastLimit)
-        assertEquals(2, world.store.arranges())
-        assertEquals(null, world.placement()["m98"])
-        assertNotNull(world.placement()["m99"], "turning one off lets the next one in without a retry")
+        world.assertWhole(shifted + ("m98" to null))
+        assertEquals(3, world.store.arranges(), "m99 stays in hideout_addons2 and no other set renames")
     }
+
+    private val tooWide = Spec("w", 500, null, listOf("dir"), sets = 100)
 
     @Test
     fun aRestartPlansAgainAndFindsTheSameModsPastTheLimitWithoutMovingAFile() = runTest {
-        val many = (1..99).map { Spec("m$it", 100L + it, it, listOf("dir")) } + Spec("x", 500, null, listOf("dir"))
-        val world = World(HideoutGameInfo, many, foreign = emptyMap())
-        with(world) { library() }.setEnabled("x", true)
+        val world = World(HideoutGameInfo, specs + tooWide, foreign = emptyMap())
+        with(world) { library() }.setEnabled("w", true)
         runCurrent()
         val again = with(world) { library() }
         runCurrent()
         assertEquals(ChoiceSync.Settled, again.state.value.choiceSync)
-        assertEquals(setOf("x"), again.state.value.pastLimit)
+        assertEquals(setOf("w"), again.state.value.pastLimit, "no folder holds a hundred sets")
         assertEquals(0, world.store.arranges())
     }
 
     @Test
     fun aRestartWhileDeadlockRunsSaysNothingWaitsWhenOnlyModsPastTheLimitDiffer() = runTest {
-        val many = (1..99).map { Spec("m$it", 100L + it, it, listOf("dir")) } + Spec("x", 500, null, listOf("dir"))
-        val world = World(HideoutGameInfo, many, foreign = emptyMap())
-        with(world) { library() }.setEnabled("x", true)
+        val world = World(HideoutGameInfo, specs + tooWide, foreign = emptyMap())
+        with(world) { library() }.setEnabled("w", true)
         runCurrent()
         world.processes.scan = ProcessScan.Seen(game = true)
         val again = with(world) { library() }
         runCurrent()
         assertEquals(GameActivity.Running, again.state.value.deadlock)
         assertEquals(ChoiceSync.Settled, again.state.value.choiceSync)
-        assertEquals(setOf("x"), again.state.value.pastLimit)
+        assertEquals(setOf("w"), again.state.value.pastLimit)
         assertEquals(0, world.store.arranges())
     }
 

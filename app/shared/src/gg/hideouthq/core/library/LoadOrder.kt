@@ -30,17 +30,21 @@ internal class Block(val held: List<Slot?>, val files: List<Int>, val width: Int
 }
 
 /**
- * Each of [blocks]' first numbers, in order: every block's numbers consecutive, each block ending before the next one
- * starts, none of them in [taken], and a [Block.fixed] one at the numbers it holds. Of the plans that fit, the one that
- * renames the fewest files, then the one with the lowest numbers; null when none fits. A set costs nothing where it
- * lands on the number it holds, else its files, or more than every other file together when its block is stuck, so a
- * stuck block moves only when no plan leaves it.
+ * Each of [blocks]' first numbers, in order, in the first [folders] loading folders: every block's numbers consecutive
+ * in one folder, each block ending before the next one starts, none of them in [taken], and a [Block.fixed] one at the
+ * numbers it holds. Of the plans that fit, the one that renames the fewest files, then the one with the lowest numbers;
+ * null when none fits. A set costs nothing where it lands on the number it holds, else its files, or more than every
+ * other file together when its block is stuck, so a stuck block moves only when no plan leaves it.
  */
-internal fun planNumbers(blocks: List<Block>, taken: Set<Slot>): List<Slot>? {
+internal fun planNumbers(blocks: List<Block>, taken: Set<Slot>, folders: Int): List<Slot>? {
     if (blocks.isEmpty()) return emptyList()
-    val top = PakNumber.PerFolder
+    val top = folders * PakNumber.PerFolder
     val free = IntArray(top + 2)
-    for (first in top downTo 1) free[first] = if (Slot(first) in taken) 0 else free[first + 1] + 1
+    for (first in top downTo 1) free[first] = when {
+        Slot(first) in taken -> 0
+        Slot(first).pak.value == PakNumber.PerFolder -> 1
+        else -> free[first + 1] + 1
+    }
 
     fun own(block: Block, first: Int): Long? {
         if (free[first] < block.width || block.fixed && block.held.first()?.value != first) return null
@@ -84,12 +88,12 @@ internal data class Planned(val records: List<ManifestRecord>, val pastLimit: Se
 
 /**
  * One game's [records] as [profile] wants them: as many of the mods it turns on as fit, from the top of its order, since
- * the top wins, placed on in that order at the numbers [planNumbers] gives against the files as [now] holds them and
- * around [taken]; every other one off. The ones turned on that do not fit, more than one folder mounts or not around
- * [taken], are [Planned.pastLimit]. A set on now with its bytes keeps its number unless that costs more renames, and a
- * mod in [stuck], by install id, moves only when no plan can leave it where it is. A mod the user edited stays exactly
- * as it is, on or off: the rest are numbered in their order around it where it is, else, when that cannot be, around it
- * wherever it falls among them. Pure.
+ * the top wins, placed on in that order at the numbers [placeAround] gives against the files as [now] holds them and
+ * around [taken]; every other one off. The ones turned on that do not fit, more than every loading folder holds or not
+ * around [taken], or with more sets than one folder holds, are [Planned.pastLimit]. A set on now with its bytes keeps
+ * its number unless that costs more renames, and a mod in [stuck], by install id, moves only when no plan can leave it
+ * where it is. A mod the user edited stays exactly as it is, on or off: the rest are numbered in their order around it
+ * where it is, else, when that cannot be, around it wherever it falls among them. Pure.
  */
 internal fun planPlacement(records: List<ManifestRecord>, profile: Profile, taken: Set<Slot>, now: List<ManifestRecord> = records, stuck: Set<String> = emptySet()): Planned {
     val root = records.firstOrNull()?.gameRoot ?: return Planned(emptyList())
@@ -99,9 +103,9 @@ internal fun planPlacement(records: List<ManifestRecord>, profile: Profile, take
     val held = now.filter { it.gameRoot == root }.flatMap { record ->
         record.sets.mapNotNull { set -> record.numberOf(set)?.let { number -> (record.installId to set.key) to (number to set.files) } }
     }.toMap()
-    val inOrder = wanted.filter { !it.edited || it.enabled }
+    val (inOrder, tooWide) = wanted.filter { !it.edited || it.enabled }.partition { it.sets.size <= PakNumber.PerFolder }
     val around = edited - inOrder.toSet()
-    val room = PakNumber.PerFolder - edited.sumOf { it.numbers.size }
+    val room = Slot.All.last - edited.sumOf { it.numbers.size }
     var width = 0
     val most = inOrder.indexOfFirst { record -> !record.edited && (width + record.sets.size).also { width = it } > room }.takeIf { it >= 0 } ?: inOrder.size
     val (kept, placed) = (most downTo 0).firstNotNullOf { fits ->
@@ -112,21 +116,24 @@ internal fun planPlacement(records: List<ManifestRecord>, profile: Profile, take
     }
     return Planned(
         records.map { placed[it.installId] ?: if (it.edited) it else it.placed(Placement.Off) },
-        (inOrder - kept.toSet()).mapTo(LinkedHashSet()) { it.installId },
+        (inOrder - kept.toSet() + tooWide).mapTo(LinkedHashSet()) { it.installId },
     )
 }
 
 /**
  * [on] placed on in their order at the numbers [planNumbers] gives each one's [block], around [taken] and the numbers
  * [around] holds: its [Block.fixed] ones where they are, else, when that cannot be, the rest around them; null when
- * neither fits.
+ * neither fits in any number of loading folders. It plans within the folders the blocks hold numbers in, `addons` at
+ * least, and opens the next one only when neither fits there. So a library that fits in `addons` is planned in `addons`
+ * alone, and one that shrinks keeps its folders rather than renaming its sets back.
  */
 internal fun placeAround(on: List<ManifestRecord>, around: List<ManifestRecord>, taken: Set<Slot>, block: (ManifestRecord) -> Block): List<ManifestRecord>? {
     val blocks = on.associateWith(block)
-    fun place(on: List<ManifestRecord>, around: List<ManifestRecord>) = planNumbers(on.map(blocks::getValue), taken + around.flatMap { it.numbers })
+    fun place(on: List<ManifestRecord>, around: List<ManifestRecord>, folders: Int) = planNumbers(on.map(blocks::getValue), taken + around.flatMap { it.numbers }, folders)
         ?.let { firsts -> on.zip(firsts).map { (record, first) -> record.placed(Placement.On(first)) } }
     val fixed = on.filter { blocks.getValue(it).fixed }
-    return place(on, around) ?: place(on - fixed.toSet(), around + fixed)
+    val floor = blocks.values.flatMap { it.held }.filterNotNull().maxOfOrNull { it.folder.index } ?: 1
+    return (floor..SetFolder.Loading.size).firstNotNullOfOrNull { folders -> place(on, around, folders) ?: place(on - fixed.toSet(), around + fixed, folders) }
 }
 
 /** A move for each of [wanted] that its record in [now], by install id, is not. */

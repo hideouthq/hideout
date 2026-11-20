@@ -35,6 +35,7 @@ import gg.hideouthq.core.library.NewProfile
 import gg.hideouthq.core.library.OperationStage
 import gg.hideouthq.core.library.OwnedDownload
 import gg.hideouthq.core.library.Placement
+import gg.hideouthq.core.library.Slot
 import gg.hideouthq.core.library.ProfileBook
 import gg.hideouthq.core.library.ProfileColour
 import gg.hideouthq.core.library.ProfileId
@@ -277,6 +278,18 @@ class InstalledActionsTest {
         screen.installed.showFiles("set2")
         runCurrent()
         assertEquals(listOf(root to SetFolder.Addons, root to SetFolder.Off(SubmissionRef(SubmissionKind.Mod, 102))), screen.opened)
+    }
+
+    @Test
+    fun aModPastAddonsShowsItsNumberInTheFolderItIsIn() = screen(listOf(record(1, enabled = true), record(3, enabled = true).placed(Placement.On(Slot(102))))) { screen ->
+        screen.installed.select("set3")
+        runCurrent()
+        val detail = assertNotNull(screen.ui.selected)
+        assertEquals(listOf(3), detail.downloads.map { it.number }, "pak03 of hideout_addons2")
+        assertTrue(detail.folderPath.endsWith("hideout_addons2"), detail.folderPath)
+        screen.installed.showFiles("set3")
+        runCurrent()
+        assertEquals<List<Pair<GameRoot, SetFolder>>>(listOf(root to SetFolder.On(2)), screen.opened)
     }
 
     @Test
