@@ -31,8 +31,7 @@ object DragReorder {
         if (rowStridePx <= 0f) return preview
         val accumulated = preview.accumulatedPx + deltaY
         val shift = (accumulated / rowStridePx).roundToInt()
-        val targetIndex = (preview.startIndex + shift).coerceIn(0, preview.visible.lastIndex)
-        return preview.copy(order = place(preview.basis, preview.visible, draggingId, targetIndex), accumulatedPx = accumulated)
+        return preview.copy(order = place(preview.basis, preview.visible, draggingId, preview.startIndex + shift), accumulatedPx = accumulated)
     }
 
     /**

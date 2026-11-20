@@ -48,7 +48,7 @@
         <item quantity="other">Turned off %1$d mods in %2$s</item>
     </plurals>
     <string name="profile_undo">Undo</string>
-    <string name="install_link_not_a_mod">That GameBanana link isn’t for a mod or a sound, so there’s nothing for Hideout to install.</string>
+    <string name="install_link_not_a_mod">That GameBanana link isn’t for a mod or a sound.</string>
     <string name="install_link_unreadable">Hideout couldn’t read that link. Try the mod’s 1-click install button again.</string>
     <string name="mod_lines_back">Mods back on</string>
     <string name="mod_lines_waiting">Mods off for this game</string>

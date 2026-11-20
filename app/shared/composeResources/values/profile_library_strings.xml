@@ -27,7 +27,7 @@
     <string name="library_scope_all">All mods</string>
     <string name="library_scope_profile">In %1$s</string>
     <string name="library_scope_empty_title">Nothing’s on in %1$s</string>
-    <string name="library_scope_empty_message">Mods you turn on in this profile show here. Pick some from all your mods.</string>
+    <string name="library_scope_empty_message">Mods you turn on in this profile show here.</string>
     <string name="library_scope_show_all">Show all mods</string>
     <string name="library_finding">Finding on GameBanana…</string>
     <plurals name="library_importing_mods">

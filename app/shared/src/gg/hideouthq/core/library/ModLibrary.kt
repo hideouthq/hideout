@@ -2479,7 +2479,7 @@ class ModLibrary(
     private suspend fun withCopies(root: GameRoot, entries: List<OnEntry>, sets: List<Leftover>): List<Leftover> {
         val records = ledger.manifest.records.filter { it.gameRoot == root }
         val stamps = entries.associate { it.relativePath to it.entry.stamp }
-        val known = leftoverImages.value
+        val known = leftoverImages
         val read = HashMap<Pair<String, FileStamp>, FileImage>()
         return sets.map { set ->
             set.copy(copyOf = copyOf(set, records) { path ->
@@ -2488,10 +2488,11 @@ class ModLibrary(
                 val image = known[key] ?: ((attempt { inventory.file(root, gamePath) } as? Attempt.Done)?.value as? FileObservation.Present)?.let { FileImage(it.sizeBytes, it.sha256) }
                 image?.also { read[key] = it }
             }?.installId)
-        }.also { leftoverImages.value = read }
+        }.also { leftoverImages = read }
     }
 
-    private val leftoverImages = MutableStateFlow<Map<Pair<String, FileStamp>, FileImage>>(emptyMap())
+    @Volatile
+    private var leftoverImages: Map<Pair<String, FileStamp>, FileImage> = emptyMap()
 
     private fun stuck(): Set<String> = (state.value.library as? LibraryStatus.Ready)?.let { it.damaged.keys + it.unchecked }.orEmpty()
 
