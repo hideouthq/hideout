@@ -45,6 +45,7 @@ import gg.hideouthq.core.ui.ModLabels
 import gg.hideouthq.core.ui.transition.staggeredEnter
 import gg.hideouthq.core.ui.catalog.CardTransition.title
 import gg.hideouthq.feature.moddetail.ModHeader
+import gg.hideouthq.feature.moddetail.Need
 import gg.hideouthq.core.designsystem.component.AuthorStack
 import gg.hideouthq.core.designsystem.component.AvatarFill
 import gg.hideouthq.core.designsystem.component.ShapedAvatar
@@ -62,6 +63,10 @@ internal fun DetailSidePanel(
     sizeBytes: Long?,
     installedFiles: Set<Long>,
     checked: Boolean,
+    needs: List<Need>,
+    canInstall: Boolean,
+    onOpenNeed: (Need) -> Unit,
+    onInstallNeed: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var changelog by remember(header.modId) { mutableStateOf(false) }
@@ -83,7 +88,9 @@ internal fun DetailSidePanel(
             if (open) {
                 Changelog(updates, detail?.updatesUrl, installedFiles, onBack = { changelog = false }, Modifier.fillMaxSize())
             } else {
-                PanelBody(header, detail, sizeBytes, checked, onWhatsNew = { changelog = true }, Modifier.fillMaxSize())
+                PanelBody(header, detail, sizeBytes, checked, onWhatsNew = { changelog = true }, Modifier.fillMaxSize()) {
+                    if (needs.isNotEmpty()) Needs(needs, canInstall, onOpenNeed, onInstallNeed, Modifier.staggeredEnter(4))
+                }
             }
         }
     }
@@ -130,6 +137,7 @@ private fun PanelBody(
     checked: Boolean,
     onWhatsNew: () -> Unit,
     modifier: Modifier,
+    extra: @Composable () -> Unit,
 ) {
     ScrollColumn(
         modifier = modifier.fillMaxSize(),
@@ -147,6 +155,7 @@ private fun PanelBody(
         val latest = detail?.updates?.firstOrNull()
         DetailsBlock(header, detail?.version, versionShown = latest?.version != null, sizeBytes, Modifier.staggeredEnter(4))
         latest?.let { WhatsNewRow(it, onWhatsNew, Modifier.staggeredEnter(4)) }
+        extra()
     }
 }
 

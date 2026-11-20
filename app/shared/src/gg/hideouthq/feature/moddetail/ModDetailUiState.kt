@@ -28,6 +28,8 @@ data class ModDetailUiState(
     /** Why [detail] is missing, once loading it has failed. */
     val detailError: DataError? = null,
     val installation: PageInstallation = PageInstallation(),
+    /** What the mod page says the mod needs; empty when it says nothing or has not loaded. */
+    val needs: List<Need> = emptyList(),
     val viewer: ViewerState = ViewerState(),
     /** The preview and player, for a sound mod; null for anything else. */
     val sound: SoundStageState? = null,

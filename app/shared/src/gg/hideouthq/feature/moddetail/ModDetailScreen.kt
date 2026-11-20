@@ -72,6 +72,10 @@ interface ModDetailActions : StageActions, SoundStageActions {
     fun showFiles() = Unit
     fun uninstall() = Unit
     fun openSource() = Unit
+    /** Opens what the mod needs: a listed mod's page in Hideout, or the page its author linked in the browser. */
+    fun openNeed(need: Need) = Unit
+    /** Installs [modId], a mod this one needs, into the active profile. */
+    fun installNeed(modId: String) = Unit
     fun retryDetail()
     /** Opens the installed mod's compatibility details. */
     fun openCompat() = Unit
@@ -119,7 +123,10 @@ fun ModDetailScreen(state: ModDetailUiState, actions: ModDetailActions, modal: W
         sidePanel = {
             if (header != null) {
                 Column(Modifier.fillMaxSize()) {
-                    DetailSidePanel(header, state.detail, state.installSizeBytes, state.installation.installedFileIds.toSet(), state.installation.compatStatus != null, Modifier.weight(1f))
+                    DetailSidePanel(
+                        header, state.detail, state.installSizeBytes, state.installation.installedFileIds.toSet(), state.installation.compatStatus != null,
+                        state.needs, state.installation.canInstall, actions::openNeed, actions::installNeed, Modifier.weight(1f),
+                    )
                     InstallBar(state, actions, Modifier.installBar())
                 }
             }

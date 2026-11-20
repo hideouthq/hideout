@@ -440,6 +440,11 @@
     <string name="detail_missing_title">This mod is not in the catalogue</string>
     <string name="detail_missing_message">It may have been removed from the mod page.</string>
     <string name="detail_failed">The mod page couldn’t be loaded.</string>
+    <string name="detail_needs">Needs</string>
+    <string name="need_on">Installed and on</string>
+    <string name="need_off">Installed, off in this profile</string>
+    <string name="need_not_installed">Not installed</string>
+    <string name="need_install_named">Install %1$s</string>
     <string name="carousel_previous">Previous image</string>
     <string name="carousel_next">Next image</string>
     <string name="lightbox_close">Close</string>

@@ -20,6 +20,7 @@ internal object ModDetailMapper {
         sourceUrl = profile.profileUrl,
         updates = updates.map(::toUpdate),
         updatesUrl = "https://gamebanana.com/${profile.key.kind.apiName.lowercase()}s/updates/${profile.key.id}".takeIf { updates.isNotEmpty() },
+        requirements = profile.requirements,
     )
 
     private fun toUpdate(update: SubmissionUpdate): ModUpdate = ModUpdate(

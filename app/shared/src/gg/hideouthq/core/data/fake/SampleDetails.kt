@@ -10,6 +10,7 @@ import gg.hideouthq.core.model.Mod
 import gg.hideouthq.core.model.ModCategory
 import gg.hideouthq.core.model.ModDetail
 import gg.hideouthq.core.model.ModUpdate
+import gg.hideouthq.core.model.Requirement
 
 internal object SampleDetails {
     private const val DefaultImageCount = 4
@@ -41,6 +42,12 @@ internal object SampleDetails {
             ModUpdate("First release", "1.0", CalendarDate(2026, 10, 2), listOf(ChangeLine(ChangeKindTag.Added, "Full Lilith remodel, intro animation, UI images and particles."))),
         ),
         updatesUrl = "https://gamebanana.com/mods/updates/723081",
+        requirements = listOf(
+            Requirement("Night of the Werecat", "https://gamebanana.com/mods/551202", "werecat"),
+            Requirement("Compact item shop", "https://gamebanana.com/mods/551230", "compact-shop"),
+            Requirement("Lilith voice lines", "https://modding.example/lilith-voice"),
+            Requirement("Shader cache cleared after installing"),
+        ),
     )
 
     fun detailFor(mod: Mod, heroName: String?): ModDetail = if (mod.id == lilith.modId) lilith else ModDetail(

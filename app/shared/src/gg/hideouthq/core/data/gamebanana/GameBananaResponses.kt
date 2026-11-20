@@ -3,6 +3,7 @@ package gg.hideouthq.core.data.gamebanana
 import gg.hideouthq.core.data.DataError
 import gg.hideouthq.core.library.SubmissionKind
 import gg.hideouthq.core.library.SubmissionRef
+import gg.hideouthq.core.model.Requirement
 import gg.hideouthq.core.network.LenientJson
 import gg.hideouthq.core.network.RemoteException
 import gg.hideouthq.core.network.asBooleanOrNull
@@ -142,8 +143,27 @@ internal fun parseProfile(text: String, key: SubmissionRef): SubmissionProfile {
         credits = dto.credits.asList().mapNotNull { it.asObjectOrNull()?.toCreditGroup() },
         images = images(dto.previewMedia),
         hasUpdates = dto.hasUpdates.asBooleanOrNull() == true,
+        requirements = requirements(dto.requirements),
     )
 }
+
+/**
+ * Each entry is a list whose first item is a name and whose second is a link; how many items follow depends on the
+ * endpoint. A link that is not a web address counts as none, and an entry with neither is left out.
+ */
+private fun requirements(field: JsonElement?): List<Requirement> = field.asList().mapNotNull { entry ->
+    val items = entry.asList()
+    val url = items.getOrNull(1).asStringOrNull()?.trim()?.takeIf { WebAddress.matches(it) }
+    val name = items.getOrNull(0).asStringOrNull()?.trim()?.takeIf { it.isNotEmpty() } ?: url ?: return@mapNotNull null
+    Requirement(name, url, url?.let(GameBananaPage::matchEntire)?.let { match ->
+        val kind = if (match.groupValues[1].equals("sounds", ignoreCase = true)) SubmissionKind.Sound else SubmissionKind.Mod
+        SubmissionRef(kind, match.groupValues[2].toLong()).modId
+    })
+}
+
+private val WebAddress = Regex("""https?://\S+""", RegexOption.IGNORE_CASE)
+
+private val GameBananaPage = Regex("""https?://(?:www\.)?gamebanana\.com/(mods|sounds)/([1-9][0-9]{0,17})(?:[/?#]\S*)?""", RegexOption.IGNORE_CASE)
 
 internal fun parseUpdates(text: String): List<SubmissionUpdate> =
     decodeLenient(UpdatesDto.serializer(), text).records.mapNotNull { record ->
@@ -246,6 +266,7 @@ private class ProfileDto(
     @SerialName("_aCredits") val credits: JsonElement? = null,
     @SerialName("_aPreviewMedia") val previewMedia: JsonElement? = null,
     @SerialName("_bHasUpdates") val hasUpdates: JsonElement? = null,
+    @SerialName("_aRequirements") val requirements: JsonElement? = null,
 )
 
 /** Credit authors come as bare names with a role, or as GameBanana members (who may have none). */

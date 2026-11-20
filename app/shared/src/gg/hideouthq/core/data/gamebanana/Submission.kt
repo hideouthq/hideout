@@ -2,6 +2,7 @@ package gg.hideouthq.core.data.gamebanana
 
 import gg.hideouthq.core.library.SubmissionKind
 import gg.hideouthq.core.library.SubmissionRef
+import gg.hideouthq.core.model.Requirement
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -98,6 +99,7 @@ internal data class SubmissionProfile(
     val credits: List<CreditGroup>,
     val images: List<SubmissionImage>,
     val hasUpdates: Boolean = false,
+    val requirements: List<Requirement> = emptyList(),
 )
 
 internal data class SubmissionUpdate(

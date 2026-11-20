@@ -41,6 +41,7 @@ fun ModDetailRoute(
     modal: WindowModal,
     onShowLibrary: () -> Unit,
     onBrowseCategory: (ModCategory) -> Unit,
+    onOpenMod: (String) -> Unit,
     preferences: Preferences? = null,
     files: ViewerFiles = ViewerFiles.Unavailable,
 ) {
@@ -55,10 +56,15 @@ fun ModDetailRoute(
     var compat by remember(modId) { mutableStateOf(false) }
     val pickTitle = stringResource(Res.string.scene_pick_image)
     val saveTitle = stringResource(Res.string.save_image_title)
-    val actions = remember(viewModel, onBrowseCategory, onShowLibrary, uriHandler, folders, files, modal, pickTitle, saveTitle) {
+    val actions = remember(viewModel, onBrowseCategory, onShowLibrary, onOpenMod, uriHandler, folders, files, modal, pickTitle, saveTitle) {
         object : ModDetailActions by viewModel {
             override fun openCategory() { viewModel.uiState.value.header?.let { onBrowseCategory(it.category) } }
             override fun openSource() { viewModel.uiState.value.detail?.sourceUrl?.let(uriHandler::openUri) }
+            override fun openNeed(need: Need) = when (need) {
+                is Need.Listed -> onOpenMod(need.modId)
+                is Need.Elsewhere -> uriHandler.openUri(need.url)
+                is Need.Named -> Unit
+            }
             override fun showInLibrary() = onShowLibrary()
             override fun showFiles() { viewModel.uiState.value.installation.record?.let { record -> scope.launch { folders.open(record.gameRoot, record.setFolder()) } } }
             override fun uninstall() { viewModel.uiState.value.installation.record?.let { installations.uninstall(setOf(it.installId)) } }

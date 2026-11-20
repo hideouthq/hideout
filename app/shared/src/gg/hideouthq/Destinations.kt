@@ -105,6 +105,7 @@ internal fun Destination(entry: HistoryEntry, state: HideoutAppState) {
             modal = state.modal,
             onShowLibrary = { navigator.navigate(Route.Library) },
             onBrowseCategory = { navigator.navigate(Route.Browse(category = it)) },
+            onOpenMod = { navigator.navigate(Route.ModDetail(it)) },
             preferences = state.container.preferences,
             files = state.container.viewerFiles,
         )

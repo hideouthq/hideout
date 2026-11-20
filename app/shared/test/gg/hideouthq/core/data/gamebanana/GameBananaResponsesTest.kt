@@ -3,6 +3,7 @@ package gg.hideouthq.core.data.gamebanana
 import gg.hideouthq.core.data.DataError
 import gg.hideouthq.core.library.SubmissionKind
 import gg.hideouthq.core.library.SubmissionRef
+import gg.hideouthq.core.model.Requirement
 import gg.hideouthq.core.network.RemoteException
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -240,6 +241,47 @@ class GameBananaResponsesTest {
         val key = SubmissionRef(SubmissionKind.Mod, 1)
         assertEquals(true, parseProfile("""{$base,"_bHasUpdates":true}""", key).hasUpdates)
         assertEquals(false, parseProfile("""{$base}""", key).hasUpdates)
+    }
+
+    @Test
+    fun aRequirementKeepsItsNameAndWebLinkAndAGameBananaLinkNamesTheSubmission() {
+        val base = """"_sName":"Mod","_sProfileUrl":"https://gamebanana.com/mods/1""""
+        fun requirements(field: String) = parseProfile("""{$base,"_aRequirements":$field}""", SubmissionRef(SubmissionKind.Mod, 1)).requirements
+
+        assertEquals(
+            listOf(Requirement("Name", "https://gamebanana.com/mods/693642", "mod-693642")),
+            requirements("""[["Name","https://gamebanana.com/mods/693642","1","5"]]"""),
+            "as the file properties give it",
+        )
+        assertEquals(
+            listOf(
+                Requirement("Ultrawide HUD", "https://www.gamebanana.com/mods/600001/", "mod-600001"),
+                Requirement("Announcer voices", "https://gamebanana.com/sounds/80002", "sound-80002"),
+                Requirement("Font pack", "https://github.com/someone/fonts"),
+                Requirement("Mod Loader", "https://gamebanana.com/tools/12345"),
+                Requirement("Patience"),
+                Requirement("Not a link"),
+                Requirement("https://gamebanana.com/mods/600003", "https://gamebanana.com/mods/600003", "mod-600003"),
+            ),
+            requirements(
+                """[
+                    ["Ultrawide HUD","https://www.gamebanana.com/mods/600001/","1","5",null,""],
+                    [" Announcer voices ","https://gamebanana.com/sounds/80002","1","5",null,""],
+                    ["Font pack","https://github.com/someone/fonts","","",null,""],
+                    ["Mod Loader","https://gamebanana.com/tools/12345","","",null,""],
+                    ["Patience","","","",null,""],
+                    ["Not a link","javascript:alert(1)","","",null,""],
+                    ["","https://gamebanana.com/mods/600003","","",null,""],
+                    ["",null,"","",null,""],
+                    "loose text"
+                ]""",
+            ),
+            "as the profile page gives it",
+        )
+        assertEquals(listOf(Requirement("Keyed")), requirements("""[{"0":"Keyed","1":null}]"""))
+        assertEquals(emptyList(), requirements("null"))
+        assertEquals(emptyList(), requirements("[]"))
+        assertEquals(emptyList(), parseProfile("""{$base}""", SubmissionRef(SubmissionKind.Mod, 1)).requirements)
     }
 
     private fun facts(files: String): FileFacts =

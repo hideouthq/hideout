@@ -14,6 +14,7 @@ import gg.hideouthq.core.library.ProfileId
 import gg.hideouthq.core.library.InstallInput
 import gg.hideouthq.core.library.InstallRequest
 import gg.hideouthq.core.library.SubmissionRef
+import gg.hideouthq.core.library.installStatus
 import gg.hideouthq.core.data.PlayingSample
 import gg.hideouthq.core.data.SamplePreview
 import gg.hideouthq.core.data.SoundSamplePlayer
@@ -100,7 +101,8 @@ class ModDetailViewModel(
 
     private val content = combine(catalog.mods, catalog.heroes, detailAttempts.flatMapLatest { catalog.detail(modId) }) { mods, heroes, detail ->
         val byId = mods.associateBy { it.id }
-        Content(byId[modId]?.toHeader(heroes.associateBy { it.id }), detail)
+        val needed = (detail as? Loadable.Ready)?.value?.requirements.orEmpty().mapNotNull { it.modId }
+        Content(byId[modId]?.toHeader(heroes.associateBy { it.id }), detail, needed.mapNotNull(byId::get).associate { it.id to it.title })
     }.shareIn(viewModelScope, SharingStarted.WhileSubscribed(replayExpirationMillis = 0), replay = 1)
 
     private val selected: Flow<Selected> = combine(content, selectedFile, installation) { content, requested, page ->
@@ -114,15 +116,17 @@ class ModDetailViewModel(
             combine(selected.filter { it.entry == entry }, preview) { sel, loaded -> Selected(sel.content, sel.file, sel.entry, loaded, load) }
         }
 
-    val uiState: StateFlow<ModDetailUiState> = combine(previewed, installation, viewer, playback, staged) { sel, page, viewer, (playing, loop), staged ->
+    val uiState: StateFlow<ModDetailUiState> = combine(previewed, installations.state, viewer, playback, staged) { sel, library, viewer, (playing, loop), staged ->
         val content = sel.content
         val header = content.header
+        val detail = (content.detail as? Loadable.Ready)?.value
         ModDetailUiState(
             loading = false,
             header = header,
-            detail = (content.detail as? Loadable.Ready)?.value,
+            detail = detail,
             detailError = (content.detail as? Loadable.Failed)?.error,
-            installation = page,
+            installation = library.pageInstallation(modId),
+            needs = needsOf(detail?.requirements.orEmpty(), modId, content.listed, library::installStatus),
             viewer = viewer,
             sound = header?.takeIf { it.category == ModCategory.Sounds }?.let {
                 SoundStageState(
@@ -342,6 +346,10 @@ class ModDetailViewModel(
 
     override fun cancelInstall() { installations.cancel(modId) }
 
+    override fun installNeed(modId: String) {
+        if (installations.state.value.canInstall) installations.install(modId)
+    }
+
     /** Saves that the installed mod is to use repaired files; they are placed once Deadlock is known closed. */
     fun applyRepair() {
         val state = installations.state.value
@@ -363,7 +371,8 @@ class ModDetailViewModel(
     private fun catalogue(): ViewerCatalogue = uiState.value.stageModel?.catalogue ?: ViewerCatalogue.Empty
 
     private class Staged(val scene: SceneSettings, val customBackdrop: ImageBitmap?, val picture: PictureNotice?)
-    private class Content(val header: ModHeader?, val detail: Loadable<ModDetail>)
+    /** [listed] holds the catalogue's title of each mod the page says this one needs, when the catalogue lists it. */
+    private class Content(val header: ModHeader?, val detail: Loadable<ModDetail>, val listed: Map<String, String>)
     private class Selected(val content: Content, val file: FileSelection?, val entry: IndexEntry?, val preview: Loadable<PreviewModel>? = null, val load: PreviewLoad = PreviewLoad.Wanted)
 
     private data class Playback(val playing: Boolean, val loading: Boolean, val lengthMillis: Int?) {

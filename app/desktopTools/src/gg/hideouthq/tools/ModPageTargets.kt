@@ -25,6 +25,8 @@ internal val modPageTargets: List<Target> = listOf(
         AppWith({ InstallDialogFixture.container() }, Route.ModDetail(InstallDialogFixture.Lilith.modId))
     },
     Target("discover_v4_compact", 1000, 1700, scale = 1f) { AppAt(Route.Discover) },
+    Target("detail_needs", 1440, 900, settleMillis = DetailMillis) { AppWith(NeedsFixture::container, Lilith) },
+    Target("detail_needs_compact", 1000, 680, scale = 1f, settleMillis = DetailMillis, interact = { pick("Details") }) { AppWith(NeedsFixture::container, Lilith) },
 )
 
 private val Lilith = Route.ModDetail("lilith")

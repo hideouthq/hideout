@@ -13,7 +13,15 @@ data class ModDetail(
     val updates: List<ModUpdate> = emptyList(),
     /** Every update on the mod page, when there are any. */
     val updatesUrl: String? = null,
+    /** What the mod page says the mod needs to work, in its order; empty when it says nothing. */
+    val requirements: List<Requirement> = emptyList(),
 )
+
+/**
+ * Something a mod needs, by the [name] its author gave it, with the web page [url] they linked, if any, and [modId] when
+ * that page is a GameBanana mod or sound.
+ */
+data class Requirement(val name: String, val url: String? = null, val modId: String? = null)
 
 /** One update an author posted: its [version], when it gives one, and the GameBanana [files] it brought, when it lists them. */
 data class ModUpdate(val title: String, val version: String?, val date: CalendarDate, val lines: List<ChangeLine>, val files: Set<Long> = emptySet())
