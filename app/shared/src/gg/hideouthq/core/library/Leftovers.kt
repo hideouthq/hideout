@@ -24,6 +24,16 @@ data class Leftover(val slot: Slot, val files: List<LeftoverFile>) {
 /** One file of a [Leftover]: which part of its set it is, its name and the size its folder listed. */
 data class LeftoverFile(val part: VpkPart, val name: String, val sizeBytes: Long)
 
+/** How taking [Leftover]s into the library or out of the game ended. */
+sealed interface LeftoverOutcome {
+    data object Added : LeftoverOutcome
+
+    /** Out of the game in [folder], below `game/citadel`, each file at its own path there. */
+    data class Moved(val folder: CitadelPath) : LeftoverOutcome
+
+    data class Refused(val problem: LibraryProblem) : LeftoverOutcome
+}
+
 /**
  * The [Leftover]s among [loading], in load order, besides [owned], the paths below the game root of every file Hideout's
  * records name. Only plain files count, as Hideout never acts through a link. A chunk with no directory of its number

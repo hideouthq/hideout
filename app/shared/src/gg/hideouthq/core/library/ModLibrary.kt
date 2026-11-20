@@ -13,7 +13,9 @@ import gg.hideouthq.core.data.readAll
 import gg.hideouthq.core.data.ConfigRead
 import gg.hideouthq.core.data.Removal
 import gg.hideouthq.core.data.LocalArchiveSnapshot
+import gg.hideouthq.core.data.FileObservation
 import gg.hideouthq.core.data.FileRead
+import gg.hideouthq.core.data.gamePath
 import gg.hideouthq.core.data.MaxConfigBytes
 import gg.hideouthq.core.data.CitadelFile
 import gg.hideouthq.core.data.DownloadEntry
@@ -2422,8 +2424,7 @@ class ModLibrary(
 
     private fun asideName(title: String): String {
         val name = title.replace(UnsafeInFolderNames, " ").take(MaxAsideTitle).trim('.', ' ')
-        val today = LocalDate.ofInstant(java.time.Instant.ofEpochMilli(clock.now().toEpochMilliseconds()), ZoneId.systemDefault())
-        return "${name.ifEmpty { "mod" }} $today"
+        return "${name.ifEmpty { "mod" }} ${today()}"
     }
 
     private sealed interface Room {
@@ -2625,6 +2626,103 @@ class ModLibrary(
         val records = ledger.manifest.records.filter { record -> record.gameRoot == root && record.sets.all { it.origin == adopted } } + copied
         val on = ledger.manifest.chosen().activeProfile.enabled
         return TakeoverOutcome.Done(on = records.count { it.installId in on }, off = records.count { it.installId !in on }, profiles = placed.profiles, commands = commands)
+    }
+
+    /**
+     * Takes [sets] into the library as local mods the way an import takes over another manager's files: one that loads
+     * from `addons` under its own bare number is claimed where it is, on, and no file is touched; any other comes in
+     * through its off folder and the saved choices turn it on where Hideout places it. GameBanana is asked later who
+     * each one is. Refused while Deadlock may run, and for a set the game would not mount whole. The files are read
+     * before the library is held, and the change proves they still hold those bytes.
+     */
+    suspend fun addLeftovers(sets: List<Leftover>): LeftoverOutcome {
+        librarySetup.join()
+        val root = (state.value.game as? GameStatus.Ready)?.root ?: return LeftoverOutcome.Refused(LibraryProblem.GameNotFound)
+        processProblem()?.let { return LeftoverOutcome.Refused(it) }
+        val incoming = sets.map { set ->
+            val looks = set.paths.map { path ->
+                val gamePath = CitadelFile(root, path).gamePath
+                when (val look = attempt { inventory.vpk(root, path) }.orElse { VpkLook.Unreadable(it) }) {
+                    is VpkLook.Present -> LookedVpk(path.value, look)
+                    VpkLook.Absent -> return LeftoverOutcome.Refused(LibraryProblem.FileMissing(gamePath))
+                    is VpkLook.Unreadable -> return LeftoverOutcome.Refused(LibraryProblem.FileUnreadable(gamePath))
+                }
+            }
+            val grouping = groupVpkSets(looks)
+            val whole = grouping.sets.singleOrNull()?.takeIf { it.members.size == looks.size } ?: return LeftoverOutcome.Refused(LibraryProblem.NoCompleteSet(grouping.rejected))
+            val claim = looks.first().look.imprint?.claim ?: ModIdentity.None
+            val files = whole.members.map { IncomingFile(CitadelPath(it.vpk.path), it.part, it.vpk.image) }
+            Incoming(set.name.substringBeforeLast('.'), ClaimedMod(claim, title = null, selfReported = true).matched(1), set.name, LoadPosition(0, set.slot.value), listOf(IncomingSet(set.paths.first().value, files)))
+        }
+        val outcome = underLock {
+            writableIn(root)?.let { return@underLock LeftoverOutcome.Refused(it) }
+            saveAdmittedLocked()
+            val addons = when (val listed = onListing(root)) {
+                is OnListing.Unreadable -> return@underLock LeftoverOutcome.Refused(LibraryProblem.AddonsUnreadable(listed.reason))
+                is OnListing.Listed -> listed.entries.filter { it.folder == SetFolder.Addons }.map { it.entry.name }
+            }
+            val takeover = Takeover(MigrationId(ids()), root, manager = null, addonsMount = 0, incoming, emptyList(), emptyList(), unmount = emptySet(), autoexec = null, duplicates = emptyList(), manifests = emptyList())
+            val changed = changing { ledger.adopt(placeTakeover(takeover, ledger.manifest, addons, emptyList(), ids).plan) }
+            publishRecords(ledger.uncertainty ?: (changed as? ChangeOutcome.Refused)?.interrupted)
+            when (changed) {
+                ChangeOutcome.Done -> LeftoverOutcome.Added
+                is ChangeOutcome.Refused -> LeftoverOutcome.Refused(changed.problem)
+            }
+        }
+        if (ledger.manifest.savedChoices != null) wake.trySend(Unit)
+        return outcome
+    }
+
+    /**
+     * Takes [sets] out of the game into a folder of [CitadelPath.HideoutMoved] named for today, or that name with a
+     * number after it, where each file keeps its path below `game/citadel` and nothing in Hideout deletes it. Refused
+     * while Deadlock may run, as every change of what it loads is. The files are read before the library is held, and
+     * the move proves they still hold those bytes.
+     */
+    suspend fun moveOut(sets: List<Leftover>): LeftoverOutcome {
+        librarySetup.join()
+        val root = (state.value.game as? GameStatus.Ready)?.root ?: return LeftoverOutcome.Refused(LibraryProblem.GameNotFound)
+        processProblem()?.let { return LeftoverOutcome.Refused(it) }
+        val files = sets.map { set ->
+            set.files.zip(set.paths) { file, path ->
+                val gamePath = CitadelFile(root, path).gamePath
+                when (val seen = attempt { inventory.file(root, gamePath) }.orElse { FileObservation.Unreadable(it) }) {
+                    is FileObservation.Present -> OutFile(path, FileImage(seen.sizeBytes, seen.sha256), file.part == VpkPart.Directory)
+                    FileObservation.Absent -> return LeftoverOutcome.Refused(LibraryProblem.FileMissing(gamePath))
+                    is FileObservation.Unreadable -> return LeftoverOutcome.Refused(LibraryProblem.FileUnreadable(gamePath))
+                }
+            }
+        }
+        return underLock {
+            writableIn(root)?.let { return@underLock LeftoverOutcome.Refused(it) }
+            val folder = vacantMoved(root, files.flatten()) ?: return@underLock LeftoverOutcome.Refused(LibraryProblem.FileUnreadable(CitadelPath.HideoutMoved.value))
+            val changed = changing { ledger.moveOut(PendingChange.MoveOut(root, folder, files, MoveOutStep.Linking)) }
+            publishRecords(ledger.uncertainty ?: (changed as? ChangeOutcome.Refused)?.interrupted)
+            when (changed) {
+                ChangeOutcome.Done -> LeftoverOutcome.Moved(folder)
+                is ChangeOutcome.Refused -> LeftoverOutcome.Refused(changed.problem)
+            }
+        }
+    }
+
+    private suspend fun writableIn(root: GameRoot): LibraryProblem? = when (val writable = writableLocked()) {
+        is Writable.Refused -> writable.problem
+        is Writable.Ok -> LibraryProblem.GameNotFound.takeIf { writable.root != root }
+    }
+
+    private suspend fun vacantMoved(root: GameRoot, files: List<OutFile>): CitadelPath? {
+        val day = today().toString()
+        return (1..MaxMovedPerDay).map { CitadelPath.HideoutMoved.resolve(if (it == 1) day else "$day ($it)") }.firstOrNull { folder ->
+            files.all { file -> attempt { inventory.file(root, CitadelFile(root, folder.resolve(file.path.value)).gamePath) } == Attempt.Done(FileObservation.Absent) }
+        }
+    }
+
+    private fun today(): LocalDate = LocalDate.ofInstant(java.time.Instant.ofEpochMilli(clock.now().toEpochMilliseconds()), ZoneId.systemDefault())
+
+    private class LookedVpk(override val path: String, val look: VpkLook.Present) : VpkFile {
+        override val sizeBytes: Long get() = look.image.sizeBytes
+        override val sha256: String get() = look.image.sha256
+        override val directory: VpkRead get() = look.directory
     }
 
     private suspend fun importWait(manager: Manager?): ImportWait? {
@@ -3655,6 +3753,8 @@ private val LeaveMargin = 500.milliseconds
 private const val KeptAutomatic = 5
 
 private const val MaxAsideTitle = 80
+
+private const val MaxMovedPerDay = 99
 
 private val UnsafeInFolderNames = Regex("""[\s\p{Cntrl}/\\:*?"<>|]+""")
 
