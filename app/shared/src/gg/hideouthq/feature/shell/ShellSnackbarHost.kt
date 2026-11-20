@@ -15,7 +15,6 @@ import gg.hideouthq.core.designsystem.component.HideoutSnackbar
 import gg.hideouthq.core.designsystem.theme.HideoutTheme
 import gg.hideouthq.core.library.Undoable
 import gg.hideouthq.core.sharing.InstallLink
-import gg.hideouthq.feature.imports.managerName
 import gg.hideouthq.resources.Res
 import gg.hideouthq.resources.install_link_not_a_mod
 import gg.hideouthq.resources.install_link_unreadable
@@ -25,7 +24,6 @@ import gg.hideouthq.resources.library_turned_on
 import gg.hideouthq.resources.library_turned_on_in
 import gg.hideouthq.resources.library_uninstalled
 import gg.hideouthq.resources.library_uninstalled_count
-import gg.hideouthq.resources.mod_lines_put_back
 import gg.hideouthq.resources.profile_close_notice
 import gg.hideouthq.resources.profile_deleted
 import gg.hideouthq.resources.profile_deleted_switched
@@ -47,7 +45,6 @@ internal fun ShellSnackbarHost(snackbar: ShellSnackbar?, enabled: Boolean, onUnd
     AnimatedVisibility(snackbar != null, modifier, enter = fadeIn(motion.effectsDefault()) + slideInVertically(motion.spatialDefault()) { if (motion.reduced) 0 else it / 3 }, exit = fadeOut(motion.exitFade())) {
         last?.let { shown ->
             val message = when (val content = shown.message) {
-                is SnackbarMessage.LinesPutBack -> stringResource(Res.string.mod_lines_put_back, managerName(content.manager))
                 is SnackbarMessage.Sharing -> stringResource(Res.string.share_making, content.profile)
                 is SnackbarMessage.Shared -> {
                     val link = content.link

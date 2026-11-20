@@ -1,7 +1,6 @@
 package gg.hideouthq.feature.shell
 
 import gg.hideouthq.core.library.LibraryProblem
-import gg.hideouthq.core.library.Manager
 import gg.hideouthq.core.library.ProfileColour
 import gg.hideouthq.core.library.ProfileId
 import gg.hideouthq.core.library.UndoToken
@@ -47,8 +46,6 @@ data class ShareLink(val text: String, val profile: String, val leftOut: Int, va
 
 sealed interface SnackbarMessage {
     data class Edit(val undoes: Undoable) : SnackbarMessage
-
-    data class LinesPutBack(val manager: Manager) : SnackbarMessage
 
     data class Sharing(val profile: String) : SnackbarMessage
 

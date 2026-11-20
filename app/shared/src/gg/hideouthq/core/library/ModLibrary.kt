@@ -142,8 +142,8 @@ data class LibraryState(
     val backups: List<BackupInfo> = emptyList(),
     /** GameBanana did not answer the last time Hideout asked who the [unasked] mods are; it asks again later. */
     val findingLater: Boolean = false,
-    /** The last time a manager imported from wrote its own mod lines into `gameinfo.gi` and Hideout put the import's back. */
-    val linesPutBack: LinesPutBack? = null,
+    /** The last time something other than Hideout took the lines that load its mods out of `gameinfo.gi`. */
+    val rewrite: GameInfoRewrite? = null,
     /** When GameBanana said it may be asked again, while a request waits for it; an install that waits on it says so. */
     val gameBananaBusy: Instant? = null,
 ) {
@@ -1199,18 +1199,34 @@ class ModLibrary(
 
     /**
      * Puts Hideout's lines back in the found game's `gameinfo.gi` after Steam or another tool removed them, recording
-     * that mods load, while Deadlock is closed. Null only once mods verifiably load.
+     * that mods load, while Deadlock is closed, and says in [LibraryState.rewrite] what took them out when it was not
+     * Hideout. Null only once mods verifiably load.
      */
     suspend fun reapply(): LibraryProblem? {
         val result = underLock {
             when (val writable = writableLocked()) {
                 is Writable.Refused -> writable.problem to null
-                is Writable.Ok -> ledger.ensureLoading(writable.root) to writable.root
+                is Writable.Ok -> putBackLocked(writable.root) to writable.root
             }
         }
         result.second?.let { refreshLoading(it) }
-        return result.first ?: LibraryProblem.LoadingNotVerified.takeIf { state.value.loading !is ModLoading.Loads }
+        val problem = result.first ?: LibraryProblem.LoadingNotVerified.takeIf { state.value.loading !is ModLoading.Loads }
+        // Deadlock starting again keeps a rewrite waiting for it; any other failure is told in place of the wait.
+        if (problem != null && problem != LibraryProblem.GameRunning) {
+            mutableState.update { state -> state.copy(rewrite = state.rewrite?.takeUnless { it.outcome == RewriteOutcome.WaitingForGame }) }
+        }
+        return problem
     }
+
+    private suspend fun putBackLocked(root: GameRoot): LibraryProblem? {
+        val by = rewriteOf(root, gameInfoBytes(root) { return it })
+        ledger.ensureLoading(root)?.let { return it }
+        by?.let(::putBack)
+        return null
+    }
+
+    /** The user has read the last [LibraryState.rewrite]; putting its lines back later says nothing more. */
+    fun dismissRewrite() = mutableState.update { it.copy(rewrite = it.rewrite?.copy(seen = true)) }
 
     /**
      * Records that the found game loads mods, adding nothing to `gameinfo.gi`: Hideout's block is left to an import's
@@ -2749,8 +2765,8 @@ class ModLibrary(
                 return@collectLatest
             }
             val imported = importedManagers.map { it[root] }.distinctUntilChanged()
-            val freed = state.map { it.filesFree }.distinctUntilChanged()
-            merge(configChanges(root, ConfigTarget.GameInfo.Path), ticks(), imported.map {}, freed.map {}).collect {
+            val activity = state.map { it.filesFree to it.deadlock }.distinctUntilChanged()
+            merge(configChanges(root, ConfigTarget.GameInfo.Path), ticks(), imported.map {}, activity.map {}).collect {
                 refreshLoading(root)
                 reclaim(root)
             }
@@ -2788,9 +2804,28 @@ class ModLibrary(
         val unmount = managers.flatMap(ForeignRoot::keptBy).toSet()
         if (GameInfoPatch.takeOver(bytes, lines, ledger.manifest.records.overflowIn(root), unmount) !is GameInfoEdit.Patched) return null
         ledger.writeBlock(root, lines, unmount)?.let { return it }
-        val by = GameInfoPatch.heldBy(bytes).firstOrNull { it in managers }
-        if (by != null) mutableState.update { it.copy(linesPutBack = LinesPutBack(by)) }
+        GameInfoPatch.heldBy(bytes).firstOrNull { it in managers }?.let { putBack(RewrittenBy.AnotherProgram(it)) }
         return null
+    }
+
+    /**
+     * What took Hideout's lines out of [bytes], [root]'s `gameinfo.gi`, while its mods are wanted there and Hideout did
+     * not write the file as it is now: an update when the game's build changed since Hideout last wrote it, else another
+     * program, named when its own lines are there or it alone is open. Null when the file is Hideout's or keeps its lines.
+     */
+    private suspend fun rewriteOf(root: GameRoot, bytes: ByteArray): RewrittenBy? {
+        val receipt = ledger.manifest.receipt(root)?.takeIf { it.lines.mods && it.written != null } ?: return null
+        if (receipt.written == Sha256.image(bytes)) return null
+        if (GameInfoPatch.withBlock(bytes, receipt.lines, ledger.manifest.records.overflowIn(root)) !is GameInfoEdit.Patched) return null
+        GameInfoPatch.heldBy(bytes).firstOrNull()?.let { return RewrittenBy.AnotherProgram(it) }
+        if (receipt.game != null && gameIdentity(root).let { it != null && it != receipt.game }) return RewrittenBy.GameUpdate
+        return RewrittenBy.AnotherProgram((state.value.managers as? ManagerActivity.Seen)?.open?.singleOrNull())
+    }
+
+    /** Hideout put back the lines [by] took out, finishing the rewrite that waited for Deadlock to close if there was one. */
+    private fun putBack(by: RewrittenBy) = mutableState.update { state ->
+        val waiting = state.rewrite?.takeIf { it.outcome == RewriteOutcome.WaitingForGame }
+        state.copy(rewrite = waiting?.copy(outcome = RewriteOutcome.PutBack) ?: GameInfoRewrite(by, RewriteOutcome.PutBack))
     }
 
     /**
@@ -2821,7 +2856,8 @@ class ModLibrary(
         val intact = library?.records.orEmpty().filter {
             it.gameRoot == root && it.enabled && it.installId !in library?.damaged.orEmpty() && it.installId !in library?.unchecked.orEmpty()
         }
-        val loading = when (val read = attempt { ports.gameConfig.read(root) }) {
+        val read = attempt { ports.gameConfig.read(root) }
+        val loading = when (read) {
             is Attempt.Failed -> ModLoading.Unreadable(GameInfoProblem.Unreadable)
             is Attempt.Done -> when (val config = read.value) {
                 ConfigRead.Missing -> ModLoading.Unreadable(GameInfoProblem.Missing)
@@ -2836,7 +2872,13 @@ class ModLibrary(
                 }
             }
         }
-        mutableState.update { if ((it.game as? GameStatus.Ready)?.root == root) it.copy(loading = loading) else it }
+        val waits = (loading as? ModLoading.Off)?.alerts == true && state.value.deadlock == GameActivity.Running &&
+            state.value.rewrite?.outcome != RewriteOutcome.WaitingForGame
+        val waiting = ((read as? Attempt.Done)?.value as? ConfigRead.Present)?.takeIf { waits }?.let { rewriteOf(root, it.bytes) }
+        mutableState.update { state ->
+            if ((state.game as? GameStatus.Ready)?.root != root) state
+            else state.copy(loading = loading, rewrite = waiting?.let { GameInfoRewrite(it, RewriteOutcome.WaitingForGame) } ?: state.rewrite)
+        }
     }
 
     private suspend fun resolve(preferSteam: Boolean): GameStatus {

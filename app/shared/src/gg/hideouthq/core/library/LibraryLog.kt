@@ -57,7 +57,7 @@ internal fun libraryEvents(before: LibraryState, after: LibraryState): List<Stri
     val open = (after.managers as? ManagerActivity.Seen)?.open
     val wasOpen = (before.managers as? ManagerActivity.Seen)?.open.orEmpty()
     if (open != null && open != wasOpen) add(if (open.isEmpty()) "No other mod manager is open" else "Other mod managers open: ${open.joinToString()}")
-    after.linesPutBack?.takeIf { it !== before.linesPutBack }?.let { add("Put Hideout's lines back in gameinfo.gi after ${it.manager} changed it") }
+    after.rewrite?.takeIf { it != before.rewrite && it != before.rewrite?.copy(seen = true) }?.let { add(it.said) }
     if (after.choiceSync is ChoiceSync.Waiting && before.choiceSync !is ChoiceSync.Waiting) add("Changes wait for Deadlock to close")
     if (after.pastLimit != before.pastLimit && after.pastLimit.isNotEmpty()) {
         add("Past what Hideout can load, so not loading: ${after.pastLimit.joinToString { id -> now?.records?.firstOrNull { it.installId == id }?.named ?: id }}")
@@ -153,6 +153,18 @@ internal val ModLoading.said: String
         is ModLoading.Loads -> "on, through ${if (by == LoadingOwner.Hideout) "Hideout's" else "another tool's"} lines in gameinfo.gi"
         is ModLoading.Off -> "off" + (if (vanilla) ", as asked for to play without mods" else "") + (if (notLoading > 0) ", so $notLoading of Hideout's mods that are on don't load" else "")
         is ModLoading.Unreadable -> "unknown, gameinfo.gi can't be used: ${problem.name}"
+    }
+
+internal val GameInfoRewrite.said: String
+    get() {
+        val who = when (by) {
+            RewrittenBy.GameUpdate -> "a Deadlock update"
+            is RewrittenBy.AnotherProgram -> by.manager?.name ?: "something outside Hideout"
+        }
+        return when (outcome) {
+            RewriteOutcome.WaitingForGame -> "$who took Hideout's lines out of gameinfo.gi; they go back when Deadlock closes"
+            RewriteOutcome.PutBack -> "Put Hideout's lines back in gameinfo.gi after $who took them out"
+        }
     }
 
 private val BackupInfo.said: String get() = "${id.value} of ${Instant.fromEpochMilliseconds(createdAt)} (${reason.name}, ${counted(mods, "mod")})"

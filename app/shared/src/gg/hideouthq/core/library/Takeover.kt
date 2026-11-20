@@ -83,12 +83,6 @@ sealed interface AutoexecTakeover {
 /** A file at [path] under `game/citadel` holding [image], whose bytes are kept elsewhere: in the import's record, or a record's own file. */
 data class KeptFile(val path: CitadelPath, val image: FileImage)
 
-/**
- * [manager], imported from, wrote its own mod lines into `gameinfo.gi` again, and Hideout put back the ones the import
- * left. Each time is its own object, so the same one is never told twice.
- */
-class LinesPutBack(val manager: Manager)
-
 /** Why an import waits: until Deadlock closes, a custom game ends, or the manager it imports from closes. */
 sealed interface ImportWait {
     data object GameOpen : ImportWait

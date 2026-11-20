@@ -16,9 +16,7 @@ import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
-import kotlin.test.assertNotSame
 import kotlin.test.assertNull
-import kotlin.test.assertSame
 import kotlin.time.Duration.Companion.seconds
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -64,20 +62,20 @@ class ModLibraryReclaimTest {
     fun grimoiresFixNowIsPutBackAsTheImportLeftItAndSaidOnce() = runTest {
         val (world, library, imported) = opened(GrimoireImported, Manager.Grimoire)
         assertContentEquals(GrimoireImported, imported, "a file as the import left it is not written")
-        assertNull(library.state.value.linesPutBack)
+        assertNull(library.state.value.rewrite)
 
         with(world) { rewrite(grimoireFixed(imported)) }
 
         assertEquals(imported.decodeToString(), world.gameInfo().decodeToString(), "Grimoire's mounts go, Hideout's block is back where it was, and every other byte and line ending stays")
-        val told = assertNotNull(library.state.value.linesPutBack)
-        assertEquals(Manager.Grimoire, told.manager)
+        assertEquals(GameInfoRewrite(RewrittenBy.AnotherProgram(Manager.Grimoire), RewriteOutcome.PutBack), library.state.value.rewrite)
         assertEquals(ModLoading.Loads(LoadingOwner.Hideout), library.state.value.loading)
+        library.dismissRewrite()
         settle()
-        assertSame(told, library.state.value.linesPutBack, "the same rewrite is told once")
+        assertEquals(true, library.state.value.rewrite?.seen, "the same rewrite is told once")
 
         with(world) { rewrite(grimoireFixed(imported)) }
         assertContentEquals(imported, world.gameInfo())
-        assertNotSame(told, library.state.value.linesPutBack, "a second rewrite is told again")
+        assertEquals(false, library.state.value.rewrite?.seen, "a second rewrite is told again")
     }
 
     @Test
@@ -101,7 +99,7 @@ class ModLibraryReclaimTest {
         with(world) { rewrite(DmmMarked) }
 
         assertEquals(DmmImported.decodeToString(), world.gameInfo().decodeToString(), "DMM's markers and its addons line go, and Hideout's block is back")
-        assertEquals(Manager.DeadlockModManager, library.state.value.linesPutBack?.manager)
+        assertEquals(RewrittenBy.AnotherProgram(Manager.DeadlockModManager), library.state.value.rewrite?.by)
     }
 
     @Test
@@ -109,7 +107,7 @@ class ModLibraryReclaimTest {
         val (world, library) = opened(GrimoireImported)
         with(world) { rewrite(grimoireFixed(GrimoireImported)) }
         assertContentEquals(grimoireFixed(GrimoireImported), world.gameInfo(), "no import, so Grimoire's lines stay")
-        assertNull(library.state.value.linesPutBack)
+        assertNull(library.state.value.rewrite)
         assertEquals(ModLoading.Loads(LoadingOwner.AnotherTool), library.state.value.loading)
     }
 
@@ -122,7 +120,7 @@ class ModLibraryReclaimTest {
         with(world) { rewrite(grimoireFixed(withDmm(imported))) }
 
         assertEquals(withDmm(imported).decodeToString(), world.gameInfo().decodeToString(), "only Grimoire's mounts go")
-        assertEquals(Manager.Grimoire, library.state.value.linesPutBack?.manager)
+        assertEquals(GameInfoRewrite(RewrittenBy.AnotherProgram(Manager.Grimoire), RewriteOutcome.PutBack), library.state.value.rewrite)
     }
 
     @Test
@@ -135,12 +133,12 @@ class ModLibraryReclaimTest {
         with(world) { rewrite(grimoireFixed(imported)) }
         repeat(4) { settle() }
         assertContentEquals(grimoireFixed(imported), world.gameInfo(), "a running game holds the file")
-        assertNull(library.state.value.linesPutBack)
+        assertNull(library.state.value.rewrite)
 
         world.processes.scan = ProcessScan.Seen()
         settle()
         assertContentEquals(imported, world.gameInfo(), "put back as Deadlock closes")
-        assertEquals(Manager.Grimoire, library.state.value.linesPutBack?.manager)
+        assertEquals(GameInfoRewrite(RewrittenBy.AnotherProgram(Manager.Grimoire), RewriteOutcome.PutBack), library.state.value.rewrite)
     }
 
     @Test
@@ -155,7 +153,7 @@ class ModLibraryReclaimTest {
         assertNull(library.launch(modded = true) { started = world.gameInfo() })
 
         assertContentEquals(imported, started, "the game starts with the file as the import left it")
-        assertEquals(Manager.Grimoire, library.state.value.linesPutBack?.manager)
+        assertEquals(GameInfoRewrite(RewrittenBy.AnotherProgram(Manager.Grimoire), RewriteOutcome.PutBack), library.state.value.rewrite)
     }
 }
 

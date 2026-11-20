@@ -145,6 +145,26 @@ sealed interface ModLoading {
 }
 
 /**
+ * Something other than Hideout rewrote `gameinfo.gi` without the lines that load Hideout's mods while they were wanted:
+ * [by] says what did, as far as Hideout can tell, and [outcome] whether they are back. [seen] once the user has read it.
+ */
+data class GameInfoRewrite(val by: RewrittenBy, val outcome: RewriteOutcome, val seen: Boolean = false)
+
+sealed interface RewrittenBy {
+    /** The game's build changed since Hideout last wrote the file. */
+    data object GameUpdate : RewrittenBy
+
+    /** [manager] left its own lines there or was open; null when nothing says which program it was. */
+    data class AnotherProgram(val manager: Manager?) : RewrittenBy
+}
+
+enum class RewriteOutcome {
+    /** Deadlock runs, so the mods stay off until it closes and Hideout puts the lines back. */
+    WaitingForGame,
+    PutBack,
+}
+
+/**
  * What finishing or undoing a change left as it found it: [files] Hideout could not prove were its own unchanged
  * copies, so they stay, and [conflict] when another program's `gameinfo.gi` was kept instead of Hideout's edit.
  */

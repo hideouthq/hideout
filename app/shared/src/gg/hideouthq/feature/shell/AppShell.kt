@@ -113,6 +113,7 @@ fun AppShell(
     val showAnalytics = analyticsChoice == AnalyticsChoice.NotDisclosed
     val chipsShown = setOfNotNull(
         ChipPanel.Hosting.takeIf { hosting != null },
+        ChipPanel.Rewrite.takeIf { state.rewrite != null },
         ChipPanel.Update.takeIf { updateChipState(appUpdate, game) != null },
         ChipPanel.Analytics.takeIf { showAnalytics },
     )
@@ -124,6 +125,7 @@ fun AppShell(
             ContentFrame(navigator, sidePanelOverlay, Modifier.weight(1f).fillMaxSize(), chips = {
                 if (showAnalytics) AnalyticsNotice(analytics, panel == ChipPanel.Analytics, { toggle(ChipPanel.Analytics) })
                 hosting?.let { HostingChip(it, panel == ChipPanel.Hosting, { toggle(ChipPanel.Hosting) }, onOpenGame) }
+                state.rewrite?.let { RewriteChip(it, panel == ChipPanel.Rewrite, { toggle(ChipPanel.Rewrite) }, viewModel::dismissRewrite) }
                 UpdateChip(appUpdate, game, appUpdates, panel == ChipPanel.Update, { toggle(ChipPanel.Update) }, { onWhatsNewOpen(true) })
             }) {
                 Box(Modifier.fillMaxSize()) {
@@ -170,4 +172,4 @@ fun AppShell(
     }
 }
 
-private enum class ChipPanel { Hosting, Update, Analytics }
+private enum class ChipPanel { Hosting, Rewrite, Update, Analytics }

@@ -88,6 +88,7 @@ class ShellViewModel(
             saving = state.saving,
             applying = state.applying,
             activity = state.deadlock,
+            rewrite = state.rewrite?.takeUnless { it.seen },
             profileEditor = local.editor,
             profileSubmitting = local.submitting,
             profileEditorProblem = local.editorProblem,
@@ -102,18 +103,12 @@ class ShellViewModel(
             // A game update or another tool can drop Hideout's lines from gameinfo.gi; while mods are wanted, they go straight back.
             modLibrary.state.map { (it.loading as? ModLoading.Off)?.alerts == true && it.deadlock == GameActivity.Closed }
                 .distinctUntilChanged()
-                .collect { dropped -> if (dropped) reapply() }
+                .collect { dropped -> if (dropped) putBack(automatic = true) }
         }
         viewModelScope.launch {
             modLibrary.state.map { it.undo }.distinctUntilChanged().filterNotNull().collect { token ->
                 val id = ++noticeId
                 local.update { it.copy(snackbar = ShellSnackbar(id, SnackbarMessage.Edit(token.undoes), token)) }
-            }
-        }
-        viewModelScope.launch {
-            modLibrary.state.map { it.linesPutBack }.distinctUntilChanged().filterNotNull().collect { putBack ->
-                val id = ++noticeId
-                local.update { it.copy(snackbar = ShellSnackbar(id, SnackbarMessage.LinesPutBack(putBack.manager), undo = null)) }
             }
         }
         viewModelScope.launch {
@@ -314,12 +309,18 @@ class ShellViewModel(
         }
     }
 
-    override fun reapply() {
+    override fun reapply() = putBack(automatic = false)
+
+    private fun putBack(automatic: Boolean) {
         viewModelScope.launch {
             val problem = modLibrary.reapply()
+            // Deadlock started meanwhile: the rewrite chip says the lines wait for it to close.
+            if (automatic && problem == LibraryProblem.GameRunning) return@launch
             local.update { it.copy(failed = problem?.let(ShellNotice::ReapplyFailed)) }
         }
     }
+
+    fun dismissRewrite() = modLibrary.dismissRewrite()
 
     override fun retryInstall(modId: String) { modLibrary.retry(modId) }
     override fun dismissInstall(modId: String) = modLibrary.dismiss(modId)

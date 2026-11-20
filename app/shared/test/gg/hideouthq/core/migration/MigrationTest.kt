@@ -45,6 +45,7 @@ import gg.hideouthq.core.library.Profile
 import gg.hideouthq.core.library.ProfileBook
 import gg.hideouthq.core.library.ProfileColour
 import gg.hideouthq.core.library.ProfileId
+import gg.hideouthq.core.library.RewrittenBy
 import gg.hideouthq.core.library.SearchPathsCheck
 import gg.hideouthq.core.library.SessionHold
 import gg.hideouthq.core.library.Sha256
@@ -417,7 +418,7 @@ class MigrationTest {
         world.files.writeGameInfo(root, fixed)
         settle()
         assertContentEquals(imported, world.files.gameInfo(root), "Grimoire's Fix now is put back")
-        assertEquals(Manager.Grimoire, world.library.state.value.linesPutBack?.manager)
+        assertEquals(RewrittenBy.AnotherProgram(Manager.Grimoire), world.library.state.value.rewrite?.by)
 
         doomed.cancel()
         world.files.writeGameInfo(root, fixed)

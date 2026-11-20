@@ -3,6 +3,7 @@ package gg.hideouthq.feature.shell
 import gg.hideouthq.core.library.ChangeRequest
 import gg.hideouthq.core.library.ChoiceSync
 import gg.hideouthq.core.library.GameActivity
+import gg.hideouthq.core.library.GameInfoRewrite
 import gg.hideouthq.core.library.GameStatus
 import gg.hideouthq.core.library.LibraryProblem
 import gg.hideouthq.core.library.ProfileBook
@@ -28,6 +29,8 @@ data class ShellUiState(
     /** Profile or toggle work is settling: shown once, and controls that only wait for it keep their full look. */
     val applying: Boolean = false,
     val activity: GameActivity = GameActivity.Unknown,
+    /** What took the lines that load the mods out of `gameinfo.gi`, until the user has read it. */
+    val rewrite: GameInfoRewrite? = null,
     val profileEditor: ProfileEditor? = null,
     /** [profileEditor]'s own request is not answered yet; other edits saving do not count. */
     val profileSubmitting: Boolean = false,

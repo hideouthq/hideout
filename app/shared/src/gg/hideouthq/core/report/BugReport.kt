@@ -273,7 +273,7 @@ private fun work(state: LibraryState): ReportSection = ReportSection(
         Fact("Saving an edit", "yes").takeIf { state.saving },
         Fact("Play", "starting Deadlock").takeIf { state.launching },
         state.gameBananaBusy?.let { Fact("GameBanana busy until", "$it") },
-        state.linesPutBack?.let { Fact("Lines last put back in gameinfo.gi after", "${it.manager}") },
+        state.rewrite?.let { Fact("Last rewrite of gameinfo.gi", it.said + if (it.seen) ", read" else "") },
         state.maintenance?.let { Fact("Settings work", maintenanceText(it)) },
     ) + state.operations.values.map { operation ->
         val stage = operation.stage
