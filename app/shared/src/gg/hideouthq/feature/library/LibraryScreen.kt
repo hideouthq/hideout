@@ -70,6 +70,7 @@ import gg.hideouthq.feature.library.components.CompatibilityDialogs
 import gg.hideouthq.feature.library.components.DownloadingCardGroup
 import gg.hideouthq.feature.library.components.DownloadingListGroup
 import gg.hideouthq.feature.library.components.InstalledSetList
+import gg.hideouthq.feature.library.components.LeftoversDialog
 import gg.hideouthq.feature.library.components.LibraryCardGrid
 import gg.hideouthq.feature.library.components.LibraryDetailsPanel
 import gg.hideouthq.feature.library.components.LibraryFilterPills
@@ -88,6 +89,9 @@ import gg.hideouthq.resources.library_importing_from
 import gg.hideouthq.resources.library_importing_from_file
 import gg.hideouthq.resources.library_importing_mods
 import gg.hideouthq.resources.library_importing_mods_file
+import gg.hideouthq.resources.library_leftovers_note
+import gg.hideouthq.resources.library_leftovers_note_folders
+import gg.hideouthq.resources.library_leftovers_review
 import gg.hideouthq.resources.library_scope_empty_message
 import gg.hideouthq.resources.library_scope_empty_title
 import gg.hideouthq.resources.library_scope_show_all
@@ -236,6 +240,7 @@ fun LibraryScreen(
         }
     }
     CompatibilityDialogs(state.compat, modal, actions)
+    LeftoversDialog(state.leftovers, modal, actions)
 }
 
 @Composable
@@ -249,6 +254,8 @@ private fun ScreenHeader(state: LibraryUiState, actions: LibraryActions, modal: 
         profileName = profileName,
         note = state.note?.let { noteText(it) },
         noteWarns = state.note is LibraryNote.PastLimit,
+        noteAction = if (state.note is LibraryNote.Leftovers) stringResource(Res.string.library_leftovers_review) else null,
+        onNoteAction = actions::reviewLeftovers,
         modifier = Modifier.staggeredEnter(0),
         trailing = if (state.isEmpty) null else ({
             val motion = HideoutTheme.motion
@@ -291,6 +298,8 @@ private fun noteText(note: LibraryNote): String = when (note) {
             GameNote.Unknown -> Res.string.profile_library_unknown
         },
     )
+    is LibraryNote.Leftovers -> note.folder?.let { pluralStringResource(Res.plurals.library_leftovers_note, note.count, note.count, it) }
+        ?: pluralStringResource(Res.plurals.library_leftovers_note_folders, note.count, note.count)
 }
 
 @Composable

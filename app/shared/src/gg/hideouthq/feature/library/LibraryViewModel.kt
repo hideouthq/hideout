@@ -17,6 +17,8 @@ import gg.hideouthq.core.library.GameStatus
 import gg.hideouthq.core.library.InstallationUpdates
 import gg.hideouthq.core.library.InstalledSet
 import gg.hideouthq.core.library.InstalledUpdates
+import gg.hideouthq.core.library.Leftover
+import gg.hideouthq.core.library.LeftoverOutcome
 import gg.hideouthq.core.library.LibraryState
 import gg.hideouthq.core.library.LibraryStatus
 import gg.hideouthq.core.library.ManifestRecord
@@ -29,6 +31,7 @@ import gg.hideouthq.core.library.ProfileId
 import gg.hideouthq.core.library.ReinstallFrom
 import gg.hideouthq.core.library.RepairChoice
 import gg.hideouthq.core.library.RepairWork
+import gg.hideouthq.core.library.Slot
 import gg.hideouthq.core.library.SourceState
 import gg.hideouthq.core.library.SubmissionRef
 import gg.hideouthq.core.library.UpdatePlan
@@ -327,6 +330,30 @@ class LibraryViewModel(
 
     override fun checkCompatibility() = library.checkCompatibility()
 
+    override fun reviewLeftovers() = local.update { it.copy(leftovers = Leftovers(open = true, working = it.leftovers.working)) }
+
+    override fun closeLeftovers() = local.update { it.copy(leftovers = it.leftovers.copy(open = false)) }
+
+    override fun addLeftovers(slots: List<Slot>) = changeLeftovers(LeftoverAction.Adding, slots, library::addLeftovers)
+
+    override fun moveLeftoversOut(slots: List<Slot>) = changeLeftovers(LeftoverAction.Moving, slots, library::moveOut)
+
+    override fun openMovedFolder() {
+        val moved = local.value.leftovers.outcome as? LeftoverOutcome.Moved ?: return
+        val root = (library.state.value.game as? GameStatus.Ready)?.root ?: return
+        viewModelScope.launch { folders.open(root, moved.folder) }
+    }
+
+    private fun changeLeftovers(action: LeftoverAction, slots: List<Slot>, change: suspend (List<Leftover>) -> LeftoverOutcome) {
+        val sets = uiState.value.leftovers.sets.filter { it.slot in slots }
+        if (sets.isEmpty() || local.value.leftovers.working != null) return
+        local.update { it.copy(leftovers = it.leftovers.copy(working = action, outcome = null)) }
+        viewModelScope.launch {
+            val outcome = change(sets)
+            local.update { it.copy(leftovers = it.leftovers.copy(working = null, outcome = outcome)) }
+        }
+    }
+
     /** [toIndex] counts the rows Library lists; a mod uninstalled and not gone yet keeps its place among them. */
     override fun moveSet(view: OrderView, installId: String, toIndex: Int) {
         val state = library.state.value
@@ -490,6 +517,18 @@ class LibraryViewModel(
             ),
             compat = compatUi(state, all, local.compatOpen, local.followed),
             importing = importing(inputs.migration),
+            leftovers = LeftoversUi(
+                sets = status.leftovers.takeIf { status.interrupted == null }.orEmpty(),
+                open = local.leftovers.open,
+                canChange = state.canModify,
+                working = local.leftovers.working,
+                last = when (val outcome = local.leftovers.outcome) {
+                    null -> null
+                    LeftoverOutcome.Added -> LeftoverResult.Added
+                    is LeftoverOutcome.Moved -> LeftoverResult.Moved(outcome.folder.value.replace('/', library.separator))
+                    is LeftoverOutcome.Refused -> LeftoverResult.Failed(outcome.problem)
+                },
+            ),
         )
     }
 
@@ -677,7 +716,10 @@ class LibraryViewModel(
         val compatOpen: CompatRequest? = null,
         val followed: Set<String> = emptySet(),
         val runningNote: Boolean = false,
+        val leftovers: Leftovers = Leftovers(),
     )
+
+    private data class Leftovers(val open: Boolean = false, val working: LeftoverAction? = null, val outcome: LeftoverOutcome? = null)
 
     private sealed interface CompatRequest {
         data class Mod(val installId: String, val back: Review? = null) : CompatRequest

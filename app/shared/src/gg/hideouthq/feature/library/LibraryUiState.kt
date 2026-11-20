@@ -4,11 +4,14 @@ import gg.hideouthq.core.library.CompatStatus
 import gg.hideouthq.core.library.FilesDamage
 import gg.hideouthq.core.library.ImportWait
 import gg.hideouthq.core.library.InstallCompatibility
+import gg.hideouthq.core.library.Leftover
+import gg.hideouthq.core.library.LibraryProblem
 import gg.hideouthq.core.library.OrderView
 import gg.hideouthq.core.library.ProfileBook
 import gg.hideouthq.core.library.ProfileId
 import gg.hideouthq.core.library.ReinstallFrom
 import gg.hideouthq.core.library.UpdatePlan
+import gg.hideouthq.core.library.inCitadel
 import gg.hideouthq.core.library.status
 import gg.hideouthq.core.model.ModCategory
 import gg.hideouthq.feature.imports.SourceOption
@@ -71,6 +74,7 @@ data class LibraryUiState(
     val compat: CompatUi = CompatUi(),
     /** An import that waits or runs, which the library shows until its mods are rows. */
     val importing: ImportBanner? = null,
+    val leftovers: LeftoversUi = LeftoversUi(),
 ) {
     val isEmpty: Boolean get() = !loading && blocked == null && rows.isEmpty() && downloads.isEmpty()
     val totalCount: Int get() = rows.size
@@ -85,12 +89,13 @@ data class LibraryUiState(
     /**
      * When several apply the most pressing wins: an import's mods are missing from the list until it runs, and its wait
      * names what to close; mods past the limit stay out of the game until the user acts, though their rows say so too;
-     * and saved changes apply by themselves once Deadlock closes.
+     * saved changes apply by themselves once Deadlock closes; and files left in the game load until the user acts.
      */
     val note: LibraryNote?
         get() = importing?.let(LibraryNote::Importing)
             ?: pastLimit.takeIf { it > 0 }?.let(LibraryNote::PastLimit)
             ?: gameNote?.let(LibraryNote::Game)
+            ?: leftovers.sets.takeIf { it.isNotEmpty() }?.let { sets -> LibraryNote.Leftovers(sets.size, sets.map { it.folder }.distinct().singleOrNull()?.inCitadel) }
 }
 
 /** What the summary line under Library's title adds after the counts. */
@@ -98,6 +103,33 @@ sealed interface LibraryNote {
     data class Importing(val banner: ImportBanner) : LibraryNote
     data class PastLimit(val count: Int) : LibraryNote
     data class Game(val note: GameNote) : LibraryNote
+
+    /** [count] sets load that are not Hideout's, all in [folder] or, when null, in several loading folders. */
+    data class Leftovers(val count: Int, val folder: String?) : LibraryNote
+}
+
+/**
+ * The sets in the game's loading folders that load and are not Hideout's, and the dialog that reviews them: [open]
+ * while it is on screen, [working] while a change it asked for runs, and [last], how the last one ended, until it
+ * closes. [canChange] while files the game loads may change.
+ */
+data class LeftoversUi(
+    val sets: List<Leftover> = emptyList(),
+    val open: Boolean = false,
+    val canChange: Boolean = false,
+    val working: LeftoverAction? = null,
+    val last: LeftoverResult? = null,
+)
+
+enum class LeftoverAction { Adding, Moving }
+
+sealed interface LeftoverResult {
+    data object Added : LeftoverResult
+
+    /** Out of the game in [folder], below the game's `citadel` folder, as the system writes paths. */
+    data class Moved(val folder: String) : LeftoverResult
+
+    data class Failed(val problem: LibraryProblem) : LeftoverResult
 }
 
 /** An import under way: from [from], bringing [mods] mods when its preview counted them, and waiting for [wait] when it waits. */

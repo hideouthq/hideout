@@ -20,6 +20,7 @@ import gg.hideouthq.core.library.ModLibrary
 import gg.hideouthq.core.library.OrderView
 import gg.hideouthq.core.library.ProfileId
 import gg.hideouthq.core.library.ReinstallFrom
+import gg.hideouthq.core.library.Slot
 import gg.hideouthq.core.library.UpdatePlan
 import gg.hideouthq.core.migration.ImportPhase
 import gg.hideouthq.core.migration.Migration
@@ -93,6 +94,15 @@ interface LibraryActions {
     fun useOriginal(installId: String)
     fun repairAll()
     fun checkCompatibility()
+    /** Opens the review of the sets that load and are not Hideout's. */
+    fun reviewLeftovers()
+    fun closeLeftovers()
+    /** Takes the leftovers at [slots] into the library. */
+    fun addLeftovers(slots: List<Slot>)
+    /** Takes the leftovers at [slots] out of the game. */
+    fun moveLeftoversOut(slots: List<Slot>)
+    /** Opens the folder the last Move out took files to. */
+    fun openMovedFolder()
 }
 
 @Composable

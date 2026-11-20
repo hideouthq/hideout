@@ -44,4 +44,31 @@
     <string name="library_import_needs_manager">Close %1$s to bring your mods over</string>
     <string name="library_import_needs_game">Close Deadlock to bring your mods over</string>
     <string name="library_import_needs_custom_game">Your mods come over when the custom game ends</string>
+    <plurals name="library_leftovers_note">
+        <item quantity="one">%1$d mod in %2$s isn’t from Hideout and still loads</item>
+        <item quantity="other">%1$d mods in %2$s aren’t from Hideout and still load</item>
+    </plurals>
+    <plurals name="library_leftovers_note_folders">
+        <item quantity="one">%1$d mod in the game’s mod folders isn’t from Hideout and still loads</item>
+        <item quantity="other">%1$d mods in the game’s mod folders aren’t from Hideout and still load</item>
+    </plurals>
+    <string name="library_leftovers_review">Review…</string>
+    <string name="leftovers_title">Mods Hideout didn’t add</string>
+    <string name="leftovers_body">These load in Deadlock but aren’t in your library, usually left by another mod manager or an older install. Add them to turn them on and off here, or move them out so they stop loading.</string>
+    <string name="leftovers_body_done">Everything that loads now is in your library.</string>
+    <plurals name="leftovers_files">
+        <item quantity="one">%1$d file</item>
+        <item quantity="other">%1$d files</item>
+    </plurals>
+    <string name="leftovers_add">Add to library</string>
+    <string name="leftovers_add_all">Add all to library</string>
+    <string name="leftovers_add_one">Add</string>
+    <string name="leftovers_move">Move out</string>
+    <string name="leftovers_move_all">Move all out</string>
+    <string name="leftovers_close">Close</string>
+    <string name="leftovers_needs_closed">Close Deadlock to add or move these.</string>
+    <string name="leftovers_adding">Adding to your library…</string>
+    <string name="leftovers_moving">Moving out of the game…</string>
+    <string name="leftovers_added">Added to your library.</string>
+    <string name="leftovers_moved">Moved to %1$s. Nothing was deleted.</string>
 </resources>
