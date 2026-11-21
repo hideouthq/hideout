@@ -160,4 +160,104 @@ class LeanBackupsTest {
         assertEquals(listOf("lilith"), world.manifest().records.map { it.installId }, "restoring it leaves the mods as they are")
         assertEquals(emptyMap(), library.ready().damaged)
     }
+
+    @Test
+    fun anUninstalledGameBananaModsFilesLeaveTheStoreWhileALocalModsStay() = runTest {
+        val world = World()
+        val library = with(world) { library() }
+        backUp(library)
+        assertTrue(lilithImages.all(world::stored) && world.stored(skinImage))
+
+        uninstall(library, "lilith")
+        uninstall(library, "skin")
+        assertEquals(emptyList(), lilithImages.filter(world::stored), "GameBanana gives those again")
+        assertTrue(world.stored(skinImage), "the backup holds the only copy of a local mod's file")
+    }
+
+    @Test
+    fun backupsMadeBeforeThisFreeTheSpaceOfUninstalledModsTheNextTimeHideoutStarts() = runTest {
+        val world = World()
+        val held = world.manifest().backupOf(root)
+        for (record in held.records) for (file in record.files) world.files.backups.keep(GameEntry(root, record.setFolder(), file.name), file.image)
+        world.files.backups.publish(root, BackupInfo(BackupId("manual"), 1, BackupReason.Manual, mods = 2), held, emptyMap())
+        repeat(4) { world.files.backups.publish(root, BackupInfo(BackupId("autoexec$it"), 2L + it, BackupReason.BeforeGameSettings, mods = 2), held, mapOf(HeldFile.Autoexec to ByteArray(0))) }
+        for (record in held.records) for (file in record.files) world.files.remove(root, file.relativePath(record))
+        world.store.save(LibraryManifest())
+        assertTrue(lilithImages.all(world::stored) && world.stored(skinImage))
+
+        with(world) { library() }
+        assertEquals(emptyList(), lilithImages.filter(world::stored), "no backup keeps a GameBanana file once it is out of the game")
+        assertTrue(world.stored(skinImage), "the manual backup still keeps the local mod")
+    }
+
+    @Test
+    fun theOriginalOfAnEditedFileStaysStoredAndRestoreOriginalPutsItBackWithNothingDownloaded() = runTest {
+        val world = World()
+        with(world) { seen() }
+        val path = lilithRecord.files.first().relativePath(lilithRecord)
+        val original = world.files.identity(root, path)
+        world.files.putBytes(root, path, FakeVpk.directory(seed = 9))
+        val library = with(world) { library() }
+        backUp(library)
+        uninstall(library, "skin")
+        assertTrue(lilithImages.all(world::stored), "the Library still names the original")
+
+        library.reinstall("lilith")
+        runCurrent()
+        assertEquals(original, world.files.identity(root, path))
+        assertEquals(lilithRecord, world.manifest().records.single { it.installId == "lilith" })
+        assertEquals(emptyList(), world.downloader.requested)
+        assertEquals(0, world.banana.calls)
+    }
+
+    @Test
+    fun aRestoreGetsAGameBananaModTheStoreNoLongerHoldsFromItsKeptDownload() = runTest {
+        val world = World()
+        val library = with(world) { library() }
+        val backup = backUp(library)
+        uninstall(library, "lilith")
+        assertEquals(emptyList(), lilithImages.filter(world::stored))
+
+        assertEquals(BackupStage.Done, restore(library, backup))
+        assertEquals(lilithRecord.sets, world.manifest().records.single { it.installId == "lilith" }.sets)
+        assertEquals(emptyMap(), library.ready().damaged)
+        assertEquals(emptyList(), world.downloader.requested, "the kept download holds it")
+        assertEquals(0, world.banana.calls)
+    }
+
+    @Test
+    fun aRestoreDownloadsAGameBananaModAgainWhenNoDownloadIsKept() = runTest {
+        val world = World()
+        val library = with(world) { library() }
+        val backup = backUp(library)
+        uninstall(library, "lilith", deleteDownload = true)
+        assertEquals(emptyList(), lilithImages.filter(world::stored))
+
+        assertEquals(BackupStage.Done, restore(library, backup))
+        assertEquals(lilithRecord.sets.map { it.files }, world.manifest().records.single { it.installId == "lilith" }.sets.map { it.files })
+        assertEquals(emptyMap(), library.ready().damaged)
+        assertEquals(listOf(101L, 103L), world.downloader.requested)
+        assertNull(library.state.value.operations[lilith.modId])
+    }
+
+    @Test
+    fun aRestoreThatCannotGetAGameBananaModBackSaysWhyForThatModAndRestoresTheRest() = runTest {
+        val failures = listOf(
+            emptyMap<SubmissionRef, FileListing>() to LibraryProblem.MetadataUnavailable("no answer for mod-551201"),
+            mapOf(lilith to FileListing.Available("Lilith, the Hell Warden", listOf(remote(103, "lilith_werewolf_cabezas.zip")))) to LibraryProblem.FileNotOffered,
+        )
+        for ((listings, problem) in failures) {
+            val world = World()
+            val library = with(world) { library() }
+            val backup = backUp(library)
+            uninstall(library, "lilith", deleteDownload = true)
+            uninstall(library, "skin")
+            world.banana.listings = listings
+
+            assertEquals(BackupStage.Incomplete(listOf(MissingMod("Lilith, the Hell Warden", problem))), restore(library, backup))
+            assertEquals(setOf("lilith", "skin"), world.manifest().records.map { it.installId }.toSet(), "$problem")
+            assertEquals(mapOf("lilith" to FilesDamage.Missing), library.ready().damaged, "the local mod is back whole, and Lilith is left for Reinstall")
+            assertEquals(lilithRecord.reinstallFrom, ReinstallFrom.Source)
+        }
+    }
 }

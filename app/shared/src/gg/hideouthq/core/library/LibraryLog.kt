@@ -15,13 +15,17 @@ internal fun shownProblems(state: LibraryState): Set<String> = buildSet {
     when (val maintenance = state.maintenance) {
         is Maintenance.Restore -> (maintenance.stage as? RestoreStage.Refused)?.let { add("Restoring gameinfo.gi was refused: ${it.problem}") }
         is Maintenance.Clear -> (maintenance.stage as? ClearStage.Refused)?.let { add("Clearing downloads was refused: ${it.problem}") }
-        is Maintenance.Backups -> (maintenance.stage as? BackupStage.Refused)?.let {
-            val work = when (maintenance.work) {
-                BackupWork.BackUp -> "Backing up"
-                is BackupWork.Revert -> "Restoring a backup"
-                is BackupWork.Delete -> "Deleting a backup"
+        is Maintenance.Backups -> when (val stage = maintenance.stage) {
+            is BackupStage.Refused -> {
+                val work = when (maintenance.work) {
+                    BackupWork.BackUp -> "Backing up"
+                    is BackupWork.Revert -> "Restoring a backup"
+                    is BackupWork.Delete -> "Deleting a backup"
+                }
+                add("$work was refused: ${stage.problem}")
             }
-            add("$work was refused: ${it.problem}")
+            is BackupStage.Incomplete -> stage.missing.forEach { add("Restoring a backup couldn't get back the files of ${it.title}: ${it.problem}") }
+            BackupStage.Running, BackupStage.Done -> Unit
         }
         null -> Unit
     }
@@ -108,7 +112,7 @@ private fun maintenanceEvent(maintenance: Maintenance): String? = when (maintena
     is Maintenance.Clear -> (maintenance.stage as? ClearStage.Cleared)?.let {
         "Cleared downloads: ${it.removed} removed, ${sizeText(it.freedBytes)} freed, ${it.kept} kept, ${it.alreadyGone} already gone"
     }
-    is Maintenance.Backups -> if (maintenance.stage != BackupStage.Done) null else when (val work = maintenance.work) {
+    is Maintenance.Backups -> if (maintenance.stage != BackupStage.Done && maintenance.stage !is BackupStage.Incomplete) null else when (val work = maintenance.work) {
         BackupWork.BackUp -> "Backed up the game's mods and settings"
         is BackupWork.Revert -> "Restored the backup ${work.backup.said}"
         is BackupWork.Delete -> "Deleted the backup ${work.backup.said}"

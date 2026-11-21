@@ -58,6 +58,16 @@ internal val LibraryManifest.contents: Set<String>
     get() = (records.flatMap { it.files }.map { it.sha256 } + records.flatMap { it.sets }.flatMap { it.edits.values }.map { it.sha256 } + originals.flatMap { it.files }.map { it.image.sha256 }).toSet()
 
 /**
+ * The stored content a backup holding this Library keeps for itself: [contents] but a GameBanana file's as it came, which
+ * a restore gets again from its kept download or GameBanana. What the current Library names is kept whatever its source.
+ */
+internal val LibraryManifest.pinned: Set<String>
+    get() {
+        val own = records.flatMap { it.sets }.filterNot { it.source is InstalledSource.Remote && it.derivation == null && it.edits.isEmpty() }
+        return (own.flatMap { set -> set.files.map { it.image.sha256 } + set.edits.values.map { it.sha256 } } + originals.flatMap { it.files }.map { it.image.sha256 }).toSet()
+    }
+
+/**
  * [this], a book of [root]'s mods as a backup holds it, with each profile also ordering and turning on the mods of every
  * other game as [current]'s profile of the same id does, or [current]'s active one when [current] has none of that id.
  * The active profile of an [applied] book takes [current]'s active one's, since the other games' files stay as they are.

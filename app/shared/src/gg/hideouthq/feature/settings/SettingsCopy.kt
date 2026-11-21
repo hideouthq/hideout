@@ -32,6 +32,7 @@ import gg.hideouthq.resources.setting_back_up_refused
 import gg.hideouthq.resources.setting_back_up_running
 import gg.hideouthq.resources.setting_backups_choose
 import gg.hideouthq.resources.setting_backups_delete_refused
+import gg.hideouthq.resources.setting_backups_restore_missing
 import gg.hideouthq.resources.setting_backups_restore_refused
 import gg.hideouthq.resources.setting_check_app_updates_check
 import gg.hideouthq.resources.setting_check_app_updates_checking
@@ -227,6 +228,9 @@ private fun live(setting: Setting, state: SettingsUiState, fixed: String?): Live
                 control = setting.button(stringResource(Res.string.setting_backups_choose), !busy && state.backups.isNotEmpty()),
                 note = when (backup?.work) {
                     is BackupWork.Revert -> refused?.let { AnnotatedString(stringResource(Res.string.setting_backups_restore_refused, it)) }
+                        ?: (backup.stage as? BackupStage.Incomplete)?.let { stage ->
+                            AnnotatedString(stage.missing.map { stringResource(Res.string.setting_backups_restore_missing, it.title, LibraryLabels.problem(it.problem)) }.joinToString("\n"))
+                        }
                     is BackupWork.Delete -> refused?.let { AnnotatedString(stringResource(Res.string.setting_backups_delete_refused, it)) }
                     BackupWork.BackUp, null -> null
                 },

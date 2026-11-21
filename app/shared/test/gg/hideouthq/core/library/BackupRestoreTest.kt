@@ -41,20 +41,20 @@ class BackupRestoreTest {
     private val ranked = ProfileId("ranked")
     private val foreign = ByteArray(9) { 7 }
 
-    private class Spec(val id: String, val mod: Long, val number: Int?, val parts: List<String>)
+    private class Spec(val id: String, val number: Int?, val parts: List<String>)
 
     private val specs = listOf(
-        Spec("a", 1, 3, listOf("dir", "000")),
-        Spec("b", 2, 5, listOf("dir")),
-        Spec("c", 3, null, listOf("dir", "000")),
-        Spec("d", 4, 9, listOf("dir")),
+        Spec("a", 3, listOf("dir", "000")),
+        Spec("b", 5, listOf("dir")),
+        Spec("c", null, listOf("dir", "000")),
+        Spec("d", 9, listOf("dir")),
     )
 
     private fun bytesOf(id: String, part: String) = "$id-$part".encodeToByteArray() + ByteArray(12 + id[0].code % 5) { (it * 7 + part.length).toByte() }
 
     private fun record(spec: Spec, number: Int? = spec.number, derivation: SetDerivation? = null): ManifestRecord {
         val files = spec.parts.map { part -> SetFile(checkNotNull(VpkPart.parse(part)), Sha256.image(bytesOf(spec.id, part))) }
-        val source = InstalledSource.Remote(SubmissionIdentity(SubmissionKind.Mod, spec.mod, spec.mod * 10, null))
+        val source = InstalledSource.Local(spec.id, "${spec.id}.zip")
         val placement = number?.let { Placement.On(Slot(it)) } ?: Placement.Off
         return ManifestRecord(spec.id, root, "Mod ${spec.id}", placement, listOf(InstalledSet(source, null, null, SetOrigin.Imported(FileImage(1, "a".repeat(64))), null, "pak01_dir.vpk", files, derivation)))
     }
@@ -278,7 +278,7 @@ class BackupRestoreTest {
     }
 
     @Test
-    fun aSetWhoseFilesTheStoreLostComesBackMissingAndReinstallRepairsIt() = runTest {
+    fun aSetWhoseFilesTheStoreLostComesBackMissingForReinstallAndAGameBananaOneIsGotAgain() = runTest {
         val world = World()
         val library = with(world) { library() }
         world.offer(9, later)
@@ -295,16 +295,12 @@ class BackupRestoreTest {
 
         assertEquals(BackupStage.Done, restore(library, backup))
         assertEquals(installed, world.record(installed.installId))
-        assertNull(world.files.bytes(root, "$addons/pak02_dir.vpk"), "the store does not hold it")
+        assertContentEquals(later, world.files.bytes(root, "$addons/pak02_dir.vpk"), "the store does not hold it, so it comes back from its kept download")
+        assertEquals(listOf(90L), world.downloader.requested, "downloaded only when it was installed")
         assertEquals(record(specs[1], 4), world.record("b"), "b's file now holds other bytes, so b is placed as if it had none")
         assertNull(world.files.bytes(root, "$addons/pak04_dir.vpk"), "an edit in place reached the stored copy too")
         assertNull(world.files.bytes(root, "$addons/pak05_dir.vpk"))
-        assertEquals(mapOf(installed.installId to FilesDamage.Missing, "b" to FilesDamage.Missing), library.ready().damaged)
-
-        library.reinstall(installed.installId)
-        runCurrent()
-        assertContentEquals(later, world.files.bytes(root, "$addons/pak02_dir.vpk"))
-        assertEquals(mapOf("b" to FilesDamage.Missing), library.ready().damaged)
+        assertEquals(mapOf("b" to FilesDamage.Missing), library.ready().damaged, "a local mod's file nothing else holds is left for Reinstall")
     }
 
     @Test
@@ -419,13 +415,13 @@ class BackupRestoreTest {
         val world = World()
         val library = with(world) { library() }
         val manual = backUp(library)
-        world.offer(9, later)
-        library.install("mod-9")
+        world.files.putBytes(root, "$addons/pak09_dir.vpk", bytesOf("d", "edited"))
+        library.keepEdits("d")
         runCurrent()
-        val only = "${InMemoryGameFiles.Stored}/${sha256Hex(later)}"
+        val only = "${InMemoryGameFiles.Stored}/${sha256Hex(bytesOf("d", "edited"))}"
 
         restore(library, manual)
-        assertNotNull(world.files.identity(root, only), "the backup before the restore holds mod 9")
+        assertNotNull(world.files.identity(root, only), "the backup before the restore holds d as it was edited")
         repeat(5) { restore(library, manual) }
         val kept = library.state.value.backups
         assertEquals(List(5) { BackupReason.BeforeRestore } + BackupReason.Manual, kept.map { it.reason })
@@ -455,11 +451,11 @@ class BackupRestoreTest {
         world.store.refuse = { manifest -> "the disk is full".takeIf { manifest.pending is PendingChange.Revert } }
         assertIs<BackupStage.Refused>(restore(library, oldest))
         assertTrue(oldest in library.state.value.backups, "the oldest of six automatic backups stays while it is not restored")
-        for (sha in world.files.backups.read(root, oldest.id).contents) assertNotNull(world.files.identity(root, "${InMemoryGameFiles.Stored}/$sha"), sha)
+        for (sha in world.files.backups.read(root, oldest.id).pinned) assertNotNull(world.files.identity(root, "${InMemoryGameFiles.Stored}/$sha"), sha)
 
         world.store.refuse = { null }
         assertEquals(BackupStage.Done, restore(library, oldest))
-        assertContentEquals(later, world.files.bytes(root, "$addons/pak02_dir.vpk"))
+        assertContentEquals(later, world.files.bytes(root, "$addons/pak02_dir.vpk"), "mod 9 comes back from its kept download")
     }
 
     @Test

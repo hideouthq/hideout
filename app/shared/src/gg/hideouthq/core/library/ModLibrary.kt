@@ -1574,14 +1574,33 @@ class ModLibrary(
      * take the numbers their order plans around the files as they are now, so one on now with the same bytes keeps its
      * name. Refused while Deadlock may run, and when a file of a mod changed or cannot be read, since it would go and no
      * backup could hold it. The Library is backed up first, and it is refused when that fails. A set whose files the
-     * store no longer holds comes back missing, for Reinstall. A backup that holds no mods ([BackupReason.holdsMods])
-     * puts back only the settings files and leaves the Library as it is.
+     * store no longer holds comes back missing; a GameBanana one is then got again as Reinstall gets it, and the restore
+     * is [BackupStage.Incomplete] with each mod that could not be. A backup that holds no mods
+     * ([BackupReason.holdsMods]) puts back only the settings files and leaves the Library as it is.
      */
     fun restoreBackup(backup: BackupInfo) = maintain(Maintenance.Backups(BackupWork.Revert(backup), BackupStage.Running)) {
         librarySetup.join()
+        val missingBefore = missingIds()
         val problem = underLock { revertLocked(backup) }
         (state.value.game as? GameStatus.Ready)?.root?.let { refreshLoading(it) }
-        Maintenance.Backups(BackupWork.Revert(backup), problem.staged())
+        val missing = if (problem == null && backup.reason.holdsMods) reinstallMissing(except = missingBefore) else emptyList()
+        Maintenance.Backups(BackupWork.Revert(backup), if (missing.isEmpty()) problem.staged() else BackupStage.Incomplete(missing))
+    }
+
+    private fun missingIds(): Set<String> = (state.value.library as? LibraryStatus.Ready)?.damaged?.filterValues { it == FilesDamage.Missing }?.keys.orEmpty()
+
+    /**
+     * Reinstalls each mod of the found game whose GameBanana files are missing, but those in [except], and waits for
+     * them: the mods still missing them, with why.
+     */
+    private suspend fun reinstallMissing(except: Set<String>): List<MissingMod> {
+        val ready = state.value.library as? LibraryStatus.Ready ?: return emptyList()
+        val root = (state.value.game as? GameStatus.Ready)?.root ?: return emptyList()
+        val left = missingIds() - except
+        val missing = ready.records.filter { it.gameRoot == root && it.installId in left && it.reinstallFrom == ReinstallFrom.Source }
+        missing.forEach { reinstall(it.installId) }
+        missing.forEach { runs.value[it.modId]?.job?.join() }
+        return missing.mapNotNull { record -> (state.value.operations[record.modId]?.stage as? OperationStage.Failed)?.let { MissingMod(record.title, it.problem) } }
     }
 
     /** Deletes [backup], and the stored files no backup left names. */
@@ -1799,7 +1818,7 @@ class ModLibrary(
         val past = listed.filter { it.reason != BackupReason.Manual }.groupBy { it.reason }.values
             .flatMap { reason -> reason.sortedByDescending { it.createdAt }.drop(KeptAutomatic) }.filter { it.id !in keep }
         val deleted = past.filter { attempt { ports.backups.delete(root, it.id) } is Attempt.Done }.toSet()
-        val named = (listed - deleted).filter { it.reason.holdsMods }.flatMap { info -> (attempt { ports.backups.read(root, info.id) } as? Attempt.Done)?.value?.contents ?: return }.toSet()
+        val named = (listed - deleted).filter { it.reason.holdsMods }.flatMap { info -> (attempt { ports.backups.read(root, info.id) } as? Attempt.Done)?.value?.pinned ?: return }.toSet()
         attempt { ports.backups.prune(root, named + ledger.manifest.contents) }
     }
 

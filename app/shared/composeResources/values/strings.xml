@@ -163,6 +163,7 @@
     <string name="setting_backups_keywords">backup, restore, undo, revert, snapshot, history, setup, autoexec, crosshair</string>
     <string name="setting_backups_choose">Choose…</string>
     <string name="setting_backups_restore_refused">Hideout didn’t restore the backup. %1$s</string>
+    <string name="setting_backups_restore_missing">Hideout restored the backup, but couldn’t get back %1$s. %2$s Reinstall it from Library to try again.</string>
     <string name="setting_backups_delete_refused">Hideout didn’t delete the backup. %1$s</string>
     <string name="setting_version_title">Hideout %1$s</string>
     <string name="setting_version_description">A mod manager for Deadlock. Not affiliated with Valve or GameBanana.</string>
