@@ -23,6 +23,7 @@ import gg.hideouthq.feature.install.InstallDialogTags
 import java.io.File
 import kotlin.math.abs
 import kotlin.math.hypot
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.skia.Bitmap
@@ -262,6 +263,28 @@ internal fun checkInstallDialogPickOne(outDir: File) {
         check(hasText("These change the same files. The ticked ones share 2 files.")) { "two ticked colours count the files they share" }
         check(dialogNodes().any { it.hasLabel("Move Blue up") }) { "ticked parts that share files can be ordered" }
         capture("pick_one_two_ticked")
+        key(Key.Escape)
+        awaitNoSurface()
+    }
+}
+
+internal fun checkInstallDialogManyParts(outDir: File) {
+    val parts = (1..60).map { n ->
+        val number = n.toString().padStart(2, '0')
+        "Lilith/Part $number/pak${number}_dir.vpk" to FakeVpk.of(mapOf("models/heroes/lilith/part_$number.vmdl_c" to "part $number".encodeToByteArray()))
+    }
+    val container = InstallDialogFixture.container(archives = mapOf(InstallDialogFixture.Werewolf to parts))
+    val state = HideoutAppState(container, Route.Discover)
+    runCheck(outDir, "install_dialog_many_parts", state, coroutineContext = Dispatchers.Main) {
+        openComponentQuestion(state)
+        checkTicked("Part 01", true)
+        checkTicked("Part 60", true)
+        val list = dialogNodes().single { it.hasLabel("Parts to install") }.boundsInRoot
+        fun row(name: String) = dialogNodes().single { it.hasLabel(name) && it.config.contains(SemanticsProperties.ToggleableState) }.boundsInRoot
+        check(row("Part 01").height > 0f && row("Part 01").top >= list.top && row("Part 01").bottom <= list.bottom) { "the list opens at its first part, list $list, first ${row("Part 01")}" }
+        check(row("Part 60").height == 0f) { "the last part starts out of view, last ${row("Part 60")}" }
+        check(dialogNodes().any { it.confirms("Install 60 parts") })
+        capture("opens_at_top")
         key(Key.Escape)
         awaitNoSurface()
     }

@@ -35,12 +35,14 @@ import gg.hideouthq.core.navigation.Route
 import gg.hideouthq.core.ui.LocalReducedMotion
 import gg.hideouthq.core.ui.LocalWindowChrome
 import gg.hideouthq.feature.settings.SettingsTab
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.coroutines.CoroutineContext
 
 private class SmokeCheck(val name: String, val run: (File) -> Unit)
 
@@ -57,6 +59,7 @@ fun main(args: Array<String>) {
         SmokeCheck("install_dialog_keys", ::checkInstallDialogKeys),
         SmokeCheck("install_dialog_components", ::checkInstallDialogComponents),
         SmokeCheck("install_dialog_pick_one", ::checkInstallDialogPickOne),
+        SmokeCheck("install_dialog_many_parts", ::checkInstallDialogManyParts),
         SmokeCheck("install_dialog_readme", ::checkInstallDialogReadme),
         SmokeCheck("install_dialog_preview", ::checkInstallDialogPreview),
         SmokeCheck("install_dialog_swap", ::checkInstallSkinSwap),
@@ -104,10 +107,11 @@ internal fun SmokeRoot(state: HideoutAppState, reducedMotion: Boolean) {
 internal fun runCheck(
     outDir: File, name: String, state: HideoutAppState,
     widthDp: Int = 1440, heightDp: Int = 900, reducedMotion: Boolean = false,
+    coroutineContext: CoroutineContext = Dispatchers.Unconfined,
     script: Script.() -> Unit,
 ) = runScript(
     outDir, name, widthDp, heightDp, { SmokeRoot(state, reducedMotion) },
-    scale = 1f, outputDirectory = File(outDir, name), captureBeforeCoordinates = true,
+    scale = 1f, outputDirectory = File(outDir, name), captureBeforeCoordinates = true, coroutineContext = coroutineContext,
     windowKeys = WindowKeys(state.keys::onPreviewKeyEvent, state.keys::onKeyEvent), script = script,
 )
 

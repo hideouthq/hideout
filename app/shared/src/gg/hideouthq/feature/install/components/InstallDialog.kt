@@ -27,7 +27,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -142,11 +144,15 @@ internal fun InstallDialogContent(
             verticalArrangement = Arrangement.spacedBy(dimens.RowGap),
         ) {
             val previews = state.rows.any { it.preview != null }
+            var revealed by remember(id) { mutableStateOf(false) }
+            val reveal = state.rows.firstOrNull { it.pick in state.selected }?.pick?.takeIf { !revealed }
             @Composable
             fun item(index: Int, row: VersionRow) = key(row.pick) {
                 VersionRowItem(
                     row = row,
                     selected = row.pick in state.selected,
+                    reveal = row.pick == reveal,
+                    onRevealed = { revealed = true },
                     showInstalled = state.replacing,
                     onToggle = { viewModel.toggle(id, row.pick) },
                     onConfirm = { if (ready) viewModel.confirm(id) },
@@ -222,6 +228,8 @@ private fun Header(header: DialogHeader, onClose: () -> Unit) {
 private fun VersionRowItem(
     row: VersionRow,
     selected: Boolean,
+    reveal: Boolean,
+    onRevealed: () -> Unit,
     showInstalled: Boolean,
     onToggle: () -> Unit,
     onConfirm: () -> Unit,
@@ -244,13 +252,18 @@ private fun VersionRowItem(
         animationSpec = HideoutTheme.motion.effectsFast(),
         label = "versionRowFill",
     )
-    val reveal = remember { BringIntoViewRequester() }
-    LaunchedEffect(selected) { if (selected) reveal.bringIntoView() }
+    val revealer = remember { BringIntoViewRequester() }
+    LaunchedEffect(reveal) {
+        if (reveal) {
+            revealer.bringIntoView()
+            onRevealed()
+        }
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = dimens.RowMinHeight)
-            .bringIntoViewRequester(reveal)
+            .bringIntoViewRequester(revealer)
             .clip(shape)
             .background(fill)
             .focusRing(states.focusVisible, shape)
