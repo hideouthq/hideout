@@ -196,13 +196,14 @@
     </plurals>
     <string name="backups_before_restore">%1$s · Before a restore</string>
     <string name="backups_before_updates">%1$s · Before Update all</string>
-    <string name="backups_before_autoexec">%1$s · Before a game settings change</string>
+    <string name="backups_before_autoexec">autoexec.cfg and crosshair · Before a game settings change</string>
     <string name="backups_restore">Restore</string>
     <string name="backups_delete">Delete</string>
     <string name="backups_close">Close</string>
     <string name="backups_cancel">Cancel</string>
     <string name="backups_restore_title">Restore the backup from %1$s?</string>
     <string name="backups_restore_body">Your Library becomes exactly as it was then: its mods and their files, on or off, load order, profiles, autoexec.cfg and crosshair. Mods installed since are removed.</string>
+    <string name="backups_restore_settings_body">autoexec.cfg and your crosshair go back to how they were then. Your mods stay as they are.</string>
     <string name="backups_restore_first">Hideout backs up your setup first, so you can restore that to undo this.</string>
     <string name="backups_delete_title">Delete the backup from %1$s?</string>
     <string name="backups_delete_body">This can’t be undone.</string>

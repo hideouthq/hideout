@@ -53,6 +53,7 @@ import gg.hideouthq.resources.backups_delete_title
 import gg.hideouthq.resources.backups_mods
 import gg.hideouthq.resources.backups_restore
 import gg.hideouthq.resources.backups_restore_body
+import gg.hideouthq.resources.backups_restore_settings_body
 import gg.hideouthq.resources.backups_restore_first
 import gg.hideouthq.resources.backups_restore_title
 import gg.hideouthq.resources.backups_when
@@ -182,7 +183,10 @@ internal fun BackupsDialog(pane: BackupsPane?, backups: List<BackupInfo>, enable
             } else {
                 val restoring = shown is BackupsPane.ConfirmRestore
                 Confirmation(
-                    (if (restoring) listOf(Res.string.backups_restore_body, Res.string.backups_restore_first) else listOf(Res.string.backups_delete_body)).map { stringResource(it) },
+                    when (shown) {
+                        is BackupsPane.ConfirmRestore -> listOf(if (shown.backup.reason.holdsMods) Res.string.backups_restore_body else Res.string.backups_restore_settings_body, Res.string.backups_restore_first)
+                        else -> listOf(Res.string.backups_delete_body)
+                    }.map { stringResource(it) },
                     stringResource(Res.string.backups_cancel), back, first,
                     stringResource(if (restoring) Res.string.backups_restore else Res.string.backups_delete), onConfirm,
                     enabled = pane != null && enabled,
@@ -200,7 +204,7 @@ private fun BackupItem(backup: BackupInfo, enabled: Boolean, onRestore: () -> Un
         BackupReason.Manual -> mods
         BackupReason.BeforeRestore -> stringResource(Res.string.backups_before_restore, mods)
         BackupReason.BeforeUpdates -> stringResource(Res.string.backups_before_updates, mods)
-        BackupReason.BeforeGameSettings -> stringResource(Res.string.backups_before_autoexec, mods)
+        BackupReason.BeforeGameSettings -> stringResource(Res.string.backups_before_autoexec)
     }
     Row(horizontalArrangement = Arrangement.spacedBy(HideoutDimens.Settings.CardGap), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {

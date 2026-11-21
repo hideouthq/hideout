@@ -17,14 +17,15 @@ value class BackupId(val value: String) {
     }
 }
 
+/** Why a backup was made, and so what it holds: the whole Library with the settings files, or the settings files alone ([holdsMods] false). */
 @Serializable
-enum class BackupReason {
-    Manual,
-    BeforeRestore,
-    BeforeUpdates,
+enum class BackupReason(val holdsMods: Boolean) {
+    Manual(true),
+    BeforeRestore(true),
+    BeforeUpdates(true),
 
     @SerialName("BeforeAutoexec")
-    BeforeGameSettings,
+    BeforeGameSettings(false),
 }
 
 data class BackupInfo(val id: BackupId, val createdAt: Long, val reason: BackupReason, val mods: Int)

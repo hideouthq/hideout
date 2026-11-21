@@ -1574,7 +1574,8 @@ class ModLibrary(
      * take the numbers their order plans around the files as they are now, so one on now with the same bytes keeps its
      * name. Refused while Deadlock may run, and when a file of a mod changed or cannot be read, since it would go and no
      * backup could hold it. The Library is backed up first, and it is refused when that fails. A set whose files the
-     * store no longer holds comes back missing, for Reinstall.
+     * store no longer holds comes back missing, for Reinstall. A backup that holds no mods ([BackupReason.holdsMods])
+     * puts back only the settings files and leaves the Library as it is.
      */
     fun restoreBackup(backup: BackupInfo) = maintain(Maintenance.Backups(BackupWork.Revert(backup), BackupStage.Running)) {
         librarySetup.join()
@@ -1732,7 +1733,7 @@ class ModLibrary(
     }
 
     private suspend fun takeBackupLocked(root: GameRoot, reason: BackupReason, id: BackupId): LibraryProblem? {
-        val backup = ledger.manifest.backupOf(root)
+        val backup = if (reason.holdsMods) ledger.manifest.backupOf(root) else LibraryManifest()
         for (record in backup.records) for (file in record.files) {
             (attempt { ports.backups.keep(GameEntry(root, record.setFolder(), file.name), file.image) } as? Attempt.Failed)?.let { return LibraryProblem.BackupFailed(it.reason) }
         }
@@ -1758,19 +1759,23 @@ class ModLibrary(
             is Writable.Refused -> return found.problem
             is Writable.Ok -> found.root
         }
-        val held = attempt { ports.backups.read(root, backup.id) }.orElse { return LibraryProblem.BackupUnreadable(it) }
+        val held = if (backup.reason.holdsMods) attempt { ports.backups.read(root, backup.id) }.orElse { return LibraryProblem.BackupUnreadable(it) } else null
         val files = attempt { ports.backups.held(root, backup.id) }.orElse { return LibraryProblem.BackupUnreadable(it) }
-        val change = when (val planned = ledger.planRevert(root, held)) {
-            is MutationResult.Refused -> return planned.problem
-            is MutationResult.Done -> planned.value
+        val change = held?.let {
+            when (val planned = ledger.planRevert(root, it)) {
+                is MutationResult.Refused -> return planned.problem
+                is MutationResult.Done -> planned.value
+            }
         }
         val safety = BackupId(ids())
         takeBackupLocked(root, BackupReason.BeforeRestore, safety)?.let { return it }
-        val outcome = changing { ledger.revert(change) }
+        val outcome = change?.let { changing { ledger.revert(it) } } ?: ChangeOutcome.Done
         if (outcome == ChangeOutcome.Done) pruneLocked(root, keep = setOf(backup.id, safety))
-        undoEntry = null
-        mutableState.update { it.copy(undo = null) }
-        publishRecords(ledger.uncertainty ?: (outcome as? ChangeOutcome.Refused)?.interrupted, recheck = change.installIds)
+        if (change != null) {
+            undoEntry = null
+            mutableState.update { it.copy(undo = null) }
+            publishRecords(ledger.uncertainty ?: (outcome as? ChangeOutcome.Refused)?.interrupted, recheck = change.installIds)
+        }
         publishBackups()
         if (ledger.manifest.savedChoices != null) wake.trySend(Unit)
         (outcome as? ChangeOutcome.Refused)?.let { return it.problem }
@@ -1794,7 +1799,7 @@ class ModLibrary(
         val past = listed.filter { it.reason != BackupReason.Manual }.groupBy { it.reason }.values
             .flatMap { reason -> reason.sortedByDescending { it.createdAt }.drop(KeptAutomatic) }.filter { it.id !in keep }
         val deleted = past.filter { attempt { ports.backups.delete(root, it.id) } is Attempt.Done }.toSet()
-        val named = (listed - deleted).flatMap { info -> (attempt { ports.backups.read(root, info.id) } as? Attempt.Done)?.value?.contents ?: return }.toSet()
+        val named = (listed - deleted).filter { it.reason.holdsMods }.flatMap { info -> (attempt { ports.backups.read(root, info.id) } as? Attempt.Done)?.value?.contents ?: return }.toSet()
         attempt { ports.backups.prune(root, named + ledger.manifest.contents) }
     }
 
