@@ -271,6 +271,28 @@ internal fun checkInstalledUninstall(outDir: File) {
     }
 }
 
+internal fun checkDetailsUninstallDoubleClick(outDir: File) {
+    val fixture = InstalledFixture()
+    runCheck(outDir, "details_uninstall_double_click", fixture.state()) {
+        advance(600)
+        fun leaving() = fixture.container.modLibrary.state.value.leaving
+        val uninstall = nodes().single { it.hasLabel("Uninstall") && it.config.contains(SemanticsActions.OnClick) }.boundsInRoot.center
+        moveToDp(uninstall.x / scale, uninstall.y / scale)
+        click()
+        advance(Frame * 8)
+        check(leaving().size == 1) { "The first press uninstalls the selected mod, got ${leaving()}" }
+        capture("next_mod_under_pointer")
+        click()
+        advance(Frame * 4)
+        check(leaving().size == 1) { "The second press of a double click lands on the next mod's Uninstall and is ignored, got ${leaving()}" }
+        advance(Settle)
+        click()
+        advance(Frame * 4)
+        check(leaving().size == 2) { "A deliberate press after a moment uninstalls the next mod, got ${leaving()}" }
+        capture("deliberate_second_uninstall")
+    }
+}
+
 private fun Script.menuItem(label: String): SemanticsNode =
     scene.semanticsOwners.map { descendants(it.rootSemanticsNode) }.first { owner -> owner.any { it.hasLabel("Show files in folder") } }
         .single { it.hasLabel(label) && it.config.contains(SemanticsActions.OnClick) }

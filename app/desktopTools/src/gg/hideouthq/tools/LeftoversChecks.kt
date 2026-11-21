@@ -79,10 +79,18 @@ private fun severalSets(out: File) {
         advance(600)
         check(hasText("pak42_dir.vpk") && hasText("hideout_addons2") && hasText("3 files"))
         capture("dialog")
-        clickNear("Add", "pak42_dir.vpk")
+        fun records() = (fixture.container.modLibrary.state.value.library as LibraryStatus.Ready).records
+        val before = records().size
+        val anchor = nodes().first { node -> node.config.getOrElseNullable(SemanticsProperties.Text) { null }?.any { "pak42_dir.vpk" in it.text } == true }.boundsInRoot.center
+        val add = nodes().filter { it.hasLabel("Add") && it.config.contains(SemanticsActions.OnClick) }.minBy { (it.boundsInRoot.center - anchor).getDistance() }.boundsInRoot.center
+        moveToDp(add.x / scale, add.y / scale)
+        click()
+        repeat(30) { if (hasText("pak42_dir.vpk")) advance(16) }
+        check(!hasText("pak42_dir.vpk")) { "the added set leaves the list" }
+        click()
         advance(500)
-        check(hasText("Added to your library.") && !hasText("pak42_dir.vpk"))
-        check((fixture.container.modLibrary.state.value.library as LibraryStatus.Ready).records.any { it.title == "pak42_dir" })
+        check(hasText("Added to your library.") && records().size == before + 1) { "the second press of a double click lands on the next row's Add and is ignored, got ${records().map { it.title }}" }
+        check(records().any { it.title == "pak42_dir" })
         capture("after_add")
         clickLabel("Move all out")
         advance(900)

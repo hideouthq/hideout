@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.TransformOrigin
@@ -47,6 +48,7 @@ import gg.hideouthq.core.library.incomplete
 import gg.hideouthq.core.ui.CompatChip
 import gg.hideouthq.core.ui.ModLabels
 import gg.hideouthq.core.ui.ProfileChips
+import gg.hideouthq.core.ui.rememberTargetSettled
 import gg.hideouthq.feature.library.DownloadDetail
 import gg.hideouthq.feature.library.FilesPlace
 import gg.hideouthq.feature.library.LibraryDetail
@@ -233,7 +235,8 @@ internal fun LibraryDetailsPanel(
             horizontalArrangement = Arrangement.spacedBy(HideoutDimens.Button.Gap),
         ) {
             row.page?.let { page -> HideoutButton(stringResource(Res.string.action_view_page), { onViewPage(page) }, Modifier.weight(1f), variant = ButtonVariant.Tonal) }
-            HideoutButton(stringResource(Res.string.action_uninstall), { onUninstall(row.installId) }, variant = ButtonVariant.Subtle, enabled = row.canToggle && !row.busy)
+            val settled by rememberTargetSettled(row.installId)
+            HideoutButton(stringResource(Res.string.action_uninstall), { if (settled) onUninstall(row.installId) }, variant = ButtonVariant.Subtle, enabled = row.canToggle && !row.busy)
         }
     }
 }
