@@ -58,7 +58,7 @@ github.com/godbus/dbus/v5	BSD 2-Clause License	yes	go_github_com_godbus_dbus_v5.
 github.com/golang/groupcache	Apache License 2.0	yes	go_github_com_golang_groupcache.txt	go:github.com/golang/groupcache:v0.0.0-20241129210726-2c02b8208cf8
 github.com/google/btree	Apache License 2.0	yes	go_github_com_google_btree.txt	go:github.com/google/btree:v1.1.3
 github.com/hdevalence/ed25519consensus	BSD 3-Clause License	yes	go_github_com_hdevalence_ed25519consensus.txt	go:github.com/hdevalence/ed25519consensus:v0.2.0
-github.com/hideouthq/modlock	MIT License	yes	go_github_com_hideouthq_modlock.txt	go:github.com/hideouthq/modlock:v0.1.74-0.20261117100612-c8c0abd16adc
+github.com/hideouthq/modlock	MIT License	yes	go_github_com_hideouthq_modlock.txt	go:github.com/hideouthq/modlock:v0.1.74-0.20261120093738-a563e65c7565
 github.com/jsimonetti/rtnetlink	MIT License	yes	go_github_com_jsimonetti_rtnetlink.txt	go:github.com/jsimonetti/rtnetlink:v1.4.2
 github.com/klauspost/compress	Apache License 2.0 and MIT License and BSD 3-Clause License	yes	go_github_com_klauspost_compress.txt	go:github.com/klauspost/compress:v1.20.3
 github.com/kr/fs	BSD 3-Clause License	yes	go_github_com_kr_fs.txt	go:github.com/kr/fs:v0.1.0

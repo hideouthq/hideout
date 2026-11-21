@@ -108,4 +108,4 @@ require (
 	honnef.co/go/tools v0.8.1 // indirect
 )
 
-replace github.com/paralin/modlock => github.com/hideouthq/modlock v0.1.74-0.20261117100612-c8c0abd16adc
+replace github.com/paralin/modlock => github.com/hideouthq/modlock v0.1.74-0.20261120093738-a563e65c7565
