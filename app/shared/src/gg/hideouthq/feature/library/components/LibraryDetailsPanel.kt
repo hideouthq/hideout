@@ -203,9 +203,13 @@ internal fun LibraryDetailsPanel(
                 },
             )
             if (onInspect != null) HideoutButton(stringResource(Res.string.file_priority_action), { onInspect(row.installId) }, variant = ButtonVariant.Text, size = ButtonSize.Small)
-            val fileCount = row.availableFiles?.let { stringResource(Res.string.library_files_summary, row.installedFiles, it) }
-                ?: pluralStringResource(Res.plurals.install_dialog_set_files, row.installedVpks, row.installedVpks)
-            FactItem(icon = HideoutIcons.SwapVersions, label = stringResource(Res.string.library_installed_files), value = ModLabels.join(row.variant, fileCount))
+            val fileCount = when (val available = row.availableFiles) {
+                null -> pluralStringResource(Res.plurals.install_dialog_set_files, row.installedVpks, row.installedVpks)
+                row.installedFiles -> pluralStringResource(Res.plurals.install_dialog_set_files, available, available)
+                else -> stringResource(Res.string.library_files_summary, row.installedFiles, available)
+            }
+            val variant = row.variant.takeIf { row.availableFiles != 1 }
+            FactItem(icon = HideoutIcons.SwapVersions, label = stringResource(Res.string.library_installed_files), value = ModLabels.join(variant, fileCount))
             if (row.partsOverlap && !row.held) {
                 HideoutButton(stringResource(Res.string.parts_order_action), { onReorderParts(row.installId) }, variant = ButtonVariant.Text, size = ButtonSize.Small, enabled = row.canInstall && !row.busy)
             }

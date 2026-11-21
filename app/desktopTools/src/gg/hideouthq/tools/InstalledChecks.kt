@@ -293,6 +293,23 @@ internal fun checkDetailsUninstallDoubleClick(outDir: File) {
     }
 }
 
+internal fun checkDetailsInstalledFiles(outDir: File) {
+    runCheck(outDir, "details_installed_files", InstalledFixture().state()) {
+        advance(600)
+        fun select(title: String) {
+            moveTo(nodes().first { it.hasLabel(title) && it.config.contains(SemanticsActions.OnClick) })
+            click()
+            advance(Settle)
+        }
+        select("Faun Celeste")
+        check(nodes().any { it.hasLabel("1 file") } && !hasText("1 of 1")) { "a mod's only file reads as one file, with no name for it" }
+        capture("only_file")
+        select("Night of the Werecat")
+        check(hasText("1 of 2 files")) { "a mod with more files says how many of them it has" }
+        capture("one_of_two")
+    }
+}
+
 private fun Script.menuItem(label: String): SemanticsNode =
     scene.semanticsOwners.map { descendants(it.rootSemanticsNode) }.first { owner -> owner.any { it.hasLabel("Show files in folder") } }
         .single { it.hasLabel(label) && it.config.contains(SemanticsActions.OnClick) }

@@ -73,6 +73,7 @@ fun main(args: Array<String>) {
         SmokeCheck("installed_menu", ::checkInstalledMenu),
         SmokeCheck("installed_uninstall", ::checkInstalledUninstall),
         SmokeCheck("details_uninstall_double_click", ::checkDetailsUninstallDoubleClick),
+        SmokeCheck("details_installed_files", ::checkDetailsInstalledFiles),
         SmokeCheck("installed_compact", ::checkInstalledCompact),
         SmokeCheck("settings_tabs", ::checkSettingsTabs),
         SmokeCheck("settings_search", ::checkSettingsSearch),
