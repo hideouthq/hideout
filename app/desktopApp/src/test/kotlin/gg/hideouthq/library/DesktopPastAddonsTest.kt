@@ -126,10 +126,8 @@ class DesktopPastAddonsTest {
 
     private fun pak(number: Int) = "pak${number.toString().padStart(2, '0')}_dir.vpk"
 
-    private fun paths(records: List<ManifestRecord>) = records.filter { it.enabled }.associate { it.installId to it.files.single().relativePath(it) }
-
     @Test
-    fun aHundredAndFiftySetsLoadInTheirOrderFromAddonsAndHideoutAddons2AndTurningFiftyOneOffMovesNoOtherFile() {
+    fun aHundredAndFiftySetsLoadInTheirOrderFromAddonsAndHideoutAddons2AndTurningFiftyOneOffBringsTheRestBackToAddons() {
         citadel.resolve("gameinfo.gi").writeBytes(valve)
         for ((index, record) in records.withIndex()) game.resolve(record.files.single().relativePath(record)).also { it.parent.createDirectories() }.writeBytes(bytes(index + 1))
         val main = ProfileBook.main(records)
@@ -145,7 +143,8 @@ class DesktopPastAddonsTest {
         assertContentEquals(valve, (GameInfoPatch.withBlock(info, HideoutLines(mods = false, customGames = false), 0) as GameInfoEdit.Patched).bytes, "taking the block out gives back Valve's file")
 
         val kept = library.switchAndSettle(fewer)
-        assertEquals(paths(placed) - ids.take(51).toSet(), paths(kept), "the 99 left on keep their paths")
-        assertEquals((52..99).map { "addons/${pak(it)}" } + (1..51).map { "hideout_addons2/${pak(it)}" }, loadingFiles())
+        assertEquals(ids.drop(51).withIndex().associate { (index, id) -> id to index + 1 }, kept.filter { it.enabled }.associate { it.installId to it.numbers.single().value }, "the 99 left on fit in addons again")
+        assertEquals((1..99).map { "addons/${pak(it)}" }, loadingFiles())
+        for (record in kept.filter { it.enabled }) assertContentEquals(bytes(record.installId.drop(1).toInt()), game.resolve(record.files.single().relativePath(record)).readBytes(), record.installId)
     }
 }

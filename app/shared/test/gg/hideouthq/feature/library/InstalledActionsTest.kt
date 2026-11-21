@@ -283,7 +283,10 @@ class InstalledActionsTest {
     }
 
     @Test
-    fun aModPastAddonsShowsItsNumberInTheFolderItIsIn() = screen(listOf(record(1, enabled = true), record(3, enabled = true).placed(Placement.On(Slot(102))))) { screen ->
+    fun aModPastAddonsShowsItsNumberInTheFolderItIsIn() = screen(
+        listOf(record(1, enabled = true), record(3, enabled = true).placed(Placement.On(Slot(102)))),
+        before = { processes.scan = ProcessScan.Seen(game = true) },
+    ) { screen ->
         screen.installed.select("set3")
         runCurrent()
         val detail = assertNotNull(screen.ui.selected)
