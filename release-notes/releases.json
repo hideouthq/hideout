@@ -2,6 +2,73 @@
   "schema": 1,
   "versions": [
     {
+      "version": "0.2.0",
+      "date": "2026-11-21",
+      "kind": "feature",
+      "highlights": [
+        {
+          "title": "Favourites",
+          "text": "Star the mods you like. Turn on Favourites in Browse or Library to see just those.",
+          "image": "0.2.0-favourites@2x.webp"
+        },
+        {
+          "title": "See what a mod needs",
+          "text": "If a mod needs another mod to work, its page lists it so you can install it in one click.",
+          "image": "0.2.0-needs@2x.webp"
+        }
+      ],
+      "new": [
+        {
+          "area": "Library",
+          "text": "No more 99 mod limit. Deadlock only loads 99 files from one folder, so Hideout now uses more folders and everything you turn on loads."
+        },
+        {
+          "area": "Library",
+          "text": "Mods left in your game folder by another manager show up in Library. Add them or move them out."
+        },
+        {
+          "area": "Library",
+          "text": "Keep both in File priority, for mods that are meant to change the same files."
+        },
+        {
+          "area": "Game",
+          "text": "If a Deadlock update or a Steam file check unloads your mods, Hideout loads them again and tells you."
+        }
+      ],
+      "improved": [
+        {
+          "area": "Install",
+          "text": "Downloads keep going through short outages."
+        },
+        {
+          "area": "Library",
+          "text": "If a mod file goes missing, Hideout puts it back from your backups before you play."
+        },
+        {
+          "area": "Settings",
+          "text": "Backups take a lot less space. They skip GameBanana mods you removed and download them again if you restore."
+        }
+      ],
+      "fixed": [
+        {
+          "area": "General",
+          "text": "Hideout no longer looks blurry on Windows with display scaling above 100%."
+        },
+        {
+          "area": "Library",
+          "text": "Clicking a button twice no longer hits the next mod too."
+        },
+        {
+          "area": "Library",
+          "text": "File priority says which mod is off."
+        },
+        {
+          "area": "Install",
+          "text": "Install counts versions, not parts, when a download has several versions."
+        }
+      ]
+    },
+    {
       "version": "0.1.0",
       "date": "2026-11-19",
       "kind": "feature",
