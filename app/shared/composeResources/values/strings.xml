@@ -499,6 +499,7 @@
     <string name="install_dialog_part_up">Move %1$s up</string>
     <string name="install_dialog_part_down">Move %1$s down</string>
     <string name="install_dialog_install_parts">Install %1$d parts</string>
+    <string name="install_dialog_install_versions">Install %1$d versions</string>
     <string name="install_dialog_versions_label">Downloads</string>
     <string name="install_dialog_sets_label">Parts to install</string>
     <string name="install_dialog_most_downloaded">Most downloaded</string>

@@ -60,6 +60,7 @@ fun main(args: Array<String>) {
         SmokeCheck("install_dialog_components", ::checkInstallDialogComponents),
         SmokeCheck("install_dialog_pick_one", ::checkInstallDialogPickOne),
         SmokeCheck("install_dialog_many_parts", ::checkInstallDialogManyParts),
+        SmokeCheck("install_dialog_versions", ::checkInstallDialogVersions),
         SmokeCheck("install_dialog_readme", ::checkInstallDialogReadme),
         SmokeCheck("install_dialog_preview", ::checkInstallDialogPreview),
         SmokeCheck("install_dialog_swap", ::checkInstallSkinSwap),

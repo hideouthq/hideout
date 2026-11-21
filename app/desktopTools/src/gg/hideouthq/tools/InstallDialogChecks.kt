@@ -290,6 +290,28 @@ internal fun checkInstallDialogManyParts(outDir: File) {
     }
 }
 
+internal fun checkInstallDialogVersions(outDir: File) {
+    val versions = (1..30).map { n ->
+        val number = n.toString().padStart(2, '0')
+        "Lilith/Colour $number/pak${number}_dir.vpk" to FakeVpk.of(mapOf("materials/models/heroes/lilith/clothing_top.vmat_c" to "colour $number".encodeToByteArray()))
+    }
+    val container = InstallDialogFixture.container(archives = mapOf(InstallDialogFixture.Werewolf to versions))
+    val state = HideoutAppState(container, Route.Discover)
+    runCheck(outDir, "install_dialog_versions", state) {
+        openComponentQuestion(state)
+        check(hasText("has 30 versions. Pick the one you want.")) { "an archive of alternatives asks for one" }
+        checkTicked("Colour 01", true)
+        check(dialogNodes().any { it.confirms("Install") }) { "one version picked installs it" }
+        capture("one_version")
+        clickAt(dialogNodes().single { it.hasLabel("Colour 02") && it.config.contains(SemanticsProperties.ToggleableState) }.boundsInRoot)
+        advance(400)
+        check(dialogNodes().any { it.confirms("Install 2 versions") } && dialogNodes().none { it.confirms("Install 2 parts") }) { "the button counts versions, as the question does" }
+        capture("two_versions")
+        key(Key.Escape)
+        awaitNoSurface()
+    }
+}
+
 internal fun checkInstallDialogReadme(outDir: File) {
     val readme = "Lilith Werewolf Transform\n\nInstall: put pak01 in addons. If you also use the Hell Warden skin, name the skin pak02 so this one shows.\n\n" +
         (1..12).joinToString("\n") { "Changelog $it: tweaked fur shading and claw trails." }

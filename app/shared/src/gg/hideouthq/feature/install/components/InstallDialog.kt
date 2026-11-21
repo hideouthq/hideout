@@ -81,6 +81,7 @@ import gg.hideouthq.resources.install_dialog_delisted
 import gg.hideouthq.resources.install_dialog_deselect_all
 import gg.hideouthq.resources.install_dialog_install_files
 import gg.hideouthq.resources.install_dialog_install_parts
+import gg.hideouthq.resources.install_dialog_install_versions
 import gg.hideouthq.resources.install_dialog_installed
 import gg.hideouthq.resources.install_dialog_left_out
 import gg.hideouthq.resources.install_dialog_most_downloaded
@@ -404,6 +405,7 @@ private fun Footer(state: InstallDialogState, ready: Boolean, onCancel: () -> Un
         val action = when {
             state.question == Question.Files && state.replacing -> stringResource(Res.string.install_dialog_apply)
             picked < 2 -> stringResource(Res.string.install)
+            state.versions -> stringResource(Res.string.install_dialog_install_versions, picked)
             state.question == Question.Sets -> stringResource(Res.string.install_dialog_install_parts, picked)
             else -> stringResource(Res.string.install_dialog_install_files, picked)
         }
