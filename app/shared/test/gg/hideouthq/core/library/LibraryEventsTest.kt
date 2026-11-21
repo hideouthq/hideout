@@ -40,6 +40,17 @@ class LibraryEventsTest {
     }
 
     @Test
+    fun anInstallOfManyPartsFromOneFileNamesThatFileOnce() {
+        val local = InstalledSource.Local("pack", "pack.zip")
+        val image = FileImage(2048, "b".repeat(64))
+        val parts = (1..3).map { InstalledSet(local, null, null, SetOrigin.Imported(image), null, "part$it/pak01_dir.vpk", listOf(directory(image))) }
+        val pack = ManifestRecord("pack", root, "Pack", Placement.On(Slot(2)), parts)
+        val installed = ready.copy(library = LibraryStatus.Ready(listOf(lash, pack)))
+
+        assertEquals(listOf("Installed Pack (local-pack): local file pack.zip"), libraryEvents(ready, installed))
+    }
+
+    @Test
     fun switchingProfileLogsTheSwitchAndTheModsItTurnedOnOnceTheirFilesMoved() {
         val before = ready.copy(library = LibraryStatus.Ready(listOf(haze, lash)), profiles = book)
         val switched = before.copy(profiles = book.copy(active = ranked.id))
@@ -87,6 +98,6 @@ class LibraryEventsTest {
     private fun record(id: String, title: String, submission: Long, number: Int?) = oneSetRecord(
         id, root, InstalledSource.Remote(SubmissionIdentity(SubmissionKind.Mod, submission, submission + 400, null)), title, null,
         ArchiveIdentity("/downloads/$id.zip", 10, "a".repeat(64)), number, listOf(directory(FileImage(2048, "b".repeat(64)))),
-        version = VersionPosition(0, 2), originalName = "$id.zip",
+        version = VersionPosition(1, 2), originalName = "$id.zip",
     )
 }

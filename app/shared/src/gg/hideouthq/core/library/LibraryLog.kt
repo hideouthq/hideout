@@ -118,12 +118,12 @@ private fun maintenanceEvent(maintenance: Maintenance): String? = when (maintena
 /** A mod as the log and a report name it: its title and the mod it is of, such as `Lash Gold (mod-721908)`. */
 internal val ManifestRecord.named: String get() = "$title ($modId)"
 
-/** Where each of the mod's sets came from, winner first. */
-private val ManifestRecord.sources: String get() = sets.joinToString("; ") { it.said }
+/** Where the mod's sets came from, winner first, each source once however many parts it gave. */
+private val ManifestRecord.sources: String get() = sets.map { it.said }.distinct().joinToString("; ")
 
 internal val InstalledSet.said: String
     get() = when (val source = source) {
-        is InstalledSource.Remote -> "GameBanana file ${source.identity.fileId}" + version?.let { " (version ${it.index + 1} of ${it.count})" }.orEmpty()
+        is InstalledSource.Remote -> "GameBanana file ${source.identity.fileId}" + version?.let { " (version ${it.index} of ${it.count})" }.orEmpty()
         is InstalledSource.Local -> "local file ${source.fileName}" + source.submission?.let { " of ${it.modId}" }.orEmpty()
     } + when (val origin = origin) {
         is SetOrigin.Adopted -> ", taken over by import ${origin.migration.value}"

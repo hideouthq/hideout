@@ -266,6 +266,6 @@ class BugReportTest {
     private fun record(id: String, title: String, submission: Long, number: Int?) = oneSetRecord(
         id, root, InstalledSource.Remote(SubmissionIdentity(SubmissionKind.Mod, submission, submission + 400, null)), title, null,
         ArchiveIdentity("/downloads/$id.zip", 10, "a".repeat(64)), number, listOf(directory(FileImage(2048, "b".repeat(64)))),
-        version = VersionPosition(0, 2), originalName = "$id.zip",
+        version = VersionPosition(1, 2), originalName = "$id.zip",
     )
 }
