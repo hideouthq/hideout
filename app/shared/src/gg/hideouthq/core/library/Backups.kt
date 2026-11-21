@@ -57,11 +57,15 @@ internal fun LibraryManifest.backupOf(root: GameRoot): LibraryManifest {
 internal val LibraryManifest.contents: Set<String>
     get() = (records.flatMap { it.files }.map { it.sha256 } + records.flatMap { it.sets }.flatMap { it.edits.values }.map { it.sha256 } + originals.flatMap { it.files }.map { it.image.sha256 }).toSet()
 
-/** The stored content a backup of this Library keeps: [contents] but a GameBanana file as it came, which a restore gets again. */
+/**
+ * The stored content a backup of this Library keeps: [contents] but a GameBanana file's, and the original a repair of it
+ * was made from, which a restore gets again and repairs as the user's repair settings say.
+ */
 internal val LibraryManifest.pinned: Set<String>
     get() {
-        val own = records.flatMap { it.sets }.filterNot { it.source is InstalledSource.Remote && it.derivation == null && it.edits.isEmpty() }
-        return (own.flatMap { set -> set.files.map { it.image.sha256 } + set.edits.values.map { it.sha256 } } + originals.flatMap { it.files }.map { it.image.sha256 }).toSet()
+        val (again, own) = records.flatMap { it.sets }.partition { it.source is InstalledSource.Remote && it.edits.isEmpty() }
+        val repairedAgain = again.mapNotNull { it.derivation?.original }.toSet()
+        return (own.flatMap { set -> set.files.map { it.image.sha256 } + set.edits.values.map { it.sha256 } } + originals.filter { it.id !in repairedAgain }.flatMap { it.files }.map { it.image.sha256 }).toSet()
     }
 
 /**

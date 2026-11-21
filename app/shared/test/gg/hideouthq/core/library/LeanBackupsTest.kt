@@ -5,6 +5,7 @@ import gg.hideouthq.core.data.GameEntry
 import gg.hideouthq.core.data.HeldFile
 import gg.hideouthq.core.data.Preferences
 import gg.hideouthq.core.data.RemoteFile
+import gg.hideouthq.core.data.fake.FakeCompatibility
 import gg.hideouthq.core.data.fake.FakeDownloader
 import gg.hideouthq.core.data.fake.FakeGameBanana
 import gg.hideouthq.core.data.fake.FakeProcesses
@@ -73,7 +74,7 @@ class LeanBackupsTest {
         listOf(InstalledSet(InstalledSource.Local("skin", "skin.vpk"), null, null, SetOrigin.Imported(FileImage(1, "a".repeat(64))), null, "skin.vpk", listOf(owned(VpkPart.Directory, skinBytes)))),
     )
 
-    private inner class World {
+    private inner class World(private val repairable: List<ByteArray> = emptyList()) {
         val files = InMemoryGameFiles().apply {
             putBytes(root, InMemoryGameFiles.GameInfo, LoadsAddonsGameInfo)
             putBytes(root, InMemoryGameFiles.Autoexec, "fps_max 240\n".encodeToByteArray())
@@ -93,14 +94,17 @@ class LeanBackupsTest {
             serve(101, defaultEntries)
             serve(103, cabezasEntries)
         }
+        val preferences = Preferences(MemoryStorage())
+        val port = FakeCompatibility(files).apply { repairable.forEach { findings[sha256Hex(it)] = listOf(FakeCompatibility.repairable()) } }
         private var nextId = 0
 
         fun TestScope.library(scope: CoroutineScope = backgroundScope): ModLibrary = started(
             ModLibrary(
-                FixedGameLocator(listOf(root)), Preferences(MemoryStorage()), store, files,
+                FixedGameLocator(listOf(root)), preferences, store, files,
                 InstallPorts(banana, downloader, files, files, FakeProcesses(), backups = files.backups), scope,
                 ids = { "id${++nextId}" },
                 watch = testWatchTiming,
+                compatibility = if (repairable.isEmpty()) CompatibilityPort.Unavailable else port,
             ),
         )
 
@@ -115,6 +119,17 @@ class LeanBackupsTest {
         fun stored(image: FileImage): Boolean = files.identity(root, "${InMemoryGameFiles.Stored}/${image.sha256}") != null
 
         fun autoexec() = files.bytes(root, InMemoryGameFiles.Autoexec)?.decodeToString()
+
+        fun record(installId: String) = manifest().records.single { it.installId == installId }
+
+        /** What the store needs to put back [installId]'s repaired set: its files and the original they were made from. */
+        fun repairOf(installId: String): List<FileImage> {
+            val set = record(installId).sets.first()
+            val original = manifest().originals.single { it.id == assertNotNull(set.derivation, "$installId is repaired").original }
+            return set.files.map { it.image } + original.files.map { it.image }
+        }
+
+        fun game(installId: String): List<List<Byte>> = record(installId).let { record -> record.files.map { assertNotNull(files.bytes(root, it.relativePath(record))).toList() } }
     }
 
     private val lilithImages = lilithRecord.sets.flatMap { it.files }.map { it.image }
@@ -259,5 +274,92 @@ class LeanBackupsTest {
             assertEquals(setOf("lilith", "skin"), world.manifest().records.map { it.installId }.toSet(), "$problem")
             assertEquals(mapOf("lilith" to FilesDamage.Missing), library.ready().damaged, "the local mod is back whole, and Lilith is left for Reinstall")
         }
+    }
+
+    @Test
+    fun anUninstalledRepairedGameBananaModsFilesAndOriginalLeaveTheStoreWhileARepairedLocalModsStay() = runTest {
+        val world = World(repairable = listOf(dir, skinBytes))
+        val library = with(world) { library() }
+        val lilithRepair = world.repairOf("lilith")
+        val skinRepair = world.repairOf("skin")
+        backUp(library)
+        assertTrue((lilithRepair + skinRepair).all(world::stored))
+
+        uninstall(library, "lilith")
+        uninstall(library, "skin")
+        assertEquals(emptyList(), lilithRepair.filter(world::stored), "GameBanana gives the file again, and the repair is made again from it")
+        assertEquals(skinRepair, skinRepair.filter(world::stored), "the backup holds the only copy of a local mod's files")
+    }
+
+    @Test
+    fun startingFreesARepairedGameBananaModsFilesAndOriginalFromBackupsOfModsOutOfTheGame() = runTest {
+        val world = World(repairable = listOf(dir, skinBytes))
+        val once = crashableScope()
+        val library = with(world) { library(once) }
+        val lilithRepair = world.repairOf("lilith")
+        val skinRepair = world.repairOf("skin")
+        backUp(library)
+        once.cancel()
+        for (record in world.manifest().records) for (file in record.files) world.files.remove(root, file.relativePath(record))
+        world.store.save(LibraryManifest())
+        assertTrue((lilithRepair + skinRepair).all(world::stored))
+
+        with(world) { library() }
+        assertEquals(emptyList(), lilithRepair.filter(world::stored), "existing backups free them at the next start")
+        assertEquals(skinRepair, skinRepair.filter(world::stored))
+    }
+
+    @Test
+    fun aRestoreGetsARepairedGameBananaModAgainAndRepairsItAgain() = runTest {
+        for (deleteDownload in listOf(false, true)) {
+            val world = World(repairable = listOf(dir))
+            val library = with(world) { library() }
+            val repaired = world.record("lilith")
+            val game = world.game("lilith")
+            val backup = backUp(library)
+            uninstall(library, "lilith", deleteDownload)
+
+            assertEquals(BackupStage.Done, restore(library, backup))
+            val back = world.record("lilith")
+            assertEquals(repaired.sets.map { it.files }, back.sets.map { it.files }, "deleteDownload=$deleteDownload")
+            assertNotNull(back.sets.first().derivation, "the repair is made again")
+            assertEquals(game, world.game("lilith"))
+            assertEquals(emptyMap(), library.ready().damaged)
+            assertEquals(if (deleteDownload) listOf(101L, 103L) else emptyList(), world.downloader.requested)
+        }
+    }
+
+    @Test
+    fun aRestoredRepairedGameBananaModComesBackAsAFreshInstallWouldUnderTheRepairSettingsNow() = runTest {
+        val unrepaired = defaultEntries.map { it.second.toList() } + listOf(cabezas.toList())
+        for (repairFails in listOf(false, true)) {
+            val world = World(repairable = listOf(dir))
+            val library = with(world) { library() }
+            val backup = backUp(library)
+            uninstall(library, "lilith")
+            if (repairFails) world.port.refuseDerive = "the repair failed" else world.preferences.setAutoRepair(false)
+
+            assertEquals(BackupStage.Done, restore(library, backup), "its files are back")
+            assertEquals(lilithRecord.sets, world.record("lilith").sets, "unrepaired, as installing it now would leave it")
+            assertEquals(unrepaired, world.game("lilith"))
+            assertEquals(if (repairFails) "the repair failed" else null, library.state.value.compatibility.installs["lilith"]?.problem, "a repair that fails shows on the mod")
+        }
+    }
+
+    @Test
+    fun aRestoredRepairedModsSavedChoiceStillHoldsWithAutomaticRepairOff() = runTest {
+        val world = World(repairable = listOf(dir))
+        val library = with(world) { library() }
+        library.useRepairedFiles(setOf("lilith"))
+        runCurrent()
+        val game = world.game("lilith")
+        val backup = backUp(library)
+        uninstall(library, "lilith")
+        world.preferences.setAutoRepair(false)
+
+        assertEquals(BackupStage.Done, restore(library, backup))
+        assertEquals(RepairChoice.Repaired, world.manifest().repairChoices["lilith"])
+        assertNotNull(world.record("lilith").sets.first().derivation)
+        assertEquals(game, world.game("lilith"))
     }
 }
