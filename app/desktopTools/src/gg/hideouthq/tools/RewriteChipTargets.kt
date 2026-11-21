@@ -36,6 +36,9 @@ internal val rewriteChipTargets: List<Target> = listOf(
     Target("rewrite_waiting_open_narrow", 840, 700, scale = 1f, interact = { openChip(Waiting) }) { RewriteApp(Rewrite.WhileRunning) },
     Target("rewrite_program_open", 1440, 900, interact = { openChip(Back) }) { RewriteApp(Rewrite.ManagerOpen) },
     Target("rewrite_program_open_narrow", 840, 700, scale = 1f, interact = { openChip(Back) }) { RewriteApp(Rewrite.ManagerOpen) },
+    Target("rewrite_update_library_compact", 1000, 680, scale = 1f) { RewriteApp(Rewrite.Update, Route.Library) },
+    Target("rewrite_waiting_library_compact", 1000, 680, scale = 1f) { RewriteApp(Rewrite.WhileRunning, Route.Library) },
+    Target("rewrite_waiting_library_narrow", 840, 700, scale = 1f) { RewriteApp(Rewrite.WhileRunning, Route.Library) },
 )
 
 private enum class Rewrite { Update, WhileRunning, ManagerOpen }
@@ -45,7 +48,7 @@ private class GameBuild(private val id: String) : CompatibilityPort by Compatibi
 }
 
 @Composable
-private fun RewriteApp(rewrite: Rewrite) {
+private fun RewriteApp(rewrite: Rewrite, at: Route = Route.Discover) {
     CompositionLocalProvider(LocalWindowChrome provides RenderedWindowChrome) {
         val container = remember {
             val config = FakeConfig(gameInfo = SampleGameInfo.Rewritten, appUpdate = FakeAppUpdate.Available)
@@ -64,6 +67,6 @@ private fun RewriteApp(rewrite: Rewrite) {
                 compatibility = GameBuild(if (rewrite == Rewrite.ManagerOpen) "build:1" else "build:2"),
             )
         }
-        App(rememberHideoutAppState(container, Route.Discover))
+        App(rememberHideoutAppState(container, at))
     }
 }

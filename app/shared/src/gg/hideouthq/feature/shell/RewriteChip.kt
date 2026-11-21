@@ -5,7 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -21,6 +20,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.layoutId
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import gg.hideouthq.core.designsystem.component.HideoutIcon
@@ -68,18 +70,43 @@ internal fun RewriteChip(rewrite: GameInfoRewrite, expanded: Boolean, onToggle: 
         expanded = expanded,
         onToggle = onToggle,
         panelWidth = dimens.UpdatePanelWidth,
-        modifier = modifier,
+        modifier = modifier.layoutId(CollapsibleChip),
         container = container,
         hoverContainer = if (off) caution.copy(alpha = OffHoverMix).compositeOver(container) else scheme.surfaceContainerHigh,
         outlined = !off,
-        contentPadding = PaddingValues(start = dimens.UpdateStart, end = dimens.UpdateEnd),
-        gap = dimens.UpdateGap,
         panel = { RewritePanel(rewrite, label) },
     ) {
-        Box(Modifier.size(dimens.IconSlot), contentAlignment = Alignment.Center) {
-            HideoutIcon(if (off) HideoutIcons.Clock else HideoutIcons.Check, null, size = dimens.Icon, tint = content)
+        LabelWhenItFits(
+            icon = {
+                Box(Modifier.size(dimens.IconSlot), contentAlignment = Alignment.Center) {
+                    HideoutIcon(if (off) HideoutIcons.Clock else HideoutIcons.Check, null, size = dimens.Icon, tint = content)
+                }
+            },
+            label = { Text(label, style = ChipText, color = content, maxLines = 1, softWrap = false) },
+        )
+    }
+}
+
+/** The icon and its label, or the icon alone in a round chip when the width it is given can't hold both. */
+@Composable
+private fun LabelWhenItFits(icon: @Composable () -> Unit, label: @Composable () -> Unit) {
+    val dimens = HideoutDimens.TopBarChip
+    Layout(listOf(icon, label)) { (icons, labels), constraints ->
+        val shown = icons.single().measure(Constraints())
+        val text = labels.single().measure(Constraints())
+        val start = dimens.UpdateStart.roundToPx()
+        val full = start + shown.width + dimens.UpdateGap.roundToPx() + text.width + dimens.UpdateEnd.roundToPx()
+        val fits = full <= constraints.maxWidth
+        val width = if (fits) full else dimens.Height.roundToPx().coerceAtMost(constraints.maxWidth)
+        val height = maxOf(shown.height, text.height)
+        layout(width, height) {
+            if (fits) {
+                shown.place(start, (height - shown.height) / 2)
+                text.place(full - dimens.UpdateEnd.roundToPx() - text.width, (height - text.height) / 2)
+            } else {
+                shown.place((width - shown.width) / 2, (height - shown.height) / 2)
+            }
         }
-        Text(label, style = ChipText, color = content, maxLines = 1)
     }
 }
 

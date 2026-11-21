@@ -30,6 +30,8 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.layoutId
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
@@ -115,19 +117,23 @@ fun ContentFrame(
         }
         NavButtons(navigator, showForward = showForward)
         val chrome = LocalWindowChrome.current != null
-        Row(
-            Modifier
+        val controlsWidth = if (chrome) HideoutDimens.WindowControls.Width + HideoutDimens.WindowControls.TopBarGap else 0.dp
+        fun controlsShown() = if (frame.overlay) 1f else 1f - frame.progress.value.coerceIn(0f, 1f)
+        TopBarChips(
+            room = {
+                val bar = HideoutDimens.TopBar
+                frame.mainWidth - (bar.HorizontalPadding * 2 + frame.topBarStartInset + bar.SlotGap * 2 + HideoutDimens.Search.MinWidth + HideoutDimens.WindowControls.TopBarGap).toPx() -
+                    controlsWidth.toPx() * controlsShown()
+            },
+            modifier = Modifier
                 .height(HideoutDimens.TopBar.Height)
                 .onSizeChanged { frame.chipsWidth = it.width }
                 .offset {
-                    val controls = if (chrome) (HideoutDimens.WindowControls.Width + HideoutDimens.WindowControls.TopBarGap).toPx() else 0f
-                    val shown = if (frame.overlay) 1f else 1f - frame.progress.value.coerceIn(0f, 1f)
-                    val x = frame.mainWidth - HideoutDimens.TopBar.HorizontalPadding.toPx() - controls * shown - frame.chipsWidth
+                    val x = frame.mainWidth - HideoutDimens.TopBar.HorizontalPadding.toPx() - controlsWidth.toPx() * controlsShown() - frame.chipsWidth
                     IntOffset(x.roundToInt(), 0)
                 },
-            horizontalArrangement = Arrangement.spacedBy(HideoutDimens.TopBarChip.Gap),
-            verticalAlignment = Alignment.CenterVertically,
-        ) { chips() }
+            chips = chips,
+        )
         FrameWindowControls(
             Modifier
                 .align(Alignment.TopEnd)
@@ -137,6 +143,31 @@ fun ContentFrame(
                     IntOffset(-inset.roundToPx(), 0)
                 },
         )
+    }
+}
+
+/** Marks a top bar chip that shows only its icon when its label would leave the search field less than [HideoutDimens.Search.MinWidth]. */
+internal object CollapsibleChip
+
+/** The chips in a row; every [CollapsibleChip] gets what [room] leaves after the others, so the top bar's search keeps its least width. */
+@Composable
+private fun TopBarChips(room: Density.() -> Float, modifier: Modifier, chips: @Composable () -> Unit) {
+    Layout(chips, modifier) { measurables, constraints ->
+        val gap = HideoutDimens.TopBarChip.Gap.roundToPx()
+        val loose = constraints.copy(minWidth = 0, minHeight = 0)
+        val fixed = measurables.filter { it.layoutId != CollapsibleChip }.associateWith { it.measure(loose) }
+        var left = room().roundToInt() - fixed.values.sumOf { it.width } - gap * (measurables.size - 1).coerceAtLeast(0)
+        val placeables = measurables.map { measurable ->
+            fixed[measurable] ?: measurable.measure(loose.copy(maxWidth = left.coerceIn(HideoutDimens.TopBarChip.Height.roundToPx(), loose.maxWidth))).also { left -= it.width }
+        }
+        val width = placeables.sumOf { it.width } + gap * (placeables.size - 1).coerceAtLeast(0)
+        layout(width, constraints.maxHeight) {
+            var x = 0
+            placeables.forEach {
+                it.placeRelative(x, (constraints.maxHeight - it.height) / 2)
+                x += it.width + gap
+            }
+        }
     }
 }
 

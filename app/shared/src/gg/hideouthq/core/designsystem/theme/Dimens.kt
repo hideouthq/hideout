@@ -173,6 +173,8 @@ object HideoutDimens {
         val Height = 40.dp
         val HeightSmall = 36.dp
         val MaxWidth = 420.dp
+        /** The least the top bar's search keeps beside the chips: room for its hint and shortcut. */
+        val MinWidth = 240.dp
         val StartPadding = 14.dp
         val StartPaddingSmall = 12.dp
         val EndPadding = 6.dp
