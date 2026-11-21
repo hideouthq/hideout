@@ -223,7 +223,7 @@
     <string name="file_priority_none">No other enabled mod changes the same files.</string>
     <string name="file_priority_relation_first">Below %1$s</string>
     <string name="file_priority_relation_second">Above %1$s</string>
-    <string name="file_priority_relation_not_together">Not both enabled together</string>
+    <string name="file_priority_relation_off">%1$s is off</string>
     <string name="file_priority_currently_applied">Currently applied: %1$s</string>
     <string name="file_priority_move_above">Move above %1$s</string>
     <string name="file_priority_kept_both">Kept both</string>

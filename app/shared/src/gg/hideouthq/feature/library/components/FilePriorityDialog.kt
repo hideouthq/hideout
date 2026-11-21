@@ -57,7 +57,7 @@ import gg.hideouthq.resources.file_priority_not_enabled
 import gg.hideouthq.resources.file_priority_own_parts
 import gg.hideouthq.resources.file_priority_path_count
 import gg.hideouthq.resources.file_priority_relation_first
-import gg.hideouthq.resources.file_priority_relation_not_together
+import gg.hideouthq.resources.file_priority_relation_off
 import gg.hideouthq.resources.file_priority_relation_second
 import gg.hideouthq.resources.file_priority_show_paths
 import gg.hideouthq.resources.file_priority_title
@@ -113,10 +113,10 @@ internal fun FilePriorityDialog(
                         current.peers.isEmpty() && current.unchecked.isEmpty() && lastHidden.isEmpty() ->
                             Text(stringResource(Res.string.file_priority_none), style = type.notice, color = scheme.onSurfaceVariant)
                     }
-                    current?.peers.orEmpty().forEach { peer ->
+                    if (current != null) current.peers.forEach { peer ->
                         key(peer.installId) {
                             PeerRow(
-                                peer, lastTitle, canEditChoices = libraryState.canEditChoices, returnFocus = close,
+                                peer, lastTitle, current, canEditChoices = libraryState.canEditChoices, returnFocus = close,
                                 onMove = {
                                     shownId?.let { id -> filePriorities.moveAbove(id, peer.installId) }
                                     close.requestFocus()
@@ -155,7 +155,15 @@ internal fun FilePriorityDialog(
 }
 
 @Composable
-private fun PeerRow(peer: FilePriorityPeer, selectedTitle: String, canEditChoices: Boolean, returnFocus: FocusRequester, onMove: () -> Unit, onKeep: (Boolean) -> Unit) {
+private fun PeerRow(
+    peer: FilePriorityPeer,
+    selectedTitle: String,
+    report: FilePriorityReport,
+    canEditChoices: Boolean,
+    returnFocus: FocusRequester,
+    onMove: () -> Unit,
+    onKeep: (Boolean) -> Unit,
+) {
     var shownPaths by remember { mutableIntStateOf(0) }
     val scheme = MaterialTheme.colorScheme
     val type = HideoutTheme.typography
@@ -165,9 +173,11 @@ private fun PeerRow(peer: FilePriorityPeer, selectedTitle: String, canEditChoice
     ) {
         Text(peer.title, style = type.caption.copy(fontWeight = HideoutWeights.Label), color = scheme.onSurface)
         Text(pluralStringResource(Res.plurals.file_priority_path_count, peer.paths.size, peer.paths.size), style = type.captionSmall, color = scheme.outline)
-        Text(relationLabel(peer.chosen, selectedTitle), style = type.notice, color = scheme.onSurfaceVariant)
-        if (peer.applied != peer.chosen) {
-            Text(stringResource(Res.string.file_priority_currently_applied, relationLabel(peer.applied, selectedTitle)), style = type.captionSmall, color = scheme.onSurfaceVariant)
+        val chosen = relationLabel(peer.chosen, selectedTitle, off = if (report.chosenEnabled) peer.title else selectedTitle)
+        val applied = relationLabel(peer.applied, selectedTitle, off = if (report.appliedEnabled) peer.title else selectedTitle)
+        Text(chosen, style = type.notice, color = scheme.onSurfaceVariant)
+        if (applied != chosen) {
+            Text(stringResource(Res.string.file_priority_currently_applied, applied), style = type.captionSmall, color = scheme.onSurfaceVariant)
         }
         HideoutButton(
             stringResource(if (shownPaths > 0) Res.string.file_priority_hide_paths else Res.string.file_priority_show_paths, peer.paths.size),
@@ -220,10 +230,10 @@ private fun WinnerRow(title: String, note: String, action: String, onAction: () 
 }
 
 @Composable
-private fun relationLabel(relation: FilePriorityRelation, selectedTitle: String): String = when (relation) {
+private fun relationLabel(relation: FilePriorityRelation, selectedTitle: String, off: String): String = when (relation) {
     FilePriorityRelation.SelectedFirst -> stringResource(Res.string.file_priority_relation_first, selectedTitle)
     FilePriorityRelation.OtherFirst -> stringResource(Res.string.file_priority_relation_second, selectedTitle)
-    FilePriorityRelation.NotTogether -> stringResource(Res.string.file_priority_relation_not_together)
+    FilePriorityRelation.NotTogether -> stringResource(Res.string.file_priority_relation_off, off)
 }
 
 private const val PathsPerPage = 50

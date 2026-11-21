@@ -23,6 +23,7 @@ fun main(args: Array<String>) {
     }
     checkFilePriority(out, 1000, cards = false, unavailable = true)
     checkFilePriority(out, 1000, cards = false, unavailable = false, manyPaths = true)
+    checkWaitingPeer(out)
     val base = sampleLibraryManifest()
     val container = AppContainer.fake(files = InstalledFixture(base.records).files, libraryStore = InMemoryLibraryStore(base))
     runCheck(out, "no_index_source", HideoutAppState(container, Route.Library)) {
@@ -33,7 +34,7 @@ fun main(args: Array<String>) {
         check(!hasText("File priority…"))
         capture("no_unavailable_action")
     }
-    println("All 7 file-priority render checks passed.")
+    println("All 8 file-priority render checks passed.")
 }
 
 private fun checkFilePriority(out: File, width: Int, cards: Boolean, unavailable: Boolean, manyPaths: Boolean = false) {
@@ -135,6 +136,34 @@ private fun checkFilePriority(out: File, width: Int, cards: Boolean, unavailable
         }
     }
     println("File priority $label passed")
+}
+
+private fun checkWaitingPeer(out: File) {
+    val base = sampleLibraryManifest()
+    val ordered = base.records.filter { it.enabled }.sortedBy { it.numbers.first() }
+    val chosen = ordered.first()
+    val earlier = ordered[1]
+    val records = base.records.map { if (it.installId == earlier.installId) it.placed(Placement.Off) else it }
+    val store = InMemoryLibraryStore(base.copy(records = records, profiles = ProfileBook.main(records)))
+    val hashes = listOf(chosen, earlier).flatMap { it.files }.filter { it.isDirectory }.mapTo(mutableSetOf()) { it.sha256 }
+    val paths = setOf("models/heroes/ivy/shared_body.vmdl_c")
+    val container = AppContainer.fake(files = InstalledFixture(records).files, libraryStore = store, processes = FakeProcesses(ProcessScan.Seen(game = true)),
+        resourceIndexSource = ResourceIndexSource { _, _, image -> ResourceIndex.Ready(if (image.sha256 in hashes) paths.associateWith { image.sha256.hashCode().toLong() } else emptyMap()) })
+    runCheck(out, "waiting_peer", HideoutAppState(container, Route.Library), heightDp = 900) {
+        advance(1_200)
+        container.modLibrary.setEnabled(earlier.installId, true)
+        advance(1_200)
+        check(container.modLibrary.state.value.shownProfiles?.activeProfile?.enabled.orEmpty().containsAll(setOf(chosen.installId, earlier.installId))) { "both mods are on" }
+        openRowMenu(chosen.title)
+        key(Key.Escape)
+        advance(500)
+        clickLabel("File priority…")
+        advance(500)
+        check(!hasText("Not both enabled together")) { "the dialog doesn't call two mods that are on not enabled together" }
+        check(hasText("Currently applied: ${earlier.title} is off")) { "the dialog says which of the two the game doesn't have yet" }
+        capture("waiting_peer")
+    }
+    println("File priority waiting_peer passed")
 }
 
 private fun Script.keepBoth(chosen: String, earlier: String, store: InMemoryLibraryStore) {
