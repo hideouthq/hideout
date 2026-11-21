@@ -121,12 +121,22 @@ class PackageNativeTest {
 
     @Test
     fun theWindowsExecutableNamesItsVersionPublisherAndIcon() {
-        val script = windowsResourceScript(settings)
+        val script = windowsResourceScript(settings, root / "app.manifest")
 
         assertContains(script, "1 ICON \"${settings.windowsIcon.toAbsolutePath().toString().replace("\\", "\\\\")}\"")
         assertContains(script, "FILEVERSION 1,2,3,0\n")
         assertContains(script, "VALUE \"CompanyName\", \"Example Vendor\"")
         assertContains(script, "VALUE \"OriginalFilename\", \"Example.exe\"")
+    }
+
+    @Test
+    fun theWindowsExecutableDeclaresItScalesItself() {
+        val manifest = root / "app.manifest"
+
+        assertContains(windowsResourceScript(settings, manifest), "1 24 \"${manifest.toAbsolutePath().toString().replace("\\", "\\\\")}\"\n")
+        val document = DocumentBuilderFactory.newInstance().apply { isNamespaceAware = true }.newDocumentBuilder().parse(WindowsManifest.byteInputStream())
+        assertEquals("true/PM", document.getElementsByTagNameNS("http://schemas.microsoft.com/SMI/2005/WindowsSettings", "dpiAware").item(0).textContent)
+        assertEquals("PerMonitorV2", document.getElementsByTagNameNS("http://schemas.microsoft.com/SMI/2016/WindowsSettings", "dpiAwareness").item(0).textContent)
     }
 
     @Test

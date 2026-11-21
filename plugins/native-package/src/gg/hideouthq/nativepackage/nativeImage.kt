@@ -81,17 +81,20 @@ internal fun otherSystemMetadataExcluded(app: Path, windows: Boolean): List<Stri
     listOf("--exclude-config", ".*${Regex.escape(app.name)}", "META-INF/native-image/(.*/)?${if (windows) "linux" else "windows"}/.*")
 
 internal fun windowsResources(settings: NativePackageSettings, outputDir: Path): Path {
+    val manifest = outputDir / "app.manifest"
+    manifest.writeText(WindowsManifest)
     val source = outputDir / "app.rc"
-    source.writeText(windowsResourceScript(settings))
+    source.writeText(windowsResourceScript(settings, manifest))
     val compiled = outputDir / "app.res"
     runTool(listOf("rc.exe", "/nologo", "/fo", compiled.pathString, source.pathString))
     return compiled
 }
 
-internal fun windowsResourceScript(settings: NativePackageSettings): String {
+internal fun windowsResourceScript(settings: NativePackageSettings, manifest: Path): String {
     val numbers = (settings.version.split('.').map { it.toIntOrNull() ?: 0 } + listOf(0, 0, 0, 0)).take(4).joinToString(",")
     return """
-    1 ICON "${settings.windowsIcon.toAbsolutePath().pathString.replace("\\", "\\\\")}"
+    1 ICON "${rcPath(settings.windowsIcon)}"
+    1 24 "${rcPath(manifest)}"
     1 VERSIONINFO
     FILEVERSION $numbers
     PRODUCTVERSION $numbers
@@ -116,6 +119,42 @@ internal fun windowsResourceScript(settings: NativePackageSettings): String {
     END
     """.trimIndent() + "\n"
 }
+
+private fun rcPath(file: Path) = file.toAbsolutePath().pathString.replace("\\", "\\\\")
+
+/**
+ * The manifest java.exe carries. Without it Windows treats the executable as unaware of display scaling and stretches
+ * its window as a bitmap, which blurs it at any scale above 100%. AWT declares awareness itself only under the java
+ * launcher. The manifest also reports Windows 10 and later as such, instead of as Windows 8.
+ */
+internal val WindowsManifest = """
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+  <dependency>
+    <dependentAssembly>
+      <assemblyIdentity type="win32" name="Microsoft.Windows.Common-Controls" version="6.0.0.0" processorArchitecture="*" publicKeyToken="6595b64144ccf1df" language="*"/>
+    </dependentAssembly>
+  </dependency>
+  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
+    <security>
+      <requestedPrivileges>
+        <requestedExecutionLevel level="asInvoker" uiAccess="false"/>
+      </requestedPrivileges>
+    </security>
+  </trustInfo>
+  <application xmlns="urn:schemas-microsoft-com:asm.v3">
+    <windowsSettings>
+      <dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">true/PM</dpiAware>
+      <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2</dpiAwareness>
+    </windowsSettings>
+  </application>
+  <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
+    <application>
+      <supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}"/>
+    </application>
+  </compatibility>
+</assembly>
+""".trimStart()
 
 /**
  * Files the JDK reads from `<java.home>` at run time, which the app points at the image: JAWT, which Skiko opens, and on
