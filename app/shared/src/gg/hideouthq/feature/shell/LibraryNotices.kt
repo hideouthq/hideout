@@ -21,6 +21,10 @@ import gg.hideouthq.core.ui.LibraryLabels
 import gg.hideouthq.core.ui.retryHelps
 import gg.hideouthq.resources.Res
 import gg.hideouthq.resources.notice_dismiss
+import gg.hideouthq.resources.notice_files_missing
+import gg.hideouthq.resources.notice_files_missing_count
+import gg.hideouthq.resources.notice_files_missing_count_lead
+import gg.hideouthq.resources.notice_files_missing_lead
 import gg.hideouthq.resources.notice_install_failed_lead
 import gg.hideouthq.resources.notice_install_failed_unnamed
 import gg.hideouthq.resources.notice_launch_failed_lead
@@ -110,6 +114,20 @@ private fun Notice(notice: ShellNotice, actions: NoticeActions, onShowInstalled:
             secondaryLabel = stringResource(Res.string.notice_dismiss),
             onSecondary = { actions.dismissChange(notice.installId) },
         )
+        is ShellNotice.FilesMissing -> {
+            val several = notice.installIds.size > 1
+            NoticeCard(
+                lead = if (several) stringResource(Res.string.notice_files_missing_count_lead, notice.installIds.size) else stringResource(Res.string.notice_files_missing_lead, notice.title),
+                message = stringResource(if (several) Res.string.notice_files_missing_count else Res.string.notice_files_missing),
+                primaryLabel = stringResource(Res.string.notice_show_in_library),
+                onPrimary = {
+                    actions.dismissFilesMissing()
+                    onShowInstalled(notice.installIds.first())
+                },
+                secondaryLabel = stringResource(Res.string.notice_dismiss),
+                onSecondary = actions::dismissFilesMissing,
+            )
+        }
     }
 }
 
@@ -119,4 +137,5 @@ private fun ShellNotice.key(): Any = when (this) {
     is ShellNotice.SavedChoicesFailed -> "saved-choices"
     is ShellNotice.ChoiceSaveFailed -> "choice-save"
     is ShellNotice.ChangeFailed -> "change:$installId"
+    is ShellNotice.FilesMissing -> "files-missing"
 }

@@ -6,6 +6,7 @@ import gg.hideouthq.core.data.GameLauncher
 import gg.hideouthq.core.data.InstallStatus
 import gg.hideouthq.core.library.ChangeStage
 import gg.hideouthq.core.library.ChoiceSync
+import gg.hideouthq.core.library.FilesDamage
 import gg.hideouthq.core.library.GameActivity
 import gg.hideouthq.core.library.GameStatus
 import gg.hideouthq.core.library.InstallInput
@@ -57,6 +58,8 @@ class ShellViewModel(
 ) : ViewModel(), NoticeActions, ProfileActions {
     private data class Local(
         val failed: ShellNotice? = null,
+        /** Mods on that missed files the backups couldn't put back when the game last started with mods. */
+        val missing: Set<String> = emptySet(),
         val editor: ProfileEditor? = null,
         val submitting: Boolean = false,
         val editorProblem: LibraryProblem? = null,
@@ -305,7 +308,8 @@ class ShellViewModel(
     override fun play(modded: Boolean) {
         viewModelScope.launch {
             val problem = modLibrary.launch(modded, launcher::launch)
-            local.update { it.copy(failed = problem?.let { failed -> ShellNotice.LaunchFailed(modded, failed) }) }
+            val missing = if (modded && problem == null) missingOn(modLibrary.state.value) else emptySet()
+            local.update { it.copy(failed = problem?.let { failed -> ShellNotice.LaunchFailed(modded, failed) }, missing = missing) }
         }
     }
 
@@ -328,6 +332,13 @@ class ShellViewModel(
     override fun dismissChoiceSaveFailure() = modLibrary.dismissChoiceProblem()
     override fun retryChange(installId: String) = modLibrary.retryChange(installId)
     override fun dismissChange(installId: String) = modLibrary.dismissChange(installId)
+    override fun dismissFilesMissing() = local.update { it.copy(missing = emptySet()) }
+
+    private fun missingOn(state: LibraryState): Set<String> {
+        val root = (state.game as? GameStatus.Ready)?.root ?: return emptySet()
+        val ready = state.library as? LibraryStatus.Ready ?: return emptySet()
+        return ready.records.filter { it.gameRoot == root && it.enabled && ready.damaged[it.installId] == FilesDamage.Missing }.mapTo(HashSet()) { it.installId }
+    }
 
     private fun notices(state: LibraryState, local: Local): List<ShellNotice> = buildList {
         state.operations.values.forEach { operation ->
@@ -341,5 +352,8 @@ class ShellViewModel(
         state.choiceProblem?.let { add(ShellNotice.ChoiceSaveFailed(it)) }
         (state.choiceSync as? ChoiceSync.Failed)?.let { add(ShellNotice.SavedChoicesFailed(it.problem)) }
         local.failed?.let(::add)
+        val ready = state.library as? LibraryStatus.Ready ?: return@buildList
+        val missing = ready.records.filter { it.installId in local.missing && ready.damaged[it.installId] == FilesDamage.Missing }
+        if (missing.isNotEmpty()) add(ShellNotice.FilesMissing(missing.map { it.installId }, missing.first().title))
     }
 }

@@ -561,6 +561,10 @@
     <string name="notice_try_again">Try again</string>
     <string name="notice_dismiss">Dismiss</string>
     <string name="notice_show_in_library">Show in Library</string>
+    <string name="notice_files_missing_lead">%1$s is missing a file.</string>
+    <string name="notice_files_missing">It won’t load this time.</string>
+    <string name="notice_files_missing_count_lead">%1$d mods are missing files.</string>
+    <string name="notice_files_missing_count">They won’t load this time.</string>
 
     <string name="problem_game_not_found">Hideout can’t find Deadlock. Choose its folder in Settings.</string>
     <string name="problem_game_running">Close Deadlock first. The game keeps its files locked while it runs.</string>

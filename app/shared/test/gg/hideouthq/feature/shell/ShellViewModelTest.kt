@@ -27,21 +27,26 @@ import gg.hideouthq.core.data.fake.ports
 import gg.hideouthq.core.data.fake.sampleGameFiles
 import gg.hideouthq.core.data.fake.sampleLibraryManifest
 import gg.hideouthq.core.library.CompatibilityPort
+import gg.hideouthq.core.library.FilesDamage
 import gg.hideouthq.core.library.GameConfigReceipt
 import gg.hideouthq.core.library.GameInfoRewrite
 import gg.hideouthq.core.library.GameRoot
 import gg.hideouthq.core.library.GameStatus
 import gg.hideouthq.core.library.HideoutLines
 import gg.hideouthq.core.library.InstallPorts
+import gg.hideouthq.core.library.LibraryManifest
 import gg.hideouthq.core.library.LibraryProblem
+import gg.hideouthq.core.library.LibraryStatus
 import gg.hideouthq.core.library.LoadingOwner
 import gg.hideouthq.core.library.Manager
 import gg.hideouthq.core.library.RewriteOutcome
 import gg.hideouthq.core.library.RewrittenBy
 import gg.hideouthq.core.library.Sha256
 import gg.hideouthq.core.library.grimoireFixed
+import gg.hideouthq.core.library.relativePath
 import gg.hideouthq.core.library.ModLibrary
 import gg.hideouthq.core.library.ModLoading
+import gg.hideouthq.core.library.ProfileBook
 import gg.hideouthq.core.library.SubmissionKind
 import gg.hideouthq.core.library.SubmissionRef
 import gg.hideouthq.core.library.testWatchTiming
@@ -73,9 +78,10 @@ class ShellViewModelTest {
         game: SampleGame,
         gameInfo: SampleGameInfo = SampleGameInfo.HideoutBlock,
         files: InMemoryGameFiles = UncataloguedSampleManifest.files(FakeConfig(game = game, gameInfo = gameInfo)),
+        manifest: LibraryManifest = sampleLibraryManifest(),
         test: suspend TestScope.(ShellViewModel, AppContainer) -> Unit,
     ) = withViewModels { viewModels ->
-        val container = AppContainer.fake(FakeConfig(game = game, gameInfo = gameInfo), files = files)
+        val container = AppContainer.fake(FakeConfig(game = game, gameInfo = gameInfo), libraryStore = InMemoryLibraryStore(manifest), files = files)
         val viewModel = viewModels.keep(ShellViewModel(container.modLibrary, launcher))
         backgroundScope.launch { viewModel.uiState.collect {} }
         runCurrent()
@@ -297,6 +303,66 @@ class ShellViewModelTest {
         assertEquals(listOf(ShellNotice.InstallFailed("lilith", null, LibraryProblem.NotAGameBananaMod)), viewModel.uiState.value.notices)
         viewModel.dismissInstall("lilith")
         runCurrent()
+        assertEquals(emptyList(), viewModel.uiState.value.notices)
+    }
+
+    private val werecat = sampleLibraryManifest().records.single { it.installId == "werecat" }
+
+    private fun lose(files: InMemoryGameFiles, backups: Boolean) = werecat.files.forEach { file ->
+        files.remove(SampleGameRoot, file.relativePath(werecat))
+        if (backups) files.remove(SampleGameRoot, "${InMemoryGameFiles.Stored}/${file.sha256}")
+    }
+
+    private val noHudlock = sampleLibraryManifest().let { sample ->
+        val records = sample.records.filter { it.installId != "hudlock" }
+        sample.copy(records = records, profiles = ProfileBook.main(records))
+    }
+
+    @Test
+    fun aModMissingAFileTheBackupsDoNotHoldIsNamedAtPlayWhichStillStarts() {
+        val files = UncataloguedSampleManifest.files(FakeConfig(game = SampleGame.Found))
+        shell(SampleGame.Found, files = files, manifest = noHudlock) { viewModel, container ->
+            lose(files, backups = true)
+            viewModel.play(modded = true)
+            runCurrent()
+            assertEquals(1, launcher.launches.size, "Play still starts the game")
+            assertEquals(mapOf("werecat" to FilesDamage.Missing), (container.modLibrary.state.value.library as LibraryStatus.Ready).damaged, "Library shows it at once")
+            assertEquals(listOf(ShellNotice.FilesMissing(listOf("werecat"), "Night of the Werecat")), viewModel.uiState.value.notices)
+            viewModel.dismissFilesMissing()
+            runCurrent()
+            assertEquals(emptyList(), viewModel.uiState.value.notices)
+        }
+    }
+
+    @Test
+    fun everyModPlayLeftMissingFilesIsCountedInOneNotice() {
+        val files = UncataloguedSampleManifest.files(FakeConfig(game = SampleGame.Found))
+        shell(SampleGame.Found, files = files) { viewModel, _ ->
+            lose(files, backups = true)
+            viewModel.play(modded = true)
+            runCurrent()
+            assertEquals(listOf(ShellNotice.FilesMissing(listOf("werecat", "hudlock"), "Night of the Werecat")), viewModel.uiState.value.notices)
+        }
+    }
+
+    @Test
+    fun filesTheBackupsPutBackBeforePlaySayNothing() {
+        val files = UncataloguedSampleManifest.files(FakeConfig(game = SampleGame.Found))
+        shell(SampleGame.Found, files = files, manifest = noHudlock) { viewModel, container ->
+            lose(files, backups = false)
+            viewModel.play(modded = true)
+            runCurrent()
+            assertEquals(1, launcher.launches.size)
+            assertEquals(emptyMap(), (container.modLibrary.state.value.library as LibraryStatus.Ready).damaged)
+            assertEquals(emptyList(), viewModel.uiState.value.notices)
+        }
+    }
+
+    @Test
+    fun playingWithoutModsSaysNothingOfMissingFiles() = shell(SampleGame.Found) { viewModel, _ ->
+        viewModel.play(modded = false)
+        runCurrent()
+        assertEquals(1, launcher.launches.size)
         assertEquals(emptyList(), viewModel.uiState.value.notices)
     }
 

@@ -57,6 +57,9 @@ sealed interface ShellNotice {
 
     /** Uninstalling [installId] was refused. Try again asks for the same captured files. */
     data class ChangeFailed(val installId: String, val title: String, val request: ChangeRequest, val problem: LibraryProblem) : ShellNotice
+
+    /** The game started with [installIds] on and missing files the backups couldn't put back; [title] is the first one's. */
+    data class FilesMissing(val installIds: List<String>, val title: String) : ShellNotice
 }
 
 interface NoticeActions {
@@ -69,4 +72,5 @@ interface NoticeActions {
     fun dismissChoiceSaveFailure()
     fun retryChange(installId: String)
     fun dismissChange(installId: String)
+    fun dismissFilesMissing()
 }
