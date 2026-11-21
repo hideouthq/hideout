@@ -17,7 +17,7 @@ value class BackupId(val value: String) {
     }
 }
 
-/** Why a backup was made, and so what it holds: the whole Library with the settings files, or the settings files alone ([holdsMods] false). */
+/** Why a backup was made. Every backup holds the settings files; only one that [holdsMods] also holds the Library. */
 @Serializable
 enum class BackupReason(val holdsMods: Boolean) {
     Manual(true),
@@ -57,10 +57,7 @@ internal fun LibraryManifest.backupOf(root: GameRoot): LibraryManifest {
 internal val LibraryManifest.contents: Set<String>
     get() = (records.flatMap { it.files }.map { it.sha256 } + records.flatMap { it.sets }.flatMap { it.edits.values }.map { it.sha256 } + originals.flatMap { it.files }.map { it.image.sha256 }).toSet()
 
-/**
- * The stored content a backup holding this Library keeps for itself: [contents] but a GameBanana file's as it came, which
- * a restore gets again from its kept download or GameBanana. What the current Library names is kept whatever its source.
- */
+/** The stored content a backup of this Library keeps: [contents] but a GameBanana file as it came, which a restore gets again. */
 internal val LibraryManifest.pinned: Set<String>
     get() {
         val own = records.flatMap { it.sets }.filterNot { it.source is InstalledSource.Remote && it.derivation == null && it.edits.isEmpty() }

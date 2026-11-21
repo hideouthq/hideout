@@ -164,7 +164,7 @@ class PlanPlacementTest {
         assertTrue(past > 50, "only $past of the libraries ran past addons")
     }
 
-    /** The planner before sets loaded past `addons`, the oracle for libraries that fit there. Not to change with the planner. */
+    /** The planner for `addons` alone, the oracle for libraries that fit there. Not to change with the planner. */
     private object PlannerUpTo99 {
         private const val Top = 99
         private const val Unplaced = Long.MAX_VALUE

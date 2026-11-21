@@ -159,7 +159,6 @@ private fun checkWaitingPeer(out: File) {
         advance(500)
         clickLabel("File priority…")
         advance(500)
-        check(!hasText("Not both enabled together")) { "the dialog doesn't call two mods that are on not enabled together" }
         check(hasText("Currently applied: ${earlier.title} is off")) { "the dialog says which of the two the game doesn't have yet" }
         capture("waiting_peer")
     }

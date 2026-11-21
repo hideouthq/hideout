@@ -508,16 +508,13 @@ sealed interface BackupStage {
 
     data object Done : BackupStage
 
-    /**
-     * Restored, but the GameBanana files of [missing] could not be got again, from a kept download or GameBanana, so
-     * those mods are back without them, for Reinstall.
-     */
+    /** Restored, but the mods in [missing] came back without their GameBanana files, for Reinstall. */
     data class Incomplete(val missing: List<MissingMod>) : BackupStage
 
     data class Refused(val problem: LibraryProblem) : BackupStage
 }
 
-/** A mod a restore brought back without its files, by [title], and why they could not be got again. */
+/** A mod a restore brought back without its files, and why they could not be got again. */
 data class MissingMod(val title: String, val problem: LibraryProblem)
 
 sealed interface RestoreStage {

@@ -8,9 +8,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.withFrameMillis
 
 /**
- * Whether a control that acts on [target] should take a press: false for a moment after [target] changes, so the
- * second press of a double click on a button whose item just went doesn't act on the item that took its place under
- * the pointer. A control shown for its first target takes presses at once.
+ * Whether a control that acts on [target] should take a press: false for a moment after [target] changes, so a double
+ * click's second press doesn't act on the item that slid under the pointer. True at once for the first target.
  */
 @Composable
 fun rememberTargetSettled(target: Any?): State<Boolean> {

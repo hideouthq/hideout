@@ -20,7 +20,7 @@ import gg.hideouthq.core.designsystem.theme.HideoutTheme
 import gg.hideouthq.core.ui.AppPopup
 import kotlinx.coroutines.delay
 
-/** Where a tooltip opens against its anchor; each moves to the opposite side when the window has no room. */
+/** Where a tooltip opens against its anchor. It flips to the opposite side when the window has no room. */
 enum class TooltipSide { Beside, Below, Above }
 
 @Composable

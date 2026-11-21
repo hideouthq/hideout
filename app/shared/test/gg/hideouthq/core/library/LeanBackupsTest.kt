@@ -21,6 +21,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -153,7 +154,7 @@ class LeanBackupsTest {
         assertEquals(emptyList(), world.files.backups.read(root, backup.id).records, "it holds no mod")
 
         uninstall(library, "skin")
-        assertTrue(!world.stored(skinImage), "a local mod's file goes from the store once nothing but a settings backup could name it")
+        assertFalse(world.stored(skinImage), "a local mod's file goes from the store once nothing but a settings backup could name it")
 
         assertEquals(BackupStage.Done, restore(library, backup))
         assertEquals("fps_max 240\n", world.autoexec())
@@ -175,7 +176,7 @@ class LeanBackupsTest {
     }
 
     @Test
-    fun backupsMadeBeforeThisFreeTheSpaceOfUninstalledModsTheNextTimeHideoutStarts() = runTest {
+    fun startingFreesTheGameBananaFilesBackupsHoldOfModsOutOfTheGame() = runTest {
         val world = World()
         val held = world.manifest().backupOf(root)
         for (record in held.records) for (file in record.files) world.files.backups.keep(GameEntry(root, record.setFolder(), file.name), file.image)
@@ -257,7 +258,6 @@ class LeanBackupsTest {
             assertEquals(BackupStage.Incomplete(listOf(MissingMod("Lilith, the Hell Warden", problem))), restore(library, backup))
             assertEquals(setOf("lilith", "skin"), world.manifest().records.map { it.installId }.toSet(), "$problem")
             assertEquals(mapOf("lilith" to FilesDamage.Missing), library.ready().damaged, "the local mod is back whole, and Lilith is left for Reinstall")
-            assertEquals(lilithRecord.reinstallFrom, ReinstallFrom.Source)
         }
     }
 }

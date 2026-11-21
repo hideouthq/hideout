@@ -1574,9 +1574,9 @@ class ModLibrary(
      * take the numbers their order plans around the files as they are now, so one on now with the same bytes keeps its
      * name. Refused while Deadlock may run, and when a file of a mod changed or cannot be read, since it would go and no
      * backup could hold it. The Library is backed up first, and it is refused when that fails. A set whose files the
-     * store no longer holds comes back missing; a GameBanana one is then got again as Reinstall gets it, and the restore
-     * is [BackupStage.Incomplete] with each mod that could not be. A backup that holds no mods
-     * ([BackupReason.holdsMods]) puts back only the settings files and leaves the Library as it is.
+     * store no longer holds comes back missing. A GameBanana one is then reinstalled, and the restore is
+     * [BackupStage.Incomplete] with each mod that could not be. A backup without mods ([BackupReason.holdsMods]) puts
+     * back only the settings files.
      */
     fun restoreBackup(backup: BackupInfo) = maintain(Maintenance.Backups(BackupWork.Revert(backup), BackupStage.Running)) {
         librarySetup.join()
@@ -1589,10 +1589,7 @@ class ModLibrary(
 
     private fun missingIds(): Set<String> = (state.value.library as? LibraryStatus.Ready)?.damaged?.filterValues { it == FilesDamage.Missing }?.keys.orEmpty()
 
-    /**
-     * Reinstalls each mod of the found game whose GameBanana files are missing, but those in [except], and waits for
-     * them: the mods still missing them, with why.
-     */
+    /** Reinstalls the found game's mods whose GameBanana files are missing, but those in [except]; the ones that failed, with why. */
     private suspend fun reinstallMissing(except: Set<String>): List<MissingMod> {
         val ready = state.value.library as? LibraryStatus.Ready ?: return emptyList()
         val root = (state.value.game as? GameStatus.Ready)?.root ?: return emptyList()
@@ -2462,10 +2459,8 @@ class ModLibrary(
     }.distinct().joinToString("; ")
 
     /**
-     * Puts back from the game's backups, with nothing downloaded, the sets of each mod that is on in [root] whose files
-     * went missing while the backups hold them, through the change a reinstall makes, then shows what every one of those
-     * mods' files hold now. A mod with a file that holds other bytes is the user's to decide on, and one the backups
-     * can't restore shows as missing.
+     * Puts back from the backups, with nothing downloaded, the missing sets of each mod that is on in [root], then
+     * rechecks those mods. A mod with a changed file is left for the user, and one the backups can't restore shows as missing.
      */
     private suspend fun putBackMissingLocked(root: GameRoot) {
         val on = ledger.manifest.records.filter { it.gameRoot == root && it.enabled }.map { it.installId }
