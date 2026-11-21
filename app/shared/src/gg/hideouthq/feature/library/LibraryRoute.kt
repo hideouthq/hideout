@@ -143,6 +143,7 @@ fun LibraryRoute(
     }
     val frame = LocalPaneFrame.current
     DisposableEffect(viewModel) { onDispose(viewModel::forgetTurnedOff) }
+    LaunchedEffect(library) { library.refreshLeftovers() }
     LaunchedEffect(show) {
         if (show != null) {
             viewModel.show(show)

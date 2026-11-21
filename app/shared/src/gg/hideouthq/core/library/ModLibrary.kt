@@ -1447,6 +1447,7 @@ class ModLibrary(
     private suspend fun prepareLaunchLocked(root: GameRoot, modded: Boolean): LibraryProblem? {
         processProblem()?.let { return it }
         recoverLocked()?.let { return LibraryProblem.Interrupted(it) }
+        if (modded) putBackMissingLocked(root) else onListing(root)
         if (modded) reclaimLocked(root, ledger.linesFor(root).copy(mods = true))?.let { return it }
         val bytes = gameInfoBytes(root) { return it }
         val coveredBy = when (val check = GameInfoPatch.check(bytes)) {
@@ -2399,6 +2400,7 @@ class ModLibrary(
                 val spaced = ledger.manifest.records.single { it.installId == current.installId }
                 val result = parked(target, !current.enabled) { ledger.replace(spaced, title, plan, reinstalling = asked.reinstall, declined = declined, aside = asideName(current.title)) }
                 publishRecords((result as? InstallOutcome.Refused)?.interrupted, setOf(current.installId))
+                if (asked.reinstall && result is InstallOutcome.Installed) ports.log("Put back the files of ${current.named}: ${restoredFrom(current, plan)}")
                 return@underLock when (result) {
                     is InstallOutcome.Installed -> Committed.Done to true
                     is InstallOutcome.Refused -> waitingOr(result.problem, result.leftInPlace, plan.nameOf(result.source, current)) to true
@@ -2424,6 +2426,41 @@ class ModLibrary(
             refreshLoading(target)
         }
         return outcome
+    }
+
+    private fun restoredFrom(record: ManifestRecord, plan: List<SetPlan>): String = plan.mapNotNull { step ->
+        val from = when (step) {
+            is SetPlan.Kept -> return@mapNotNull null
+            is SetPlan.Stored -> "Hideout's backups"
+            is SetPlan.Staged -> (step.origin as? SetOrigin.Downloaded)?.archive?.fileName ?: "the file it was installed from"
+        }
+        record.sets.firstOrNull { it.source == step.source && it.componentKey == step.componentKey }?.let { "${it.said} from $from" }
+    }.distinct().joinToString("; ")
+
+    /**
+     * Puts back from the game's backups, with nothing downloaded, the sets of each mod that is on in [root] whose files
+     * went missing while the backups hold them, through the change a reinstall makes, then shows what every one of those
+     * mods' files hold now. A mod with a file that holds other bytes is the user's to decide on, and one the backups
+     * can't restore shows as missing.
+     */
+    private suspend fun putBackMissingLocked(root: GameRoot) {
+        val on = ledger.manifest.records.filter { it.gameRoot == root && it.enabled }.map { it.installId }
+        for (id in on) {
+            val record = ledger.manifest.records.firstOrNull { it.installId == id }?.takeIf { !it.edited } ?: continue
+            val looked = (attempt { ledger.look(record) } as? Attempt.Done)?.value?.files ?: continue
+            if (FilesCheck.Missing !in looked.values || looked.values.any { it != FilesCheck.Missing && it != FilesCheck.Intact }) continue
+            val missing = record.sets.filter { set -> record.filesOf(set).any { looked[it] == FilesCheck.Missing } }
+            if (!missing.all { storedLocked(record, it) }) continue
+            val plan = record.sets.map { if (it in missing) SetPlan.Stored(it.source, it.componentKey) else SetPlan.Kept(it.source, it.componentKey) }
+            when (val result = ledger.replace(record, record.title, plan, reinstalling = true, aside = asideName(record.title))) {
+                is InstallOutcome.Installed -> ports.log("Put back the missing files of ${record.named} from Hideout's backups")
+                is InstallOutcome.Refused -> {
+                    ports.log("Couldn't put back the missing files of ${record.named}: ${result.problem.reason()}")
+                    if (result.interrupted != null) break
+                }
+            }
+        }
+        publishRecords(ledger.uncertainty ?: (state.value.library as? LibraryStatus.Ready)?.interrupted, recheck = on.toSet())
     }
 
     private fun asideName(title: String): String {
@@ -2822,7 +2859,23 @@ class ModLibrary(
         if (automatic) repairFailures.value = emptyMap()
         wake.trySend(Unit)
         compatWake.trySend(Unit)
+        scope.launch {
+            underLock {
+                val ready = state.value.library as? LibraryStatus.Ready ?: return@underLock
+                val root = (state.value.game as? GameStatus.Ready)?.root ?: return@underLock
+                publishRecords(ready.interrupted, recheck = ledger.manifest.records.filter { it.gameRoot == root && it.enabled }.mapTo(HashSet()) { it.installId })
+            }
+        }
     }
+
+    /** Lists the loading folders again, so a set another tool put there shows in [LibraryStatus.Ready.leftovers]. One look runs at a time. */
+    fun refreshLeftovers() {
+        if (leftoverLook?.isActive == true) return
+        leftoverLook = scope.launch { underLock { (state.value.game as? GameStatus.Ready)?.let { onListing(it.root) } } }
+    }
+
+    @Volatile
+    private var leftoverLook: Job? = null
 
     private suspend fun recoverLocked(): String? {
         if (state.value.library !is LibraryStatus.Ready) return null

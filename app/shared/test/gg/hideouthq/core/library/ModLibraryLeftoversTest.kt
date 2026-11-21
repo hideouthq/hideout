@@ -14,6 +14,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import java.time.LocalDate
@@ -84,6 +85,45 @@ class ModLibraryLeftoversTest {
         val library = with(World()) { library() }
 
         assertEquals(listOf(listOf("addons/pak05_dir.vpk", "addons/pak05_000.vpk"), listOf("hideout_addons2/pak03_dir.vpk")), library.leftovers().map { set -> set.paths.map { it.value } })
+    }
+
+    private val dropped = "addons/pak20_dir.vpk"
+
+    private fun World.drop() = files.putBytes(root, "$citadel/$dropped", FakeVpk.directory(seed = 20))
+
+    private fun ModLibrary.listed(): List<String> = leftovers().flatMap { set -> set.paths.map { it.value } }
+
+    @Test
+    fun aSetAnotherToolDropsInIsListedWhenLibraryOpens() = runTest {
+        val world = World()
+        val library = with(world) { library() }
+        world.drop()
+        assertTrue(dropped !in library.listed())
+
+        library.refreshLeftovers()
+        runCurrent()
+        assertTrue(dropped in library.listed())
+    }
+
+    @Test
+    fun aSetAnotherToolDropsInWhileDeadlockRunsIsListedOnceItCloses() = runTest {
+        val world = World(game = true)
+        val library = with(world) { library() }
+        advanceTimeBy(testWatchTiming.processPoll * 2)
+        world.drop()
+        world.processes.scan = ProcessScan.Seen()
+        advanceTimeBy(testWatchTiming.processPoll * 2)
+        runCurrent()
+        assertTrue(dropped in library.listed())
+    }
+
+    @Test
+    fun aSetAnotherToolDropsInIsListedBeforePlay() = runTest {
+        val world = World()
+        val library = with(world) { library() }
+        world.drop()
+        assertNull(library.launch(modded = true) {})
+        assertTrue(dropped in library.listed())
     }
 
     @Test

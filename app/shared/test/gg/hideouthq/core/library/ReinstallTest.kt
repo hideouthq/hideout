@@ -116,13 +116,14 @@ class ReinstallTest {
             serve(103, cabezasEntries)
         }
         val processes = FakeProcesses()
+        val log = mutableListOf<String>()
         var local: LocalImport = LocalImport.Unavailable
         private var nextId = 0
 
         fun TestScope.library(scope: CoroutineScope = backgroundScope): ModLibrary = started(
             ModLibrary(
                 FixedGameLocator(listOf(root)), Preferences(MemoryStorage()), store, files,
-                InstallPorts(banana, downloader, files, files, processes, localImport = local, backups = files.backups), scope,
+                InstallPorts(banana, downloader, files, files, processes, localImport = local, backups = files.backups, log = log::add), scope,
                 ids = { "id${++nextId}" },
                 watch = testWatchTiming,
             ),
@@ -216,6 +217,74 @@ class ReinstallTest {
         assertEquals(emptyList(), world.downloader.requested, "the kept download no longer holds it, and nothing is downloaded instead")
         assertEquals(0, world.banana.calls)
         assertEquals(emptyMap(), library.ready().damaged)
+    }
+
+    @Test
+    fun aFileDeletedWhileHideoutRunsIsPutBackFromTheBackupsBeforePlayWithNothingDownloaded() = runTest {
+        val world = World()
+        val chunk = world.default(VpkPart.Chunk(0))
+        val original = world.identity(chunk)
+        val library = with(world) { library() }
+        world.damage(FilesDamage.Missing)
+        world.files.rewriteArchive(defaultArchive.path, FileImage(1_000, "f".repeat(64)))
+        assertEquals(emptyMap(), library.ready().damaged, "nothing has looked since the file went")
+
+        var launched = false
+        assertNull(library.launch(modded = true) { launched = true })
+        assertTrue(launched)
+        assertEquals(original, world.identity(chunk), "the file comes back as the very file the backups kept")
+        assertEquals(world.record, world.stored())
+        world.assertOriginals()
+        assertEquals(emptyList(), world.downloader.requested)
+        assertEquals(0, world.banana.calls)
+        assertEquals(emptyMap(), library.ready().damaged)
+        assertEquals(emptyMap(), library.state.value.operations, "nothing shows as running")
+        assertEquals(listOf("Put back the missing files of Lilith, the Hell Warden (mod-551201) from Hideout's backups"), world.log.filter { "Put back" in it })
+    }
+
+    @Test
+    fun aFileTheBackupsDoNotHoldShowsAsMissingAndPlayStillStarts() = runTest {
+        val world = World()
+        val library = with(world) { library() }
+        world.damage(FilesDamage.Missing)
+        world.files.remove(root, "${InMemoryGameFiles.Stored}/${world.record.sets[0].files[1].image.sha256}")
+
+        var launched = false
+        assertNull(library.launch(modded = true) { launched = true })
+        assertTrue(launched)
+        assertEquals(mapOf("lilith" to FilesDamage.Missing), library.ready().damaged)
+        assertNull(world.inFolder()[world.default(VpkPart.Chunk(0))])
+        assertEquals(emptyList(), world.downloader.requested, "Play never downloads")
+        assertEquals(0, world.banana.calls)
+    }
+
+    @Test
+    fun aFileDeletedWhileDeadlockRunsShowsAsMissingOnceItCloses() = runTest {
+        val world = World()
+        world.processes.scan = ProcessScan.Seen(game = true)
+        val library = with(world) { library() }
+        advanceTimeBy(testWatchTiming.processPoll * 2)
+        world.damage(FilesDamage.Missing)
+        assertEquals(emptyMap(), library.ready().damaged)
+
+        world.processes.scan = ProcessScan.Seen()
+        advanceTimeBy(testWatchTiming.processPoll * 2)
+        runCurrent()
+        assertEquals(mapOf("lilith" to FilesDamage.Missing), library.ready().damaged)
+        assertEquals(setOf("lilith"), library.ready().stored)
+        assertNull(world.inFolder()[world.default(VpkPart.Chunk(0))], "closing only looks; Play or Reinstall puts it back")
+    }
+
+    @Test
+    fun aReinstallFromTheBackupsSaysSoInTheLog() = runTest {
+        val world = World()
+        with(world) { seen() }
+        world.damage(FilesDamage.Missing)
+        val library = with(world) { library() }
+
+        reinstall(library)
+        assertEquals(world.record, world.stored())
+        assertEquals(listOf("Put back the files of Lilith, the Hell Warden (mod-551201): GameBanana file 101 (version 1 of 2) from Hideout's backups"), world.log.filter { "Put back" in it })
     }
 
     @Test
