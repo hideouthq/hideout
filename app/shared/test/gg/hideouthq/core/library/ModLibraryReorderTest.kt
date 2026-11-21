@@ -178,7 +178,7 @@ class ModLibraryReorderTest {
                 files.filesIn(root, folder).keys.map { "${folder.path}/$it" to files.identity(root, "${folder.path}/$it") }
             }.toMap()
 
-        fun assertWhole(placement: Map<String, Int?>) {
+        fun assertWhole(placement: Map<String, Int?>, info: ByteArray = gameInfo) {
             assertEquals(emptyList(), mountProblems)
             assertNull(manifest().pending)
             val placed = specs.map { record(it, placement.getValue(it.id)) }
@@ -198,7 +198,7 @@ class ModLibraryReorderTest {
             strangers.forEach { (name, identity) -> assertEquals(identity, files.identity(root, "$addons/$name"), "$name is the same file") }
             assertEquals(elsewhereIdentity, files.identity(other, "$addons/pak03_dir.vpk"), "the other game is untouched")
             val past = placed.overflowIn(root)
-            if (past == 0) assertContentEquals(gameInfo, files.gameInfo(root), "gameinfo.gi is untouched") else assertEquals(past, overflow(), "the block mounts every loading folder a set is in")
+            if (past == 0) assertContentEquals(info, files.gameInfo(root), "gameinfo.gi is untouched") else assertEquals(past, overflow(), "the block mounts every loading folder a set is in")
         }
 
         fun overflow() = assertIs<SearchPathsCheck.Read>(GameInfoPatch.check(checkNotNull(files.gameInfo(root)))).overflow
@@ -464,8 +464,37 @@ class ModLibraryReorderTest {
         library.setEnabled("m98", false)
         runCurrent()
         assertEquals(ChoiceSync.Settled, library.state.value.choiceSync)
-        world.assertWhole(shifted + ("m98" to null))
-        assertEquals(3, world.store.arranges(), "m99 stays in hideout_addons2 and no other set renames")
+        assertEquals(3, world.store.arranges())
+        assertEquals(shifted + ("m98" to null) + ("m99" to 99), world.placement(), "m99 goes back to addons and no other set renames")
+        assertEquals(1, world.overflow(), "the emptied folder stays mounted until the block is next written")
+        assertNull(library.launch(modded = true) {})
+        world.assertWhole(shifted + ("m98" to null) + ("m99" to 99))
+    }
+
+    @Test
+    fun aLibraryLeftPastAddonsThatFitsThereGoesBackOnceDeadlockClosesAndPlayDropsTheNextFolder() = runTest {
+        val past = (1..63).map { Spec("m$it", 100L + it, 99 + it, listOf("dir")) }
+        val mounted = (GameInfoPatch.withBlock(VanillaGameInfo, HideoutLines(mods = true, customGames = false), 1) as GameInfoEdit.Patched).bytes
+        val world = World(mounted, past, foreign = emptyMap())
+        world.processes.scan = ProcessScan.Seen(game = true)
+        val library = with(world) { library() }
+        assertEquals(ChoiceSync.Settled, library.state.value.choiceSync, "nothing waits on Deadlock to show")
+        assertEquals(0, world.store.arranges())
+
+        world.processes.scan = ProcessScan.Seen()
+        advanceTimeBy(5.seconds)
+        runCurrent()
+        assertEquals(ChoiceSync.Settled, library.state.value.choiceSync)
+        assertEquals(1, world.store.arranges(), "one journal moves every set")
+        val gathered = past.associate { it.id to it.number!! - 99 }
+        assertEquals(gathered, world.placement())
+        assertEquals(1, world.overflow())
+        assertNull(library.launch(modded = true) {})
+        world.assertWhole(gathered, info = HideoutGameInfo)
+
+        with(world) { library() }
+        runCurrent()
+        assertEquals(1, world.store.arranges(), "a restart moves nothing")
     }
 
     private val tooWide = Spec("w", 500, null, listOf("dir"), sets = 100)

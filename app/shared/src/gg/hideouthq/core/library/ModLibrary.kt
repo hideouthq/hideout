@@ -1054,7 +1054,7 @@ class ModLibrary(
         if (reloadLocked() != null) return Step.Stopped
         saveAdmittedLocked()
         val manifest = ledger.manifest
-        if (manifest.reached(pastLimit)) return reachedLocked()
+        if (manifest.reached(pastLimit) && manifest.records.map { it.gameRoot }.toSet().none(manifest.records::gathersIn)) return reachedLocked()
         if (manifest.pending?.whileGameRuns != true) processProblem()?.let { problem ->
             if (manifest.pending == null) manifest.savedChoices?.let { planLocked(it.target) }
             if (manifest.reached(pastLimit)) return reachedLocked()
@@ -1090,7 +1090,7 @@ class ModLibrary(
         val moves = mutableListOf<Move>()
         val past = LinkedHashSet<String>()
         for ((root, held) in ledger.manifest.records.groupBy { it.gameRoot }.toSortedMap(compareBy { it.path })) {
-            if (wanted.onOrder(root) == onLoadOrder(held)) continue
+            if (wanted.onOrder(root) == onLoadOrder(held) && !held.gathersIn(root)) continue
             if (attempt { locator.check(root.path) } != Attempt.Done(FolderCheck.Valid(root))) return Plan.Failed(LibraryProblem.GameNotFound)
             val loading = when (val listed = onListing(root)) {
                 is OnListing.Unreadable -> return Plan.Failed(LibraryProblem.AddonsUnreadable(listed.reason))
@@ -1117,12 +1117,14 @@ class ModLibrary(
             }
             return failedLocked(LibraryProblem.Interrupted(reason))
         }
-        val target = ledger.manifest.savedChoices?.target ?: return Step.Done
+        val saved = ledger.manifest.savedChoices
+        val target = saved?.target ?: ledger.manifest.profiles
         val edited = ledger.manifest.edited
         val (moves, past) = when (val plan = planLocked(target)) {
-            is Plan.Failed -> return failedLocked(plan.problem)
+            is Plan.Failed -> return if (saved == null) Step.Done else failedLocked(plan.problem)
             is Plan.Moves -> plan
         }
+        if (moves.isEmpty() && ledger.manifest.reached(past)) return reachedLocked()
         val outcome = changing { ledger.arrange(moves, target.membership(target.active, past, false)) }
         ((outcome as? ChangeOutcome.Refused)?.problem as? LibraryProblem.FileChanged)?.let { changed ->
             attempt { checkLocked(ledger.manifest.records.filter { record -> record.files.any { it.relativePath(record) == changed.path } }, read = true) }
@@ -1130,6 +1132,7 @@ class ModLibrary(
         publishRecords(ledger.uncertainty ?: (outcome as? ChangeOutcome.Refused)?.interrupted, moves.map { it.source.installId }.toSet())
         if (outcome !is ChangeOutcome.Refused) return Step.Again
         if (outcome.interrupted == null && ledger.manifest.edited != edited) return Step.Again
+        if (saved == null) return Step.Done.also { ports.log("Couldn't move the mods past addons back into it: ${outcome.problem.reason()}") }
         return failedLocked(outcome.problem)
     }
 

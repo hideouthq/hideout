@@ -103,11 +103,39 @@ class PlanPlacementTest {
     }
 
     @Test
-    fun aLibraryPastAddonsThatShrinksToNinetyNineSetsRenamesNothing() {
+    fun aLibraryPastAddonsThatShrinksToNinetyNineSetsGoesBackToAddons() {
         val records = (1..100).map { mod(it, listOf(1), on(it)) }
         val order = records.map { it.installId }
         val planned = planPlacement(records, profile(order.toSet() - "m50", order), emptySet())
-        assertEquals(listOf(Move(records[49], records[49].placed(Placement.Off))), movesBetween(records, planned.records), "m100 stays in hideout_addons2 rather than fifty sets renaming down")
+        assertEquals((1..100).associate { "m$it" to if (it == 50) null else if (it > 50) it - 1 else it }, firsts(planned.records))
+        assertEquals(0, planned.records.overflowIn(root))
+    }
+
+    @Test
+    fun aLibraryWhollyInTheNextFolderThatFitsInAddonsMovesEverySetIntoAddonsOntoNamesNoOtherSetHolds() {
+        val records = (1..30).map { mod(it, listOf(1, 2), on(98 + 2 * it)) } + (31..63).map { mod(it, listOf(1), on(168 + it)) }
+        val order = records.map { it.installId }
+        val taken = numbers(setOf(7, 40))
+        val planned = planPlacement(records, profile(order.toSet(), order), taken)
+        assertEquals(emptySet(), planned.pastLimit)
+        assertTrue(records.sumOf { it.sets.size } <= PakNumber.PerFolder - taken.size, "the library fits in addons")
+        assertEquals(setOf(SetFolder.On(2), SetFolder.On(3)), records.map { it.setFolder() }.toSet(), "the library starts past addons")
+        assertEquals(order, onLoadOrder(planned.records))
+        assertTrue(planned.records.all { it.setFolder() == SetFolder.Addons }, "every set is in addons")
+        assertTrue(planned.records.flatMap { it.numbers }.none { it in taken })
+        val moves = movesBetween(records, planned.records)
+        assertEquals(records.size, moves.size)
+        val held = records.flatMap { record -> record.files.map { it.relativePath(record) } }.toSet()
+        assertTrue(moves.flatMap { move -> move.moving.flatten().map { (_, to) -> to.relativePath(move.target) } }.none { it in held }, "no set lands on a name a set holds")
+        assertEquals(planned.records, planPlacement(planned.records, profile(order.toSet(), order), taken).records, "planning again moves nothing")
+    }
+
+    @Test
+    fun aStuckModPastAddonsKeepsTheLibraryInItsFolders() {
+        val records = (1..99).map { mod(it, listOf(1), on(it)) } + mod(100, listOf(1), on(100))
+        val order = records.map { it.installId }
+        val planned = planPlacement(records, profile(order.toSet() - "m50", order), emptySet(), stuck = setOf("m100"))
+        assertEquals(listOf(Move(records[49], records[49].placed(Placement.Off))), movesBetween(records, planned.records), "m100's files can't be moved, so nothing renames down")
     }
 
     @Test

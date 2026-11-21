@@ -1026,9 +1026,10 @@ class ModLibraryInstallTest {
         val records = listOf(seeded("first", 8, 8), seeded("past", 9, 108), seeded("further", 10, 109))
         world.store.save(LibraryManifest(records = records))
         records.forEach { world.files.putFile(root, it.files.single().relativePath(it), 1, "a".repeat(64)) }
+        (1..99).filter { it != 8 }.forEach { world.files.putFile(root, "${SetFolder.Addons.path}/pak${it.toString().padStart(2, '0')}_dir.vpk", 1, "b".repeat(64)) }
         val library = with(world) { library() }
         advanceTimeBy(200.milliseconds)
-        assertEquals(ModLoading.Off(notLoading = 2, vanilla = false), library.state.value.loading, "addons loads, but the two in hideout_addons2 do not")
+        assertEquals(ModLoading.Off(notLoading = 2, vanilla = false), library.state.value.loading, "addons loads, but the two in hideout_addons2, with no room left in addons, do not")
         assertTrue((library.state.value.loading as ModLoading.Off).alerts)
 
         assertNull(library.reapply())

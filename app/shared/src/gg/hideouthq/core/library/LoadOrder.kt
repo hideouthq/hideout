@@ -123,8 +123,9 @@ internal fun planPlacement(records: List<ManifestRecord>, profile: Profile, take
 /**
  * [on] placed on in their order at the numbers [planNumbers] gives each one's [block], around [taken] and the numbers
  * [around] holds: its [Block.fixed] ones where they are, else, when that cannot be, the rest around them; null when
- * neither fits in any number of loading folders. It opens a folder past the ones the blocks already use only when
- * nothing fits there, so a library that shrinks keeps its folders rather than renaming its sets back.
+ * neither fits in any number of loading folders. Blocks that all fit in `addons` in their order go back there, unless
+ * a stuck one would have to leave a later folder. Past that it opens a folder beyond the ones the blocks already use
+ * only when nothing fits there, so a library past `addons` that shrinks keeps its folders rather than renaming its sets.
  */
 internal fun placeAround(on: List<ManifestRecord>, around: List<ManifestRecord>, taken: Set<Slot>, block: (ManifestRecord) -> Block): List<ManifestRecord>? {
     val blocks = on.associateWith(block)
@@ -132,8 +133,14 @@ internal fun placeAround(on: List<ManifestRecord>, around: List<ManifestRecord>,
         ?.let { firsts -> on.zip(firsts).map { (record, first) -> record.placed(Placement.On(first)) } }
     val fixed = on.filter { blocks.getValue(it).fixed }
     val floor = blocks.values.flatMap { it.held }.filterNotNull().maxOfOrNull { it.folder.index } ?: 1
+    val stuckPast = blocks.values.any { block -> block.stuck && block.held.any { it != null && it.folder != SetFolder.Addons } }
+    if (floor > 1 && !stuckPast) place(on, around, 1)?.let { return it }
     return (floor..SetFolder.Loading.size).firstNotNullOfOrNull { folders -> place(on, around, folders) ?: place(on - fixed.toSet(), around + fixed, folders) }
 }
+
+/** Whether the sets of [records] that are on in [root] reach past `addons` though they are few enough to fit there again. */
+internal fun List<ManifestRecord>.gathersIn(root: GameRoot): Boolean =
+    overflowIn(root) > 0 && filter { it.gameRoot == root && it.enabled }.sumOf { it.sets.size } <= PakNumber.PerFolder
 
 /** A move for each of [wanted] that its record in [now], by install id, is not. */
 internal fun movesBetween(now: List<ManifestRecord>, wanted: List<ManifestRecord>): List<Move> {
