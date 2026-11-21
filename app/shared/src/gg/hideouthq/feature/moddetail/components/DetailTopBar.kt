@@ -19,6 +19,7 @@ import androidx.compose.ui.semantics.semantics
 import gg.hideouthq.core.designsystem.component.HideoutIconButton
 import gg.hideouthq.core.designsystem.component.HideoutIconToggleButton
 import gg.hideouthq.core.designsystem.component.HideoutTooltip
+import gg.hideouthq.core.designsystem.component.TooltipSide
 import gg.hideouthq.core.designsystem.component.SegmentedControl
 import gg.hideouthq.core.designsystem.icon.HideoutIcons
 import gg.hideouthq.core.designsystem.interaction.collectInteractionStates
@@ -123,7 +124,7 @@ internal fun ViewerTools(viewer: ViewerState, available: Set<ViewerTool>, dimmed
                 ViewerTool.Fullscreen -> viewer.fullscreen
                 ViewerTool.SaveImage, ViewerTool.ResetCamera -> null
             }
-            HideoutTooltip(description, Modifier.tool(index), below = true) {
+            HideoutTooltip(description, Modifier.tool(index), side = TooltipSide.Below) {
                 if (checked == null) {
                     HideoutIconButton(tool.icon, description, onClick = use, enabled = enabled, disabledAlpha = disabledAlpha)
                 } else {

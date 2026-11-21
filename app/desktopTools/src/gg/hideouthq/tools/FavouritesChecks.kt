@@ -31,6 +31,9 @@ private fun checkModPageStar(out: File) {
         advance(Settle)
         check(container.preferences.favourites.value == setOf("lilith")) { "the star saves the mod by its id" }
         check(star("Favourite").config[SemanticsProperties.ToggleableState] == ToggleableState.On)
+        val tip = nodes().single { it.hasLabel("Remove from favourites") }.boundsInWindow
+        val install = nodes().first { node -> node.config.contains(SemanticsActions.OnClick) && node.config.getOrElseNullable(SemanticsProperties.Text) { null }?.any { it.text.startsWith("Install") } == true }.boundsInWindow
+        check(tip.bottom <= star("Favourite").boundsInWindow.top && !tip.overlaps(install)) { "the star's tooltip opens above it, clear of the install button: tooltip $tip, install $install" }
         capture("starred")
     }
     println("Favourites on the mod page passed")

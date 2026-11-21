@@ -28,6 +28,7 @@ import gg.hideouthq.core.designsystem.component.HideoutIcon
 import gg.hideouthq.core.designsystem.component.HideoutIconButton
 import gg.hideouthq.core.designsystem.component.HideoutMenu
 import gg.hideouthq.core.designsystem.component.HideoutTooltip
+import gg.hideouthq.core.designsystem.component.TooltipSide
 import gg.hideouthq.core.designsystem.component.MenuEntry
 import gg.hideouthq.core.designsystem.component.SegmentedControl
 import gg.hideouthq.core.designsystem.icon.HideoutIcons
@@ -79,7 +80,7 @@ private fun ViewToggleSegment(icon: ImageVector, selected: Boolean, label: Strin
     val source = remember { MutableInteractionSource() }
     val states = source.collectInteractionStates()
     val scheme = MaterialTheme.colorScheme
-    HideoutTooltip(label, below = true) {
+    HideoutTooltip(label, side = TooltipSide.Below) {
         Box(
             modifier = Modifier
                 .wrapContentWidth()
@@ -102,7 +103,7 @@ internal fun LibraryMoreMenu(canImport: Boolean, canTurnAllOff: Boolean, actions
     val more = remember { FocusRequester() }
     val label = stringResource(Res.string.library_more_actions)
     Box {
-        HideoutTooltip(label, below = true) { HideoutIconButton(HideoutIcons.MoreHorizontal, label, { open = true }, Modifier.focusRequester(more)) }
+        HideoutTooltip(label, side = TooltipSide.Below) { HideoutIconButton(HideoutIcons.MoreHorizontal, label, { open = true }, Modifier.focusRequester(more)) }
         if (open) {
             DisposableEffect(Unit) {
                 modal.hold(more)

@@ -20,8 +20,11 @@ import gg.hideouthq.core.designsystem.theme.HideoutTheme
 import gg.hideouthq.core.ui.AppPopup
 import kotlinx.coroutines.delay
 
+/** Where a tooltip opens against its anchor; each moves to the opposite side when the window has no room. */
+enum class TooltipSide { Beside, Below, Above }
+
 @Composable
-fun HideoutTooltip(text: String, modifier: Modifier = Modifier, below: Boolean = false, content: @Composable () -> Unit) {
+fun HideoutTooltip(text: String, modifier: Modifier = Modifier, side: TooltipSide = TooltipSide.Beside, content: @Composable () -> Unit) {
     val source = remember { MutableInteractionSource() }
     val hovered by source.collectIsHoveredAsState()
     var shown by remember { mutableStateOf(false) }
@@ -32,7 +35,7 @@ fun HideoutTooltip(text: String, modifier: Modifier = Modifier, below: Boolean =
     val gap = with(LocalDensity.current) { 14.dp.roundToPx() }
     Box(modifier.hoverable(source)) {
         content()
-        if (hovered && shown) AppPopup(popupPositionProvider = remember(gap, below) { if (below) BelowAnchor(gap / 2) else BesideAnchor(gap) }) {
+        if (hovered && shown) AppPopup(popupPositionProvider = remember(gap, side) { if (side == TooltipSide.Beside) BesideAnchor(gap) else StackedAnchor(gap / 2, above = side == TooltipSide.Above) }) {
             Box(
                 Modifier.shadow(8.dp, RoundedCornerShape(10.dp)).background(MaterialTheme.colorScheme.surfaceContainerHighest, RoundedCornerShape(10.dp))
                     .height(32.dp).padding(horizontal = 12.dp),
@@ -44,11 +47,13 @@ fun HideoutTooltip(text: String, modifier: Modifier = Modifier, below: Boolean =
     }
 }
 
-private class BelowAnchor(private val gap: Int) : PopupPositionProvider {
+private class StackedAnchor(private val gap: Int, private val above: Boolean) : PopupPositionProvider {
     override fun calculatePosition(anchorBounds: IntRect, windowSize: IntSize, layoutDirection: LayoutDirection, popupContentSize: IntSize): IntOffset {
         val x = anchorBounds.left + (anchorBounds.width - popupContentSize.width) / 2
         val under = anchorBounds.bottom + gap
-        val y = if (under + popupContentSize.height <= windowSize.height) under else anchorBounds.top - gap - popupContentSize.height
+        val over = anchorBounds.top - gap - popupContentSize.height
+        val underFits = under + popupContentSize.height <= windowSize.height
+        val y = if (above && over >= 0 || !above && !underFits) over else under
         return IntOffset(x.coerceIn(0, (windowSize.width - popupContentSize.width).coerceAtLeast(0)), y.coerceAtLeast(0))
     }
 }
