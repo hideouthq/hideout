@@ -77,6 +77,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -133,19 +134,26 @@ private class MeteredProcesses(private val real: GameProcesses, private val mete
     override suspend fun scan() = meter.time { real.scan() }
 }
 
-/** Each whole-file read the twin links make, keyed by the library function that asked for it, with the bytes read. */
+/**
+ * Each call the twin links answer, keyed by the library function that asked, with the bytes of the file it asked
+ * about and the bytes the call read. The links do their work on the calling thread once it is on [Dispatchers.IO], so
+ * the thread's read count in `/proc/thread-self/io` before and after the call is what that call read.
+ */
 private class HashCalls {
-    class Call(val start: Long, val end: Long, val caller: String, val bytes: Long)
+    class Call(val start: Long, val end: Long, val caller: String, val bytes: Long, val read: Long)
 
     val calls = ConcurrentLinkedQueue<Call>()
 
     suspend fun <T> time(kind: String, bytes: (T) -> Long, block: suspend () -> T): T {
         val caller = Throwable().stackTrace.firstOrNull { it.className.startsWith("gg.hideouthq.core.library") }
             ?.let { "${it.className.substringAfterLast('.').substringBefore('$')}.${it.methodName}" } ?: "?"
-        val start = System.nanoTime()
-        val result = block()
-        calls += Call(start, System.nanoTime(), "$kind<$caller", bytes(result))
-        return result
+        return withContext(Dispatchers.IO) {
+            val start = System.nanoTime()
+            val before = threadRead()
+            val result = block()
+            calls += Call(start, System.nanoTime(), "$kind<$caller", bytes(result), threadRead() - before)
+            result
+        }
     }
 
     fun window(from: Long, to: Long): JsonObject = buildJsonObject {
@@ -154,9 +162,12 @@ private class HashCalls {
                 put("n", inside.size)
                 put("ms", inside.sumOf { it.end - it.start } / 1e6)
                 put("mb", inside.sumOf { it.bytes } / 1e6)
+                put("readMb", inside.sumOf { it.read } / 1e6)
             })
         }
     }
+
+    private fun threadRead(): Long = Files.readAllLines(Path.of("/proc/thread-self/io")).first { it.startsWith("rchar:") }.substringAfter(':').trim().toLong()
 }
 
 private class MeteredInstaller(private val real: ModInstaller, private val hashes: HashCalls) : ModInstaller by real {
