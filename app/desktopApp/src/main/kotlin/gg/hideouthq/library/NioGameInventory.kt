@@ -50,7 +50,8 @@ object NioGameInventory : GameInventory {
     override suspend fun file(root: GameRoot, relativePath: String): FileObservation = withContext(Dispatchers.IO) {
         try {
             when (val file = walk(gameFolder(root), relativePath.split('/'), last = Entry.File)) {
-                is Walk.Found -> retryingBusy { measure(file.path) }.let { FileObservation.Present(it.sizeBytes, it.sha256) }
+                is Walk.Found -> retryingBusy { KnownBytes.of(file.path, Files.readAttributes(file.path, BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)) }
+                    .let { FileObservation.Present(it.sizeBytes, it.sha256) }
                 Walk.Missing, is Walk.NotPlain -> FileObservation.Absent
             }
         } catch (e: NoSuchFileException) {

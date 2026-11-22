@@ -21,7 +21,10 @@ interface GameInventory {
      */
     suspend fun list(root: GameRoot, folder: String): FolderListing
 
-    /** The plain file at `<root>/[relativePath]`, a path of forward-slash segments. */
+    /**
+     * The plain file at `<root>/[relativePath]`, a path of forward-slash segments. What it holds may be known from an
+     * earlier read of the same file, as in [TwinLinks], so a write that leaves its size and times as they were is not seen.
+     */
     suspend fun file(root: GameRoot, relativePath: String): FileObservation
 
     /**

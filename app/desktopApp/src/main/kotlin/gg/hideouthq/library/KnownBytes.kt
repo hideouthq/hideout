@@ -1,7 +1,9 @@
 package gg.hideouthq.library
 
 import gg.hideouthq.core.library.FileImage
+import java.io.IOException
 import java.nio.channels.FileChannel
+import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
@@ -51,6 +53,19 @@ internal object KnownBytes {
         synchronized(readings) { readings.remove(file) }
     }
 
+    /**
+     * Reads [file], which Hideout has just written, once its modified time is set back further than the coarsest step a
+     * file system keeps times in. The reading is then kept although the file is new, since a write from then on gives
+     * it a later time, and the read sees every write before. Where the time can't be set, it is kept only as [read] keeps one.
+     */
+    fun readWritten(file: Path): FileImage {
+        try {
+            Files.setLastModifiedTime(file, FileTime.from(Instant.now() - CoarseStep - CoarseStep))
+        } catch (e: IOException) {
+        }
+        return read(file)
+    }
+
     /** Reads the whole of [file] for its size and SHA-256, and keeps what it held when that is safe. */
     fun read(file: Path): FileImage {
         val started = Instant.now()
@@ -92,11 +107,9 @@ private data class Stamp(val file: Any?, val size: Long, val modified: FileTime,
         val written = modified.toInstant()
         return written + (if (written.nano % 10_000_000 != 0) FineStep else CoarseStep) < now
     }
-
-    private companion object {
-        val FineStep: Duration = Duration.ofMillis(100)
-        val CoarseStep: Duration = Duration.ofSeconds(3)
-    }
 }
+
+private val FineStep: Duration = Duration.ofMillis(100)
+private val CoarseStep: Duration = Duration.ofSeconds(3)
 
 private class Reading(val stamp: Stamp, val image: FileImage)

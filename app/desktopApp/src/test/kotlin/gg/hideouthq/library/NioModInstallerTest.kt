@@ -1,6 +1,7 @@
 package gg.hideouthq.library
 
 import gg.hideouthq.core.data.EntryState
+import gg.hideouthq.core.data.FileObservation
 import gg.hideouthq.core.data.GameEntry
 import gg.hideouthq.core.data.LinkResult
 import gg.hideouthq.core.data.PublishResult
@@ -35,6 +36,8 @@ import org.apache.commons.compress.archivers.sevenz.SevenZOutputFile
 import org.apache.commons.compress.archivers.zip.UnixStat
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry
 import org.apache.commons.compress.archivers.zip.ZipArchiveOutputStream
+import org.junit.Assume.assumeFalse
+import org.junit.Assume.assumeTrue
 import org.tukaani.xz.LZMA2Options
 import org.tukaani.xz.XZOutputStream
 import java.io.ByteArrayOutputStream
@@ -44,6 +47,7 @@ import java.nio.file.FileSystemException
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.BasicFileAttributes
+import java.nio.file.attribute.PosixFilePermission
 import java.util.Base64
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executor
@@ -370,6 +374,28 @@ class NioModInstallerTest {
         assertEquals(Removal.Removed, installer.removeTwin(GameEntry(root, SetFolder.Addons, "pak04_dir.vpk.hideout-a1"), GameEntry(root, SetFolder.Addons, "pak04_dir.vpk"), Sha256.image(single)), "the copy goes as a second name of it")
         assertContentEquals(single, addons.resolve("pak04_dir.vpk").readBytes())
         assertEquals(setOf("pak04_dir.vpk"), names())
+    }
+
+    @Test
+    fun aStagedCopyIsKnownFromItsReadBackUnderItsPublishedNameUntilItIsWrittenAgain() = runBlocking<Unit> {
+        installer.stage(root, SetFolder.Addons, stagedSingle(), "pak04_dir.vpk.hideout-a1")
+        assertEquals(PublishResult.Published, installer.publish(root, SetFolder.Addons, "pak04_dir.vpk.hideout-a1", "pak04_dir.vpk"))
+        assertTrue(installer.sameFile(root, SetFolder.Addons, "pak04_dir.vpk.hideout-a1", "pak04_dir.vpk"))
+        val published = addons.resolve("pak04_dir.vpk")
+        val seen = FileObservation.Present(single.size.toLong(), sha256Hex(single))
+
+        assumeTrue("permissions are POSIX here", "posix" in published.fileSystem.supportedFileAttributeViews())
+        Files.setPosixFilePermissions(published, emptySet())
+        assumeFalse("this user can read any file", Files.isReadable(published))
+        assertEquals(seen, NioGameInventory.file(root, "game/citadel/addons/pak04_dir.vpk"), "known from the read back, so not opened")
+        val entry = GameEntry(root, SetFolder.Addons, "pak04_dir.vpk")
+        assertEquals(EntryState.Present(Sha256.image(single), twin = true), installer.inspect(entry, entry))
+
+        Files.setPosixFilePermissions(published, setOf(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE))
+        val edited = ByteArray(single.size) { 9 }
+        published.writeBytes(edited)
+        assertEquals(FileObservation.Present(edited.size.toLong(), sha256Hex(edited)), NioGameInventory.file(root, "game/citadel/addons/pak04_dir.vpk"), "a write after the read back is seen")
+        assertIs<Removal.Kept>(installer.removeTwin(GameEntry(root, SetFolder.Addons, "pak04_dir.vpk.hideout-a1"), entry, Sha256.image(single)))
     }
 
     @Test

@@ -162,7 +162,7 @@ class NioModInstaller(
             return@withContext StageResult.Failed("could not copy ${vpk.path} into ${folder.segments.last()}: ${e.message}")
         }
         try {
-            StageResult.Written(measure(target))
+            StageResult.Written(KnownBytes.readWritten(target))
         } catch (e: IOException) {
             StageResult.Failed("could not read back $temporary: ${e.message}")
         }
@@ -183,7 +183,7 @@ class NioModInstaller(
     override suspend fun sameFile(root: GameRoot, folder: SetFolder, temporary: String, name: String): Boolean = withContext(Dispatchers.IO) {
         require(folder.admitsTemporary(temporary) && folder.admits(name)) { "not names Hideout makes" }
         val placed = managedFolder(root, folder, create = false)
-        linker.same(placed.resolve(temporary), placed.resolve(name))
+        linker.same(placed.resolve(temporary), placed.resolve(name)).also { if (it) KnownBytes.share(placed.resolve(temporary), placed.resolve(name)) }
     }
 
     override fun emptied(entry: GameEntry, file: Path) {
