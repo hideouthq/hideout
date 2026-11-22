@@ -135,8 +135,8 @@ class DesktopPastAddonsTest {
         val library = open()
 
         val placed = library.switchAndSettle(all)
-        assertEquals(ids.withIndex().associate { (index, id) -> id to index + 1 }, placed.associate { it.installId to it.numbers.single().value })
-        assertEquals((1..99).map { "addons/${pak(it)}" } + (1..51).map { "hideout_addons2/${pak(it)}" }, loadingFiles())
+        assertEquals(ids.withIndex().associate { (index, id) -> id to index + 49 }, placed.associate { it.installId to it.numbers.single().value })
+        assertEquals((49..99).map { "addons/${pak(it)}" } + (1..99).map { "hideout_addons2/${pak(it)}" }, loadingFiles())
         for (record in placed) assertContentEquals(bytes(record.installId.drop(1).toInt()), game.resolve(record.files.single().relativePath(record)).readBytes(), record.installId)
         val info = citadel.resolve("gameinfo.gi").readBytes()
         assertEquals(SearchPathsCheck.Read(LoadingOwner.Hideout, customGames = false, overflow = 1), GameInfoPatch.check(info))

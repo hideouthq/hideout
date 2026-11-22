@@ -157,7 +157,7 @@ class ArchivePartsTest {
         install(library, skin.id)
         assertTrue(changeFilesTo(library, world.record().installId, skin.id, localization.id))
         assertEquals(listOf(localization.id, skin.id), world.record().files(), "pak01 goes above the pak02 the mod has")
-        assertEquals(setOf("pak01_dir.vpk", "pak02_dir.vpk"), world.addons().keys)
+        assertEquals(setOf("pak98_dir.vpk", "pak99_dir.vpk"), world.addons().keys)
     }
 
     @Test
@@ -200,7 +200,7 @@ class ArchivePartsTest {
         assertEquals(listOf("Main/pak10_dir.vpk", "Main/pak10_000 (1).vpk"), asked.leftOut.map { it.key })
         assertEquals(SetProblem.MissingChunks(listOf("pak10_000.vpk")), asked.leftOut.first().problem)
         answer(library, "addon/pak11_dir.vpk")
-        assertEquals(setOf("pak01_dir.vpk"), world.addons().keys)
+        assertEquals(setOf("pak99_dir.vpk"), world.addons().keys)
     }
 
     @Test
@@ -209,7 +209,7 @@ class ArchivePartsTest {
         world.offer(remote(1) to listOf("mymod_dir.vpk" to FakeVpk.directory(chunkReads = mapOf(0 to 10L)), "pak01_000.vpk" to ByteArray(10) { 4 }))
         val library = with(world) { library() }
         install(library, 1)
-        assertEquals(setOf("pak01_dir.vpk", "pak01_000.vpk"), world.addons().keys, "installed without a question")
+        assertEquals(setOf("pak99_dir.vpk", "pak99_000.vpk"), world.addons().keys, "installed without a question")
         assertEquals(listOf("mymod_dir.vpk"), world.record().sets.map { it.componentKey })
     }
 }

@@ -180,7 +180,7 @@ class BackupRestoreTest {
         runCurrent()
         backgroundScope.launch { library.deleteProfile(ranked) }
         runCurrent()
-        assertEquals(mapOf("a" to (true to 5), "c" to (true to 4), "d" to (true to 9)), world.manifest().records.filter { it.modId != "mod-9" }.associate { it.installId to (it.enabled to it.number) })
+        assertEquals(mapOf("a" to (true to 98), "c" to (true to 8), "d" to (true to 99)), world.manifest().records.filter { it.modId != "mod-9" }.associate { it.installId to (it.enabled to it.number) })
         assertEquals(listOf(ProfileId("main")), world.manifest().profiles.profiles.map { it.id })
     }
 
@@ -192,13 +192,13 @@ class BackupRestoreTest {
         val backup = backUp(library)
         assertEquals(BackupInfo(backup.id, Start, BackupReason.Manual, mods = 4), backup)
         change(world, library)
-        val names = listOf("pak05_dir.vpk", "pak05_000.vpk", "pak09_dir.vpk")
+        val names = listOf("pak99_dir.vpk")
         val kept = names.associateWith { world.files.identity(root, "$addons/$it") }
 
         world.files.around = world::checkMounts
         assertEquals(BackupStage.Done, restore(library, backup))
         val after = world.manifest()
-        assertEquals(records(5, 6, null, 9), after.records, "a keeps the 05 it loads at now, not the backup's 03, d keeps 09, and b takes the lowest number between them")
+        assertEquals(records(97, 98, null, 99), after.records, "d keeps the 99 it loads at now, not the backup's 09, a moves only from 98 to 97 rather than back to 03, and b takes 98 between them")
         assertEquals(before.profiles, after.profiles)
         assertEquals(before.repairChoices, after.repairChoices)
         assertNull(after.pending)
@@ -230,9 +230,10 @@ class BackupRestoreTest {
         assertEquals(BackupInfo(safety.id, safety.createdAt, BackupReason.BeforeRestore, mods = 4), safety)
 
         assertEquals(BackupStage.Done, restore(library, safety))
-        assertEquals(changed.records.map { if (it.installId == "c") it.placed(Placement.On(Slot(3))) else it }, world.manifest().records, "c, off since, comes back on at the lowest number free below a")
+        val moved = mapOf(installed.installId to 95, "c" to 96, "a" to 97)
+        assertEquals(changed.records.map { record -> moved[record.installId]?.let { record.placed(Placement.On(Slot(it))) } ?: record }, world.manifest().records, "c, off since, comes back on at the highest number free below a, which keeps 97")
         assertEquals(changed.profiles, world.manifest().profiles)
-        assertEquals(game.mapKeys { (path, _) -> path.replace("/pak04_", "/pak03_") }, world.game())
+        assertEquals(game.mapKeys { (path, _) -> path.replace("/pak02_", "/pak95_").replace("/pak08_", "/pak96_").replace("/pak98_", "/pak97_") }, world.game())
     }
 
     @Test
@@ -271,7 +272,7 @@ class BackupRestoreTest {
         assertNull(world.files.originals["kept-a"], "so its copy went")
 
         assertEquals(BackupStage.Done, restore(library, backup))
-        assertEquals(listOf(record(specs[0], 2, repaired)) + before.records.drop(1), world.manifest().records, "a comes back at the lowest number free below b")
+        assertEquals(listOf(record(specs[0], 4, repaired)) + before.records.drop(1), world.manifest().records, "a comes back at the highest number free below b")
         assertEquals(before.originals, world.manifest().originals)
         assertEquals(original.map { it.toList() }, assertNotNull(world.files.originals["kept-a"]).map { it.toList() })
         assertEquals(before.repairChoices, world.manifest().repairChoices)
@@ -297,8 +298,8 @@ class BackupRestoreTest {
         assertEquals(installed, world.record(installed.installId))
         assertContentEquals(later, world.files.bytes(root, "$addons/pak02_dir.vpk"), "the store does not hold it, so it comes back from its kept download")
         assertEquals(listOf(90L), world.downloader.requested, "downloaded only when it was installed")
-        assertEquals(record(specs[1], 4), world.record("b"), "b's file now holds other bytes, so b is placed as if it had none")
-        assertNull(world.files.bytes(root, "$addons/pak04_dir.vpk"), "an edit in place reached the stored copy too")
+        assertEquals(record(specs[1], 8), world.record("b"), "b's file now holds other bytes, so b is placed as if it had none")
+        assertNull(world.files.bytes(root, "$addons/pak08_dir.vpk"), "an edit in place reached the stored copy too")
         assertNull(world.files.bytes(root, "$addons/pak05_dir.vpk"))
         assertEquals(mapOf("b" to FilesDamage.Missing), library.ready().damaged, "a local mod's file nothing else holds is left for Reinstall")
     }
@@ -313,15 +314,15 @@ class BackupRestoreTest {
         val game = world.game()
         val saves = world.store.saved.size
 
-        world.files.putBytes(root, "$addons/pak09_dir.vpk", bytesOf("d", "edited"))
-        assertEquals(BackupStage.Refused(LibraryProblem.FileChanged("$addons/pak09_dir.vpk")), restore(library, backup))
-        world.files.putBytes(root, "$addons/pak09_dir.vpk", bytesOf("d", "dir"))
-        world.files.failFile(root, "$addons/pak04_000.vpk", "the drive is busy")
-        assertEquals(BackupStage.Refused(LibraryProblem.FileUnreadable("$addons/pak04_000.vpk")), restore(library, backup))
+        world.files.putBytes(root, "$addons/pak99_dir.vpk", bytesOf("d", "edited"))
+        assertEquals(BackupStage.Refused(LibraryProblem.FileChanged("$addons/pak99_dir.vpk")), restore(library, backup))
+        world.files.putBytes(root, "$addons/pak99_dir.vpk", bytesOf("d", "dir"))
+        world.files.failFile(root, "$addons/pak08_000.vpk", "the drive is busy")
+        assertEquals(BackupStage.Refused(LibraryProblem.FileUnreadable("$addons/pak08_000.vpk")), restore(library, backup))
 
         assertEquals(saves, world.store.saved.size)
         assertEquals(changed, world.manifest())
-        assertEquals(game - "$addons/pak09_dir.vpk", world.game() - "$addons/pak09_dir.vpk")
+        assertEquals(game - "$addons/pak99_dir.vpk", world.game() - "$addons/pak99_dir.vpk")
         assertEquals(listOf(backup), library.state.value.backups, "no backup is taken before a refusal")
     }
 
@@ -339,7 +340,7 @@ class BackupRestoreTest {
 
         world.processes.scan = ProcessScan.Seen()
         advanceTimeBy(2.seconds)
-        world.files.around = { if (it == FaultPoint.Remove("$addons/pak04_dir.vpk")) world.processes.scan = ProcessScan.Seen(game = true) }
+        world.files.around = { if (it == FaultPoint.Remove("$addons/pak08_dir.vpk")) world.processes.scan = ProcessScan.Seen(game = true) }
         assertIs<LibraryProblem.Interrupted>(assertIs<BackupStage.Refused>(restore(library, backup)).problem)
         assertEquals(ReplaceStep.Releasing, assertIs<PendingChange.Revert>(world.manifest().pending).step)
         world.files.around = null
@@ -348,9 +349,9 @@ class BackupRestoreTest {
         advanceTimeBy(3.seconds)
         runCurrent()
         assertNull(world.manifest().pending)
-        assertEquals(records(5, 6, null, 9), world.manifest().records)
+        assertEquals(records(97, 98, null, 99), world.manifest().records)
         assertEquals(before.profiles, world.manifest().profiles)
-        assertEquals(world.gameOf(records(5, 6, null, 9)), world.game().filterKeys { TemporaryInfix !in it })
+        assertEquals(world.gameOf(records(97, 98, null, 99)), world.game().filterKeys { TemporaryInfix !in it })
         assertNull(library.ready().interrupted)
     }
 
@@ -361,15 +362,15 @@ class BackupRestoreTest {
         val backup = backUp(library)
         library.uninstall(assertNotNull(library.uninstallConfirmation("b")), deleteDownload = false)
         runCurrent()
-        world.files.putBytes(root, "$addons/pak05_dir.vpk", foreign)
+        world.files.putBytes(root, "$addons/pak08_dir.vpk", foreign)
 
         assertEquals(BackupStage.Done, restore(library, backup))
-        assertEquals(records(3, 4, null, 9), world.manifest().records, "b comes back at 04, below the file that took its 05")
-        assertEquals(world.gameOf(records(3, 4, null, 9)) + ("$addons/pak05_dir.vpk" to foreign.toList()), world.game())
+        assertEquals(records(3, 7, null, 9), world.manifest().records, "b comes back at 07, below the file that took the 08 it would take")
+        assertEquals(world.gameOf(records(3, 7, null, 9)) + ("$addons/pak08_dir.vpk" to foreign.toList()), world.game())
     }
 
     @Test
-    fun modsUninstalledSinceTheBackupComeBackAtTheLowestFreeNumbersInItsOrder() = runTest {
+    fun modsUninstalledSinceTheBackupComeBackAtTheHighestFreeNumbersInItsOrder() = runTest {
         val world = World()
         val library = with(world) { library() }
         val backup = backUp(library)
@@ -378,10 +379,11 @@ class BackupRestoreTest {
             runCurrent()
         }
         assertEquals(emptyList(), world.manifest().records)
+        world.files.putBytes(root, "$addons/pak99_dir.vpk", foreign)
 
         assertEquals(BackupStage.Done, restore(library, backup))
-        assertEquals(records(2, 3, null, 4), world.manifest().records, "a, b and d in the backup's order from 02, since a file Hideout did not put there holds 01")
-        assertEquals(world.gameOf(records(2, 3, null, 4)), world.game())
+        assertEquals(records(96, 97, null, 98), world.manifest().records, "a, b and d in the backup's order up to 98, since a file Hideout did not put there holds 99")
+        assertEquals(world.gameOf(records(96, 97, null, 98)) + ("$addons/pak99_dir.vpk" to foreign.toList()), world.game())
         assertEquals(listOf("a", "b", "d", "c"), library.state.value.orderView?.sets)
     }
 
@@ -407,7 +409,7 @@ class BackupRestoreTest {
         assertNull(world.manifest().pending)
         assertNull(world.manifest().savedChoices)
         assertTrue(world.record("c").enabled, "the saved choice turned c on once the backup was restored")
-        assertContentEquals(bytesOf("c", "000"), world.files.bytes(root, "$addons/pak10_000.vpk"), "after d")
+        assertContentEquals(bytesOf("c", "000"), world.files.bytes(root, "$addons/pak99_000.vpk"), "after d")
     }
 
     @Test
@@ -518,7 +520,7 @@ class BackupRestoreTest {
             val view = assertNotNull(library.state.value.orderView)
             library.reorder(view, listOf(view.sets[0], "c", "d", "a"))
             runCurrent()
-            assertEquals(mapOf("c" to 4, "d" to 9, "a" to 10), world.manifest().records.filter { it.modId != "mod-9" }.associate { it.installId to it.number })
+            assertEquals(mapOf("c" to 8, "d" to 97, "a" to 98), world.manifest().records.filter { it.modId != "mod-9" }.associate { it.installId to it.number })
             return world to backup
         }
 
@@ -531,7 +533,7 @@ class BackupRestoreTest {
         val afterGame = dry.game()
         assertEquals(emptyList(), dry.mountProblems)
         assertTrue(trace.points.size > 30 && trace.saves >= 6, "the trace has ${trace.points.size} points and ${trace.saves} saves")
-        assertEquals(records(10, 11, null, 12), after.records, "a keeps 10, so d moves from 09 past it and b comes back between them")
+        assertEquals(records(95, 96, null, 97), after.records, "d keeps 97, so a moves from 98 below it and b comes back between them")
 
         crashAtEveryStep(trace, { prepared().first }, act) { world, _ ->
             val manifest = world.manifest()

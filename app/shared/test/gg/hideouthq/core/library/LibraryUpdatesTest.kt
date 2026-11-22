@@ -160,7 +160,7 @@ class LibraryUpdatesTest {
         assertEquals(SubmissionIdentity(SubmissionKind.Mod, lilith.id, 201, Md5B), world.record().remoteIdentity)
         assertEquals(VersionPosition(1, 1), set.version)
         assertEquals("lilith_v2.zip", set.originalName)
-        assertEquals(Sha256.image(new), world.files.addonsFiles(root)[pak(1)])
+        assertEquals(Sha256.image(new), world.files.addonsFiles(root)[pak(99)])
     }
 
     @Test
@@ -201,7 +201,7 @@ class LibraryUpdatesTest {
             assertEquals(problem, library.failure(), name)
             assertEquals(before, world.record(), name)
             assertEquals(emptyList(), world.downloader.requested, "$name: nothing is downloaded")
-            assertEquals(Sha256.image(old), world.files.addonsFiles(root)[pak(1)], name)
+            assertEquals(Sha256.image(old), world.files.addonsFiles(root)[pak(99)], name)
         }
     }
 
@@ -547,7 +547,7 @@ class LibraryUpdatesTest {
         runCurrent()
         assertNull(library.stage())
         assertEquals(before, world.record())
-        assertEquals(Sha256.image(old), world.files.addonsFiles(root)[pak(1)])
+        assertEquals(Sha256.image(old), world.files.addonsFiles(root)[pak(99)])
     }
 
     @Test
@@ -568,7 +568,7 @@ class LibraryUpdatesTest {
         val restarted = with(world) { library() }
         assertNull(world.manifest().pending)
         assertEquals(before, world.record(), "recovery puts the old mod back whole")
-        assertEquals(Sha256.image(old), world.files.addonsFiles(root)[pak(1)])
+        assertEquals(Sha256.image(old), world.files.addonsFiles(root)[pak(99)])
         assertTrue(restarted.update(world.plan()))
         runCurrent()
         assertEquals(Md5B, world.record().remoteIdentity.fileMd5)
@@ -590,7 +590,7 @@ class LibraryUpdatesTest {
         with(world) { library() }
         assertNull(world.manifest().pending)
         assertEquals(Md5B, world.record().remoteIdentity.fileMd5)
-        assertEquals(mapOf(pak(1) to Sha256.image(new)), world.files.addonsFiles(root), "the new file alone, with neither the old one's anchor nor a copy beside it")
+        assertEquals(mapOf(pak(99) to Sha256.image(new)), world.files.addonsFiles(root), "the new file alone, with neither the old one's anchor nor a copy beside it")
     }
 
     private companion object {

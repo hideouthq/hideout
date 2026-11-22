@@ -113,11 +113,11 @@ class ProfilesTest {
         assertNull(library.state.value.undo, "the profile left is one click away")
         assertEquals(SwitchSummary(empty, 1, 0), result.value)
         runCurrent()
-        assertEquals(setOf("pak02_dir.vpk"), world.files.addonsFiles(root).keys)
+        assertEquals(setOf("pak99_dir.vpk"), world.files.addonsFiles(root).keys)
         library.switchProfile(main).done()
         runCurrent()
         assertEquals(main, library.state.value.profiles!!.active)
-        assertEquals(setOf("pak01_dir.vpk", "pak02_dir.vpk"), world.files.addonsFiles(root).keys)
+        assertEquals(setOf("pak98_dir.vpk", "pak99_dir.vpk"), world.files.addonsFiles(root).keys)
         library.renameProfile(empty, "Casual").done()
         library.recolourProfile(empty, ProfileColour.Rose).done()
         val duplicate = library.duplicateProfile(empty).done()
@@ -127,7 +127,7 @@ class ProfilesTest {
         library.reorder(library.state.value.orderView!!, ids.reversed()); runCurrent()
         assertEquals(ids.reversed(), onLoadOrder(world.store.manifest!!.records))
         library.switchProfile(empty).done(); runCurrent()
-        assertEquals(setOf("pak02_dir.vpk"), world.files.addonsFiles(root).keys)
+        assertEquals(setOf("pak97_dir.vpk"), world.files.addonsFiles(root).keys)
         val restarted = with(world) { library() }
         assertEquals(empty, restarted.state.value.profiles!!.active)
         assertEquals(ProfileColour.Rose, restarted.state.value.profiles!!.activeProfile.colour)
@@ -262,13 +262,13 @@ class ProfilesTest {
         checkReads { library.switchProfile(empty).done() }
         assertEquals(emptySet(), world.files.addonsFiles(root).keys)
         checkReads { library.switchProfile(main).done() }
-        assertEquals(setOf("pak01_dir.vpk"), world.files.addonsFiles(root).keys)
+        assertEquals(setOf("pak99_dir.vpk"), world.files.addonsFiles(root).keys)
         checkReads { library.setEnabled(id, false) }
         assertFalse(world.record().enabled)
         assertEquals(emptySet(), world.files.addonsFiles(root).keys)
         checkReads { library.setEnabled(id, true) }
         assertTrue(world.record().enabled)
-        assertEquals(setOf("pak01_dir.vpk"), world.files.addonsFiles(root).keys)
+        assertEquals(setOf("pak99_dir.vpk"), world.files.addonsFiles(root).keys)
     }
 
     @Test fun replacingTheTargetAtReleaseAdmissionPreservesTheSourceAndForeignTarget() = runTest {
@@ -294,7 +294,7 @@ class ProfilesTest {
         assertEquals(LibraryProblem.NameTaken(world.record().offPath()), library.failed(), "the switch rolls back")
         assertEquals(empty, library.state.value.profiles!!.active, "the choice stays saved")
         assertEquals(main, world.store.manifest!!.profiles.active)
-        assertEquals(Sha256.image(bytes), world.files.addonsFiles(root).getValue("pak01_dir.vpk"))
+        assertEquals(Sha256.image(bytes), world.files.addonsFiles(root).getValue("pak99_dir.vpk"))
         assertEquals(FileObservation.Present(foreign.size.toLong(), sha256Hex(foreign)), world.files.file(root, world.record().offPath()))
         assertNull(world.store.manifest!!.pending)
         assertNull(library.ready().interrupted)
@@ -323,7 +323,7 @@ class ProfilesTest {
         library.switchProfile(empty).done(); runCurrent()
         assertEquals(LibraryProblem.Interrupted("failed at ${FaultPoint.Look(target)}"), library.failed())
         assertTrue(released)
-        assertEquals(listOf("game/citadel/addons/pak02_dir.vpk", "game/citadel/addons/pak01_dir.vpk"), world.files.removedPaths, "the sources went before any target was proved")
+        assertEquals(listOf("game/citadel/addons/pak99_dir.vpk", "game/citadel/addons/pak98_dir.vpk"), world.files.removedPaths, "the sources went before any target was proved")
         assertEquals(setOf(world.offName(one), world.offName(two)), world.files.filesIn(root, SetFolder.Off("mod-1")).keys + world.files.filesIn(root, SetFolder.Off("mod-2")).keys)
         assertEquals(main, world.store.manifest!!.profiles.active)
         assertEquals(MoveStep.Linking, assertIs<PendingChange.Arrange>(world.store.manifest!!.pending).step)
@@ -356,24 +356,24 @@ class ProfilesTest {
         val ranked = library.createProfile(NewProfile("Ranked", ProfileColour.Blue, ProfileSeed.Empty)).done(); runCurrent()
         assertEquals(emptySet(), world.files.addonsFiles(root).keys)
         library.setMembership(ranked, ids.last(), true).done(); runCurrent()
-        assertEquals(setOf("pak01_dir.vpk"), world.files.addonsFiles(root).keys, "with every mod off, the one turned on takes the lowest number")
+        assertEquals(setOf("pak99_dir.vpk"), world.files.addonsFiles(root).keys, "with every mod off, the one turned on takes the highest number")
 
         library.deleteProfile(ranked).done(); runCurrent()
         assertEquals(main, library.state.value.profiles!!.active, "Main is above Ranked")
         assertEquals(listOf("Main"), library.state.value.profiles!!.profiles.map { it.name })
-        assertEquals(setOf("pak01_dir.vpk", "pak02_dir.vpk"), world.files.addonsFiles(root).keys, "Main's mods are on")
+        assertEquals(setOf("pak98_dir.vpk", "pak99_dir.vpk"), world.files.addonsFiles(root).keys, "Main's mods are on")
         val undo = assertNotNull(library.state.value.undo)
         assertEquals(Undoable.Deleted("Ranked", switchedTo = "Main"), undo.undoes)
 
         library.undo(undo).done(); runCurrent()
         assertEquals(ranked, library.state.value.profiles!!.active)
         assertEquals(listOf("Main", "Ranked"), library.state.value.profiles!!.profiles.map { it.name })
-        assertEquals(setOf("pak02_dir.vpk"), world.files.addonsFiles(root).keys)
+        assertEquals(setOf("pak99_dir.vpk"), world.files.addonsFiles(root).keys)
 
         library.switchProfile(main).done()
         library.deleteProfile(main).done(); runCurrent()
         assertEquals(ranked, library.state.value.profiles!!.active, "Main is first, so the one below it")
-        assertEquals(setOf("pak02_dir.vpk"), world.files.addonsFiles(root).keys)
+        assertEquals(setOf("pak99_dir.vpk"), world.files.addonsFiles(root).keys)
     }
 
     @Test fun heldDownloadKeepsChosenProfilesAfterActiveSwitch() = runTest {
@@ -426,7 +426,7 @@ class ProfilesTest {
         world.processes.scan = ProcessScan.Seen()
         advanceTimeBy(2.seconds); runCurrent()
         assertEquals(true, world.record().enabled)
-        assertEquals(setOf("pak01_dir.vpk"), world.files.addonsFiles(root).keys)
+        assertEquals(setOf("pak99_dir.vpk"), world.files.addonsFiles(root).keys)
     }
 
     @Test fun pageInstallAsksForVersionRegardlessOfPreferenceButNotForOneFile() = runTest {
@@ -512,7 +512,7 @@ class ProfilesTest {
         assertEquals("local-id1", source.modId)
         assertEquals(emptyList(), world.store.manifest!!.downloads)
         assertTrue(world.released)
-        assertEquals(setOf("pak01_dir.vpk"), world.files.addonsFiles(root).keys)
+        assertEquals(setOf("pak99_dir.vpk"), world.files.addonsFiles(root).keys)
     }
 
     @Test fun theSameFileAddedAgainSaysWhichModHasItAndAddsNothingWhileAPartNotTakenStillInstalls() = runTest {
@@ -551,10 +551,10 @@ class ProfilesTest {
         runCurrent()
         val record = world.record()
         assertEquals(listOf("B/skin.vpk", "A/skin.vpk"), record.sets.map { it.componentKey }, "B wins, as the chosen order lists it first")
-        assertEquals(listOf(1, 2), record.numbers.map { it.value })
+        assertEquals(listOf(98, 99), record.numbers.map { it.value })
         assertTrue(record.sets.all { it.source == record.sets[0].source }, "both components share the one local source")
-        assertEquals(setOf("pak01_dir.vpk", "pak02_dir.vpk"), world.files.addonsFiles(root).keys)
-        assertEquals(Sha256.image(b), world.files.addonsFiles(root)["pak01_dir.vpk"])
+        assertEquals(setOf("pak98_dir.vpk", "pak99_dir.vpk"), world.files.addonsFiles(root).keys)
+        assertEquals(Sha256.image(b), world.files.addonsFiles(root)["pak98_dir.vpk"])
     }
 
     @Test fun localRetryKeepsTheChosenComponentsAndTheirOrder() = runTest {
@@ -592,7 +592,7 @@ class ProfilesTest {
         library.switchProfile(other).done(); runCurrent()
         assertEquals(LibraryProblem.NameTaken(two.offPath()), library.failed())
         assertEquals(main, world.applied().active)
-        assertEquals(setOf("pak01_dir.vpk", "pak02_dir.vpk"), world.files.addonsFiles(root).keys)
+        assertEquals(setOf("pak98_dir.vpk", "pak99_dir.vpk"), world.files.addonsFiles(root).keys)
         assertEquals(Sha256.image(bytes), world.files.filesIn(root, SetFolder.Off("mod-2"))[world.offName(two)])
     }
 
@@ -600,16 +600,16 @@ class ProfilesTest {
         val (world, library) = installing(1)
         val other = library.emptyProfile()
         world.files.around = { point ->
-            if (point == FaultPoint.Remove("game/citadel/addons/pak01_dir.vpk")) {
+            if (point == FaultPoint.Remove("game/citadel/addons/pak99_dir.vpk")) {
                 world.files.around = null
-                world.files.putBytes(root, "game/citadel/addons/pak01_dir.vpk", bytes)
+                world.files.putBytes(root, "game/citadel/addons/pak99_dir.vpk", bytes)
             }
         }
         library.switchProfile(other).done(); runCurrent()
         assertEquals(LibraryProblem.PlacementFailed(ChangedWhileMoved), library.failed())
         assertEquals(main, world.applied().active)
         assertTrue(world.record().enabled)
-        assertEquals(Sha256.image(bytes), world.files.addonsFiles(root)["pak01_dir.vpk"])
+        assertEquals(Sha256.image(bytes), world.files.addonsFiles(root)["pak99_dir.vpk"])
         assertEquals(1, world.files.addonsFiles(root).keys.count { ".hideout-" in it }, "the mod's own file stays under its anchor")
         assertNull(world.store.manifest!!.pending)
     }
@@ -656,7 +656,7 @@ class ProfilesTest {
             val expectedFile = if (step == ReplaceStep.Anchoring) 10L else 11L
             assertEquals(expectedFile, world.record().remoteIdentity.fileId, step.name)
             assertEquals(setOf(old.installId), restarted.state.value.profiles!!.activeProfile.enabled)
-            assertEquals(setOf("pak01_dir.vpk"), world.files.addonsFiles(root).keys.filter { it.endsWith(".vpk") }.toSet())
+            assertEquals(setOf("pak99_dir.vpk"), world.files.addonsFiles(root).keys.filter { it.endsWith(".vpk") }.toSet())
         }
     }
 
@@ -664,7 +664,7 @@ class ProfilesTest {
         val (world, library) = installing(1)
         val old = world.record()
         world.offer(file = 11, content = FakeVpk.directory(seed = 8))
-        world.files.failing += FaultPoint.Link("game/citadel/addons/pak01_dir.vpk")
+        world.files.failing += FaultPoint.Link("game/citadel/addons/pak99_dir.vpk")
         assertTrue(changeFilesTo(library, old.installId, 11))
         assertIs<OperationStage.Failed>(library.state.value.operations["mod-1"]!!.stage)
         assertEquals(old, world.record())
@@ -673,7 +673,7 @@ class ProfilesTest {
         val restarted = with(world) { library() }
         assertEquals(old, world.record())
         assertNull(world.store.manifest!!.pending)
-        assertEquals(Sha256.image(bytes), world.files.addonsFiles(root)["pak01_dir.vpk"])
+        assertEquals(Sha256.image(bytes), world.files.addonsFiles(root)["pak99_dir.vpk"])
         assertEquals(setOf(old.installId), restarted.state.value.profiles!!.activeProfile.enabled)
     }
 
@@ -701,7 +701,7 @@ class ProfilesTest {
                 val restarted = with(world) { library() }
                 assertNull(world.store.manifest!!.pending, "$step complete=$complete")
                 assertEquals(old, world.record())
-                assertEquals(Sha256.image(bytes), world.files.addonsFiles(root)["pak01_dir.vpk"])
+                assertEquals(Sha256.image(bytes), world.files.addonsFiles(root)["pak99_dir.vpk"])
                 assertEquals(Sha256.image(foreign).takeIf { !complete }, world.files.addonsFiles(root)[pending.token.temporaryName(target.files.single())], "$step complete=$complete: a copy holding its bytes goes, a changed one stays")
                 assertTrue(restarted.state.value.canModify)
                 restarted.renameProfile(main, "Recovered").done()
@@ -807,7 +807,7 @@ class ProfilesTest {
         }
         library.switchProfile(other).done(); runCurrent()
         assertEquals(LibraryProblem.PlacementFailed(ChangedWhileMoved), library.failed())
-        for (game in listOf(root, second)) assertEquals(Sha256.image(bytes), world.files.addonsFiles(game)["pak01_dir.vpk"], "${game.path}: its source is back")
+        for (game in listOf(root, second)) assertEquals(Sha256.image(bytes), world.files.addonsFiles(game)["pak99_dir.vpk"], "${game.path}: its source is back")
         assertEquals(FileObservation.Present(foreign.size.toLong(), sha256Hex(foreign)), world.files.file(second, target))
         assertEquals(main, world.store.manifest!!.profiles.active)
         assertEquals(before, world.store.manifest!!.records)
@@ -831,15 +831,15 @@ class ProfilesTest {
         runCurrent()
         assertEquals(main, library.state.value.profiles!!.active)
         assertEquals(main, library.state.value.shownProfiles!!.active)
-        assertEquals(setOf("pak01_dir.vpk"), world.files.addonsFiles(root).keys)
+        assertEquals(setOf("pak99_dir.vpk"), world.files.addonsFiles(root).keys)
     }
 
     @Test fun profileEditsAndSameMembershipSwitchesReadNoSetsAndKeepHealthFlags() = runTest {
         val world = World().apply { offer(); offer(2); offer(3) }
         with(world) { library() }.let { first -> first.install("mod-1"); first.install("mod-2"); first.install("mod-3"); runCurrent() }
         val ids = world.applied().activeProfile.orders.getValue(root)
-        world.files.putBytes(root, "game/citadel/addons/pak01_dir.vpk", FakeVpk.directory(seed = 9))
-        world.files.failFile(root, "game/citadel/addons/pak02_dir.vpk", "permission denied")
+        world.files.putBytes(root, "game/citadel/addons/pak97_dir.vpk", FakeVpk.directory(seed = 9))
+        world.files.failFile(root, "game/citadel/addons/pak98_dir.vpk", "permission denied")
         val library = with(world) { library() }
         assertEquals(mapOf(ids[0] to FilesDamage.Changed), library.ready().damaged)
         assertEquals(setOf(ids[1]), library.ready().unchecked)
@@ -870,7 +870,7 @@ class ProfilesTest {
 
         runCurrent()
         assertEquals(emptyList(), world.reads)
-        world.files.putBytes(root, "game/citadel/addons/pak03_dir.vpk", FakeVpk.directory(seed = 10))
+        world.files.putBytes(root, "game/citadel/addons/pak99_dir.vpk", FakeVpk.directory(seed = 10))
         val restarted = with(world) { library() }
         assertEquals(mapOf(ids[0] to FilesDamage.Changed, ids[2] to FilesDamage.Changed), restarted.ready().damaged)
         assertEquals(setOf(ids[1]), restarted.ready().unchecked)
@@ -885,17 +885,17 @@ class ProfilesTest {
 
         val two = world.record("mod-2")
         library.setMembership(copy, ids[1], false).done(); runCurrent()
-        assertEquals(setOf("pak02", world.offName(two).substringBefore('_')), world.readPaks(), "its file on at 02 and its name while off")
-        assertEquals(setOf("pak01_dir.vpk", "pak03_dir.vpk"), world.files.addonsFiles(root).keys)
+        assertEquals(setOf("pak98", world.offName(two).substringBefore('_')), world.readPaks(), "its file on at 98 and its name while off")
+        assertEquals(setOf("pak97_dir.vpk", "pak99_dir.vpk"), world.files.addonsFiles(root).keys)
         assertEquals(setOf(world.offName(two)), world.files.filesIn(root, SetFolder.Off("mod-2")).keys)
         assertEquals(setOf(ids[0], ids[2]), library.state.value.profiles!!.activeProfile.enabled)
         assertEquals(listOf(true, false, true), world.store.manifest!!.records.map { it.enabled })
 
         world.reset()
         library.switchProfile(main).done(); runCurrent()
-        assertEquals(setOf("pak02", world.offName(two).substringBefore('_')), world.readPaks())
+        assertEquals(setOf("pak98", world.offName(two).substringBefore('_')), world.readPaks())
         assertEquals(main, library.state.value.profiles!!.active)
-        assertEquals(setOf("pak01_dir.vpk", "pak02_dir.vpk", "pak03_dir.vpk"), world.files.addonsFiles(root).keys)
+        assertEquals(setOf("pak97_dir.vpk", "pak98_dir.vpk", "pak99_dir.vpk"), world.files.addonsFiles(root).keys)
         assertTrue(world.store.manifest!!.records.all { it.enabled })
         assertNull(world.store.manifest!!.pending)
         assertEquals(emptyMap(), library.ready().damaged)
@@ -909,7 +909,7 @@ class ProfilesTest {
             val ids = world.store.manifest!!.records.map { it.installId }
             val other = library.createProfile(NewProfile("Other", ProfileColour.Blue, ProfileSeed.Copy(main), false)).done()
             library.setMembership(other, ids[1], false).done()
-            val path = "game/citadel/addons/pak02_dir.vpk"
+            val path = "game/citadel/addons/pak98_dir.vpk"
             if (duringRelease) world.files.around = { point ->
                 if (point == FaultPoint.Remove(path)) {
                     world.files.around = null
@@ -921,13 +921,13 @@ class ProfilesTest {
             library.switchProfile(other).done(); runCurrent()
             assertNull(library.failed(), "duringRelease=$duringRelease: nothing waits on the edit")
             assertEquals(ChoiceSync.Settled, library.state.value.choiceSync, "duringRelease=$duringRelease")
-            assertTrue("pak02" in world.readPaks(), "duringRelease=$duringRelease: the changed file was read")
+            assertTrue("pak98" in world.readPaks(), "duringRelease=$duringRelease: the changed file was read")
             assertEquals(other, world.applied().active, "duringRelease=$duringRelease: the switch is made")
             assertEquals(ids.toSet(), world.applied().activeProfile.enabled, "duringRelease=$duringRelease: the edited mod stays on where it is")
             assertTrue(world.store.manifest!!.records.all { it.enabled })
-            assertEquals(Placement.On(Slot(2)), world.record("mod-2").placement)
+            assertEquals(Placement.On(Slot(98)), world.record("mod-2").placement)
             assertTrue(world.record("mod-2").edited)
-            assertEquals(Sha256.image(damaged), world.files.addonsFiles(root)["pak02_dir.vpk"])
+            assertEquals(Sha256.image(damaged), world.files.addonsFiles(root)["pak98_dir.vpk"])
             assertEquals(mapOf(ids[1] to FilesDamage.Changed), library.ready().damaged)
             assertNull(world.store.manifest!!.pending, "duringRelease=$duringRelease")
             assertNull(library.ready().interrupted, "duringRelease=$duringRelease")
@@ -955,7 +955,7 @@ class ProfilesTest {
         assertEquals("Later", library.shown().profiles.last().name)
         assertEquals("Empty", library.state.value.profiles!!.profiles.last().name)
         assertTrue(world.record().enabled)
-        assertEquals(setOf("pak01_dir.vpk"), world.files.addonsFiles(root).keys)
+        assertEquals(setOf("pak99_dir.vpk"), world.files.addonsFiles(root).keys)
 
         gate.complete(Unit); runCurrent()
         renamed.join()
@@ -1031,9 +1031,9 @@ class ProfilesTest {
         assertEquals(listOf(true, false), world.store.manifest!!.records.map { it.enabled })
         assertEquals(setOf(first), library.state.value.profiles!!.activeProfile.enabled)
         assertEquals(library.state.value.profiles, library.state.value.shownProfiles)
-        assertEquals(setOf("pak01_dir.vpk"), world.files.addonsFiles(root).keys)
+        assertEquals(setOf("pak99_dir.vpk"), world.files.addonsFiles(root).keys)
         assertEquals(1, world.files.linkedPaths.count { it == world.record("mod-1").offPath() }, "the running turn finished once")
-        assertEquals(1, world.files.linkedPaths.count { it == "game/citadel/addons/pak01_dir.vpk" }, "only the latest position followed it")
+        assertEquals(1, world.files.linkedPaths.count { it == "game/citadel/addons/pak99_dir.vpk" }, "only the latest position followed it")
         assertFalse(library.state.value.applying)
     }
 
@@ -1048,7 +1048,7 @@ class ProfilesTest {
         library.setEnabled(second, false)
         assertNull(library.state.value.choiceProblem)
         assertEquals(setOf(first), library.shown().activeProfile.enabled)
-        assertEquals(setOf("pak01_dir.vpk", "pak02_dir.vpk"), world.files.addonsFiles(root).keys)
+        assertEquals(setOf("pak98_dir.vpk", "pak99_dir.vpk"), world.files.addonsFiles(root).keys)
 
         world.processes.gate = null
         gate.complete(Unit); runCurrent()

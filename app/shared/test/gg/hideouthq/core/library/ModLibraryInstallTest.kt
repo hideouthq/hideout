@@ -284,12 +284,12 @@ class ModLibraryInstallTest {
     }
 
     @Test
-    fun aSingleFileModInstallsUnderTheLowestFreeNumberWithItsExactIdentity() = runTest {
+    fun aSingleFileModInstallsUnderTheHighestFreeNumberWithItsExactIdentity() = runTest {
         val world = World()
         world.offer(remote(1_691_864))
         world.downloader.serve(1_691_864, listOf("pak70_dir.vpk" to single, "readme.txt" to ByteArray(3)))
-        world.files.addAddonsEntry(root, "pak01_dir.vpk")
-        world.files.addAddonsEntry(root, "631628_pak02_dir.vpk")
+        world.files.addAddonsEntry(root, "pak99_dir.vpk")
+        world.files.addAddonsEntry(root, "631628_pak98_dir.vpk")
         val library = with(world) { library() }
 
         assertEquals(InstallStatus.Installed(enabled = true), installed(world, library))
@@ -298,10 +298,10 @@ class ModLibraryInstallTest {
         assertEquals(SubmissionIdentity(SubmissionKind.Mod, 628_739, 1_691_864, "ae386fa2a8adb7bc07d17d47195a3c25"), record.remoteIdentity)
         assertEquals("Bubblegum ivy V2", record.title)
         assertEquals("Bg ivy", record.variant)
-        assertEquals(2, record.number)
+        assertEquals(98, record.number)
         assertEquals(listOf(SetFile(VpkPart.Directory, FileImage(single.size.toLong(), sha256Hex(single)))), record.only.files)
-        assertEquals(Sha256.image(single), world.addons()["pak02_dir.vpk"])
-        assertEquals(setOf("pak01_dir.vpk", "631628_pak02_dir.vpk", "pak02_dir.vpk"), world.addons().keys)
+        assertEquals(Sha256.image(single), world.addons()["pak98_dir.vpk"])
+        assertEquals(setOf("pak99_dir.vpk", "631628_pak98_dir.vpk", "pak98_dir.vpk"), world.addons().keys)
         assertEquals(listOf(OwnedDownload(record.remoteIdentity, record.archive)), world.store.manifest!!.downloads)
         assertNull(world.store.manifest!!.pending)
         assertEquals(emptySet(), world.files.stagingFolders, "staging is discarded")
@@ -321,10 +321,34 @@ class ModLibraryInstallTest {
         assertEquals(1, world.store.arranges(), "one arrangement turned it on")
         val record = world.store.manifest!!.records.single { it.modId == ivy.modId }
         assertEquals(listOf(record.installId, seeded.installId), world.store.manifest!!.profiles.activeProfile.orders[root], "first in the order")
-        assertEquals(1, record.number, "the lowest number before the mod at 09")
-        assertEquals(setOf("pak01_dir.vpk", "pak09_dir.vpk"), world.addons().keys)
+        assertEquals(8, record.number, "the highest number before the mod at 09")
+        assertEquals(setOf("pak08_dir.vpk", "pak09_dir.vpk"), world.addons().keys)
         assertEquals(emptyMap(), world.parked())
         assertNull(world.store.manifest!!.savedChoices)
+    }
+
+    @Test
+    fun eachNewModLoadsFirstAndLeavesEveryFileOfTheModsBeforeItWhereItIs() = runTest {
+        val world = World()
+        val library = with(world) { library() }
+        fun inAddons() = world.addons().keys.associateWith { world.files.identity(root, "${InMemoryGameFiles.Addons}/$it") }
+        repeat(30) { index ->
+            val mod = SubmissionRef(SubmissionKind.Mod, 700_000L + index)
+            world.banana.listings = world.banana.listings + (mod to FileListing.Available("Mod $index", listOf(remote(800L + index, name = "m$index.zip", md5 = null))))
+            world.downloader.serve(800L + index, listOf("m$index.vpk" to FakeVpk.directory(seed = 100 + index)))
+            val before = inAddons()
+
+            assertEquals(InstallStatus.Installed(enabled = true), installed(world, library, mod.modId))
+
+            val after = inAddons()
+            assertEquals(before, after.filterKeys { it in before }, "install ${index + 1} renames no file of the mods before it")
+            assertEquals(1, after.size - before.size, "install ${index + 1} adds only its own file")
+            val manifest = world.store.manifest!!
+            val owner = manifest.records.associate { record -> record.files.single().let { world.addons().entries.single { (_, image) -> image == it.image }.key } to record.installId }
+            val loaded = world.addons().keys.sortedBy { checkNotNull(PakNumbers.mounted(it)).value }.map(owner::getValue)
+            assertEquals(manifest.profiles.activeProfile.orders[root], loaded, "after install ${index + 1} the game loads the mods in the order the profile has, the new one first")
+            assertEquals(manifest.records.single { it.modId == mod.modId }.installId, loaded.first())
+        }
     }
 
     @Test
@@ -347,23 +371,23 @@ class ModLibraryInstallTest {
         val library = with(world) { library() }
         installed(world, library)
         assertEquals(listOf("000", "002", "005", "dir").map { off(it, stem(9, "Ivy/ivy_dir.vpk")) }, world.files.publishedNames, "into its off folder, the directory last")
-        assertEquals(setOf("pak01_dir.vpk", "pak01_000.vpk", "pak01_002.vpk", "pak01_005.vpk"), world.addons().keys)
-        assertEquals(Sha256.image(chunk2), world.addons()["pak01_002.vpk"])
+        assertEquals(setOf("pak99_dir.vpk", "pak99_000.vpk", "pak99_002.vpk", "pak99_005.vpk"), world.addons().keys)
+        assertEquals(Sha256.image(chunk2), world.addons()["pak99_002.vpk"])
     }
 
     @Test
     fun foreignEntriesAndTemporariesAllTakeNumbers() = runTest {
         val world = World()
-        world.files.addAddonsEntry(root, "pak01_dir.vpk")
-        world.files.addAddonsEntry(root, "PAK02_000.VPK")
-        world.files.addFolder(root, "${InMemoryGameFiles.Addons}/pak03_dir.vpk")
-        world.files.addLink(root, "${InMemoryGameFiles.Addons}/pak4")
-        world.files.addAddonsEntry(root, "pak05_dir.vpk.hideout-someone")
+        world.files.addAddonsEntry(root, "pak99_dir.vpk")
+        world.files.addAddonsEntry(root, "PAK98_000.VPK")
+        world.files.addFolder(root, "${InMemoryGameFiles.Addons}/pak97_dir.vpk")
+        world.files.addLink(root, "${InMemoryGameFiles.Addons}/pak96")
+        world.files.addAddonsEntry(root, "pak95_dir.vpk.hideout-someone")
         world.offer(remote(11))
         world.downloader.serve(11, listOf("a.vpk" to single))
         val library = with(world) { library() }
         installed(world, library)
-        assertEquals(6, world.store.manifest!!.records.single().number)
+        assertEquals(94, world.store.manifest!!.records.single().number)
     }
 
     @Test
@@ -422,8 +446,8 @@ class ModLibraryInstallTest {
 
         assertTrue(library.answer(choice.id, ChoiceAnswer.Sets(listOf("Red/pak01_dir.vpk"), setOf(ProfileId("main")))))
         runCurrent()
-        assertEquals(setOf("pak01_dir.vpk", "pak01_000.vpk"), world.addons().keys)
-        assertEquals(Sha256.image(red), world.addons()["pak01_dir.vpk"])
+        assertEquals(setOf("pak99_dir.vpk", "pak99_000.vpk"), world.addons().keys)
+        assertEquals(Sha256.image(red), world.addons()["pak99_dir.vpk"])
         assertEquals(emptySet(), world.files.stagingFolders)
     }
 
@@ -444,12 +468,12 @@ class ModLibraryInstallTest {
         runCurrent()
         val record = world.store.manifest!!.records.single()
         assertEquals(listOf("Blue/pak01_dir.vpk", "Red/pak01_dir.vpk"), record.sets.map { it.componentKey }, "Blue wins, as the chosen order lists it first")
-        assertEquals(listOf(1, 2), record.numbers.map { it.value })
+        assertEquals(listOf(98, 99), record.numbers.map { it.value })
         assertEquals(1, record.sets[0].files.size, "the standalone component is one file")
         assertEquals(2, record.sets[1].files.size, "the chunked component keeps its chunk beside its directory, never split across a choice")
-        assertEquals(setOf("pak01_dir.vpk", "pak02_dir.vpk", "pak02_000.vpk"), world.addons().keys)
-        assertEquals(Sha256.image(single), world.addons()["pak01_dir.vpk"])
-        assertEquals(Sha256.image(red), world.addons()["pak02_dir.vpk"])
+        assertEquals(setOf("pak98_dir.vpk", "pak99_dir.vpk", "pak99_000.vpk"), world.addons().keys)
+        assertEquals(Sha256.image(single), world.addons()["pak98_dir.vpk"])
+        assertEquals(Sha256.image(red), world.addons()["pak99_dir.vpk"])
         assertEquals(1, world.store.manifest!!.downloads.size, "one archive download serves every component")
         assertEquals(emptySet(), world.files.stagingFolders)
     }
@@ -602,7 +626,7 @@ class ModLibraryInstallTest {
                 null -> assertEquals(emptyMap(), world.addons() + world.parked(), "undone whole")
                 else -> {
                     assertTrue(record.enabled, "a committed install is turned on once Hideout opens again")
-                    assertEquals(mapOf("pak01_dir.vpk" to Sha256.image(chunkedDir), "pak01_000.vpk" to Sha256.image(chunk0), "pak01_002.vpk" to Sha256.image(chunk2)), world.addons())
+                    assertEquals(mapOf("pak99_dir.vpk" to Sha256.image(chunkedDir), "pak99_000.vpk" to Sha256.image(chunk0), "pak99_002.vpk" to Sha256.image(chunk2)), world.addons())
                     assertEquals(emptyMap(), world.parked())
                 }
             }
@@ -672,7 +696,7 @@ class ModLibraryInstallTest {
         assertNull(world.store.manifest!!.pending)
 
         installed(world, restarted)
-        assertEquals(1, world.store.manifest!!.records.single().number)
+        assertEquals(99, world.store.manifest!!.records.single().number)
         assertEquals(onNames, world.addons().keys)
         assertEquals(mapOf(copy(off("002")) to Sha256.image(torn)), world.parked())
     }
@@ -1141,7 +1165,7 @@ class ModLibraryInstallTest {
 
     private val offNames = setOf(off("dir"), off("000"), off("002"))
 
-    private val onNames = setOf("pak01_dir.vpk", "pak01_000.vpk", "pak01_002.vpk")
+    private val onNames = setOf("pak99_dir.vpk", "pak99_000.vpk", "pak99_002.vpk")
 
     private fun copiesOf(names: Set<String>) = names.map { copy(it) }.toSet()
 
@@ -1240,7 +1264,7 @@ class ModLibraryInstallTest {
         assertNull(world.store.manifest!!.pending)
         assertEquals(GameConfigReceipt(root, Sha256.image(patched), HideoutLines(mods = true, customGames = false)), world.store.manifest!!.receipt(root))
         assertNull((restarted.state.value.library as LibraryStatus.Ready).interrupted)
-        assertEquals(setOf("pak01_dir.vpk"), world.addons().keys)
+        assertEquals(setOf("pak99_dir.vpk"), world.addons().keys)
     }
 
     @Test
@@ -1522,7 +1546,7 @@ class ModLibraryInstallTest {
         assertFalse(asked.profiles.isNotEmpty())
         assertTrue(onAnyway.answer(asked.id, ChoiceAnswer.Files(setOf(2), setOf(ProfileId("main")))))
         runCurrent()
-        assertEquals(setOf("pak01_dir.vpk"), second.addons().keys)
+        assertEquals(setOf("pak99_dir.vpk"), second.addons().keys)
         assertEquals(SearchPathsCheck.Read(LoadingOwner.Hideout, customGames = false), GameInfoPatch.check(second.files.gameInfo(root)!!), "an on install still makes the game load mods")
     }
 

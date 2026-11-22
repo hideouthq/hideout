@@ -230,9 +230,9 @@ class DesktopInstallFlowTest {
     fun aChunkedSetInstallsUnderOneNumberAndSurvivesARestart() {
         val record = installChunked(library())
 
-        assertEquals(listOf(2), record.numbers.map { it.value })
-        assertEquals(foreign.keys + setOf("pak02_dir.vpk", "pak02_000.vpk", "pak02_001.vpk"), addonsNames())
-        assertContentEquals(chunk1, addons.resolve("pak02_001.vpk").readBytes())
+        assertEquals(listOf(99), record.numbers.map { it.value })
+        assertEquals(foreign.keys + set, addonsNames())
+        assertContentEquals(chunk1, addons.resolve("pak99_001.vpk").readBytes())
         assertEquals(SearchPathsCheck.Read(LoadingOwner.Hideout, customGames = false), GameInfoPatch.check(citadel.resolve("gameinfo.gi").readBytes()))
         assertContentEquals(valve, withoutHideoutBlock(citadel.resolve("gameinfo.gi").readBytes()))
         assertEquals(emptyList(), Files.list(data.resolve("staging")).use { it.toList() }, "staging is emptied")
@@ -258,12 +258,12 @@ class DesktopInstallFlowTest {
         val record = (installed.library as LibraryStatus.Ready).records.single()
         assertEquals(listOf("Sound/PAK_DIR.VPK", "Model/PAK_DIR.VPK"), record.sets.map { it.componentKey })
         assertEquals(listOf(14L, 14L), record.sets.map { it.fileId })
-        assertEquals(listOf(2, 3), record.numbers.map { it.value })
-        assertEquals(foreign.keys + setOf("pak02_dir.vpk", "pak03_dir.vpk", "pak03_000.vpk", "pak03_001.vpk"), addonsNames())
-        assertContentEquals(horns, addons.resolve("pak02_dir.vpk").readBytes())
-        assertContentEquals(dir, addons.resolve("pak03_dir.vpk").readBytes())
-        assertContentEquals(chunk0, addons.resolve("pak03_000.vpk").readBytes())
-        assertContentEquals(chunk1, addons.resolve("pak03_001.vpk").readBytes())
+        assertEquals(listOf(98, 99), record.numbers.map { it.value })
+        assertEquals(foreign.keys + "pak98_dir.vpk" + set, addonsNames())
+        assertContentEquals(horns, addons.resolve("pak98_dir.vpk").readBytes())
+        assertContentEquals(dir, addons.resolve("pak99_dir.vpk").readBytes())
+        assertContentEquals(chunk0, addons.resolve("pak99_000.vpk").readBytes())
+        assertContentEquals(chunk1, addons.resolve("pak99_001.vpk").readBytes())
         assertEquals(listOf(14L), synchronized(downloads) { downloads.toList() })
         val restarted = library()
         assertEquals(listOf(record), (restarted.state.value.library as LibraryStatus.Ready).records)
@@ -366,7 +366,7 @@ class DesktopInstallFlowTest {
         val restored = await(library) { it.maintenance == Maintenance.Backups(BackupWork.Revert(backup), BackupStage.Done) }
         assertEquals(listOf(record), (restored.library as LibraryStatus.Ready).records)
         assertEquals(foreign.keys + record.files.map { it.name }, addonsNames(), "every file is back, and no anchor or temporary is left")
-        assertContentEquals(chunk1, addons.resolve("pak02_001.vpk").readBytes())
+        assertContentEquals(chunk1, addons.resolve("pak99_001.vpk").readBytes())
         foreignUntouched()
 
         val restarted = library(scope = scope()).state.value
@@ -602,7 +602,7 @@ class DesktopInstallFlowTest {
         assertContentEquals(chunk0, extracting.readBytes(), "the first app's extraction is left alone")
 
         installChunked(first)
-        assertEquals(foreign.keys + setOf("pak02_dir.vpk", "pak02_000.vpk", "pak02_001.vpk"), addonsNames())
+        assertEquals(foreign.keys + set, addonsNames())
     }
 
     private fun installChunked(library: ModLibrary): ManifestRecord {
@@ -634,12 +634,12 @@ class DesktopInstallFlowTest {
         installedState(library)
         val record = records(library).single()
         assertEquals(listOf(11L, 12L), record.sets.map { it.fileId }, "most downloaded first, whatever order they were asked in")
-        assertEquals(listOf(2, 3), record.numbers.map { it.value }, "the lowest two free numbers in a row, past the foreign pak01")
-        assertEquals(foreign.keys + set + "pak03_dir.vpk", addonsNames())
-        assertContentEquals(chunk1, addons.resolve("pak02_001.vpk").readBytes())
-        assertContentEquals(horns, addons.resolve("pak03_dir.vpk").readBytes())
+        assertEquals(listOf(98, 99), record.numbers.map { it.value }, "the highest two free numbers in a row")
+        assertEquals(foreign.keys + chunkedAt(98) + "pak99_dir.vpk", addonsNames())
+        assertContentEquals(chunk1, addons.resolve("pak98_001.vpk").readBytes())
+        assertContentEquals(horns, addons.resolve("pak99_dir.vpk").readBytes())
         assertEquals(listOf("chunked.zip", "horns.zip"), record.sets.map { it.originalName })
-        val winner = identities(addons)
+        val winner = identities(addons, chunkedAt(98))
         record.sets.forEach { Files.delete(Path.of(it.download!!.path)) }
         synchronized(downloads) { downloads.clear() }
 
@@ -647,15 +647,15 @@ class DesktopInstallFlowTest {
         assertNull(swapped.operations["mod-1"], "${swapped.operations["mod-1"]}")
         assertEquals(listOf(11L, 13L), records(library).single().sets.map { it.fileId })
         assertEquals(listOf(13L), synchronized(downloads) { downloads.toList() }, "only the new file downloads, though the kept one's download is gone")
-        assertEquals(winner, identities(addons), "the kept chunked set is the very same files")
-        assertContentEquals(tail, addons.resolve("pak03_dir.vpk").readBytes())
-        assertEquals(foreign.keys + set + "pak03_dir.vpk", addonsNames())
-        val tailIdentity = fileKey(addons.resolve("pak03_dir.vpk"))
+        assertEquals(winner, identities(addons, chunkedAt(98)), "the kept chunked set is the very same files")
+        assertContentEquals(tail, addons.resolve("pak99_dir.vpk").readBytes())
+        assertEquals(foreign.keys + chunkedAt(98) + "pak99_dir.vpk", addonsNames())
+        val tailIdentity = fileKey(addons.resolve("pak99_dir.vpk"))
 
         val real = NioModInstaller(data.resolve("staging"))
         val crashing = object : ModInstaller by real {
             override suspend fun link(source: GameEntry, target: GameEntry): LinkResult {
-                if (target.name == "pak04_dir.vpk") throw SimulatedCrash(FaultPoint.Link(target.name))
+                if (target.name == "pak99_dir.vpk") throw SimulatedCrash(FaultPoint.Link(target.name))
                 return real.link(source, target)
             }
         }
@@ -669,12 +669,12 @@ class DesktopInstallFlowTest {
         val restarted = library(scope = scope())
         val changed = records(restarted).single()
         assertEquals(listOf(11L, 13L, 12L), changed.sets.map { it.fileId }, "recovery preserves retained priority and adds the new component last")
-        assertEquals(listOf(2, 3, 4), changed.numbers.map { it.value })
+        assertEquals(listOf(97, 98, 99), changed.numbers.map { it.value }, "the mod moves down one number to make room for its third set")
         assertEquals(record.installId, changed.installId)
-        assertEquals(winner, identities(addons))
-        assertEquals(tailIdentity, fileKey(addons.resolve("pak03_dir.vpk")), "Tail remains the same file at the same priority")
-        assertContentEquals(horns, addons.resolve("pak04_dir.vpk").readBytes())
-        assertEquals(foreign.keys + set + "pak03_dir.vpk" + "pak04_dir.vpk", addonsNames())
+        assertEquals(winner.values.toList(), identities(addons, chunkedAt(97)).values.toList(), "the kept chunked set is the very same files under its new number")
+        assertEquals(tailIdentity, fileKey(addons.resolve("pak98_dir.vpk")), "Tail remains the same file, still loading after the chunked set")
+        assertContentEquals(horns, addons.resolve("pak99_dir.vpk").readBytes())
+        assertEquals(foreign.keys + chunkedAt(97) + "pak98_dir.vpk" + "pak99_dir.vpk", addonsNames())
         assertEquals(emptyList(), leftovers())
         assertEquals(setOf(record.installId), restarted.state.value.profiles?.activeProfile?.enabled)
         foreignUntouched()
@@ -700,7 +700,9 @@ class DesktopInstallFlowTest {
         assertTrue(manifest.downloads.none { download -> changed.sets.any { it.download!! == download.archive } })
     }
 
-    private val set = setOf("pak02_dir.vpk", "pak02_000.vpk", "pak02_001.vpk")
+    private fun chunkedAt(number: Int) = setOf("pak${number}_dir.vpk", "pak${number}_000.vpk", "pak${number}_001.vpk")
+
+    private val set = chunkedAt(99)
 
     private fun identities(folder: Path, names: Collection<String> = set) = names.associateWith { fileKey(folder.resolve(it)) }
 
@@ -787,24 +789,24 @@ class DesktopInstallFlowTest {
         val record = installChunked(library)
         val requested = synchronized(downloads) { downloads.toList() }
         val edit = FakeVpk.directory(seed = 50)
-        addons.resolve("pak02_dir.vpk").writeBytes(edit)
-        val editKey = fileKey(addons.resolve("pak02_dir.vpk"))
+        addons.resolve("pak99_dir.vpk").writeBytes(edit)
+        val editKey = fileKey(addons.resolve("pak99_dir.vpk"))
         val damaged = library(scope = scope())
         assertEquals(mapOf(record.installId to FilesDamage.Changed), (damaged.state.value.library as LibraryStatus.Ready).damaged)
 
         damaged.reinstall(record.installId)
         await(damaged) { it.operations.isEmpty() && (it.library as? LibraryStatus.Ready)?.damaged?.isEmpty() == true }
         assertEquals(listOf(record), records(damaged))
-        assertContentEquals(dir, addons.resolve("pak02_dir.vpk").readBytes())
+        assertContentEquals(dir, addons.resolve("pak99_dir.vpk").readBytes())
         assertEquals(foreign.keys + set, addonsNames())
         assertEquals(emptyList(), leftovers(), "no anchor or temporary stays")
-        val aside = Files.list(citadel.resolve("hideout_backups/edits")).use { it.toList() }.single().resolve("pak02_dir.vpk")
+        val aside = Files.list(citadel.resolve("hideout_backups/edits")).use { it.toList() }.single().resolve("pak99_dir.vpk")
         assertEquals(editKey, fileKey(aside), "the edited file moved to the edits folder")
         assertContentEquals(edit, aside.readBytes())
         assertEquals(requested, synchronized(downloads) { downloads.toList() }, "the kept download is unpacked again, nothing is downloaded")
         foreignUntouched()
 
-        val chunk = addons.resolve("pak02_000.vpk")
+        val chunk = addons.resolve("pak99_000.vpk")
         val identity = fileKey(chunk)
         val ours = ByteArray(4_000) { 9 }
         chunk.writeBytes(ours)
@@ -812,7 +814,7 @@ class DesktopInstallFlowTest {
         assertEquals(mapOf(record.installId to FilesDamage.Changed), (restarted.state.value.library as LibraryStatus.Ready).damaged)
         restarted.keepEdits(record.installId)
         await(restarted) { (it.library as? LibraryStatus.Ready)?.damaged?.isEmpty() == true }
-        val kept = records(restarted).single().files.single { it.name == "pak02_000.vpk" }
+        val kept = records(restarted).single().files.single { it.name == "pak99_000.vpk" }
         assertEquals(Sha256.image(ours), kept.image)
         assertEquals(identity, fileKey(chunk), "nothing moved")
         assertContentEquals(ours, chunk.readBytes())
@@ -877,13 +879,13 @@ class DesktopInstallFlowTest {
     fun uninstallKeepsAnEditedChunkAndTheDownloadWhenNotAsked() {
         val library = library()
         val record = installChunked(library)
-        addons.resolve("pak02_000.vpk").writeBytes(ByteArray(4_000) { 9 })
+        addons.resolve("pak99_000.vpk").writeBytes(ByteArray(4_000) { 9 })
 
         library.uninstall(assertNotNull(library.uninstallConfirmation(record.installId)), deleteDownload = false)
         val done = changed(library)
         assertNull(done.changes[record.installId])
-        assertEquals(foreign.keys + "pak02_000.vpk", addonsNames())
-        assertContentEquals(ByteArray(4_000) { 9 }, addons.resolve("pak02_000.vpk").readBytes())
+        assertEquals(foreign.keys + "pak99_000.vpk", addonsNames())
+        assertContentEquals(ByteArray(4_000) { 9 }, addons.resolve("pak99_000.vpk").readBytes())
         assertTrue(Files.exists(Path.of(record.sets.single().download!!.path)))
         assertEquals(emptyList(), leftovers())
     }
@@ -891,7 +893,7 @@ class DesktopInstallFlowTest {
     @Test
     fun uninstallKeepsAChunkEditedOnceItIsAnchoredAndLeavesNoAnchor() {
         val record = installChunked(library())
-        val chunk = addons.resolve("pak02_000.vpk")
+        val chunk = addons.resolve("pak99_000.vpk")
         val edited = ByteArray(4_000) { 9 }
         val real = NioModInstaller(data.resolve("staging"))
         val editing = object : ModInstaller by real {
@@ -904,7 +906,7 @@ class DesktopInstallFlowTest {
 
         library.uninstall(assertNotNull(library.uninstallConfirmation(record.installId)), deleteDownload = false)
         assertNull(changed(library).changes[record.installId])
-        assertEquals(foreign.keys + "pak02_000.vpk", addonsNames())
+        assertEquals(foreign.keys + "pak99_000.vpk", addonsNames())
         assertContentEquals(edited, chunk.readBytes())
         assertEquals(emptyList(), leftovers(), "the anchor, one file with the edited chunk, goes")
     }
@@ -912,13 +914,13 @@ class DesktopInstallFlowTest {
     @Test
     fun anUninstallUndoneWhileAnchoringKeepsTheAnchorOfAChunkAnotherProgramReplacedAndReportsIt() {
         val record = installChunked(library())
-        val chunk = addons.resolve("pak02_000.vpk")
+        val chunk = addons.resolve("pak99_000.vpk")
         val placed = fileKey(chunk)
         val other = ByteArray(4_000) { 7 }
         val real = NioModInstaller(data.resolve("staging"))
         val racing = object : ModInstaller by real {
             override suspend fun link(existing: GameEntry, created: GameEntry): LinkResult {
-                if (created.name.startsWith("pak02_001.vpk.hideout-")) return LinkResult.Failed("the drive refused the link")
+                if (created.name.startsWith("pak99_001.vpk.hideout-")) return LinkResult.Failed("the drive refused the link")
                 return real.link(existing, created).also {
                     if (created.name.startsWith("${chunk.fileName}.hideout-")) {
                         Files.delete(chunk)
@@ -951,12 +953,12 @@ class DesktopInstallFlowTest {
         val crashing = object : ModInstaller by real {
             override suspend fun removeTwin(entry: GameEntry, witness: GameEntry, expected: FileImage): Removal {
                 val removed = real.removeTwin(entry, witness, expected)
-                if (entry.name == "pak02_dir.vpk" && entry.folder == SetFolder.Addons) throw SimulatedCrash(FaultPoint.RemoveDone(entry.name))
+                if (entry.name == "pak99_dir.vpk" && entry.folder == SetFolder.Addons) throw SimulatedCrash(FaultPoint.RemoveDone(entry.name))
                 return removed
             }
         }
         crashWith(crashing) { it.setEnabled(record.installId, false) }
-        assertEquals(foreign.keys + setOf("pak02_000.vpk", "pak02_001.vpk"), addonsNames().filterNot { ".hideout-" in it }.toSet(), "the directory left addons first")
+        assertEquals(foreign.keys + setOf("pak99_000.vpk", "pak99_001.vpk"), addonsNames().filterNot { ".hideout-" in it }.toSet(), "the directory left addons first")
 
         val restarted = library(scope = scope())
         assertEquals(listOf(record.placed(Placement.Off)), (restarted.state.value.library as LibraryStatus.Ready).records)
@@ -971,7 +973,7 @@ class DesktopInstallFlowTest {
         val chunked = installChunked(library())
         exitRunning()
         val loneBytes = FakeVpk.directory(seed = 50)
-        addons.resolve("pak05_dir.vpk").writeBytes(loneBytes)
+        addons.resolve("pak98_dir.vpk").writeBytes(loneBytes)
         val lone = chunked.copy(
             installId = "lone",
             title = "Lone",
@@ -986,7 +988,7 @@ class DesktopInstallFlowTest {
                     files = listOf(SetFile(VpkPart.Directory, FileImage(loneBytes.size.toLong(), sha256Hex(loneBytes)))),
                 ),
             ),
-        ).placed(Placement.On(Slot(5)))
+        ).placed(Placement.On(Slot(98)))
         runBlocking {
             store().use { store ->
                 val manifest = assertIs<ManifestLoad.Loaded>(store.load()).manifest
@@ -995,27 +997,27 @@ class DesktopInstallFlowTest {
             }
         }
         val chunkedFiles = identities(addons)
-        val loneFile = fileKey(addons.resolve("pak05_dir.vpk"))
+        val loneFile = fileKey(addons.resolve("pak98_dir.vpk"))
 
         val real = NioModInstaller(data.resolve("staging"))
         val crashing = object : ModInstaller by real {
             override suspend fun link(existing: GameEntry, created: GameEntry): LinkResult {
                 val made = real.link(existing, created)
-                if (created.name == "pak06_000.vpk") throw SimulatedCrash(FaultPoint.LinkMade(created.name))
+                if (created.name == "pak97_000.vpk") throw SimulatedCrash(FaultPoint.LinkMade(created.name))
                 return made
             }
         }
-        crashWith(crashing) { it.reorder(assertNotNull(it.state.value.orderView), listOf("lone", chunked.installId)) }
+        crashWith(crashing) { it.reorder(assertNotNull(it.state.value.orderView), listOf(chunked.installId, "lone")) }
         val journal = assertIs<PendingChange.Arrange>(savedManifest().pending)
         assertEquals(MoveStep.Linking, journal.step, "the journal was read back from library.json")
-        assertFalse("pak06_dir.vpk" in addonsNames(), "a chunk of the moving set is back, but not its directory")
+        assertFalse("pak97_dir.vpk" in addonsNames(), "a chunk of the moving set is back, but not its directory")
 
         val restarted = library(scope = scope())
-        assertEquals(listOf(chunked.placed(Placement.On(Slot(6))), lone), (restarted.state.value.library as LibraryStatus.Ready).records, "the chunked set moves past lone, which loads first at the number it has")
-        assertEquals(foreign.keys + setOf("pak05_dir.vpk", "pak06_dir.vpk", "pak06_000.vpk", "pak06_001.vpk"), addonsNames())
-        assertEquals(loneFile, fileKey(addons.resolve("pak05_dir.vpk")), "lone's own directory never moved")
-        assertEquals(chunkedFiles.mapKeys { it.key.replace("pak02", "pak06") }, chunkedFiles.keys.associate { it.replace("pak02", "pak06") to fileKey(addons.resolve(it.replace("pak02", "pak06"))) })
-        assertContentEquals(chunk1, addons.resolve("pak06_001.vpk").readBytes())
+        assertEquals(listOf(chunked.placed(Placement.On(Slot(97))), lone), (restarted.state.value.library as LibraryStatus.Ready).records, "the chunked set moves ahead of lone, which keeps the number it has")
+        assertEquals(foreign.keys + "pak98_dir.vpk" + chunkedAt(97), addonsNames())
+        assertEquals(loneFile, fileKey(addons.resolve("pak98_dir.vpk")), "lone's own directory never moved")
+        assertEquals(chunkedFiles.mapKeys { it.key.replace("pak99", "pak97") }, chunkedFiles.keys.associate { it.replace("pak99", "pak97") to fileKey(addons.resolve(it.replace("pak99", "pak97"))) })
+        assertContentEquals(chunk1, addons.resolve("pak97_001.vpk").readBytes())
         assertEquals(emptyList(), leftovers())
         foreignUntouched()
     }
@@ -1025,15 +1027,15 @@ class DesktopInstallFlowTest {
         turnOffAfterInstalling()
         val library = library()
         val record = installChunked(library)
-        addons.resolve("pak02_000.vpk").writeBytes(chunk0)
-        val occupant = fileKey(addons.resolve("pak02_000.vpk"))
+        addons.resolve("pak99_000.vpk").writeBytes(chunk0)
+        val occupant = fileKey(addons.resolve("pak99_000.vpk"))
 
         library.setEnabled(record.installId, true)
         val settled = changed(library)
         assertEquals(ChoiceSync.Settled, settled.choiceSync, "a foreign number is planned around, not a reason to pause")
-        assertEquals(listOf(3), (settled.library as LibraryStatus.Ready).records.single().numbers.map { it.value })
-        assertEquals(occupant, fileKey(addons.resolve("pak02_000.vpk")), "the same bytes at 02 prove nothing, so the file stays as it is")
-        assertEquals(foreign.keys + "pak02_000.vpk" + setOf("pak03_dir.vpk", "pak03_000.vpk", "pak03_001.vpk"), addonsNames())
+        assertEquals(listOf(98), (settled.library as LibraryStatus.Ready).records.single().numbers.map { it.value })
+        assertEquals(occupant, fileKey(addons.resolve("pak99_000.vpk")), "the same bytes at 99 prove nothing, so the file stays as it is")
+        assertEquals(foreign.keys + "pak99_000.vpk" + chunkedAt(98), addonsNames())
         assertEquals(emptySet(), parkedNames())
         assertEquals(emptyList(), leftovers())
     }

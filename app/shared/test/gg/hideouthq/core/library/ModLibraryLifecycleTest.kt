@@ -210,16 +210,15 @@ class ModLibraryLifecycleTest {
     }
 
     @Test
-    fun turningOnLinksChunksFirstAndTheDirectoryLastUnderTheLowestFreeNumberAndLoadsMods() = runTest {
+    fun turningOnLinksChunksFirstAndTheDirectoryLastUnderTheHighestFreeNumberAndLoadsMods() = runTest {
         val world = World(enabled = false)
         val library = with(world) { library() }
         switch(library, true)
 
-        world.assertWhole(2)
+        world.assertWhole(99)
         assertEquals(
-            listOf("pak02_000.vpk", "pak02_002.vpk", "pak02_dir.vpk").map { "${addons.path}/$it" },
+            listOf("pak99_000.vpk", "pak99_002.vpk", "pak99_dir.vpk").map { "${addons.path}/$it" },
             world.files.linkedPaths.filter { it.startsWith(addons.path) && TemporaryInfix !in it },
-            "pak01 is foreign",
         )
         assertEquals(SearchPathsCheck.Read(LoadingOwner.Hideout, customGames = false), GameInfoPatch.check(world.files.gameInfo(root)!!))
     }
@@ -227,19 +226,19 @@ class ModLibraryLifecycleTest {
     @Test
     fun anOffModHoldsNoNumberSoANewInstallMayTakeTheOneItHeld() = runTest {
         val world = World(enabled = true)
-        world.files.putBytes(root, "${addons.path}/pak02_dir.vpk", ByteArray(6))
+        (4..99).forEach { world.files.putBytes(root, "${addons.path}/pak${it.toString().padStart(2, '0')}_dir.vpk", ByteArray(6)) }
         val library = with(world) { library() }
         switch(library, false)
         world.banana.listings = mapOf(SubmissionRef(SubmissionKind.Mod, 5) to FileListing.Available("Other", listOf(RemoteFile(77, "o.zip", 10, null, null, 1, 1, "https://x/77"))))
         world.downloader.serve(77, listOf("o.vpk" to FakeVpk.directory(seed = 5)))
         library.install("mod-5")
         runCurrent()
-        assertEquals(listOf(null, 3), world.manifest().records.map { it.numbers.firstOrNull()?.value }, "pak01 and pak02 are foreign")
+        assertEquals(listOf(null, 3), world.manifest().records.map { it.numbers.firstOrNull()?.value }, "every number past 03 is foreign")
     }
 
     @Test
     fun turningOnPlansAroundAnythingElseAtANumberInAddonsAndLeavesItThere() = runTest {
-        for ((name, content) in listOf("pak02_dir.vpk" to dir, "pak02_000.vpk" to ByteArray(1), "pak02_001.vpk" to ByteArray(1), "PAK02_extra.txt" to ByteArray(1))) {
+        for ((name, content) in listOf("pak99_dir.vpk" to dir, "pak99_000.vpk" to ByteArray(1), "pak99_001.vpk" to ByteArray(1), "PAK99_extra.txt" to ByteArray(1))) {
             val world = World(enabled = false)
             world.files.putBytes(root, "${addons.path}/$name", content)
             val placed = world.identity(addons, name)
@@ -247,9 +246,9 @@ class ModLibraryLifecycleTest {
             switch(library, true)
 
             assertTrue(library.settled(), name)
-            assertEquals(record(3), world.stored(), "$name: 02 is taken, so ivy takes 03")
+            assertEquals(record(98), world.stored(), "$name: 99 is taken, so ivy takes 98")
             assertEquals(placed, world.identity(addons, name), "$name: the occupant, same bytes or not, stays")
-            assertEquals(foreign.keys + name + record(3).files.map { it.name }, world.inFolder(addons).keys, name)
+            assertEquals(foreign.keys + name + record(98).files.map { it.name }, world.inFolder(addons).keys, name)
             assertEquals(emptyMap(), world.inFolder(parked), name)
         }
     }
@@ -303,20 +302,20 @@ class ModLibraryLifecycleTest {
     @Test
     fun theGameStartingMidMoveStopsAtTheNextFileAndTheMoveFinishesOnceItStops() = runTest {
         val world = World(enabled = false)
-        world.files.around = { point -> if (point == FaultPoint.LinkMade("${addons.path}/pak02_000.vpk")) world.processes.scan = ProcessScan.Seen(game = true) }
+        world.files.around = { point -> if (point == FaultPoint.LinkMade("${addons.path}/pak99_000.vpk")) world.processes.scan = ProcessScan.Seen(game = true) }
         val library = with(world) { library() }
         switch(library, true)
 
         assertEquals(ChoiceSync.Waiting(GameActivity.Running), library.state.value.choiceSync, "a fence is not a failure")
         val pending = assertIs<PendingChange.Arrange>(world.manifest().pending)
         assertEquals(MoveStep.Linking, pending.step)
-        assertEquals(setOf("pak02_000.vpk"), world.ours(addons), "only the first chunk was linked; the directory never was")
+        assertEquals(setOf("pak99_000.vpk"), world.ours(addons), "only the first chunk was linked; the directory never was")
         assertEquals(record(null).files.map { pending.token.anchorName(it) }.toSet(), world.inFolder(parked).keys, "every source went, its anchor stays")
 
         world.files.around = null
         world.processes.scan = ProcessScan.Seen()
         val restarted = with(world) { library() }
-        world.assertWhole(2)
+        world.assertWhole(99)
         assertTrue(restarted.settled(), "the move was finished once the game stopped")
     }
 
@@ -407,7 +406,7 @@ class ModLibraryLifecycleTest {
     @Test
     fun aCrashAtAnyStepOfTurningOnConvergesWithTheSetWholeInOneFolder() = runTest {
         crashAtEveryStep(enabled = false, act = { switch(it, true) }) { world ->
-            world.assertWhole(if (world.stored()!!.enabled) 2 else null)
+            world.assertWhole(if (world.stored()!!.enabled) 99 else null)
         }
     }
 
@@ -690,7 +689,7 @@ class ModLibraryLifecycleTest {
     @Test
     fun anUninstallStoppedOnceItsFilesWentFreesTheirNumberForTheNextInstall() = runTest {
         val world = World(enabled = true)
-        world.files.putBytes(root, "${addons.path}/pak02_dir.vpk", ByteArray(6))
+        (4..99).forEach { world.files.putBytes(root, "${addons.path}/pak${it.toString().padStart(2, '0')}_dir.vpk", ByteArray(6)) }
         uninstallStoppedOnceSettled(world)
 
         val library = with(world) { library() }
@@ -699,7 +698,7 @@ class ModLibraryLifecycleTest {
         world.downloader.serve(77, listOf("o.vpk" to FakeVpk.directory(seed = 5)))
         library.install("mod-5")
         runCurrent()
-        assertEquals(listOf(listOf(3)), world.manifest().records.map { record -> record.numbers.map { it.value } }, "pak01 and pak02 are foreign, and 03 is free again")
+        assertEquals(listOf(listOf(3)), world.manifest().records.map { record -> record.numbers.map { it.value } }, "every number past 03 is foreign, and 03 is free again")
     }
 
     @Test
@@ -866,7 +865,7 @@ class ModLibraryLifecycleTest {
     fun undoingAMoveKeepsEveryChunkBesideATargetDirectoryThatChanged() = runTest {
         val world = World(enabled = false)
         val changed = ByteArray(dir.size) { 1 }
-        world.watchMounts { point -> if (point == FaultPoint.LinkMade("${addons.path}/pak02_dir.vpk")) world.files.rewrite(root, "${addons.path}/pak02_dir.vpk", changed) }
+        world.watchMounts { point -> if (point == FaultPoint.LinkMade("${addons.path}/pak99_dir.vpk")) world.files.rewrite(root, "${addons.path}/pak99_dir.vpk", changed) }
         val library = with(world) { library() }
         switch(library, true)
 
@@ -895,7 +894,7 @@ class ModLibraryLifecycleTest {
         world.files.writeGameInfo(root, VanillaGameInfo)
 
         val restarted = with(world) { library() }
-        world.assertWhole(2)
+        world.assertWhole(99)
         assertEquals(emptyMap(), restarted.ready().damaged, "the record the move committed is checked, not the half-released one")
         assertEquals(emptySet(), restarted.ready().unchecked)
         assertEquals(ModLoading.Off(notLoading = 1, vanilla = false), restarted.state.value.loading)

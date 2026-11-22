@@ -50,12 +50,12 @@ class ModLibraryReorderTest {
     private val before = specs.associate { it.id to it.number }
 
     private val switching = listOf(
-        Spec("a", 1, 3, listOf("dir")),
-        Spec("b", 2, 2, listOf("dir")),
+        Spec("a", 1, 98, listOf("dir")),
+        Spec("b", 2, 97, listOf("dir")),
         Spec("c", 3, null, listOf("dir", "000"), sets = 2),
     )
     private val ranked = ProfileId("ranked")
-    private val switched = mapOf("a" to 4, "b" to null, "c" to 2)
+    private val switched = mapOf("a" to 98, "b" to null, "c" to 96)
 
     private fun rankedBook(records: List<ManifestRecord>): ProfileBook {
         val main = ProfileBook.main(records)
@@ -217,11 +217,11 @@ class ModLibraryReorderTest {
 
     private fun inAddons(paths: List<String>) = paths.filter { it.startsWith("$addons/") && TemporaryInfix !in it }
 
-    private val swap = listOf("d", "b", "c", "a") to mapOf("a" to 11, "b" to 10, "c" to null, "d" to 9)
+    private val swap = listOf("d", "b", "c", "a") to mapOf("a" to 99, "b" to 98, "c" to null, "d" to 9)
 
     private val cycle = listOf("d", "c", "a", "b") to mapOf("a" to 3, "b" to 5, "c" to null, "d" to 2)
 
-    private val back = mapOf("a" to 11, "b" to 12, "c" to null, "d" to 13)
+    private val back = mapOf("a" to 7, "b" to 8, "c" to null, "d" to 9)
 
     @Test
     fun aDragRenamesTheFewestFilesKeepingEveryFileItsBytesAndIdentity() = runTest {
@@ -241,7 +241,7 @@ class ModLibraryReorderTest {
             "each set leaves directory first, and d never moves",
         )
         assertEquals(
-            listOf("pak11_000.vpk", "pak11_002.vpk", "pak11_dir.vpk", "pak10_dir.vpk").map { "$addons/$it" },
+            listOf("pak99_000.vpk", "pak99_002.vpk", "pak99_dir.vpk", "pak98_dir.vpk").map { "$addons/$it" },
             inAddons(world.files.linkedPaths),
             "each set comes back chunks first, directory last",
         )
@@ -297,12 +297,12 @@ class ModLibraryReorderTest {
         reorder(library, "blackout", "y", "speedometer", "witch", "fov", "mario", "z")
         library.setEnabled("y", true)
         runCurrent()
-        assertEquals(held + mapOf("y" to 7, "speedometer" to 8), world.numbers(), "dropped between 06 and 07, the mod at 07 moves up rather than the changed one at 06 down")
+        assertEquals(held + mapOf("y" to 9, "speedometer" to 10), world.numbers(), "dropped between 06 and 07, the mod at 07 moves up rather than the changed one at 06 down")
 
         reorder(library, "z", "blackout", "y", "speedometer", "witch", "fov", "mario")
         library.setEnabled("z", true)
         runCurrent()
-        assertEquals(held + mapOf("z" to 2, "y" to 7, "speedometer" to 8), world.numbers(), "on top it takes the lowest free number, 01 being foreign")
+        assertEquals(held + mapOf("z" to 5, "y" to 9, "speedometer" to 10), world.numbers(), "on top it takes the highest free number before the changed one at 06")
         assertEquals(ChoiceSync.Settled, library.state.value.choiceSync)
         assertContentEquals(changed, world.files.bytes(root, "$addons/pak06_dir.vpk"), "the changed file stays as it is")
     }
@@ -310,24 +310,24 @@ class ModLibraryReorderTest {
     @Test
     fun aForeignFileAtANameTheOrderWantsIsPlannedAroundAndLeftAsItIs() = runTest {
         val world = World()
-        val target = "$addons/pak11_002.vpk"
+        val target = "$addons/pak99_002.vpk"
         world.files.putBytes(root, target, bytesOf("a", "002"))
-        world.strangers["pak11_002.vpk"] = world.files.identity(root, target)
+        world.strangers["pak99_002.vpk"] = world.files.identity(root, target)
         val library = with(world) { library() }
         reorder(library, *swap.first.toTypedArray())
         assertEquals(ChoiceSync.Settled, library.state.value.choiceSync)
         assertEquals(listOf("d", "b", "a"), world.loadOrder())
-        world.assertWhole(mapOf("a" to 12, "b" to 10, "c" to null, "d" to 9))
+        world.assertWhole(mapOf("a" to 98, "b" to 97, "c" to null, "d" to 9))
     }
 
     @Test
     fun aForeignFileAppearingAtATargetMidwayRollsEveryMoveBack() = runTest {
         val world = World()
-        val target = "$addons/pak11_002.vpk"
+        val target = "$addons/pak99_002.vpk"
         world.watchMounts { point ->
             if (point == FaultPoint.Link(target)) {
                 world.files.putBytes(root, target, bytesOf("a", "002"))
-                world.strangers["pak11_002.vpk"] = world.files.identity(root, target)
+                world.strangers["pak99_002.vpk"] = world.files.identity(root, target)
             }
         }
         val library = with(world) { library() }
@@ -365,12 +365,12 @@ class ModLibraryReorderTest {
 
     @Test
     fun aCrashAtAnyStepOfTurningAModOnIntoAGapAndDuringItsRecoveryConvergesOnOneWholeOrder() = runTest {
-        crashAtEveryStep({ World(HideoutGameInfo, book = ordered("a", "b", "c", "d")) }, mapOf("a" to 3, "b" to 5, "c" to 6, "d" to 9)) { it.setEnabled("c", true) }
+        crashAtEveryStep({ World(HideoutGameInfo, book = ordered("a", "b", "c", "d")) }, mapOf("a" to 3, "b" to 5, "c" to 8, "d" to 9)) { it.setEnabled("c", true) }
     }
 
     @Test
     fun aCrashAtAnyStepOfTurningAModOnThatMovesANeighbourAndDuringItsRecoveryConvergesOnOneWholeOrder() = runTest {
-        crashAtEveryStep({ World(HideoutGameInfo, foreign = strangeFiles + ("pak04 copy.vpk" to ByteArray(3)), book = ordered("a", "c", "b", "d")) }, mapOf("a" to 3, "b" to 6, "c" to 5, "d" to 9)) { it.setEnabled("c", true) }
+        crashAtEveryStep({ World(HideoutGameInfo, foreign = strangeFiles + ("pak04 copy.vpk" to ByteArray(3)), book = ordered("a", "c", "b", "d")) }, mapOf("a" to 3, "b" to 8, "c" to 7, "d" to 9)) { it.setEnabled("c", true) }
     }
 
     @Test
@@ -398,8 +398,8 @@ class ModLibraryReorderTest {
 
         assertIs<MutationResult.Done<SwitchSummary>>(library.switchProfile(main))
         runCurrent()
-        world.assertWhole(mapOf("a" to 4, "b" to 2, "c" to null))
-        assertEquals(listOf("b", "a"), world.loadOrder(), "b is on again before a, and a keeps 04")
+        world.assertWhole(mapOf("a" to 98, "b" to 97, "c" to null))
+        assertEquals(listOf("b", "a"), world.loadOrder(), "b is on again before a, and a keeps 98")
         assertEquals(first, world.manifest().profiles)
         assertEquals(2, world.store.arranges())
         assertEquals(main, world.manifest().profiles.active)
@@ -411,7 +411,7 @@ class ModLibraryReorderTest {
         val library = with(world) { library() }
         val main = world.manifest().profiles.active
         reorder(library, "a", "b", "c")
-        world.assertWhole(mapOf("a" to 3, "b" to 4, "c" to null))
+        world.assertWhole(mapOf("a" to 98, "b" to 99, "c" to null))
         assertEquals(listOf("a", "b", "c"), world.manifest().profiles.activeProfile.orders[root])
         assertEquals(listOf("c", "a", "b"), world.manifest().profiles.profiles.single { it.id == ranked }.orders[root], "Ranked keeps its own")
 
@@ -426,23 +426,23 @@ class ModLibraryReorderTest {
         assertEquals(saves, world.store.saved.size)
         assertEquals(listOf("a", "b", "c"), world.manifest().profiles.profiles.single { it.id == main }.orders[root])
         assertEquals(listOf("c", "a"), world.loadOrder())
-        world.assertWhole(mapOf("a" to 4, "b" to null, "c" to 2))
+        world.assertWhole(mapOf("a" to 98, "b" to null, "c" to 96))
     }
 
     @Test
     fun aSwitchWithNoRoomLeftInAddonsLoadsTheRestOfItsOrderFromTheNextFolder() = runTest {
-        val crowd = (4..99).associate { name(it, "dir") to ByteArray(4) }
+        val crowd = ((1..96) + 99).associate { name(it, "dir") to ByteArray(4) }
         val world = World(HideoutGameInfo, switching, foreign = strangeFiles + crowd, book = ::rankedBook)
         val library = with(world) { library() }
         assertIs<MutationResult.Done<SwitchSummary>>(library.switchProfile(ranked))
         runCurrent()
-        assertEquals(ChoiceSync.Settled, library.state.value.choiceSync, "c's two sets take 02 and 03, and a goes on in hideout_addons2")
-        world.assertWhole(mapOf("a" to 100, "b" to null, "c" to 2))
+        assertEquals(ChoiceSync.Settled, library.state.value.choiceSync, "c's two sets and a go on at the end of hideout_addons2")
+        world.assertWhole(mapOf("a" to 198, "b" to null, "c" to 196))
         assertEquals(emptySet(), library.state.value.pastLimit)
     }
 
     @Test
-    fun aHundredthSetTurnedOnLoadsFromTheNextFolderAndTurningAnotherOffMovesNothingBack() = runTest {
+    fun aHundredthSetTurnedOnLoadsFromTheNextFolderAndTurningAnotherOffGathersTheRestBackInAddons() = runTest {
         val many = (1..99).map { Spec("m$it", 100L + it, it, listOf("dir")) } + Spec("x", 500, null, listOf("dir"))
         val world = World(HideoutGameInfo, many, foreign = emptyMap())
         val library = with(world) { library() }
@@ -451,13 +451,13 @@ class ModLibraryReorderTest {
         assertEquals(ChoiceSync.Settled, library.state.value.choiceSync)
         assertEquals(emptySet(), library.state.value.pastLimit)
         assertEquals(1, world.store.arranges())
-        world.assertWhole(many.associate { it.id to it.number } + ("x" to 100))
+        world.assertWhole(many.associate { it.id to it.number } + ("x" to 198))
 
         val view = assertNotNull(library.state.value.orderView)
         library.reorder(view, listOf("x") + view.sets.filter { it != "x" })
         runCurrent()
         assertEquals(ChoiceSync.Settled, library.state.value.choiceSync)
-        val shifted = (1..99).associate { "m$it" to it + 1 } + ("x" to 1)
+        val shifted = (1..99).associate { "m$it" to it + 99 } + ("x" to 99)
         world.assertWhole(shifted)
         assertEquals(2, world.store.arranges())
 
@@ -465,10 +465,11 @@ class ModLibraryReorderTest {
         runCurrent()
         assertEquals(ChoiceSync.Settled, library.state.value.choiceSync)
         assertEquals(3, world.store.arranges())
-        assertEquals(shifted + ("m98" to null) + ("m99" to 99), world.placement(), "m99 goes back to addons and no other set renames")
+        val gathered = (1..97).associate { "m$it" to it + 1 } + ("x" to 1) + ("m98" to null) + ("m99" to 99)
+        assertEquals(gathered, world.placement(), "the ninety-nine sets left on fit in addons, so they go back there")
         assertEquals(1, world.overflow(), "the emptied folder stays mounted until the block is next written")
         assertNull(library.launch(modded = true) {})
-        world.assertWhole(shifted + ("m98" to null) + ("m99" to 99))
+        world.assertWhole(gathered)
     }
 
     @Test
@@ -486,7 +487,7 @@ class ModLibraryReorderTest {
         runCurrent()
         assertEquals(ChoiceSync.Settled, library.state.value.choiceSync)
         assertEquals(1, world.store.arranges(), "one journal moves every set")
-        val gathered = past.associate { it.id to it.number!! - 99 }
+        val gathered = past.associate { it.id to it.number!! - 63 }
         assertEquals(gathered, world.placement())
         assertEquals(1, world.overflow())
         assertNull(library.launch(modded = true) {})
@@ -539,12 +540,12 @@ class ModLibraryReorderTest {
         runCurrent()
         assertEquals(ChoiceSync.Settled, library.state.value.choiceSync)
         assertEquals(1, world.store.arranges())
-        val sixty = (120 downTo 61).mapIndexed { index, it -> "m$it" to index + 1 }.toMap()
+        val sixty = (120 downTo 61).mapIndexed { index, it -> "m$it" to index + 40 }.toMap()
         world.assertWhole(many.associate { it.id to sixty[it.id] })
 
-        library.setEnabled("m60", true)
+        library.setEnabled("m121", true)
         runCurrent()
-        assertEquals(sixty + ("m60" to 61), world.numbers(), "a mod Party orders after its sixty takes the next number, and nothing else moves")
+        assertEquals(sixty + ("m121" to 39), world.numbers(), "a mod Party orders before its sixty takes the number ahead of them, and nothing else moves")
     }
 
     @Test
@@ -769,7 +770,7 @@ class ModLibraryReorderTest {
         assertSame(gesture, library.state.value.orderView)
         library.reorder(gesture, cycle.first)
         runCurrent()
-        world.assertWhole(mapOf("a" to 11, "b" to 12, "c" to null, "d" to 9))
+        world.assertWhole(mapOf("a" to 97, "b" to 98, "c" to null, "d" to 9))
         assertEquals(2, world.store.arranges())
     }
 

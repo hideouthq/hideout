@@ -33,7 +33,7 @@ class HeldModsTest {
     fun whenTheOthersCannotFitBeforeItTheyAreNumberedAroundItInTheirOrder() {
         val records = listOf(mod("a", null, sets = 3), mod("b", 1), mod("h", 2, edited = true), mod("c", 4))
         val planned = planPlacement(records, profile(setOf("a", "b", "h", "c"), listOf("a", "b", "h", "c")), emptySet())
-        assertEquals(mapOf("a" to 3, "b" to 6, "h" to 2, "c" to 7), numbers(planned), "a's three sets cannot load before 02, so a, b and c go after it, still in their order")
+        assertEquals(mapOf("a" to 95, "b" to 98, "h" to 2, "c" to 99), numbers(planned), "a's three sets cannot load before 02, so a, b and c go after it, still in their order")
     }
 
     @Test
@@ -43,7 +43,7 @@ class HeldModsTest {
         val order = many.take(49).map { it.installId } + "h" + many.drop(49).map { it.installId }
         val planned = planPlacement(records, profile(order.toSet(), order), emptySet())
         assertEquals(emptySet(), planned.pastLimit)
-        assertEquals((1..49).associate { "m$it" to it } + ("h" to 50) + (50..99).associate { "m$it" to it + 1 }, numbers(planned), "the edited mod keeps its number and m99 takes the first of hideout_addons2")
+        assertEquals((1..49).associate { "m$it" to it } + ("h" to 50) + (50..99).associate { "m$it" to it + 99 }, numbers(planned), "the edited mod keeps its number and the fifty after it end hideout_addons2")
     }
 
     @Test
@@ -52,7 +52,7 @@ class HeldModsTest {
         val records = listOf(mod("h", 90, edited = true)) + after
         val order = records.map { it.installId }
         val planned = planPlacement(records, profile(order.toSet(), order), emptySet())
-        assertEquals(mapOf("h" to 90) + (1..20).associate { "m$it" to it }, numbers(planned), "nine numbers follow 90, so the twenty go around it as they always have")
+        assertEquals(mapOf("h" to 90) + (1..11).associate { "m$it" to it + 78 } + (12..20).associate { "m$it" to it + 79 }, numbers(planned), "nine numbers follow 90, so the twenty go around it")
     }
 
     @Test

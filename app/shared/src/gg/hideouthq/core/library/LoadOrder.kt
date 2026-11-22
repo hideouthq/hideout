@@ -32,9 +32,10 @@ internal class Block(val held: List<Slot?>, val files: List<Int>, val width: Int
 /**
  * Each of [blocks]' first numbers, in order, in the first [folders] loading folders: every block's numbers consecutive
  * in one folder, each block ending before the next one starts, none of them in [taken], and a [Block.fixed] one at the
- * numbers it holds. Of the plans that fit, the one that renames the fewest files, then the one with the lowest numbers;
+ * numbers it holds. Of the plans that fit, the one that renames the fewest files, then the one with the highest numbers;
  * null when none fits. A set costs nothing where it lands on the number it holds, else its files, or more than every
- * other file together when its block is stuck, so a stuck block moves only when no plan leaves it.
+ * other file together when its block is stuck, so a stuck block moves only when no plan leaves it. The highest numbers
+ * keep the free ones ahead of the first block, where a new install goes, so it takes one of them and renames nothing.
  */
 internal fun planNumbers(blocks: List<Block>, taken: Set<Slot>, folders: Int): List<Slot>? {
     if (blocks.isEmpty()) return emptyList()
@@ -49,7 +50,7 @@ internal fun planNumbers(blocks: List<Block>, taken: Set<Slot>, folders: Int): L
     fun own(block: Block, first: Int): Long? {
         if (free[first] < block.width || block.fixed && block.held.first()?.value != first) return null
         val renamed = block.held.indices.sumOf { set -> if (block.held[set]?.value == first + set) 0 else if (block.stuck) StuckRename else block.files[set] }
-        return (renamed.toLong() shl 32) + first
+        return (renamed.toLong() shl 32) + top - first
     }
 
     val best = Array(blocks.size) { LongArray(top + 1) { Unplaced } }
@@ -60,7 +61,7 @@ internal fun planNumbers(blocks: List<Block>, taken: Set<Slot>, folders: Int): L
         var cheapestAt = 0
         for (first in 1..top) {
             val before = first - blocks[index - 1].width
-            if (before >= 1 && best[index - 1][before] < cheapest) {
+            if (before >= 1 && best[index - 1][before] <= cheapest) {
                 cheapest = best[index - 1][before]
                 cheapestAt = before
             }
@@ -70,7 +71,7 @@ internal fun planNumbers(blocks: List<Block>, taken: Set<Slot>, folders: Int): L
             previous[index][first] = cheapestAt
         }
     }
-    var first = (1..top).filter { best.last()[it] != Unplaced }.minByOrNull { best.last()[it] } ?: return null
+    var first = (top downTo 1).filter { best.last()[it] != Unplaced }.minByOrNull { best.last()[it] } ?: return null
     val firsts = IntArray(blocks.size)
     for (index in blocks.indices.reversed()) {
         firsts[index] = first

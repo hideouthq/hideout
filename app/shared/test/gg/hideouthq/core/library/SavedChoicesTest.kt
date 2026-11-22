@@ -298,7 +298,7 @@ class SavedChoicesTest {
             world.processes.failure = null
             seen(world, ProcessScan.Seen())
             assertEquals(ChoiceSync.Settled, library.state.value.choiceSync, unknown)
-            val reached = start + mapOf("a" to null, "c" to 6)
+            val reached = start + mapOf("a" to null, "c" to 8)
             assertEquals(reached, world.placement(), unknown)
             world.assertFilesAt(reached)
         }
@@ -317,7 +317,7 @@ class SavedChoicesTest {
         val library = with(world) { library() }
         assertEquals(ChoiceSync.Settled, library.state.value.choiceSync)
         assertNull(world.saved())
-        val reached = start + mapOf("d" to 2, "c" to 3, "a" to 6)
+        val reached = start + mapOf("c" to 97, "b" to 98, "a" to 99)
         assertEquals(reached, world.placement())
         world.assertFilesAt(reached)
     }
@@ -397,8 +397,8 @@ class SavedChoicesTest {
         assertNull(world.saved())
         assertEquals(listOf("Main"), world.manifest().profiles.profiles.map { it.name })
         assertEquals(main, world.manifest().profiles.active)
-        assertEquals(start + ("b" to 4), world.placement(), "b is on again, at the lowest number after a")
-        world.assertFilesAt(start + ("b" to 4))
+        assertEquals(start + ("b" to 8), world.placement(), "b is on again, at the highest number before d")
+        world.assertFilesAt(start + ("b" to 8))
     }
 
     @Test
@@ -420,8 +420,8 @@ class SavedChoicesTest {
 
         library.undo(token).done()
         seen(world, ProcessScan.Seen())
-        val undone = start + mapOf("a" to 2, "b" to 3)
-        assertEquals(undone, world.placement(), "both come back on, before d, at the lowest numbers")
+        val undone = start + mapOf("a" to 7, "b" to 8)
+        assertEquals(undone, world.placement(), "both come back on, before d, at the highest numbers")
 
         library.setEnabledTogether(setOf("missing"), false)
         runCurrent()
@@ -447,7 +447,7 @@ class SavedChoicesTest {
         assertEquals(saves + 1, world.store.saved.size)
         seen(world, ProcessScan.Seen())
         assertEquals(1, world.journals().size)
-        assertEquals(start + ("c" to 10), world.placement(), "c loads after d")
+        assertEquals(start + ("c" to 99), world.placement(), "c loads after d")
     }
 
     @Test
@@ -486,7 +486,7 @@ class SavedChoicesTest {
             assertEquals(ChoiceSync.Settled, restarted.state.value.choiceSync, step.name)
             assertNull(world.saved(), step.name)
             assertEquals(newer, world.manifest().profiles, step.name)
-            val reached = start + mapOf("b" to null, "c" to 4, "d" to null)
+            val reached = start + mapOf("b" to null, "c" to 99, "d" to null)
             assertEquals(reached, world.placement(), step.name)
             world.assertFilesAt(reached)
         }
@@ -595,7 +595,7 @@ class SavedChoicesTest {
         val library = with(world) { library() }
         library.drop("d", "b", "c", "a")
         runCurrent()
-        val reached = start + mapOf("a" to 6, "d" to 2)
+        val reached = start + mapOf("b" to 98, "a" to 99)
         assertEquals(reached, world.placement())
         assertNotNull(world.saved(), "the clear was refused, so the reached choices stay saved")
         assertEquals(ChoiceSync.Settled, library.state.value.choiceSync)
@@ -687,10 +687,10 @@ class SavedChoicesTest {
 
         seen(world, ProcessScan.Seen())
         assertEquals(ChoiceSync.Settled, library.state.value.choiceSync, "a foreign number is planned around, never a reason to pause")
-        assertEquals(mapOf("p" to 6, "q" to 5), world.placement(), "after q, clear of the foreign 03 and 04, and the same bytes at 04 prove nothing")
+        assertEquals(mapOf("p" to 99, "q" to 5), world.placement(), "after q, at the highest number, and the same bytes at 04 prove nothing")
         library.drop("p", "q")
         runCurrent()
-        assertEquals(mapOf("p" to 2, "q" to 5), world.placement(), "before q, below the foreign 03 and 04")
+        assertEquals(mapOf("p" to 2, "q" to 5), world.placement(), "before q, at the highest number below the foreign 03 and 04")
         assertEquals(listOf("p", "q"), onLoadOrder(world.manifest().records.filter { it.gameRoot == root }))
         assertEquals(pak03Identity, world.files.identity(root, "$addons/pak03_dir.vpk"))
         assertEquals(pak04Identity, world.files.identity(root, "$addons/pak04_dir.vpk"))
@@ -742,7 +742,7 @@ class SavedChoicesTest {
         val journals = world.journals().size
         library.switchProfile(copy).done()
         runCurrent()
-        val copied = start + mapOf("d" to 6, "f" to 4)
+        val copied = start + mapOf("d" to 99, "f" to 99)
         assertEquals(copied, world.placement(), "Copy's order in both games, with f turned on")
         world.assertFilesAt(copied)
         assertEquals(journals + 1, world.journals().size, "one journal turns and renumbers sets in both games")
@@ -772,11 +772,11 @@ class SavedChoicesTest {
         runCurrent()
         assertSame(gesture, library.state.value.orderView, "a switch to a profile with the same order keeps it")
         seen(world, ProcessScan.Seen())
-        assertEquals(start + mapOf("d" to 2, "a" to 6), world.placement())
+        assertEquals(start + mapOf("b" to 98, "a" to 99), world.placement())
         assertSame(gesture, library.state.value.orderView, "applying it keeps it")
         library.reorder(gesture, listOf("c", "b", "d", "a"))
         runCurrent()
-        assertEquals(start + mapOf("b" to 2, "d" to 3, "a" to 6), world.placement(), "two single files move rather than a's two")
+        assertEquals(start + mapOf("b" to 8, "a" to 99), world.placement(), "only b's single file moves")
     }
 
     @Test
@@ -1146,7 +1146,7 @@ class SavedChoicesTest {
         runCurrent()
         assertNull(launched.await())
         assertEquals(1, dispatched)
-        assertEquals(start + ("c" to 10), world.placement(), "the choice saved before Play is not lost")
+        assertEquals(start + ("c" to 99), world.placement(), "the choice saved before Play is not lost")
     }
 
     @Test
@@ -1174,7 +1174,7 @@ class SavedChoicesTest {
         assertNull(world.saved(), "applied, journal saved and cleared by the library itself")
         library.undo(again).done()
         runCurrent()
-        assertEquals(start + mapOf("a" to 2, "b" to 3, "d" to 4, "e" to 1), world.placement(), "every mod comes back on in Main's order at the lowest numbers")
+        assertEquals(start + mapOf("a" to 97, "b" to 98, "d" to 99, "e" to 99), world.placement(), "every mod comes back on in Main's order at the highest numbers")
     }
 
     @Test
@@ -1193,7 +1193,7 @@ class SavedChoicesTest {
         world.processes.gate = null
         gate.complete(Unit)
         runCurrent()
-        assertEquals(start + ("c" to 10), world.placement())
+        assertEquals(start + ("c" to 99), world.placement())
         assertNull(world.saved())
     }
 

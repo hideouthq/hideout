@@ -131,22 +131,22 @@ class MultiFileInstallTest {
     @Test
     fun severalFilesInstallAsOneModUnderConsecutiveNumbersWithTheTopFileWinning() = runTest {
         val world = World()
-        world.files.addAddonsEntry(root, "pak01_dir.vpk")
-        world.files.addAddonsEntry(root, "pak03_dir.vpk")
+        world.files.addAddonsEntry(root, "pak97_dir.vpk")
+        world.files.addAddonsEntry(root, "pak99_dir.vpk")
         val library = with(world) { library() }
         install(library, 103, 101)
 
         val record = world.record()
         assertEquals(listOf(101L, 103L), record.sets.map { it.fileId }, "no author numbers set them apart, so the order the dialog lists them, most downloaded first, whatever order they were picked in")
-        assertEquals(listOf(4, 5), record.numbers.map { it.value }, "the lowest two free numbers in a row: 2 is free but 3 is not")
+        assertEquals(listOf(95, 96), record.numbers.map { it.value }, "the highest two free numbers in a row: 98 is free but 97 is not")
         assertEquals(listOf("lilith_hell_warden.zip", "lilith_werewolf_cabezas.zip"), record.sets.map { it.originalName })
         assertEquals(listOf(VersionPosition(1, 3), VersionPosition(3, 3)), record.sets.map { it.version })
-        assertEquals(listOf(listOf(pak(4, "dir"), pak(4, "000"), pak(4, "001")), listOf(pak(5, "dir"))), record.sets.map { set -> record.filesOf(set).map { it.name } })
+        assertEquals(listOf(listOf(pak(95, "dir"), pak(95, "000"), pak(95, "001")), listOf(pak(96, "dir"))), record.sets.map { set -> record.filesOf(set).map { it.name } })
         val default = "Default/lilith_dir.vpk"
         assertEquals(listOf(off(101, default, "000"), off(101, default, "001"), off(101, default), cabezasOff), world.files.publishedNames, "into its off folder, every chunk before any directory")
         assertEquals(
-            mapOf(pak(4, "dir") to Sha256.image(defaultDir), pak(4, "000") to Sha256.image(chunk0), pak(4, "001") to Sha256.image(chunk1), pak(5, "dir") to Sha256.image(cabezas)),
-            world.addons() - "pak01_dir.vpk" - "pak03_dir.vpk",
+            mapOf(pak(95, "dir") to Sha256.image(defaultDir), pak(95, "000") to Sha256.image(chunk0), pak(95, "001") to Sha256.image(chunk1), pak(96, "dir") to Sha256.image(cabezas)),
+            world.addons() - "pak97_dir.vpk" - "pak99_dir.vpk",
         )
         assertEquals(record.sets.map { it.download }, world.manifest().downloads.map { it.archive }, "each file's download is registered")
         assertEquals(listOf(101L, 103L), world.manifest().downloads.map { it.source.fileId })
@@ -224,7 +224,7 @@ class MultiFileInstallTest {
 
     @Test
     fun aCrashAtAnyInstallStepLeavesAllOfTheModOrNoneOfItAfterTheNextStart() = runTest {
-        val all = setOf(pak(1, "dir"), pak(1, "000"), pak(1, "001"), pak(2, "dir"))
+        val all = setOf(pak(98, "dir"), pak(98, "000"), pak(98, "001"), pak(99, "dir"))
         val crashes = mapOf<String, (FaultPoint) -> Boolean>(
             "copying the second set" to { it is FaultPoint.Stage && it.temporary.startsWith("$cabezasOff$TemporaryInfix") },
             "before the last directory" to { it == FaultPoint.Publish(cabezasOff) },
@@ -258,10 +258,12 @@ class MultiFileInstallTest {
 
     @Test
     fun addingFilesDownloadsOnlyNewOnesAndKeepsExistingComponentsInTheirOrder() = runTest {
-        val (world, library) = installed(101, 103)
+        val (world, library) = installed(101, 103, seed = listOf(neighbour("x", 99)))
+        library.setEnabled("x", false)
+        runCurrent()
         val before = world.record()
-        val untouched = world.identities(listOf(pak(1, "dir"), pak(1, "000"), pak(1, "001")))
-        val moved = world.files.identity(root, "$addons/${pak(2, "dir")}")
+        val untouched = world.identities(listOf(pak(97, "dir"), pak(97, "000"), pak(97, "001")))
+        val moved = world.files.identity(root, "$addons/${pak(98, "dir")}")
         before.sets.forEach { world.files.removeArchive(it.download!!.path) }
         world.downloader.requested.clear()
         world.files.linkedPaths.clear()
@@ -273,13 +275,13 @@ class MultiFileInstallTest {
         assertEquals(listOf(102L), world.downloader.requested, "the files it keeps are not downloaded again, though their downloads are gone")
         assertEquals(before.installId, after.installId)
         assertEquals(listOf(101L, 103L, 102L), after.sets.map { it.fileId }, "new files follow the retained components, regardless of download popularity")
-        assertEquals(listOf(1, 2, 3), after.numbers.map { it.value })
+        assertEquals(listOf(97, 98, 99), after.numbers.map { it.value })
         assertEquals(before.sets, after.sets.take(2), "both retained components keep their numbers and receipts")
         assertEquals(untouched, world.identities(untouched.keys), "unmoved files are the very same files")
-        assertTrue(world.files.linkedPaths.none { "pak01_" in it || "pak02_" in it } && world.files.removedPaths.none { "pak01_" in it || "pak02_" in it }, "nothing touched either retained component")
-        assertEquals(moved, world.files.identity(root, "$addons/${pak(2, "dir")}"), "the second component keeps its file identity")
-        assertEquals(Sha256.image(werewolf), world.addons()[pak(3, "dir")])
-        assertEquals(setOf(pak(1, "dir"), pak(1, "000"), pak(1, "001"), pak(2, "dir"), pak(3, "dir")), world.addons().keys, "no anchor or copy is left")
+        assertTrue(world.files.linkedPaths.none { "pak97_" in it || "pak98_" in it } && world.files.removedPaths.none { "pak97_" in it || "pak98_" in it }, "nothing touched either retained component")
+        assertEquals(moved, world.files.identity(root, "$addons/${pak(98, "dir")}"), "the second component keeps its file identity")
+        assertEquals(Sha256.image(werewolf), world.addons()[pak(99, "dir")])
+        assertEquals(setOf(pak(97, "dir"), pak(97, "000"), pak(97, "001"), pak(98, "dir"), pak(99, "dir")), world.addons().keys, "no anchor or copy is left")
         assertEquals(setOf(before.installId), world.manifest().profiles.activeProfile.enabled)
         assertNull(world.manifest().pending)
         assertNull(library.state.value.operations[lilith.modId])
@@ -303,7 +305,7 @@ class MultiFileInstallTest {
         val before = world.record()
         assertEquals(listOf("A/pak01_dir.vpk", "B/pak01_dir.vpk"), before.sets.map { it.componentKey })
         assertEquals(listOf(104L, 104L), before.sets.map { it.fileId }, "both components share the one GameBanana file")
-        assertEquals(listOf(1, 2), before.numbers.map { it.value })
+        assertEquals(listOf(98, 99), before.numbers.map { it.value })
         assertEquals(1, world.manifest().downloads.size, "the shared archive is registered once for both components")
         world.downloader.requested.clear()
 
@@ -318,24 +320,24 @@ class MultiFileInstallTest {
     fun changingFilesRemovesOnlyTheFilesUnticked() = runTest {
         val (world, library) = installed(101, 102, 103)
         val before = world.record()
-        val winner = world.identities(listOf(pak(1, "dir"), pak(1, "000"), pak(1, "001")))
-        val last = world.files.identity(root, "$addons/${pak(3, "dir")}")
+        val winner = world.identities(listOf(pak(97, "dir"), pak(97, "000"), pak(97, "001")))
+        val last = world.files.identity(root, "$addons/${pak(99, "dir")}")
         world.downloader.requested.clear()
 
         assertTrue(changeFilesTo(library, before.installId, 101, 103))
         val after = world.record()
         assertEquals(emptyList(), world.downloader.requested)
         assertEquals(listOf(101L, 103L), after.sets.map { it.fileId })
-        assertEquals(listOf(1, 2), after.numbers.map { it.value }, "the numbers stay consecutive")
+        assertEquals(listOf(97, 98), after.numbers.map { it.value }, "the numbers stay consecutive")
         assertEquals(winner, world.identities(winner.keys))
-        assertEquals(last, world.files.identity(root, "$addons/${pak(2, "dir")}"), "Cabezas moved up into the number Werewolf had")
-        assertEquals(setOf(pak(1, "dir"), pak(1, "000"), pak(1, "001"), pak(2, "dir")), world.addons().keys)
+        assertEquals(last, world.files.identity(root, "$addons/${pak(98, "dir")}"), "Cabezas moved up into the number Werewolf had")
+        assertEquals(setOf(pak(97, "dir"), pak(97, "000"), pak(97, "001"), pak(98, "dir")), world.addons().keys)
         assertEquals(listOf(101L, 102L, 103L), world.manifest().downloads.map { it.source.fileId }, "the unticked file's download stays, as Settings keeps it")
 
         assertTrue(changeFilesTo(library, before.installId, 103))
         assertEquals(listOf(103L), world.record().sets.map { it.fileId })
-        assertEquals(listOf(1), world.record().numbers.map { it.value }, "the mod keeps its first number")
-        assertEquals(mapOf(pak(1, "dir") to Sha256.image(cabezas)), world.addons())
+        assertEquals(listOf(97), world.record().numbers.map { it.value }, "the mod keeps its first number")
+        assertEquals(mapOf(pak(97, "dir") to Sha256.image(cabezas)), world.addons())
     }
 
     @Test
@@ -356,7 +358,7 @@ class MultiFileInstallTest {
 
         assertEquals(emptyList(), world.downloader.requested)
         assertEquals(listOf(installed.sets.first()), world.record().sets)
-        assertEquals(setOf(pak(1, "dir"), pak(1, "000"), pak(1, "001")), world.addons().keys)
+        assertEquals(setOf(pak(98, "dir"), pak(98, "000"), pak(98, "001")), world.addons().keys)
     }
 
     @Test
@@ -405,7 +407,7 @@ class MultiFileInstallTest {
     fun aFileGameBananaNoLongerListsIsKeptAfterTheListedOnesWithoutDownloading() = runTest {
         val (world, library) = installed(101, 103)
         val installed = world.record()
-        val cabezasIdentity = world.files.identity(root, "$addons/${pak(2, "dir")}")
+        val cabezasIdentity = world.files.identity(root, "$addons/${pak(99, "dir")}")
         world.list(default, transform)
         world.downloader.requested.clear()
 
@@ -421,7 +423,7 @@ class MultiFileInstallTest {
 
         assertEquals(listOf(102L), world.downloader.requested)
         assertEquals(listOf(101L, 103L, 102L), world.record().sets.map { it.fileId })
-        assertEquals(cabezasIdentity, world.files.identity(root, "$addons/${pak(2, "dir")}"))
+        assertEquals(cabezasIdentity, world.files.identity(root, "$addons/${pak(98, "dir")}"))
     }
 
     @Test
@@ -463,15 +465,15 @@ class MultiFileInstallTest {
         assertEquals(listOf(1, 2), world.record().numbers.map { it.value })
         assertEquals(original.sets.first(), world.record().sets.first())
         assertEquals(listOf(original.installId, "x"), onLoadOrder(world.manifest().records))
-        assertEquals(listOf(3), world.manifest().records.single { it.installId == "x" }.numbers.map { it.value })
-        assertEquals(neighbourIdentity, world.files.identity(root, "$addons/${pak(3, "dir")}"))
+        assertEquals(listOf(99), world.manifest().records.single { it.installId == "x" }.numbers.map { it.value })
+        assertEquals(neighbourIdentity, world.files.identity(root, "$addons/${pak(99, "dir")}"))
         assertNull(world.manifest().pending)
     }
 
     @Test
     fun growingAModNeverReusesANeighboursNumberAlsoOccupiedByAnUnmanagedVpk() = runTest {
-        val world = World(seed = listOf(neighbour("x", 2)))
-        val foreignPath = "$addons/pak02.vpk"
+        val world = World(seed = listOf(neighbour("x", 98)))
+        val foreignPath = "$addons/pak98.vpk"
         val foreignBytes = FakeVpk.directory(seed = 25)
         world.files.putBytes(root, foreignPath, foreignBytes)
         val foreignIdentity = world.files.identity(root, foreignPath)
@@ -481,10 +483,10 @@ class MultiFileInstallTest {
 
         assertTrue(changeFilesTo(library, original.installId, 101, 102))
         assertNull(library.state.value.operations[lilith.modId])
-        assertEquals(listOf(3, 4), world.record().numbers.map { it.value }, "number 2 remains unavailable after the neighbour moves away")
+        assertEquals(listOf(96, 97), world.record().numbers.map { it.value }, "number 98 remains unavailable after the neighbour moves away")
         assertEquals(listOf(original.installId, "x"), onLoadOrder(world.manifest().records))
         assertEquals(foreignIdentity, world.files.identity(root, foreignPath))
-        assertEquals(Sha256.image(foreignBytes), world.addons()["pak02.vpk"])
+        assertEquals(Sha256.image(foreignBytes), world.addons()["pak98.vpk"])
         assertNull(world.manifest().pending)
     }
 
@@ -563,7 +565,7 @@ class MultiFileInstallTest {
         changeFilesTo(first, original.installId, 101, 102)
         doomed.cancel()
         assertIs<PendingChange.Replace>(world.manifest().pending)
-        assertEquals(listOf(3), world.manifest().records.single { it.installId == "x" }.numbers.map { it.value })
+        assertEquals(listOf(99), world.manifest().records.single { it.installId == "x" }.numbers.map { it.value })
         world.files.around = null
         val restarted = with(world) { library() }
         assertEquals(original, world.record())
@@ -576,22 +578,22 @@ class MultiFileInstallTest {
 
     @Test
     fun changingFilesTakesTheNearestRoomBetweenItsNeighboursAndNeverAForeignFilesNumber() = runTest {
-        val world = World(seed = listOf(neighbour("x", 5)))
-        world.files.putBytes(root, "$addons/${pak(2, "dir")}", ByteArray(9) { 2 })
-        val foreign = world.files.identity(root, "$addons/${pak(2, "dir")}")
+        val world = World(seed = listOf(neighbour("x", 99)))
+        world.files.putBytes(root, "$addons/${pak(97, "dir")}", ByteArray(9) { 2 })
+        val foreign = world.files.identity(root, "$addons/${pak(97, "dir")}")
         val library = with(world) { library() }
         install(library, 101)
         val before = world.record()
-        assertEquals(listOf(1), before.numbers.map { it.value })
-        val winner = world.identities(listOf(pak(1, "dir"), pak(1, "000"), pak(1, "001")))
+        assertEquals(listOf(98), before.numbers.map { it.value })
+        val winner = world.identities(listOf(pak(98, "dir"), pak(98, "000"), pak(98, "001")))
 
         assertTrue(changeFilesTo(library, before.installId, 101, 102))
         val after = world.record()
-        assertEquals(listOf(3, 4), after.numbers.map { it.value }, "1 and 2 would load beside the foreign pak02; 3 and 4 are free before the next mod")
-        assertEquals(foreign, world.files.identity(root, "$addons/${pak(2, "dir")}"), "the foreign file is never touched")
-        assertEquals(winner.values.toList(), world.identities(listOf(pak(3, "dir"), pak(3, "000"), pak(3, "001"))).values.toList(), "the kept set was renamed, not copied")
+        assertEquals(listOf(95, 96), after.numbers.map { it.value }, "98 and 99 would take x's number and 97 and 98 the foreign pak97's; 95 and 96 are the nearest free before them")
+        assertEquals(foreign, world.files.identity(root, "$addons/${pak(97, "dir")}"), "the foreign file is never touched")
+        assertEquals(winner.values.toList(), world.identities(listOf(pak(95, "dir"), pak(95, "000"), pak(95, "001"))).values.toList(), "the kept set was renamed, not copied")
         assertEquals(listOf(after.installId, "x"), onLoadOrder(world.manifest().records), "it keeps its place before x")
-        assertFalse(world.addons().keys.any { it.startsWith("pak01_") })
+        assertFalse(world.addons().keys.any { it.startsWith("pak98_") })
     }
 
     @Test
@@ -632,9 +634,9 @@ class MultiFileInstallTest {
         library.reorder(view, listOf("x", record.installId))
         runCurrent()
 
-        assertEquals(listOf(4, 5), world.record().numbers.map { it.value }, "the whole mod moved past x, still consecutive, rather than x and both its sets")
+        assertEquals(listOf(98, 99), world.record().numbers.map { it.value }, "the whole mod moved past x, still consecutive, rather than x and both its sets")
         assertEquals(listOf(3), world.manifest().records.single { it.installId == "x" }.numbers.map { it.value })
-        val after = world.identities(listOf(pak(3, "dir"), pak(4, "dir"), pak(4, "000"), pak(4, "001"), pak(5, "dir")))
+        val after = world.identities(listOf(pak(3, "dir"), pak(98, "dir"), pak(98, "000"), pak(98, "001"), pak(99, "dir")))
         assertEquals(
             listOf(before[pak(3, "dir")], before[pak(1, "dir")], before[pak(1, "000")], before[pak(1, "001")], before[pak(2, "dir")]),
             after.values.toList(),
@@ -648,9 +650,9 @@ class MultiFileInstallTest {
     fun aCrashAtAnyStepOfChangingFilesLeavesTheOldFilesOrTheNewOnesWhole() = runTest {
         val crashes = mapOf<String, (FaultPoint) -> Boolean>(
             "copying the new file" to { it is FaultPoint.Stage },
-            "keeping the moving file beside itself" to { it is FaultPoint.LinkMade && it.path.startsWith("$addons/${pak(2, "dir")}.hideout-") },
-            "releasing the moving file's old name" to { it == FaultPoint.Remove("$addons/${pak(2, "dir")}") },
-            "giving the moving file its new name" to { it == FaultPoint.Link("$addons/${pak(1, "dir")}") },
+            "keeping the moving file beside itself" to { it is FaultPoint.LinkMade && it.path.startsWith("$addons/${pak(99, "dir")}.hideout-") },
+            "releasing the moving file's old name" to { it == FaultPoint.Remove("$addons/${pak(99, "dir")}") },
+            "giving the moving file its new name" to { it == FaultPoint.Link("$addons/${pak(98, "dir")}") },
             "putting the new file's copy away" to { it is FaultPoint.Remove && it.path.endsWith("-new") },
         )
         for ((name, at) in crashes) {
@@ -671,13 +673,13 @@ class MultiFileInstallTest {
             assertNull(world.manifest().pending, name)
             val now = world.record()
             if (now == old) {
-                assertEquals(setOf(pak(1, "dir"), pak(1, "000"), pak(1, "001"), pak(2, "dir")), world.addons().keys, "$name: the old files whole")
-                assertEquals(Sha256.image(cabezas), world.addons()[pak(2, "dir")], name)
+                assertEquals(setOf(pak(98, "dir"), pak(98, "000"), pak(98, "001"), pak(99, "dir")), world.addons().keys, "$name: the old files whole")
+                assertEquals(Sha256.image(cabezas), world.addons()[pak(99, "dir")], name)
             } else {
                 assertEquals(listOf(103L, 102L), now.sets.map { it.fileId }, name)
-                assertEquals(setOf(pak(1, "dir"), pak(2, "dir")), world.addons().keys, "$name: the new files whole, with no anchor left")
-                assertEquals(Sha256.image(werewolf), world.addons()[pak(2, "dir")], name)
-                assertEquals(Sha256.image(cabezas), world.addons()[pak(1, "dir")], name)
+                assertEquals(setOf(pak(98, "dir"), pak(99, "dir")), world.addons().keys, "$name: the new files whole, with no anchor left")
+                assertEquals(Sha256.image(werewolf), world.addons()[pak(99, "dir")], name)
+                assertEquals(Sha256.image(cabezas), world.addons()[pak(98, "dir")], name)
             }
             assertEquals(name == "copying the new file", now == old, "$name: only a crash before anything is renamed is undone")
         }
@@ -699,12 +701,12 @@ class MultiFileInstallTest {
         val world = World()
         changeStoppedOnceCommitted(world)
         val changed = FakeVpk.directory(seed = 9)
-        world.files.rewrite(root, "$addons/${pak(1, "dir")}", changed)
+        world.files.rewrite(root, "$addons/${pak(98, "dir")}", changed)
 
         with(world) { library() }
         assertNull(world.manifest().pending)
         assertEquals(listOf(103L, 102L), world.record().sets.map { it.fileId })
-        assertEquals(mapOf(pak(1, "dir") to Sha256.image(changed), pak(2, "dir") to Sha256.image(werewolf)), world.addons(), "the moved file keeps what it holds now, with no anchor or copy beside it")
+        assertEquals(mapOf(pak(98, "dir") to Sha256.image(changed), pak(99, "dir") to Sha256.image(werewolf)), world.addons(), "the moved file keeps what it holds now, with no anchor or copy beside it")
     }
 
     @Test
@@ -722,8 +724,8 @@ class MultiFileInstallTest {
             val case = if (deleted) "deleted" else "replaced"
             val world = World()
             val change = changeStoppedOnceCommitted(world)
-            val name = "$addons/${pak(if (moved) 1 else 2, "dir")}"
-            val fed = "${pak(2, "dir")}$TemporaryInfix${change.token.value}${if (moved) "" else "-new"}"
+            val name = "$addons/${pak(if (moved) 98 else 99, "dir")}"
+            val fed = "${pak(99, "dir")}$TemporaryInfix${change.token.value}${if (moved) "" else "-new"}"
             if (deleted) world.files.remove(root, name) else world.files.putBytes(root, name, FakeVpk.directory(seed = 9))
 
             with(world) { library() }
@@ -738,13 +740,13 @@ class MultiFileInstallTest {
     fun anAnchorOfAFileThatWentWhoseBytesChangedOnceAChangeOfFilesIsCommittedStaysAndIsReported() = runTest {
         val world = World()
         val change = changeStoppedOnceCommitted(world)
-        val anchor = "${pak(1, "dir")}$TemporaryInfix${change.token.value}"
+        val anchor = "${pak(98, "dir")}$TemporaryInfix${change.token.value}"
         val changed = FakeVpk.directory(seed = 9)
         world.files.rewrite(root, "$addons/$anchor", changed)
 
         with(world) { library() }
         assertNull(world.manifest().pending)
-        assertEquals(mapOf(pak(1, "dir") to Sha256.image(cabezas), pak(2, "dir") to Sha256.image(werewolf), anchor to Sha256.image(changed)), world.addons(), "Default's directory anchor holds bytes no one recorded, so it stays, and nothing else does")
+        assertEquals(mapOf(pak(98, "dir") to Sha256.image(cabezas), pak(99, "dir") to Sha256.image(werewolf), anchor to Sha256.image(changed)), world.addons(), "Default's directory anchor holds bytes no one recorded, so it stays, and nothing else does")
         assertTrue(world.logged.any { "$addons/$anchor" in it }, "and is reported left in place")
     }
 
@@ -752,9 +754,9 @@ class MultiFileInstallTest {
     fun aNameTakenAgainAsItsAnchorGoesInAnUndoneChangeOfFilesKeepsTheAnchorAndTheUndoWaits() = runTest {
         val (world, library) = installed(101, 103)
         val old = world.record()
-        val directory = "$addons/${pak(1, "dir")}"
+        val directory = "$addons/${pak(98, "dir")}"
         val stranger = FakeVpk.directory(seed = 12)
-        world.files.failing += FaultPoint.Link("$addons/${pak(2, "dir")}")
+        world.files.failing += FaultPoint.Link("$addons/${pak(99, "dir")}")
         world.store.afterStore = { if ((it.pending as? PendingChange.Replace)?.step == ReplaceStep.RollingBack) world.files.failing.clear() }
         world.files.around = { point ->
             if (point is FaultPoint.Remove && point.path.startsWith("$directory$TemporaryInfix")) {
@@ -767,7 +769,7 @@ class MultiFileInstallTest {
         val change = assertIs<PendingChange.Replace>(world.manifest().pending)
         assertEquals(ReplaceStep.RollingBack, change.step, "the undo waits")
         assertEquals(old, world.record())
-        assertEquals(Sha256.image(stranger), world.addons()[pak(1, "dir")], "the file put at the name stays")
-        assertEquals(Sha256.image(defaultDir), world.addons()["${pak(1, "dir")}$TemporaryInfix${change.token.value}"], "and Default's directory stays under its anchor, its only copy")
+        assertEquals(Sha256.image(stranger), world.addons()[pak(98, "dir")], "the file put at the name stays")
+        assertEquals(Sha256.image(defaultDir), world.addons()["${pak(98, "dir")}$TemporaryInfix${change.token.value}"], "and Default's directory stays under its anchor, its only copy")
     }
 }

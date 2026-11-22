@@ -188,10 +188,10 @@ class MigrationTest {
         migration.import(dmm, ImportChoice.Everything)
         settle()
         assertEquals(ImportPhase.Finished(ImportSummary(on = 1, off = 1, profiles = listOf("Default Profile"), crosshair = true, commands = 0)), migration.state.value.run?.phase)
-        assertEquals(listOf("$citadel/addons/pak01_dir.vpk"), inAddons(), "the one copy left is the record's, so no copy loads untracked and no profile folder stays")
+        assertEquals(listOf("$citadel/addons/pak99_dir.vpk"), inAddons(), "the one copy left is the record's, so no copy loads untracked and no profile folder stays")
         val installed = world.store.manifest!!.records.single { it.title == "Classic Investments" }
-        assertEquals(1, installed.number)
-        assertContentEquals(classic, world.files.bytes(root, "$citadel/addons/pak01_dir.vpk"))
+        assertEquals(99, installed.number)
+        assertContentEquals(classic, world.files.bytes(root, "$citadel/addons/pak99_dir.vpk"))
         assertEquals(setOf(CitadelPath("addons/pak01_dir.vpk"), CitadelPath("$ranked/pak01_dir.vpk")), world.record().adopted.filterValues { it == Sha256.image(classic) }.keys, "the record says where each copy was, found in library.json by its bytes")
 
         world.library.setEnabled(installed.installId, false)
@@ -343,7 +343,7 @@ class MigrationTest {
         assertIs<MutationResult.Done<SwitchSummary>>(world.library.switchProfile(ranked.id))
         settle()
         assertEquals(listOf(second, first), onLoadOrder(world.store.manifest!!.records))
-        assertEquals(listOf(1, 10), listOf(second, first).map { id -> world.store.manifest!!.records.single { it.installId == id }.number }, "the switch moves one file, to the lowest number before the other")
+        assertEquals(listOf(11, 99), listOf(second, first).map { id -> world.store.manifest!!.records.single { it.installId == id }.number }, "the switch moves one file, to the highest number after the other")
         assertNull(world.store.manifest!!.savedChoices)
     }
 
@@ -486,14 +486,14 @@ class MigrationTest {
     }
 
     @Test
-    fun withNoModsOfHideoutsAGrimoireImportTakesTheFirstNumbers() = runTest {
+    fun withNoModsOfHideoutsAGrimoireImportTakesTheHighestNumbers() = runTest {
         val world = World(seed = ForeignSeed.Grimoire)
         val migration = with(world) { start() }
         migration.import(ImportSource.Installed(Manager.Grimoire), ImportChoice.Everything)
         settle()
         assertIs<ImportPhase.Finished>(migration.state.value.run?.phase)
         val records = world.store.manifest!!.records
-        assertEquals(listOf(1, 2, null), records.map { it.numbers.firstOrNull()?.value }.sortedBy { it ?: Int.MAX_VALUE }, "the two that load take the first numbers, and the disabled one comes in off")
+        assertEquals(listOf(98, 99, null), records.map { it.numbers.firstOrNull()?.value }.sortedBy { it ?: Int.MAX_VALUE }, "the two that load take the highest numbers, and the disabled one comes in off")
         assertEquals(listOf(SampleForeign.lockerCards, SampleForeign.skyline).map(Sha256::image), records.filter { it.enabled }.sortedBy { it.numbers.first() }.map { it.files.single().image }, "in the order Grimoire's folder loads them")
         val off = records.single { !it.enabled }
         assertTrue(off.files.all { it.citadelPath(off).value.startsWith("hideout_off/${off.modId}/set-") }, "the disabled one in its own off folder, under a name that holds no number")

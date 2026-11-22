@@ -84,14 +84,14 @@ class PlanPlacementTest {
     }
 
     @Test
-    fun aHundredAndFiftySetOrderFillsAddonsAndRunsOnInTheNextFolder() {
+    fun aHundredAndFiftySetOrderEndsAddonsAndRunsOnInTheNextFolder() {
         val records = (1..150).map { mod(it, listOf(1)) }
         val order = records.map { it.installId }
         val planned = planPlacement(records, profile(order.toSet(), order), emptySet())
         assertEquals(emptySet(), planned.pastLimit)
-        assertEquals(order.zip(1..150).toMap(), firsts(planned.records))
-        assertEquals(List(99) { SetFolder.Addons } + List(51) { SetFolder.On(2) }, planned.records.map { it.setFolder() })
-        assertEquals("game/citadel/hideout_addons2/pak51_dir.vpk", planned.records.last().let { it.files.single().relativePath(it) })
+        assertEquals(order.zip(49..198).toMap(), firsts(planned.records))
+        assertEquals(List(51) { SetFolder.Addons } + List(99) { SetFolder.On(2) }, planned.records.map { it.setFolder() })
+        assertEquals("game/citadel/hideout_addons2/pak99_dir.vpk", planned.records.last().let { it.files.single().relativePath(it) })
     }
 
     @Test
@@ -99,7 +99,7 @@ class PlanPlacementTest {
         val records = (1..99).map { mod(it, listOf(1), on(it)) } + mod(100, listOf(2))
         val order = records.map { it.installId }
         val planned = planPlacement(records, profile(order.toSet(), order), emptySet())
-        assertEquals(listOf(Move(records.last(), records.last().placed(on(100)))), movesBetween(records, planned.records))
+        assertEquals(listOf(Move(records.last(), records.last().placed(on(198)))), movesBetween(records, planned.records))
     }
 
     @Test
@@ -144,7 +144,7 @@ class PlanPlacementTest {
         val order = records.map { it.installId }
         val planned = planPlacement(records, profile(order.toSet(), order), emptySet())
         assertEquals(setOf("m1"), planned.pastLimit)
-        assertEquals(mapOf("m1" to null, "m2" to 1, "m3" to 2), firsts(planned.records))
+        assertEquals(mapOf("m1" to null, "m2" to 98, "m3" to 99), firsts(planned.records))
     }
 
     @Test
@@ -182,7 +182,7 @@ class PlanPlacementTest {
             fun own(block: Block, first: Int): Long? {
                 if (free[first] < block.width || block.fixed && block.held.first() != first) return null
                 val renamed = block.held.indices.sumOf { set -> if (block.held[set] == first + set) 0 else if (block.stuck) StuckRename else block.files[set] }
-                return (renamed.toLong() shl 32) + first
+                return (renamed.toLong() shl 32) + Top - first
             }
 
             val best = Array(blocks.size) { LongArray(Top + 1) { Unplaced } }
@@ -193,7 +193,7 @@ class PlanPlacementTest {
                 var cheapestAt = 0
                 for (first in 1..Top) {
                     val before = first - blocks[index - 1].width
-                    if (before >= 1 && best[index - 1][before] < cheapest) {
+                    if (before >= 1 && best[index - 1][before] <= cheapest) {
                         cheapest = best[index - 1][before]
                         cheapestAt = before
                     }
@@ -203,7 +203,7 @@ class PlanPlacementTest {
                     previous[index][first] = cheapestAt
                 }
             }
-            var first = (1..Top).filter { best.last()[it] != Unplaced }.minByOrNull { best.last()[it] } ?: return null
+            var first = (Top downTo 1).filter { best.last()[it] != Unplaced }.minByOrNull { best.last()[it] } ?: return null
             val firsts = IntArray(blocks.size)
             for (index in blocks.indices.reversed()) {
                 firsts[index] = first

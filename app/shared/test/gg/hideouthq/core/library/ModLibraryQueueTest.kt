@@ -391,8 +391,8 @@ class ModLibraryQueueTest {
             world.processes.scan = ProcessScan.Seen()
             advanceTimeBy(2.seconds)
             runCurrent()
-            assertEquals(setOf("pak01_dir.vpk", "pak01_000.vpk"), world.addonsFiles().keys, "$name: on once Deadlock closes, with no copy left")
-            assertEquals(Sha256.image(chunk0), world.addonsFiles()["pak01_000.vpk"])
+            assertEquals(setOf("pak99_dir.vpk", "pak99_000.vpk"), world.addonsFiles().keys, "$name: on once Deadlock closes, with no copy left")
+            assertEquals(Sha256.image(chunk0), world.addonsFiles()["pak99_000.vpk"])
             assertTrue(world.downloader.requested.all { it == 31L }, name)
             assertNull(assertIs<LibraryStatus.Ready>(library.state.value.library).interrupted)
         }

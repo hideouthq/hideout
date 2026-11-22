@@ -467,9 +467,9 @@ class ModLibraryCompatibilityTest {
         library.setEnabled("d", true)
         runCurrent()
         val on = world.record("d")
-        assertEquals(listOf(1, 2), on.numbers.map { it.value })
+        assertEquals(listOf(98, 99), on.numbers.map { it.value })
         assertTrue(world.port.checked.count { it == "d" } > checks, "the files it is checked against changed, so it is checked again")
-        assertEquals(Provider(1, "$addons/pak01_dir.vpk", "d", Sha256.image(body)), world.port.above.getValue("d").single { it.installId == "d" }, "on, by its number")
+        assertEquals(Provider(98, "$addons/pak98_dir.vpk", "d", Sha256.image(body)), world.port.above.getValue("d").single { it.installId == "d" }, "on, by its number")
     }
 
     private fun remote(id: Long, md5: String) = RemoteFile(id, "lilith_$id.zip", 1_000, md5, null, 1_000, addedAt = 1_777_000_000, downloadUrl = "https://gamebanana.com/dl/$id")

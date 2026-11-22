@@ -141,7 +141,7 @@ class ModLibraryTakeoverTest {
         val trace = traced(dry) { launch { outcome = it.takeOver(importing) {} } }
         assertEquals(TakeoverOutcome.Done(on = 2, off = 1, profiles = emptyList(), commands = 1), outcome)
         val adopted = dry.store.manifest!!.records.associate { it.title to it.numbers.map { number -> number.value } }
-        assertEquals(mapOf("Claimed" to listOf(1), "Parked" to emptyList(), "Split" to listOf(2, 3)), adopted, "the claimed one where it loads, the split one on after it once the worker turns it on, the parked one off")
+        assertEquals(mapOf("Claimed" to listOf(1), "Parked" to emptyList(), "Split" to listOf(98, 99)), adopted, "the claimed one where it loads, the split one on after it once the worker turns it on, the parked one off")
         assertTrue(trace.points.size > 20, "the trace has ${trace.points}")
 
         crashAtEveryStep(trace, ::world, { launch { it.takeOver(importing) {} } }) { world, _ ->
