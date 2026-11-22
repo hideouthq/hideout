@@ -842,6 +842,17 @@ class DesktopPortsTest {
     }
 
     @Test
+    fun aGameThatStartsBetweenTwoScansIsSeenByTheSecond() = runBlocking<Unit> {
+        val table = table()
+        process(30, listOf("/usr/bin/bash"), "bash")
+        assertEquals(ProcessScan.Seen(), table.scan())
+        val game = process(31, listOf("""S:\common\Deadlock\game\bin\win64\deadlock.exe"""), "wine64-preload")
+        assertEquals(ProcessScan.Seen(game = true), table.scan(), "its command line names it though its name does not")
+        game.resolve("stat").writeBytes("31 (wine64-preload) Z 1".encodeToByteArray())
+        assertEquals(ProcessScan.Seen(), table.scan())
+    }
+
+    @Test
     fun aZombieGameIsNotARunningGame() = runBlocking<Unit> {
         val game = process(36, listOf("""S:\common\Deadlock\game\bin\win64\deadlock.exe"""), "deadlock.exe")
         game.resolve("stat").writeBytes("36 (deadlock.exe) Z 1 36 36 0 -1 4227084 0 0 0 0".encodeToByteArray())

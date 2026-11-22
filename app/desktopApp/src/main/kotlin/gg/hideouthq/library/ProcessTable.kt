@@ -16,6 +16,7 @@ import com.sun.jna.platform.win32.WinNT
 import com.sun.jna.ptr.IntByReference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.FileInputStream
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
@@ -39,10 +40,9 @@ class ProcessTable(
     }
 
     private fun gameInProc(proc: Path): List<Long> = Files.newDirectoryStream(proc).use { entries ->
-        entries.mapNotNull { entry -> entry.fileName.toString().toLongOrNull()?.takeIf { isGame(observe(entry)) } }
+        val buffer = ByteArray(MaxBytes)
+        entries.mapNotNull { entry -> entry.fileName.toString().toLongOrNull()?.takeIf { observe(entry, buffer) == KnownProcess.Game } }
     }
-
-    private fun isGame(seen: Observed?) = seen != null && knownProcess(seen.argv0, seen.name) == KnownProcess.Game
 
     override suspend fun scan(): ProcessScan = withContext(Dispatchers.IO) {
         when (source) {
@@ -58,27 +58,24 @@ class ProcessTable(
         } catch (e: IOException) {
             return ProcessScan.Unknown(e.message ?: "$proc could not be read")
         }
-        val known = pids.mapNotNullTo(mutableSetOf()) { pid -> observe(proc.resolve(pid.toString()))?.let { knownProcess(it.argv0, it.name) } }
+        val buffer = ByteArray(MaxBytes)
+        val known = pids.mapNotNullTo(mutableSetOf()) { pid -> observe(proc.resolve(pid.toString()), buffer) }
         return scanOf(known)
     }
 
-    private class Observed(val argv0: String, val name: String)
-
-    private fun observe(folder: Path): Observed? = try {
-        if (zombie(folder)) null
-        else {
-            val cmdline = read(folder.resolve("cmdline"))
-            val name = read(folder.resolve("comm")).decodeToString().trimEnd('\n')
-            Observed(cmdline.copyOf(cmdline.indexOf(0).takeIf { it >= 0 } ?: cmdline.size).decodeToString(), name)
-        }
+    /** `stat` costs about as much as `cmdline` and `comm` together, so only a process those two name is asked whether it has exited. */
+    private fun observe(folder: Path, buffer: ByteArray): KnownProcess? = try {
+        val argv0 = read(folder.resolve("cmdline"), buffer).let { size -> buffer.decodeToString(0, (0 until size).firstOrNull { buffer[it] == 0.toByte() } ?: size) }
+        val name = buffer.decodeToString(0, read(folder.resolve("comm"), buffer)).trimEnd('\n')
+        knownProcess(argv0, name)?.takeUnless { zombie(folder, buffer) }
     } catch (_: IOException) {
         null
     }
 
     /** Whether `stat`'s state, the field after the name in parentheses, says the process has exited and waits to be reaped. */
-    private fun zombie(folder: Path): Boolean {
+    private fun zombie(folder: Path, buffer: ByteArray): Boolean {
         val stat = try {
-            read(folder.resolve("stat")).decodeToString()
+            buffer.decodeToString(0, read(folder.resolve("stat"), buffer))
         } catch (_: IOException) {
             return false
         }
@@ -94,7 +91,16 @@ class ProcessTable(
     private fun scanOf(known: Collection<KnownProcess>): ProcessScan =
         ProcessScan.Seen(KnownProcess.Game in known, known.filterIsInstance<KnownProcess.OtherManager>().map { it.manager }.toSet())
 
-    private fun read(file: Path): ByteArray = Files.newInputStream(file).use { it.readNBytes(MaxBytes) }
+    /** A scan reads hundreds of these, and through Files.newInputStream each read takes about twice as long. */
+    private fun read(file: Path, buffer: ByteArray): Int = FileInputStream(file.toFile()).use { input ->
+        var size = 0
+        while (size < buffer.size) {
+            val read = input.read(buffer, size, buffer.size - size)
+            if (read < 0) break
+            size += read
+        }
+        size
+    }
 
     private companion object {
         const val MaxBytes = 64 * 1024
