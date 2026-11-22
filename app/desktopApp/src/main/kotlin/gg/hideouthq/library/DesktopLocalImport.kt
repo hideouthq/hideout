@@ -18,7 +18,6 @@ import kotlinx.coroutines.withContext
 import java.nio.file.Files
 import java.nio.file.Path
 import java.security.DigestInputStream
-import java.security.MessageDigest
 import java.util.UUID
 
 class DesktopLocalImport(private val directory: Path) : LocalImport {
@@ -29,7 +28,7 @@ class DesktopLocalImport(private val directory: Path) : LocalImport {
         return try {
             runInterruptible(Dispatchers.IO) {
                 Files.createDirectories(directory)
-                val digest = MessageDigest.getInstance("SHA-256")
+                val digest = sha256()
                 val size = DigestInputStream(Files.newInputStream(Path.of(file.path)), digest).use { Files.copy(it, copy) }
                 if (size == 0L) {
                     Files.delete(copy)

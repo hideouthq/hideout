@@ -1,14 +1,12 @@
 package gg.hideouthq.library
 
 import gg.hideouthq.core.library.FileImage
-import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.attribute.FileTime
-import java.security.MessageDigest
 import java.time.Duration
 import java.time.Instant
 
@@ -57,15 +55,8 @@ internal object KnownBytes {
     fun read(file: Path): FileImage {
         val started = Instant.now()
         val stamp = stampOf(file)
-        val digest = MessageDigest.getInstance("SHA-256")
-        var size = 0L
-        FileChannel.open(file, StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS).use { channel ->
-            val buffer = ByteBuffer.allocate(1 shl 16)
-            while (channel.read(buffer.clear()) >= 0) {
-                digest.update(buffer.array(), 0, buffer.position())
-                size += buffer.position()
-            }
-        }
+        val digest = sha256()
+        val size = FileChannel.open(file, StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS).use { it.digestRest(digest) }
         val image = FileImage(size, digest.digest().toHexString())
         if (stamp != null && stamp.size == size && stamp.settledBy(started) && stampOf(file) == stamp) remember(file, Reading(stamp, image))
         return image

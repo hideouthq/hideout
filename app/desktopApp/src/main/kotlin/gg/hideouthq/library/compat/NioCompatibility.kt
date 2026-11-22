@@ -36,6 +36,7 @@ import gg.hideouthq.library.headOf
 import gg.hideouthq.library.measure
 import gg.hideouthq.library.publishFolder
 import gg.hideouthq.library.retainedFile
+import gg.hideouthq.library.sha256
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.BufferedOutputStream
@@ -49,7 +50,6 @@ import java.nio.file.LinkOption
 import java.nio.file.NoSuchFileException
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
-import java.security.MessageDigest
 import java.time.Instant
 import java.util.UUID
 
@@ -385,7 +385,7 @@ class NioCompatibility(private val originalsRoot: Path, private val stagingRoot:
         private fun newFile(path: Path): DurableFile = DurableFile(FileChannel.open(path, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE))
 
         private fun copy(from: Path, to: OutputStream): FileImage {
-            val digest = MessageDigest.getInstance("SHA-256")
+            val digest = sha256()
             var size = 0L
             FileChannel.open(from, StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS).use { channel ->
                 val buffer = ByteBuffer.allocate(CopyBytes)

@@ -1,6 +1,7 @@
 package gg.hideouthq.viewer
 
 import gg.hideouthq.data.preview.PreviewFileException
+import gg.hideouthq.library.sha256
 import gg.hideouthq.preview.MAX_DECODED_MODEL_BYTES
 import gg.hideouthq.preview.MAX_EXPANDED_MODEL_BYTES
 import gg.hideouthq.preview.PreviewAsset
@@ -20,7 +21,6 @@ import java.io.InputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.security.DigestInputStream
-import java.security.MessageDigest
 import java.util.HexFormat
 
 class DecodedModel(val glb: ByteArray, val textures: PackedTextures)
@@ -42,7 +42,7 @@ object SceneDecoder {
         currentCoroutineContext().ensureActive()
         val encoding = requireNotNull(asset.encoding) { "The model is not zstd-encoded" }
         require(encoding.codec == "zstd" && encoding.decodedBytes in 1..MAX_DECODED_MODEL_BYTES) { "Invalid model encoding" }
-        val digest = MessageDigest.getInstance("SHA-256")
+        val digest = sha256()
         return ZstdInputStream(object : FilterInputStream(stored) { override fun close() = Unit }).use { zstd ->
             val decoded = DigestInputStream(zstd, digest)
             val model = read(decoded, asset.path, clips, encoding.decodedBytes)

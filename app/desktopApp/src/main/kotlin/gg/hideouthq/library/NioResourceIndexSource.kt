@@ -18,14 +18,13 @@ import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
 import java.security.DigestInputStream
-import java.security.MessageDigest
 
 class NioResourceIndexSource : ResourceIndexSource {
     override suspend fun read(root: GameRoot, relativePath: String, image: FileImage): ResourceIndex = withContext(Dispatchers.IO) {
         try {
             FileChannel.open(Path.of(root.path).resolve(relativePath), StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS).use { channel ->
                 if (channel.size() != image.sizeBytes) return@use ResourceIndex.Unavailable
-                val digest = MessageDigest.getInstance("SHA-256")
+                val digest = sha256()
                 val input = DigestInputStream(Channels.newInputStream(channel), digest)
                 val prefix = input.readNBytes(VpkFormat.PrefixBytes)
                 val length = VpkFormat.headLength(prefix, image.sizeBytes) as? VpkHead.Length ?: return@use ResourceIndex.Unavailable

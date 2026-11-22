@@ -54,6 +54,7 @@ import gg.hideouthq.library.WindowsRegistry
 import gg.hideouthq.library.deleteTree
 import gg.hideouthq.library.readSmallText
 import gg.hideouthq.library.retryingBusy
+import gg.hideouthq.library.sha256
 import gg.hideouthq.library.steamInstalls
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.Dispatchers
@@ -69,7 +70,6 @@ import java.nio.file.Files
 import java.nio.file.InvalidPathException
 import java.nio.file.Path
 import java.security.DigestOutputStream
-import java.security.MessageDigest
 import java.time.LocalDateTime
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
@@ -193,7 +193,7 @@ class DesktopCustomGames internal constructor(
     }
 
     private fun packContent(built: Path): SharedPack {
-        val digest = MessageDigest.getInstance("SHA-256")
+        val digest = sha256()
         ZipOutputStream(DigestOutputStream(Files.newOutputStream(localContent).buffered(), digest)).use { zip ->
             for (name in builtFiles(built).filter(::isContent).sortedBy { it.invariantSeparatorsPathString }) {
                 zip.putNextEntry(ZipEntry(name.invariantSeparatorsPathString).apply { timeLocal = ZipTime })

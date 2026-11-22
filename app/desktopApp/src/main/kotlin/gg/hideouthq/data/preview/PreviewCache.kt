@@ -6,6 +6,7 @@ import gg.hideouthq.core.data.preview.PreviewSource
 import gg.hideouthq.data.desktopEngine
 import gg.hideouthq.library.DesktopInstall
 import gg.hideouthq.library.deleteTree
+import gg.hideouthq.library.sha256
 import gg.hideouthq.preview.IndexEntry
 import gg.hideouthq.preview.MANIFEST_FILE
 import gg.hideouthq.preview.PreviewAsset
@@ -34,7 +35,6 @@ import java.nio.file.StandardCopyOption
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.attribute.FileTime
 import java.security.DigestInputStream
-import java.security.MessageDigest
 import java.time.Instant
 import java.util.HexFormat
 import java.util.concurrent.ConcurrentHashMap
@@ -85,7 +85,7 @@ class PreviewCache(baseUrl: String, val root: Path, userAgent: String, key: Prev
     private suspend fun <T> readKept(file: Path, asset: PreviewAsset, onKept: () -> Unit, read: suspend (InputStream) -> T): T? {
         if (!Files.isRegularFile(file) || Files.size(file) != asset.bytes) return null
         onKept()
-        val digest = MessageDigest.getInstance("SHA-256")
+        val digest = sha256()
         val outcome = DigestInputStream(Files.newInputStream(file), digest).use { stream ->
             val outcome = try {
                 Result.success(read(stream))
@@ -107,7 +107,7 @@ class PreviewCache(baseUrl: String, val root: Path, userAgent: String, key: Prev
         val received = Files.createTempFile(target.parent, ".download-", ".part")
         val unzipped = received.resolveSibling("${received.fileName}.unzipped")
         try {
-            val digest = MessageDigest.getInstance("SHA-256")
+            val digest = sha256()
             val (zipped, tag) = client.prepareGet(url) { header(HttpHeaders.AcceptEncoding, "gzip") }.execute { response ->
                 if (response.status != HttpStatusCode.OK) refused(response.status, url)
                 val zipped = zipped(response.headers[HttpHeaders.ContentEncoding], url)

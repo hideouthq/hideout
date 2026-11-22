@@ -3,6 +3,7 @@ package gg.hideouthq.library.compat
 import gg.hideouthq.core.library.FileEvidence
 import gg.hideouthq.core.library.FileImage
 import gg.hideouthq.core.library.ReadSpan
+import gg.hideouthq.library.sha256
 import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
@@ -72,7 +73,7 @@ internal class ReadLog {
             return channel.use {
                 try {
                     if (evidence.sizeBytes == null || it.size() != evidence.sizeBytes) return@use false
-                    val digest = MessageDigest.getInstance("SHA-256")
+                    val digest = sha256()
                     for (span in evidence.reads) {
                         var at = 0L
                         while (at < span.length) {

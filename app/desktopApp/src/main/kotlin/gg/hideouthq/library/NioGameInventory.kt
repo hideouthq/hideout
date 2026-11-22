@@ -28,7 +28,6 @@ import java.nio.file.Path
 import java.nio.file.StandardOpenOption
 import java.nio.file.attribute.BasicFileAttributes
 import java.security.DigestInputStream
-import java.security.MessageDigest
 import java.util.zip.CRC32
 import java.util.zip.CheckedInputStream
 import kotlin.io.path.invariantSeparatorsPathString
@@ -150,7 +149,7 @@ object NioGameInventory : GameInventory {
 
 internal fun lookVpk(file: Path): VpkLook.Present = Files.newByteChannel(file, StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS).use { channel ->
     val total = channel.size()
-    val digest = MessageDigest.getInstance("SHA-256")
+    val digest = sha256()
     val crc = CRC32()
     val input = DigestInputStream(CheckedInputStream(Channels.newInputStream(channel), crc), digest)
     val prefix = input.readNBytes(VpkFormat.PrefixBytes)

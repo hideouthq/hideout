@@ -51,7 +51,6 @@ import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 import java.nio.file.StandardOpenOption
 import java.nio.file.attribute.BasicFileAttributes
-import java.security.MessageDigest
 import java.util.UUID
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
@@ -220,7 +219,7 @@ class NioModInstaller(
 
     private class StagingSink(file: Path, private val budget: ArchiveBudget, private val entry: String, private val limit: Long) : OutputStream() {
         private val channel = FileChannel.open(file, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)
-        private val digest = MessageDigest.getInstance("SHA-256")
+        private val digest = sha256()
         private var hash: String? = null
         var size = 0L
             private set

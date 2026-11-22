@@ -5,13 +5,11 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.IOException
-import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 import java.nio.file.StandardOpenOption
-import java.security.MessageDigest
 
 internal data class Blob(val url: String, val sizeBytes: Long, val sha256: String)
 
@@ -32,11 +30,8 @@ internal suspend fun transferVerified(client: HttpClient, blob: Blob, part: Path
 
 internal fun holdsBlob(file: Path, sizeBytes: Long, sha256: String): Boolean {
     if (!Files.isRegularFile(file) || Files.size(file) != sizeBytes) return false
-    val digest = MessageDigest.getInstance("SHA-256")
-    FileChannel.open(file, StandardOpenOption.READ).use { channel ->
-        val buffer = ByteBuffer.allocate(1 shl 16)
-        while (channel.read(buffer.clear()) >= 0) digest.update(buffer.array(), 0, buffer.position())
-    }
+    val digest = sha256()
+    FileChannel.open(file, StandardOpenOption.READ).use { it.digestRest(digest) }
     return digest.digest().toHexString() == sha256
 }
 

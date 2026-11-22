@@ -218,16 +218,8 @@ class HttpDownloader(
 
     private fun check(part: Path, file: RemoteFile): Check {
         val md5 = MessageDigest.getInstance("MD5")
-        val sha = MessageDigest.getInstance("SHA-256")
-        var size = 0L
-        FileChannel.open(part, StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS).use { channel ->
-            val buffer = ByteBuffer.allocate(1 shl 16)
-            while (channel.read(buffer.clear()) >= 0) {
-                md5.update(buffer.array(), 0, buffer.position())
-                sha.update(buffer.array(), 0, buffer.position())
-                size += buffer.position()
-            }
-        }
+        val sha = sha256()
+        val size = FileChannel.open(part, StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS).use { it.digestRest(md5, sha) }
         if (size != file.sizeBytes) return Check.Bad(DownloadProblem.SizeMismatch(file.sizeBytes, size))
         val actualMd5 = md5.digest().toHexString()
         val expectedMd5 = file.md5
