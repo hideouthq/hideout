@@ -97,10 +97,14 @@ class LibraryBench {
         val dir = Path.of(System.getenv("HIDEOUT_BENCH_DIR") ?: "/home/ms02/bench-run")
         val realGame = Path.of(System.getenv("HIDEOUT_BENCH_GAME") ?: "/home/ms02/.steam/debian-installation/steamapps/common/Deadlock")
         val runs = System.getenv("HIDEOUT_BENCH_RUNS")?.toInt() ?: 5
-        val failures = Bench(Path.of(mods), dir, realGame, runs).run()
+        var failures = 0
+        HashedFiles.during { hashed = it; failures = Bench(Path.of(mods), dir, realGame, runs).run() }
         assertEquals(0, failures, "failed ops")
     }
 }
+
+/** Every SHA-256 the bench's library made, so each op can say how often it hashed its mod's bytes. */
+private lateinit var hashed: HashedFiles
 
 private class Meter {
     class Call(val start: Long, val end: Long)
@@ -569,13 +573,22 @@ private class Bench(private val mods: Path, private val dir: Path, private val r
             put("savesToIdle", rig.saves.window(start, end))
             put("compatToIdle", JsonObject(rig.compat.mapValues { it.value.window(start, end) }))
             put("hashesToApplied", rig.hashes.window(start, applied))
+            put("sha256", buildJsonObject {
+                (extra["bytes"] as? Long)?.let { bytes ->
+                    put("ofModToApplied", hashed.of(bytes, start, applied))
+                    put("ofModToIdle", hashed.of(bytes, start, end))
+                    put("ofModBy", JsonObject(hashed.by(bytes, start, end).mapValues { JsonPrimitive(it.value) }))
+                }
+                put("mbOver1MbToApplied", hashed.bytesOver(1_000_000, start, applied) / 1e6)
+                put("mbOver1MbToIdle", hashed.bytesOver(1_000_000, start, end) / 1e6)
+            })
             put("httpRequests", rig.requests.get() - requests)
             put("answers", rig.answers.get() - answers)
             put("timeline", JsonArray(rig.timeline.filter { it.first in start..end }.map { JsonArray(listOf(JsonPrimitive(ms(it.first)), JsonPrimitive(it.second))) }))
             put("log", JsonArray(rig.log.filter { it.first in start..end }.map { JsonArray(listOf(JsonPrimitive(ms(it.first)), JsonPrimitive(it.second))) }))
         }
         val last = results.last()
-        println("bench: $name run $run: applied ${"%.0f".format(ms(applied))} ms, compat idle ${"%.0f".format(ms(end))} ms, scans ${last["scansToApplied"]}, saves ${last["savesToApplied"]}, checks ${(last["compatToIdle"] as JsonObject)["check"]}")
+        println("bench: $name run $run: sha256 ${last["sha256"]}, applied ${"%.0f".format(ms(applied))} ms, compat idle ${"%.0f".format(ms(end))} ms, scans ${last["scansToApplied"]}, saves ${last["savesToApplied"]}, checks ${(last["compatToIdle"] as JsonObject)["check"]}")
     }
 
     /**
