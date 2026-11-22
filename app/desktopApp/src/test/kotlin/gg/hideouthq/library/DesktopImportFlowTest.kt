@@ -139,7 +139,7 @@ class DesktopImportFlowTest {
         withTimeout(20_000) { state.first { it.choiceSync == ChoiceSync.Settled && it.library is LibraryStatus.Ready } }.library.let { (it as LibraryStatus.Ready).records }
     }
 
-    private fun fileKey(path: Path): Any = checkNotNull(Files.readAttributes(path, BasicFileAttributes::class.java).fileKey())
+    private fun fileKey(path: Path): Any = checkNotNull(fileIdentity(path, Files.readAttributes(path, BasicFileAttributes::class.java)))
 
     private fun vpks(): Map<String, Any> = Files.walk(citadel).use { paths ->
         paths.filter { Files.isRegularFile(it, java.nio.file.LinkOption.NOFOLLOW_LINKS) && it.fileName.toString().endsWith(".vpk", ignoreCase = true) }.toList()

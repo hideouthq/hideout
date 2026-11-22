@@ -60,7 +60,7 @@ class FileBackupStoreTest {
 
     private fun entry(name: String) = GameEntry(root, SetFolder.Addons, name)
 
-    private fun key(path: Path): Any = Files.readAttributes(path, BasicFileAttributes::class.java).fileKey()
+    private fun key(path: Path): Any = checkNotNull(fileIdentity(path, Files.readAttributes(path, BasicFileAttributes::class.java)))
 
     private fun names(folder: Path): Set<String> = Files.list(folder).use { paths -> paths.map { it.fileName.toString() }.toList().toSet() }
 

@@ -56,7 +56,7 @@ class NioLinksTest {
 
     private fun entry(folder: SetFolder, name: String) = GameEntry(root, folder, name)
 
-    private fun fileKey(path: Path): Any = checkNotNull(Files.readAttributes(path, BasicFileAttributes::class.java).fileKey()) {
+    private fun fileKey(path: Path): Any = checkNotNull(fileIdentity(path, Files.readAttributes(path, BasicFileAttributes::class.java))) {
         "The fixture filesystem must expose file identity: $path"
     }
 

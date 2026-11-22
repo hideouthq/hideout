@@ -352,7 +352,7 @@ class NioModInstallerTest {
         val refusing = NioModInstaller(staging, linker = Linker { link, _ -> throw FileSystemException(link.toString(), null, "Operation not permitted") })
         refusing.stage(root, SetFolder.Addons, stagedSingle(), "pak04_dir.vpk.hideout-a1")
         assertEquals(PublishResult.Published, refusing.publish(root, SetFolder.Addons, "pak04_dir.vpk.hideout-a1", "pak04_dir.vpk"))
-        assertNotEquals(Files.readAttributes(addons.resolve("pak04_dir.vpk"), BasicFileAttributes::class.java).fileKey(), Files.readAttributes(addons.resolve("pak04_dir.vpk.hideout-a1"), BasicFileAttributes::class.java).fileKey(), "a copy")
+        assertNotEquals(fileIdentity(addons.resolve("pak04_dir.vpk"), Files.readAttributes(addons.resolve("pak04_dir.vpk"), BasicFileAttributes::class.java)), fileIdentity(addons.resolve("pak04_dir.vpk.hideout-a1"), Files.readAttributes(addons.resolve("pak04_dir.vpk.hideout-a1"), BasicFileAttributes::class.java)), "a copy")
         assertTrue(refusing.sameFile(root, SetFolder.Addons, "pak04_dir.vpk.hideout-a1", "pak04_dir.vpk"))
         assertEquals(PublishResult.Taken, refusing.publish(root, SetFolder.Addons, "pak04_dir.vpk.hideout-a1", "pak04_dir.vpk"), "never over a name")
         assertEquals(setOf("pak04_dir.vpk", "pak04_dir.vpk.hideout-a1"), names(), "and no copy is left under a name of its own")

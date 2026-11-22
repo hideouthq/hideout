@@ -19,10 +19,11 @@ import java.time.Instant
  * so [NioLinks.remove] reads it.
  *
  * A write shows in the modification time by the time the program writing closes the file, which is all Windows
- * promises, so a write still under way, or one whose tool sets the old time back at the same size, is not seen. Linux
- * tells a file put at the name from the one read by its identity and creation time; Windows has no identity here and
- * can give a new file the creation time of the one it replaced, so there only the modification time shows it. A network
- * mount may answer from attributes it cached for some seconds.
+ * promises, so a write still under way, or one whose tool sets the old time back at the same size, is not seen. A file
+ * put at the name in place of the one read shows by its identity, the inode on Linux and the volume and file id on
+ * Windows, even when it keeps the old one's size and times, as a copy over it or Windows' tunneling of a deleted name's
+ * creation time can. Where the identity is unknown, only the times show it. A network mount may answer from attributes
+ * it cached for some seconds.
  *
  * A reading is kept only once the file's last write is past the coarsest step its file system keeps times in, since
  * until then a second write could carry the same time, and only when nothing changed while it was read. What one name
@@ -35,7 +36,7 @@ internal object KnownBytes {
 
     /** What [file], whose attributes are [attributes], holds: known for it, known for [twin], a name proven one file with it, or read. */
     fun of(file: Path, attributes: BasicFileAttributes, twin: Path? = null): FileImage {
-        val stamp = Stamp(attributes)
+        val stamp = Stamp(file, attributes)
         val image = synchronized(readings) { readings[file] }?.takeIf { it.stamp == stamp }?.image
             ?: twin?.let(::current)?.takeIf { it.stamp == stamp }?.also { remember(file, it) }?.image
             ?: read(file)
@@ -86,16 +87,16 @@ internal object KnownBytes {
         synchronized(readings) { readings[file] = reading }
     }
 
-    private fun stampOf(file: Path): Stamp? = attributesOrNull(file)?.let(::Stamp)
+    private fun stampOf(file: Path): Stamp? = attributesOrNull(file)?.let { Stamp(file, it) }
 
     private const val MaxReadings = 4_096
 }
 
 internal fun measure(file: Path): FileImage = KnownBytes.read(file)
 
-/** A name's file as its attributes show it: its identity where the system gives one, its size, and its modification and creation times. */
+/** A name's file as [attributes] show it: its [fileIdentity] where known, its size, and its modification and creation times. */
 private data class Stamp(val file: Any?, val size: Long, val modified: FileTime, val created: FileTime) {
-    constructor(attributes: BasicFileAttributes) : this(attributes.fileKey(), attributes.size(), attributes.lastModifiedTime(), attributes.creationTime())
+    constructor(name: Path, attributes: BasicFileAttributes) : this(fileIdentity(name, attributes), attributes.size(), attributes.lastModifiedTime(), attributes.creationTime())
 
     /**
      * Whether no write from [now] on can be given the modification time this shows. File systems keep times in steps:

@@ -90,7 +90,7 @@ class DesktopLeftoversTest {
 
     private fun ModLibrary.ready() = state.value.library as LibraryStatus.Ready
 
-    private fun key(path: Path): Any = Files.readAttributes(path, java.nio.file.attribute.BasicFileAttributes::class.java).fileKey()
+    private fun key(path: Path): Any = checkNotNull(fileIdentity(path, Files.readAttributes(path, java.nio.file.attribute.BasicFileAttributes::class.java)))
 
     @Test
     fun aDeadlockFolderOnDiskListsItsLeftoversMovesSomeOutAsTheSameFilesAndKeepsOneInPlace() {

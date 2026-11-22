@@ -617,7 +617,7 @@ class DesktopInstallFlowTest {
 
     private fun records(library: ModLibrary) = (library.state.value.library as LibraryStatus.Ready).records
 
-    private fun fileKey(path: Path): Any = checkNotNull(Files.readAttributes(path, BasicFileAttributes::class.java).fileKey()) {
+    private fun fileKey(path: Path): Any = checkNotNull(fileIdentity(path, Files.readAttributes(path, BasicFileAttributes::class.java))) {
         "The fixture filesystem must expose file identity: $path"
     }
 
