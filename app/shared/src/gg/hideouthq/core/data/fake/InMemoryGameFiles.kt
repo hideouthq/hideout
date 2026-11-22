@@ -381,6 +381,7 @@ class InMemoryGameFiles : GameInventory, ModInstaller, GameConfig {
     override suspend fun link(existing: GameEntry, created: GameEntry): LinkResult = setFiles.link(existing, created)
     override suspend fun inspect(entry: GameEntry, witness: GameEntry): EntryState = setFiles.inspect(entry, witness)
     override suspend fun removeTwin(entry: GameEntry, witness: GameEntry, expected: FileImage): Removal = setFiles.removeTwin(entry, witness, expected)
+    override suspend fun unlinkTwin(entry: GameEntry, witness: GameEntry): Removal = setFiles.unlinkTwin(entry, witness)
     override suspend fun removeExact(entry: GameEntry, expected: FileImage): Removal = setFiles.removeExact(entry, expected)
 
     private val kept = mutableMapOf<GameRoot, MutableMap<BackupId, Triple<String, String, Map<HeldFile, ByteArray>>>>()
@@ -520,18 +521,23 @@ class InMemoryGameFiles : GameInventory, ModInstaller, GameConfig {
             return remove(entry, expected) { if (isTwin(witness, it)) null else "${name(entry)} is not one file with ${name(witness)}" }
         }
 
+        override suspend fun unlinkTwin(entry: E, witness: E): Removal {
+            blocked(entry)?.let { return Removal.Failed(it) }
+            return remove(entry, expected = null) { if (isTwin(witness, it)) null else "${name(entry)} is not one file with ${name(witness)}" }
+        }
+
         override suspend fun removeExact(entry: E, expected: FileImage): Removal {
             blocked(entry)?.let { return Removal.Failed(it) }
             return remove(entry, expected) { null }
         }
 
-        fun remove(entry: E, expected: FileImage, notOurs: (Node.File) -> String?): Removal {
+        fun remove(entry: E, expected: FileImage?, notOurs: (Node.File) -> String?): Removal {
             val path = path(entry)
             fault(FaultPoint.Remove(path))?.let { return Removal.Failed(it) }
             val node = node(entry) ?: return Removal.Absent
             if (node !is Node.File) return Removal.Kept("$path is not a plain file")
             notOurs(node)?.let { return Removal.Kept(it) }
-            if (node.image != expected) return Removal.Kept("$path changed")
+            if (expected != null && node.image != expected) return Removal.Kept("$path changed")
             delete(entry)
             removedPaths += path
             fault(FaultPoint.RemoveDone(path))?.let { return Removal.Failed(it) }

@@ -137,6 +137,21 @@ class NioLinksTest {
     }
 
     @Test
+    fun anAnchorGoesWhateverItHoldsOnlyWhileItIsOneFileWithItsTwin() = runBlocking<Unit> {
+        val chunk = addons.resolve("pak03_000.vpk").also { it.writeBytes(bytes) }
+        val original = entry(SetFolder.Addons, "pak03_000.vpk")
+        val anchor = entry(SetFolder.Addons, "pak03_000.vpk.hideout-t1")
+        val anchorPath = addons.resolve(anchor.name).also { it.writeBytes(bytes) }
+        assertIs<Removal.Kept>(installer.unlinkTwin(anchor, original), "an equal-byte copy is not a twin")
+        Files.delete(anchorPath)
+        assertEquals(LinkResult.Linked, installer.link(original, anchor))
+        chunk.writeBytes(ByteArray(10))
+        assertEquals(Removal.Removed, installer.unlinkTwin(anchor, original))
+        assertContentEquals(ByteArray(10), chunk.readBytes(), "the bytes live on in the twin")
+        assertEquals(Removal.Absent, installer.unlinkTwin(anchor, original))
+    }
+
+    @Test
     fun linksAndJunctionsInPlaceOfAFolderAreRefused() = runBlocking<Unit> {
         addons.resolve("pak03_dir.vpk").writeBytes(bytes)
         val elsewhere = home.resolve("elsewhere").createDirectories()

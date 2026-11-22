@@ -177,6 +177,8 @@ private class MeteredInstaller(private val real: ModInstaller, private val hashe
         hashes.time("removeTwin", { expected.sizeBytes }) { real.removeTwin(entry, witness, expected) }
     override suspend fun removeExact(entry: GameEntry, expected: FileImage): Removal =
         hashes.time("removeExact", { expected.sizeBytes }) { real.removeExact(entry, expected) }
+    override suspend fun unlinkTwin(entry: GameEntry, witness: GameEntry): Removal =
+        hashes.time("unlinkTwin", { 0L }) { real.unlinkTwin(entry, witness) }
 }
 
 private class MeteredStore(private val real: LibraryStore, private val meter: Meter) : LibraryStore by real {

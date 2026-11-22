@@ -50,6 +50,8 @@ abstract class NioTwinLinks<E> : TwinLinks<E> {
     override suspend fun removeTwin(entry: E, witness: E, expected: FileImage): Removal =
         removing(entry) { NioLinks.removeTwin(linker, it, witnessPath(witness), expected) }
 
+    override suspend fun unlinkTwin(entry: E, witness: E): Removal = removing(entry) { NioLinks.unlinkTwin(linker, it, witnessPath(witness)) }
+
     override suspend fun removeExact(entry: E, expected: FileImage): Removal = removing(entry) { NioLinks.remove(it, expected) { null } }
 
     protected open fun emptied(entry: E, file: Path) {}
@@ -101,7 +103,17 @@ internal object NioLinks {
     }
 
     fun removeTwin(linker: Linker, entry: Path, witness: Path?, expected: FileImage): Removal = remove(entry, expected) {
-        if (witness != null && linker.same(entry, witness)) null else "${entry.fileName} is not one file with ${witness?.fileName ?: "its anchor"}"
+        if (witness != null && linker.same(entry, witness)) null else notOneFile(entry, witness)
+    }
+
+    fun unlinkTwin(linker: Linker, entry: Path, witness: Path?): Removal = retryingBusy {
+        val attributes = attributesOrNull(entry)
+        when {
+            attributes == null -> Removal.Absent
+            !attributes.isRegularFile -> Removal.Kept("${entry.fileName} is not a plain file")
+            witness == null || !linker.same(entry, witness) -> Removal.Kept(notOneFile(entry, witness))
+            else -> delete(entry)
+        }
     }
 
     fun remove(entry: Path, expected: FileImage, notOurs: () -> String?): Removal = retryingBusy {
@@ -110,13 +122,17 @@ internal object NioLinks {
             attributes == null -> Removal.Absent
             !attributes.isRegularFile -> Removal.Kept("${entry.fileName} is not a plain file")
             measure(entry) != expected -> Removal.Kept("${entry.fileName} changed since Hideout wrote it")
-            else -> notOurs()?.let { Removal.Kept(it) } ?: run {
-                Files.delete(entry)
-                syncFolderIfSupported(entry.parent)
-                Removal.Removed
-            }
+            else -> notOurs()?.let { Removal.Kept(it) } ?: delete(entry)
         }
     }
+
+    private fun delete(entry: Path): Removal {
+        Files.delete(entry)
+        syncFolderIfSupported(entry.parent)
+        return Removal.Removed
+    }
+
+    private fun notOneFile(entry: Path, witness: Path?) = "${entry.fileName} is not one file with ${witness?.fileName ?: "its anchor"}"
 }
 
 internal val BasicFileAttributes.isPlainFolder: Boolean get() = isDirectory && !isSymbolicLink && !isOther

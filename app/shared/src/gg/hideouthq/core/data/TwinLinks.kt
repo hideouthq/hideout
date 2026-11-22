@@ -24,6 +24,9 @@ interface TwinLinks<E> {
     /** Deletes [entry] only while it is one plain file with [witness] and holds [expected]. */
     suspend fun removeTwin(entry: E, witness: E, expected: FileImage): Removal
 
+    /** Deletes [entry] only while it is one plain file with [witness], whatever it holds: its bytes live on there. */
+    suspend fun unlinkTwin(entry: E, witness: E): Removal
+
     /** Deletes [entry] only while it is a plain file holding [expected], whatever other names its file has. */
     suspend fun removeExact(entry: E, expected: FileImage): Removal
 }

@@ -149,11 +149,10 @@ internal class SetMoves<E>(private val links: TwinLinks<E>, private val fenced: 
                     is Attempt.Failed -> return Undone(left, seen.reason)
                     is Attempt.Done -> seen.value
                 }
-                val ours = (state as? EntryState.Present)?.takeIf { it.twin }
                 when {
                     state is EntryState.Unreadable -> return Undone(left, state.reason)
                     state == EntryState.Absent -> Unit
-                    ours == null -> if (file.isDirectory) directoryStays = true
+                    state !is EntryState.Present || !state.twin -> if (file.isDirectory) directoryStays = true
                     directoryStays -> left += file.targetPath
                     else -> {
                         fenced()?.let { return Undone(left, it) }
@@ -167,7 +166,7 @@ internal class SetMoves<E>(private val links: TwinLinks<E>, private val fenced: 
                                 }
                             }
                         }
-                        when (val removed = attempt { links.removeTwin(file.target, file.anchor, ours.image) }) {
+                        when (val removed = attempt { links.unlinkTwin(file.target, file.anchor) }) {
                             is Attempt.Failed -> return Undone(left, removed.reason)
                             is Attempt.Done -> when (val result = removed.value) {
                                 Removal.Removed, Removal.Absent -> Unit
@@ -271,10 +270,8 @@ internal suspend fun <E> TwinLinks<E>.directoryGone(directory: E): Attempt<Boole
  * of a record's bytes, or bytes no one recorded.
  */
 internal suspend fun <E> TwinLinks<E>.removeLeftover(entry: E, stays: E, expected: FileImage, needed: Boolean): Removal {
-    val removed = if (needed) removeTwin(entry, stays, expected) else removeExact(entry, expected)
-    if (removed !is Removal.Kept) return removed
-    val seen = inspect(entry, stays) as? EntryState.Present
-    return if (seen?.twin == true) removeTwin(entry, stays, seen.image) else removed
+    if (!needed) removeExact(entry, expected).let { if (it !is Removal.Kept) return it }
+    return unlinkTwin(entry, stays)
 }
 
 /** Whether [entry] is one file with any of [witnesses]. */

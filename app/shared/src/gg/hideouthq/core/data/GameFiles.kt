@@ -22,6 +22,8 @@ interface GameFiles : TwinLinks<CitadelFile> {
 
             override suspend fun removeTwin(entry: CitadelFile, witness: CitadelFile, expected: FileImage): Removal = Removal.Failed(reason)
 
+            override suspend fun unlinkTwin(entry: CitadelFile, witness: CitadelFile): Removal = Removal.Failed(reason)
+
             override suspend fun removeExact(entry: CitadelFile, expected: FileImage): Removal = Removal.Failed(reason)
         }
     }
