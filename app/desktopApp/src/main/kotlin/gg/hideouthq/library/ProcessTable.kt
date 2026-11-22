@@ -91,7 +91,7 @@ class ProcessTable(
     private fun scanOf(known: Collection<KnownProcess>): ProcessScan =
         ProcessScan.Seen(KnownProcess.Game in known, known.filterIsInstance<KnownProcess.OtherManager>().map { it.manager }.toSet())
 
-    /** A scan reads hundreds of these, and through Files.newInputStream each read takes about twice as long. */
+    /** A scan reads hundreds of these, and Files.newInputStream opens each more slowly than FileInputStream. */
     private fun read(file: Path, buffer: ByteArray): Int = FileInputStream(file.toFile()).use { input ->
         var size = 0
         while (size < buffer.size) {

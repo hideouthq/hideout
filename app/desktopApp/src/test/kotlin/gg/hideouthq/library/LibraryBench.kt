@@ -43,7 +43,6 @@ import gg.hideouthq.core.network.BusyHosts
 import gg.hideouthq.core.network.gameBananaUntil
 import gg.hideouthq.core.network.hideoutHttpClient
 import gg.hideouthq.data.FileCacheStorage
-import gg.hideouthq.preview.sha256Hex
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respondError
 import io.ktor.http.HttpStatusCode
@@ -51,6 +50,7 @@ import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
+import java.nio.file.StandardOpenOption
 import java.security.MessageDigest
 import java.time.Instant
 import java.time.ZoneOffset
@@ -68,6 +68,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
@@ -80,7 +81,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -94,8 +94,8 @@ class LibraryBench {
     @Test
     fun bench() {
         val mods = System.getenv("HIDEOUT_BENCH_MODS") ?: return
-        val dir = Path.of(System.getenv("HIDEOUT_BENCH_DIR") ?: "/home/ms02/bench-run")
-        val realGame = Path.of(System.getenv("HIDEOUT_BENCH_GAME") ?: "/home/ms02/.steam/debian-installation/steamapps/common/Deadlock")
+        val dir = System.getenv("HIDEOUT_BENCH_DIR")?.let(Path::of) ?: Path.of("build", "library-bench", "run").toAbsolutePath()
+        val realGame = System.getenv("HIDEOUT_BENCH_GAME")?.let(Path::of) ?: Path.of(System.getProperty("user.home"), ".steam/steam/steamapps/common/Deadlock")
         val runs = System.getenv("HIDEOUT_BENCH_RUNS")?.toInt() ?: 5
         var failures = 0
         HashedFiles.during { hashed = it; failures = Bench(Path.of(mods), dir, realGame, runs).run() }
@@ -228,7 +228,7 @@ private class Rig(val base: Path, realGame: Path) : AutoCloseable {
         val logFile = base.resolve("hideout.log")
         val write: (String) -> Unit = { line ->
             log += System.nanoTime() to line
-            synchronized(logFile) { Files.writeString(logFile, "${Instant.now()} $line\n", java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND) }
+            synchronized(logFile) { Files.writeString(logFile, "${Instant.now()} $line\n", StandardOpenOption.CREATE, StandardOpenOption.APPEND) }
         }
         val engine = MockEngine {
             requests.incrementAndGet()
@@ -306,7 +306,7 @@ private class Rig(val base: Path, realGame: Path) : AutoCloseable {
 
 /**
  * The game's own files a library reads, in a scratch tree on the same filesystem. pak01's chunks are hard links, since
- * the compatibility code opens them with NOFOLLOW_LINKS and copying them would take 34 GB; nothing Hideout does writes
+ * the compatibility code opens them with NOFOLLOW_LINKS and copying them would take tens of gigabytes; nothing Hideout does writes
  * them, and [Bench] checks they are unchanged.
  */
 private fun scratchGame(real: Path, citadel: Path) {
@@ -342,9 +342,8 @@ private fun phase(state: LibraryState): String {
 
 private class OpFailed(message: String) : Exception(message)
 
-private class Op(val rig: Rig, val start: Long) {
+private class Op(val rig: Rig) {
     val marks = LinkedHashMap<String, Long>()
-    val extra = LinkedHashMap<String, JsonElement>()
 
     suspend fun until(label: String, timeoutMs: Long = 600_000, done: (LibraryState) -> Boolean): LibraryState {
         val reached = withTimeout(timeoutMs) { rig.library.state.first { done(it) || broken(it) != null } }
@@ -533,7 +532,7 @@ private class Bench(private val mods: Path, private val dir: Path, private val r
     private fun op(rig: Rig, name: String, run: Int, extra: Map<String, Any> = emptyMap(), act: suspend Op.() -> Unit) {
         val records = rig.records.size
         val start = System.nanoTime()
-        val op = Op(rig, start)
+        val op = Op(rig)
         val problems = mutableListOf<String>()
         val requests = rig.requests.get()
         val answers = rig.answers.get()
@@ -542,7 +541,7 @@ private class Bench(private val mods: Path, private val dir: Path, private val r
                 op.act()
             } catch (e: OpFailed) {
                 problems += e.message.orEmpty()
-            } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
+            } catch (e: TimeoutCancellationException) {
                 problems += "timed out: ${phase(rig.state)}"
             }
         }
@@ -670,17 +669,12 @@ private fun leftoverLook(library: ModLibrary): Job? = ModLibrary::class.java.get
 /** A copy of [source] with bytes after its declared sections, which VPK readers ignore, so it is a distinct local file. */
 private fun variant(source: Path, target: Path): Path {
     Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING)
-    Files.write(target, "hideout-bench-${target.name}".encodeToByteArray(), java.nio.file.StandardOpenOption.APPEND)
+    Files.write(target, "hideout-bench-${target.name}".encodeToByteArray(), StandardOpenOption.APPEND)
     return target
 }
 
-private fun sha256(path: Path): String = Files.newInputStream(path).use { input ->
+private fun sha256(path: Path): String {
     val digest = MessageDigest.getInstance("SHA-256")
-    val buffer = ByteArray(1 shl 16)
-    while (true) {
-        val read = input.read(buffer)
-        if (read < 0) break
-        digest.update(buffer, 0, read)
-    }
-    digest.digest().joinToString("") { "%02x".format(it) }
+    Files.newByteChannel(path).use { it.digestRest(digest) }
+    return digest.digest().toHexString()
 }

@@ -12,8 +12,8 @@ import java.security.MessageDigest
 
 /**
  * A SHA-256 digest from the operating system's crypto library, libcrypto on Linux and CNG on Windows, which use the
- * CPU's SHA instructions. The image is compiled for x86-64-v2, which has none, so the JDK's own runs at about a tenth
- * of the speed. Where the library does not load, this is the JDK's.
+ * CPU's SHA instructions. The image is compiled for x86-64-v2, which has none, so the JDK's own is far slower. Where
+ * the library does not load, this is the JDK's.
  */
 internal fun sha256(library: Sha256Library? = Sha256Library.Os): MessageDigest =
     library?.let(::LibraryDigest) ?: MessageDigest.getInstance("SHA-256")
@@ -132,6 +132,7 @@ private class LibraryDigest(private val library: Sha256Library) : MessageDigest(
     private var filled = 0
 
     init {
+        // Copied out so the cleanup does not hold this digest and keep it from ever being collected.
         val context = context
         val library = library
         Contexts.register(this) { library.close(context) }
