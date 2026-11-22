@@ -67,6 +67,9 @@ internal class ArchiveDrain(private val budget: ArchiveBudget) : OutputStream() 
 internal interface ArchiveReader : Closeable {
     val entries: List<ArchiveEntry>
 
+    /** The file that is the archive's one entry byte for byte, as a bare VPK is, so it need not be decoded. */
+    val whole: Path? get() = null
+
     fun decode(open: (Int) -> OutputStream?, drain: () -> OutputStream)
 }
 
@@ -369,6 +372,8 @@ private class RarReader(path: Path, deadline: Deadline) : ArchiveReader {
 }
 
 private class BareVpkReader(private val path: Path, name: String) : ArchiveReader {
+    override val whole: Path get() = path
+
     override val entries: List<ArchiveEntry> = listOf(
         ArchiveEntry(0, nfc(name.substringAfterLast('/').substringAfterLast('\\')), EntryKind.File, Files.size(path), encrypted = false),
     )

@@ -101,7 +101,8 @@ class NioModInstaller(
             val written = mutableMapOf<Int, StagingSink>()
             val read = mutableMapOf<Int, NoteSink>()
             try {
-                reader.decode(
+                val linked = reader.whole?.let { whole -> screened.vpks.singleOrNull()?.let { linkWhole(whole, archive, folder.resolve("${it.index}.vpk")) } } == true
+                if (!linked) reader.decode(
                     open = { index ->
                         wanted[index]?.let { vpk ->
                             StagingSink(folder.resolve("$index.vpk"), budget, vpk.path, vpk.declaredBytes ?: limits.maxVpkBytes).also { written[index] = it }
@@ -111,10 +112,13 @@ class NioModInstaller(
                 )
                 if (deadline.passed) throw ArchiveRefused(ArchiveRejection(RejectionReason.TimedOut, null))
                 val staged = screened.vpks.map { vpk ->
-                    val sink = written[vpk.index] ?: throw ArchiveRefused(ArchiveRejection(RejectionReason.Corrupt, vpk.path))
-                    if (vpk.declaredBytes != null && sink.size != vpk.declaredBytes) throw ArchiveRefused(ArchiveRejection(RejectionReason.SizeMismatch, vpk.path))
-                    val head = headOf(folder.resolve("${vpk.index}.vpk"), sink.size)
-                    StagedVpk(StagedRef(id, vpk.index), vpk.path, sink.size, sink.sha256, VpkFormat.read(head, sink.size), VpkFormat.resources(head, sink.size))
+                    val (size, sha256) = if (linked) archive.sizeBytes to archive.sha256 else {
+                        val sink = written[vpk.index] ?: throw ArchiveRefused(ArchiveRejection(RejectionReason.Corrupt, vpk.path))
+                        if (vpk.declaredBytes != null && sink.size != vpk.declaredBytes) throw ArchiveRefused(ArchiveRejection(RejectionReason.SizeMismatch, vpk.path))
+                        sink.size to sink.sha256
+                    }
+                    val head = headOf(folder.resolve("${vpk.index}.vpk"), size)
+                    StagedVpk(StagedRef(id, vpk.index), vpk.path, size, sha256, VpkFormat.read(head, size), VpkFormat.resources(head, size))
                 }
                 val notes = screened.notes.mapNotNull { note -> read[note.index]?.let { noteText(it.bytes(), it.whole) }?.let { ArchiveNote(note.path, it) } }
                 UnpackResult.Unpacked(id, staged, notes)
@@ -242,6 +246,19 @@ class NioModInstaller(
             hash = digest.digest().toHexString()
         }
     }
+}
+
+/**
+ * Gives [whole], an archive that is its own VPK, the staged name [staged] while it holds as many bytes as [archive]
+ * says, so it is neither copied nor hashed. It is taken to hold the bytes [archive] was read to hold: were they to
+ * change, the copy into the game, which is read back, would not match them.
+ */
+private fun linkWhole(whole: Path, archive: ArchiveIdentity, staged: Path): Boolean = try {
+    attributesOrNull(whole)?.takeIf { it.isRegularFile && it.size() == archive.sizeBytes }?.let { Files.createLink(staged, whole) } != null
+} catch (e: IOException) {
+    false
+} catch (e: UnsupportedOperationException) {
+    false
 }
 
 internal fun entryPath(entry: GameEntry, create: Boolean): Path {

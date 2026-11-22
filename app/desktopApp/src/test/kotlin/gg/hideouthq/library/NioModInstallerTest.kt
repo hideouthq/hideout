@@ -146,6 +146,24 @@ class NioModInstallerTest {
     }
 
     @Test
+    fun aBareVpkIsStagedAsASecondNameOfItsFileAndOneChangedSinceItWasReadNoLongerMatchesOnceCopiedIntoTheGame() = runBlocking<Unit> {
+        val download = home.resolve("Gojo full.vpk").apply { writeBytes(single) }
+        val read = identity(download)
+        val vpk = assertIs<UnpackResult.Unpacked>(installer.unpack(read, UnpackLimits())).vpks.single()
+        val staged = staging.resolve("${vpk.ref.staging.value}/${vpk.ref.index}.vpk")
+        assertTrue(Files.isSameFile(download, staged), "not copied")
+        assertEquals(read.sizeBytes to read.sha256, vpk.sizeBytes to vpk.sha256)
+        assertEquals(StageResult.Written(Sha256.image(single)), installer.stage(root, SetFolder.Addons, vpk, "pak04_dir.vpk.hideout-a1"))
+
+        val other = ByteArray(single.size) { 3 }
+        download.writeBytes(other)
+        val stale = assertIs<UnpackResult.Unpacked>(installer.unpack(read, UnpackLimits())).vpks.single()
+        assertEquals(read.sha256, stale.sha256, "taken to hold what it was read to hold")
+        val copied = assertIs<StageResult.Written>(installer.stage(root, SetFolder.Addons, stale, "pak05_dir.vpk.hideout-a1"))
+        assertNotEquals(FileImage(stale.sizeBytes, stale.sha256), copied.image, "so the install refuses the copy")
+    }
+
+    @Test
     fun aZipsVpksAreExtractedUnderGeneratedNamesAndNothingElseIsWritten() {
         val archive = zip("set.zip", Entry("Ivy/ivy_dir.vpk", dir), Entry("readme.txt", "hi".encodeToByteArray()), Entry("Ivy/ivy_000.vpk", chunk))
         val unpacked = assertIs<UnpackResult.Unpacked>(unpack(archive))

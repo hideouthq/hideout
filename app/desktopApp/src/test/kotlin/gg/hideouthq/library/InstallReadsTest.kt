@@ -64,14 +64,14 @@ class InstallReadsTest {
     }
 
     @Test
-    fun addingAVpkFromAFileHashesItAsItIsCopiedInAndUnpackedAndOnceItsCopyInTheGameIsReadBack() {
+    fun addingAVpkFromAFileHashesItOnceAsItIsCopiedInAndOnceAsItsCopyInTheGameIsReadBack() {
         val file = home.resolve("mod_dir.vpk").also { it.writeBytes(vpk) }
         val hashes = HashedFiles.during {
             val library = library()
             library.install(InstallRequest(InstallInput.Local(LocalFile(file.toString(), file.fileName.toString(), vpk.size.toLong())), setOf(ProfileId("main"))))
             settled(library)
         }
-        assertEquals(3, hashes.of(vpk.size.toLong()), hashes.report())
+        assertEquals(2, hashes.of(vpk.size.toLong()), hashes.report())
     }
 
     @Test
