@@ -60,7 +60,7 @@ class CompatRealFixturesTest {
         return openGame(root!!)
     }
 
-    private fun openGame(root: Path) = GamePackages.open(root, log = null) { _, bytes -> VpkPackages.read(ArraySource(bytes)) }
+    private fun openGame(root: Path) = GamePackages.open(root, GameDirectories(), log = null)
 
     private fun fixture(relative: String): ByteArray {
         val root = folder("HIDEOUT_COMPAT_FIXTURES", "build/mod-compat-research/fixtures")

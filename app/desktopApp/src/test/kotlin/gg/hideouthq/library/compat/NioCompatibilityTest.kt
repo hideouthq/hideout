@@ -41,6 +41,8 @@ import kotlinx.coroutines.runBlocking
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
+import java.time.Duration
+import java.time.Instant
 import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
 import kotlin.io.path.readBytes
@@ -286,6 +288,41 @@ class NioCompatibilityTest {
         assertEquals(time, Files.getLastModifiedTime(dir))
         assertTrue(port.game(root) != before, "the same length and time with other bytes is another game")
         assertTrue(port.changed(check.basis.evidence).any { it.location == dir.toString() }, "what a check read of it no longer holds")
+    }
+
+    @Test
+    fun aDirectoryKeptSinceLongAgoIsStillReadAgainOnceItChanges() = runBlocking<Unit> {
+        val settled = NioCompatibility(data.resolve("originals"), data.resolve("staging"), now = { Instant.now().plus(Duration.ofDays(1)) })
+        installGame()
+        val dir = citadel.resolve("pak01_dir.vpk")
+        val first = assertNotNull(settled.game(root))
+        assertEquals(first, settled.game(root))
+        val time = Files.getLastModifiedTime(dir)
+        Thread.sleep(20)
+        dir.writeBytes(dir.readBytes().also { it[it.size - 1] = (it[it.size - 1] + 1).toByte() })
+        Files.setLastModifiedTime(dir, time)
+        val edited = assertNotNull(settled.game(root))
+        assertTrue(edited != first, "an edit in place that keeps the length and time is another game")
+        val next = citadel.resolve("pak01_dir.vpk.next")
+        next.writeBytes(dir.readBytes().also { it[it.size - 1] = (it[it.size - 1] + 1).toByte() })
+        Files.move(next, dir, StandardCopyOption.REPLACE_EXISTING)
+        val updated = "pak01:${sha256Hex(dir.readBytes())}"
+        assertEquals(updated, settled.game(root), "a directory moved into place is another game")
+        assertEquals(updated, assertIs<CheckResult.Checked>(settled.check(installMod(), emptyList(), emptyList())).check.basis.game)
+    }
+
+    @Test
+    fun theGamesFilesAreFoundByTheirOwnNameEvenWhenTwoNamesShareAHash() {
+        val one = ByteArray(40) { 1 }
+        val two = ByteArray(40) { 2 }
+        assertEquals("models/zg9jz0h.vmdl_c".hashCode(), "models/1ro7kxj.vmdl_c".hashCode())
+        installGame(extra = listOf(VpkFile("models/zg9jz0h.vmdl_c", one, 0), VpkFile("models/1ro7kxj.vmdl_c", two, 0), VpkFile("models/twice.vmdl_c", one, 0), VpkFile("models/twice.vmdl_c", two, 0)))
+        GamePackages.open(game, GameDirectories(), log = null).use { packages ->
+            assertContentEquals(one, packages.resource("models/zg9jz0h.vmdl_c"))
+            assertContentEquals(two, packages.resource("MODELS/1ro7kxj.vmdl_c"))
+            assertEquals(null, packages.resource("models/twice.vmdl_c"), "a name the game holds twice is not one file")
+            assertEquals(null, packages.resource("models/absent.vmdl_c"))
+        }
     }
 
     @Test

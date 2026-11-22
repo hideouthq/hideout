@@ -50,30 +50,27 @@ import java.nio.file.NoSuchFileException
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
 import java.security.MessageDigest
+import java.time.Instant
 import java.util.UUID
 
-class NioCompatibility(private val originalsRoot: Path, private val stagingRoot: Path) : CompatibilityPort {
+class NioCompatibility(private val originalsRoot: Path, private val stagingRoot: Path, now: () -> Instant = Instant::now) : CompatibilityPort {
     override val unavailable: String? = null
 
     override val rules: List<RuleIdentity> = ModelRules.all.map { RuleIdentity(it.id, it.revision) }
 
     override val codec: String = Codec
 
-    @Volatile
-    private var tree: Pair<String, VpkPackage>? = null
-
-    private fun parsed(sha256: String, bytes: ByteArray): VpkPackage =
-        tree?.takeIf { it.first == sha256 }?.second ?: VpkPackages.read(ArraySource(bytes)).also { tree = sha256 to it }
+    private val directories = GameDirectories(now)
 
     private fun packages(root: GameRoot, log: ReadLog?): GamePackages? = try {
-        GamePackages.open(Path.of(root.path), log, ::parsed)
+        GamePackages.open(Path.of(root.path), directories, log)
     } catch (e: Exception) {
         null
     }
 
     override suspend fun game(root: GameRoot): String? = withContext(Dispatchers.IO) {
         try {
-            GamePackages.identity(Path.of(root.path))
+            directories.of(Path.of(root.path)).identity
         } catch (e: Exception) {
             null
         }
