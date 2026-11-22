@@ -21,10 +21,16 @@ import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respondError
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.runBlocking
+import org.junit.Assume.assumeFalse
+import org.junit.Assume.assumeTrue
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.BasicFileAttributes
+import java.nio.file.attribute.FileTime
+import java.nio.file.attribute.PosixFilePermission
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
 import kotlin.io.path.readBytes
@@ -55,6 +61,8 @@ class NioLinksTest {
     }
 
     private val parkedName = "set-3fa94c0d12be_dir.vpk"
+
+    private fun settle(file: Path) = Files.setLastModifiedTime(file, FileTime.from(Instant.now().minusSeconds(3_600)))
 
     @Test
     fun linkingMakesASecondNameOfTheSameFileAndCreatesOnlyTheModsOwnFolder() = runBlocking<Unit> {
@@ -134,6 +142,77 @@ class NioLinksTest {
         off.createDirectories().resolve(parked.name).writeBytes(bytes)
         assertEquals(Removal.Removed, installer.removeExact(parked, image))
         assertFalse(off.exists(), "the mod's off folder goes with its last name")
+    }
+
+    @Test
+    fun aFileReadOnceIsCheckedWithoutOpeningItWhileItShowsTheSameFileSizeAndTimes() = runBlocking<Unit> {
+        val chunk = addons.resolve("pak03_000.vpk").also { it.writeBytes(bytes) }
+        settle(chunk)
+        val original = entry(SetFolder.Addons, "pak03_000.vpk")
+        val anchor = entry(SetFolder.Addons, "pak03_000.vpk.hideout-t1")
+        val moved = entry(SetFolder.Off(mod), parkedName)
+        assertEquals(LinkResult.Linked, installer.link(original, anchor))
+        assertEquals(EntryState.Present(image, twin = true), installer.inspect(anchor, original))
+
+        assumeTrue("permissions are POSIX here", "posix" in chunk.fileSystem.supportedFileAttributeViews())
+        Files.setPosixFilePermissions(chunk, emptySet())
+        assumeFalse("this user can read any file", Files.isReadable(chunk))
+        assertEquals(EntryState.Present(image, twin = true), installer.inspect(anchor, original), "known, so not opened")
+        assertEquals(LinkResult.Linked, installer.link(anchor, moved))
+        assertEquals(EntryState.Present(image, twin = true), installer.inspect(moved, anchor), "a new name of the file is known to hold it too")
+        assertEquals(Removal.Removed, installer.removeTwin(original, anchor, image), "a name its twin keeps goes on what its file is known to hold")
+        assertEquals(Removal.Removed, installer.unlinkTwin(anchor, moved))
+        assertIs<Removal.Failed>(installer.removeExact(moved, image), "a name that may be its file's last is read before it goes")
+
+        Files.setPosixFilePermissions(off.resolve(parkedName), setOf(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE))
+        assertEquals(Removal.Removed, installer.removeExact(moved, image))
+    }
+
+    @Test
+    fun anEditInPlaceAfterTheFileWasReadIsSeenThroughEitherName() = runBlocking<Unit> {
+        val chunk = addons.resolve("pak03_000.vpk").also { it.writeBytes(bytes) }
+        settle(chunk)
+        val original = entry(SetFolder.Addons, "pak03_000.vpk")
+        val anchor = entry(SetFolder.Addons, "pak03_000.vpk.hideout-t1")
+        assertEquals(LinkResult.Linked, installer.link(original, anchor))
+        assertEquals(EntryState.Present(image, twin = true), installer.inspect(anchor, original))
+
+        val edited = ByteArray(bytes.size) { 9 }
+        chunk.writeBytes(edited)
+        assertIs<Removal.Kept>(installer.removeTwin(original, anchor, image), "changed bytes are never deleted")
+        assertEquals(EntryState.Present(Sha256.image(edited), twin = true), installer.inspect(anchor, original))
+        assertIs<Removal.Kept>(installer.removeExact(anchor, image))
+        assertContentEquals(edited, chunk.readBytes())
+    }
+
+    @Test
+    fun anotherFilePutAtTheNameWithTheSameSizeAndTimeIsRead() = runBlocking<Unit> {
+        val chunk = addons.resolve("pak03_000.vpk").also { it.writeBytes(bytes) }
+        settle(chunk)
+        val original = entry(SetFolder.Addons, "pak03_000.vpk")
+        assertEquals(EntryState.Present(image, twin = true), installer.inspect(original, original))
+
+        val modified = Files.getLastModifiedTime(chunk)
+        Files.delete(chunk)
+        val other = ByteArray(bytes.size) { 7 }
+        chunk.writeBytes(other)
+        Files.setLastModifiedTime(chunk, modified)
+        assertEquals(EntryState.Present(Sha256.image(other), twin = true), installer.inspect(original, original))
+        assertIs<Removal.Kept>(installer.removeExact(original, image))
+    }
+
+    @Test
+    fun aFileWhoseLastWriteIsWithinItsFileSystemsTimeStepIsReadAtEveryCheck() = runBlocking<Unit> {
+        val chunk = addons.resolve("pak03_000.vpk").also { it.writeBytes(bytes) }
+        val second = FileTime.from(Instant.now().truncatedTo(ChronoUnit.SECONDS).minusSeconds(1))
+        Files.setLastModifiedTime(chunk, second)
+        val original = entry(SetFolder.Addons, "pak03_000.vpk")
+        assertEquals(EntryState.Present(image, twin = true), installer.inspect(original, original))
+
+        val other = ByteArray(bytes.size) { 7 }
+        chunk.writeBytes(other)
+        Files.setLastModifiedTime(chunk, second)
+        assertEquals(EntryState.Present(Sha256.image(other), twin = true), installer.inspect(original, original), "a time in whole seconds, as FAT keeps them, could be a second write's too")
     }
 
     @Test

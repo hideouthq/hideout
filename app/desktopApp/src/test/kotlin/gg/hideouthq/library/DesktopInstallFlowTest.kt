@@ -81,7 +81,9 @@ import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.BasicFileAttributes
+import java.nio.file.attribute.FileTime
 import java.security.MessageDigest
+import java.time.Instant
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.io.path.createDirectories
@@ -891,8 +893,14 @@ class DesktopInstallFlowTest {
     }
 
     @Test
-    fun uninstallKeepsAChunkEditedOnceItIsAnchoredAndLeavesNoAnchor() {
+    fun uninstallKeepsAChunkEditedOnceItIsAnchoredAndLeavesNoAnchor() = uninstallEditingAnAnchoredChunk(writtenLongAgo = false)
+
+    @Test
+    fun uninstallKeepsAChunkWrittenLongAgoThatIsEditedOnceItIsAnchored() = uninstallEditingAnAnchoredChunk(writtenLongAgo = true)
+
+    private fun uninstallEditingAnAnchoredChunk(writtenLongAgo: Boolean) {
         val record = installChunked(library())
+        if (writtenLongAgo) record.files.forEach { Files.setLastModifiedTime(addons.resolve(it.name), FileTime.from(Instant.now().minusSeconds(3_600))) }
         val chunk = addons.resolve("pak99_000.vpk")
         val edited = ByteArray(4_000) { 9 }
         val real = NioModInstaller(data.resolve("staging"))

@@ -8,7 +8,6 @@ import gg.hideouthq.core.data.UnpackResult
 import gg.hideouthq.core.library.ArchiveIdentity
 import gg.hideouthq.core.library.ArchiveNote
 import gg.hideouthq.core.library.ArchiveRejection
-import gg.hideouthq.core.library.FileImage
 import gg.hideouthq.core.library.CitadelPath
 import gg.hideouthq.core.library.GameRoot
 import gg.hideouthq.core.library.RejectionReason
@@ -283,19 +282,6 @@ internal fun attributesOrNull(path: Path): BasicFileAttributes? = try {
     Files.readAttributes(path, BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
 } catch (e: NoSuchFileException) {
     null
-}
-
-internal fun measure(file: Path): FileImage {
-    val digest = MessageDigest.getInstance("SHA-256")
-    var size = 0L
-    FileChannel.open(file, StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS).use { channel ->
-        val buffer = ByteBuffer.allocate(1 shl 16)
-        while (channel.read(buffer.clear()) >= 0) {
-            digest.update(buffer.array(), 0, buffer.position())
-            size += buffer.position()
-        }
-    }
-    return FileImage(size, digest.digest().toHexString())
 }
 
 internal fun readAtMost(file: Path, maxBytes: Int): ByteArray? =

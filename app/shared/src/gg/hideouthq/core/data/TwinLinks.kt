@@ -12,7 +12,9 @@ import gg.hideouthq.core.library.SubmissionIdentity
  * Second names for files Hideout placed, and deletion that checks which file a name still is. A move or an uninstall
  * keeps an anchor, another name of the same file, until its outcome is saved, so a retry can tell Hideout's file from
  * one someone put back at the same path with the same bytes. Equal bytes never make two names one file. Which names
- * to link or delete, and when, is [gg.hideouthq.core.library.ModLibrary]'s.
+ * to link or delete, and when, is [gg.hideouthq.core.library.ModLibrary]'s. Except in [removeExact], what a name holds
+ * may be known from an earlier read of the same file while the name shows it at the same size and times, as the
+ * desktop's `KnownBytes` says, so a write that leaves those as they were is not seen.
  */
 interface TwinLinks<E> {
     /** Gives the plain file at [existing] the second name [created], never replacing anything already at [created]. */

@@ -98,11 +98,11 @@ internal object NioLinks {
     fun inspect(linker: Linker, entry: Path, witness: Path?): EntryState {
         val attributes = attributesOrNull(entry) ?: return EntryState.Absent
         if (!attributes.isRegularFile) return EntryState.NotPlain
-        val image = measure(entry)
-        return EntryState.Present(image, twin = witness != null && linker.same(entry, witness))
+        val twin = witness != null && linker.same(entry, witness)
+        return EntryState.Present(KnownBytes.of(entry, attributes, witness.takeIf { twin }), twin)
     }
 
-    fun removeTwin(linker: Linker, entry: Path, witness: Path?, expected: FileImage): Removal = remove(entry, expected) {
+    fun removeTwin(linker: Linker, entry: Path, witness: Path?, expected: FileImage): Removal = remove(entry, expected, twin = witness) {
         if (witness != null && linker.same(entry, witness)) null else notOneFile(entry, witness)
     }
 
@@ -112,22 +112,29 @@ internal object NioLinks {
             attributes == null -> Removal.Absent
             !attributes.isRegularFile -> Removal.Kept("${entry.fileName} is not a plain file")
             witness == null || !linker.same(entry, witness) -> Removal.Kept(notOneFile(entry, witness))
-            else -> delete(entry)
+            else -> delete(entry, heir = witness)
         }
     }
 
-    fun remove(entry: Path, expected: FileImage, notOurs: () -> String?): Removal = retryingBusy {
+    /**
+     * Deletes [entry] while it holds [expected] and [notOurs] finds nothing against it. Without a [twin] to keep its bytes
+     * the name may be its file's last, so what it holds is read rather than taken as known.
+     */
+    fun remove(entry: Path, expected: FileImage, twin: Path? = null, notOurs: () -> String?): Removal = retryingBusy {
         val attributes = attributesOrNull(entry)
         when {
             attributes == null -> Removal.Absent
             !attributes.isRegularFile -> Removal.Kept("${entry.fileName} is not a plain file")
-            measure(entry) != expected -> Removal.Kept("${entry.fileName} changed since Hideout wrote it")
-            else -> notOurs()?.let { Removal.Kept(it) } ?: delete(entry)
+            (if (twin == null) measure(entry) else KnownBytes.of(entry, attributes)) != expected -> Removal.Kept("${entry.fileName} changed since Hideout wrote it")
+            else -> notOurs()?.let { Removal.Kept(it) } ?: delete(entry, twin)
         }
     }
 
-    private fun delete(entry: Path): Removal {
+    /** Deletes [entry], whose file lives on as [heir] when there is one, which is then known to hold what [entry] did. */
+    private fun delete(entry: Path, heir: Path?): Removal {
+        heir?.let { KnownBytes.share(entry, it) }
         Files.delete(entry)
+        KnownBytes.forget(entry)
         syncFolderIfSupported(entry.parent)
         return Removal.Removed
     }
