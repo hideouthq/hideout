@@ -218,7 +218,7 @@ class CustomGames(
     /** [restartAccepted] is the [restartsDeadlock] the player was shown as they pressed, so the session restarts Deadlock for it without asking again. */
     fun host(mode: Mode, choices: Choices, restartAccepted: RestartReason?, outreach: Outreach = Outreach.Private) = post(HostRequested(mode, choices, restartAccepted, outreach))
 
-    /** Adds friends to the hosted game's invitees. Ignored when no game is hosted. */
+    /** Ignored when no game is hosted. */
     fun invite(to: Set<SteamId>) = post(SessionEvent.Invited(to))
 
     /** Lists or unlists the hosted game in Servers. Ignored when no game is hosted. */

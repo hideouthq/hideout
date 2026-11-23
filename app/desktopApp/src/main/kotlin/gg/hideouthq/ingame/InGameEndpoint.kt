@@ -53,7 +53,6 @@ class InGameEndpoint(
     private var server: HttpServer? = null
     private val seen = Seen()
 
-    /** The port it listens on, once started. */
     val port: Int? get() = server?.address?.port
 
     /** False when another program holds [port]; the game then shows Hideout as closed. */

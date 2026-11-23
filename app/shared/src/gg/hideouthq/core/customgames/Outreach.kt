@@ -1,6 +1,5 @@
 package gg.hideouthq.core.customgames
 
-/** Who may join a game this computer hosts. */
 enum class Listing { InviteOnly, Public }
 
 /**
