@@ -19,6 +19,14 @@ export function button(parent: Panel, cls: string, text: string, press: (() => v
   return b
 }
 
+/** Stands in for a button the player can't press until Esc gives them a pointer. */
+export function escHint(parent: Panel, words: string): Panel {
+  const hint = panel(parent, 'EscHint')
+  label(panel(hint, 'EscKey'), '', 'Esc')
+  label(hint, 'EscWords', words)
+  return hint
+}
+
 export function spinner(parent: Panel, cls = ''): Panel {
   return panel(parent, `HSpinner ${cls}`)
 }

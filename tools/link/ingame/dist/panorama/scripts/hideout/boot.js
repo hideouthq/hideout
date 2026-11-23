@@ -477,13 +477,13 @@
 
   // src/strip.ts
   var HIDDEN = ["failed", "ended"];
-  function viewStrip(snapshot, status, pressed) {
+  function viewStrip(snapshot, status, pressed, pointer) {
     const host2 = snapshot.game?.host;
     if (!host2 || HIDDEN.includes(host2.phase) || status === "offline" || status === "outdated") return null;
     const mode2 = snapshot.catalog?.modes.find((m) => m.id === host2.mode);
     const art2 = mode2 ? mode2.art.tile ?? mode2.art.card : null;
     const name = mode2?.name ?? "your game";
-    const button2 = host2.actions.includes("stop") && !pressed ? "stop" : "spinner";
+    const button2 = !host2.actions.includes("stop") || pressed ? "spinner" : pointer ? "stop" : "esc";
     if (host2.phase === "ready") {
       return { kind: "hosting", art: art2, mode: name, players: host2.players ? `${host2.players[0]} of ${host2.players[1]}` : null, button: button2 };
     }
@@ -491,7 +491,7 @@
   }
 
   // src/toasts.ts
-  function wantedToasts(snapshot, friends, now, arrived, hidden) {
+  function wantedToasts(snapshot, friends, now, arrived, hidden, pointer) {
     const views = [];
     for (const invite2 of snapshot.inbox?.invites ?? []) {
       const name = friends.names[invite2.from];
@@ -499,7 +499,7 @@
       const start = Math.min(arrived[invite2.id] ?? now, now);
       const left = invite2.expires > start ? (invite2.expires - now) / (invite2.expires - start) : 0;
       const line = [...invite2.picks, `${invite2.players[0]} of ${invite2.players[1]}`].join(" \xB7 ");
-      views.push({ kind: "invite", key: invite2.id, name, invite: invite2, line, full: views.length === 0, left: Math.max(0, Math.min(1, left)) });
+      views.push({ kind: "invite", key: invite2.id, name, invite: invite2, line, full: views.length === 0, left: Math.max(0, Math.min(1, left)), pointer });
     }
     const host2 = snapshot.game?.host;
     if (host2?.link) {
@@ -507,7 +507,7 @@
       for (const [id, delivery] of Object.entries(host2.deliveries)) {
         const key = `unreached:${game}:${id}`;
         if (delivery !== "not-reached" || hidden.has(key)) continue;
-        views.push({ kind: "unreached", key, friend: id, name: friends.names[id] ?? "A friend", link: host2.link, full: views.length === 0 });
+        views.push({ kind: "unreached", key, friend: id, name: friends.names[id] ?? "A friend", link: host2.link, full: views.length === 0, pointer });
       }
     }
     return views;
@@ -535,6 +535,12 @@
     if (press) b.SetPanelEvent("onactivate", press);
     else b.enabled = false;
     return b;
+  }
+  function escHint(parent, words2) {
+    const hint = panel(parent, "EscHint");
+    label(panel(hint, "EscKey"), "", "Esc");
+    label(hint, "EscWords", words2);
+    return hint;
   }
   function spinner(parent, cls = "") {
     return panel(parent, `HSpinner ${cls}`);
@@ -647,7 +653,7 @@
       }
       let previous = null;
       for (const view of views) {
-        const look = JSON.stringify(view.kind === "invite" ? [view.full, view.name, view.invite] : view);
+        const look = JSON.stringify(view.kind === "invite" ? [view.full, view.name, view.invite, view.pointer] : view);
         let shown = toasts.get(view.key);
         let toastPanel = stack.FindChildTraverse(`HOToast-${view.key}`);
         if (!shown || shown.look !== look || !toastPanel) {
@@ -676,7 +682,8 @@
       $.CreatePanel("CitadelAvatarImage", pic, "", { class: "HOToastAvatar", steamid: friend });
       if (view.kind === "unreached") {
         line(row, [[view.name, true], ["couldn\u2019t get your invite.", false]]);
-        button(row, "SecondaryButton Outline Small Gold", "Copy link", () => {
+        if (!view.pointer) escHint(row, "to copy the link");
+        else button(row, "SecondaryButton Outline Small Gold", "Copy link", () => {
           $.DispatchEvent("CopyStringToClipboard", view.link, host2);
           $.DispatchEvent("SteamChatWithFriend", view.friend);
           hidden.add(view.key);
@@ -698,16 +705,19 @@
           line(text2, [[view.name, true], ["invited you to", false]]);
           label(text2, "Title HOToastMode", view.invite.mode);
           label(text2, "HOToastLine", view.line);
-          button(row, "Cream HOToastJoin", "Join", join2);
+          if (view.pointer) button(row, "Cream HOToastJoin", "Join", join2);
         } else {
           line(row, [[view.name, true], ["invited you to", false], [view.invite.mode, true]]);
-          button(row, "SecondaryButton Outline Small Gold", "Join", join2);
+          if (view.pointer) button(row, "SecondaryButton Outline Small Gold", "Join", join2);
         }
+        if (!view.pointer) escHint(row, "to join");
       }
-      const x = panel(row, "HOToastClose", "Button");
-      panel(x, "HOCross A");
-      panel(x, "HOCross B");
-      x.SetPanelEvent("onactivate", close);
+      if (view.pointer) {
+        const x = panel(row, "HOToastClose", "Button");
+        panel(x, "HOCross A");
+        panel(x, "HOCross B");
+        x.SetPanelEvent("onactivate", close);
+      }
       return view.kind === "invite" && view.full ? panel(panel(toast, "HOToastBar"), "HOToastBarFill") : null;
     }
     function line(parent, runs) {
@@ -766,19 +776,21 @@
       }
       link.send({ k: "act", action: b.action });
     }
-    function menu() {
-      if (top.FindChildTraverse("HudAndDBOverlay")?.BHasClass("InHideout")) return "room";
-      return top.FindChildTraverse("ClientStatus")?.BHasClass("InEscapeMenu") ? "match" : null;
+    function screen() {
+      const status = top.FindChildTraverse("ClientStatus");
+      return {
+        room: top.FindChildTraverse("HudAndDBOverlay")?.BHasClass("InHideout") ?? false,
+        pointer: status !== null && (status.BHasClass("InEscapeMenu") || status.BHasClass("InDashboard"))
+      };
     }
     const strip = new Section();
     let stopPressed = null;
-    function drawStrip() {
+    function drawStrip(where) {
       if (stopPressed && stopPressed.in !== link.snapshot.game) stopPressed = null;
-      const view = viewStrip(link.snapshot, link.status, stopPressed !== null);
+      const view = viewStrip(link.snapshot, link.status, stopPressed !== null, where.pointer);
       const into = find("HOStrip");
-      const open = menu();
-      find("HOCorner").SetHasClass("MatchMenu", open === "match");
-      into.SetHasClass("Shown", view !== null && open !== null);
+      find("HOCorner").SetHasClass("MatchMenu", !where.room && where.pointer);
+      into.SetHasClass("Shown", view !== null && (where.room || where.pointer));
       strip.draw(into, JSON.stringify(view), (into2) => {
         if (view) buildStrip(into2, view);
       });
@@ -791,6 +803,10 @@
       art(panel(row, "HOToastArt"), "HOToastPic", view.art);
       if (view.kind === "hosting") line(row, [["Hosting", false], [view.mode, true], ...view.players ? [[`\xB7 ${view.players}`, false]] : []]);
       else line(row, [[view.mode, true], [`\xB7 ${view.words}`, false]]);
+      if (view.button === "esc") {
+        escHint(row, "to stop");
+        return;
+      }
       const spins = view.button === "spinner";
       const stop = button(row, `SecondaryButton Outline Small Gold HOStop${spins ? " Busy" : ""}`, spins ? "" : "Stop", spins ? null : stopGame);
       if (spins) spinner(stop);
@@ -812,8 +828,9 @@
       const joining = drawJoining();
       const games = top.FindChildTraverse("HideoutGames");
       find("HOCorner").SetHasClass("Away", joining || games !== null && games.visible);
-      drawToasts(wantedToasts(link.snapshot, friends.current, now, arrived, hidden));
-      drawStrip();
+      const where = screen();
+      drawToasts(wantedToasts(link.snapshot, friends.current, now, arrived, hidden, where.pointer));
+      drawStrip(where);
     }
     function tick() {
       if (!host2.IsValid()) return;

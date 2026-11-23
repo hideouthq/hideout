@@ -14,11 +14,15 @@ export type ToastView =
       line: string
       full: boolean
       left: number
+      pointer: boolean
     }
-  | { kind: 'unreached'; key: string; friend: SteamId; name: string; link: string; full: boolean }
+  | { kind: 'unreached'; key: string; friend: SteamId; name: string; link: string; full: boolean; pointer: boolean }
 
-/** [hidden] holds keys closed here before the app's state catches up. */
-export function wantedToasts(snapshot: Snapshot, friends: Friends, now: number, arrived: Record<string, number>, hidden: ReadonlySet<string>): ToastView[] {
+/**
+ * [hidden] holds keys closed here before the app's state catches up. Without a [pointer] the toasts' buttons can't be
+ * pressed, so they say Esc frees one.
+ */
+export function wantedToasts(snapshot: Snapshot, friends: Friends, now: number, arrived: Record<string, number>, hidden: ReadonlySet<string>, pointer: boolean): ToastView[] {
   const views: ToastView[] = []
   for (const invite of snapshot.inbox?.invites ?? []) {
     const name = friends.names[invite.from]
@@ -26,7 +30,7 @@ export function wantedToasts(snapshot: Snapshot, friends: Friends, now: number, 
     const start = Math.min(arrived[invite.id] ?? now, now)
     const left = invite.expires > start ? (invite.expires - now) / (invite.expires - start) : 0
     const line = [...invite.picks, `${invite.players[0]} of ${invite.players[1]}`].join(' · ')
-    views.push({ kind: 'invite', key: invite.id, name, invite, line, full: views.length === 0, left: Math.max(0, Math.min(1, left)) })
+    views.push({ kind: 'invite', key: invite.id, name, invite, line, full: views.length === 0, left: Math.max(0, Math.min(1, left)), pointer })
   }
   const host = snapshot.game?.host
   if (host?.link) {
@@ -34,7 +38,7 @@ export function wantedToasts(snapshot: Snapshot, friends: Friends, now: number, 
     for (const [id, delivery] of Object.entries(host.deliveries)) {
       const key = `unreached:${game}:${id}`
       if (delivery !== 'not-reached' || hidden.has(key)) continue
-      views.push({ kind: 'unreached', key, friend: id as SteamId, name: friends.names[id] ?? 'A friend', link: host.link, full: views.length === 0 })
+      views.push({ kind: 'unreached', key, friend: id as SteamId, name: friends.names[id] ?? 'A friend', link: host.link, full: views.length === 0, pointer })
     }
   }
   return views

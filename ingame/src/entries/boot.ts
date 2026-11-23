@@ -6,7 +6,7 @@ import { type JoiningButton, viewJoining } from '../joining.ts'
 import { Link } from '../link.ts'
 import { type StripView, viewStrip } from '../strip.ts'
 import { type ToastView, wantedToasts } from '../toasts.ts'
-import { Section, art, button, label, mark, panel, paper, spinner, tear } from '../ui.ts'
+import { Section, art, button, escHint, label, mark, panel, paper, spinner, tear } from '../ui.ts'
 import type { Config, Game, JoinCard, Step } from '../wire.ts'
 
 declare const HideoutConfig: Config
@@ -46,7 +46,7 @@ function boot(): void {
     }
     let previous: Panel | null = null
     for (const view of views) {
-      const look = JSON.stringify(view.kind === 'invite' ? [view.full, view.name, view.invite] : view)
+      const look = JSON.stringify(view.kind === 'invite' ? [view.full, view.name, view.invite, view.pointer] : view)
       let shown = toasts.get(view.key)
       let toastPanel = stack.FindChildTraverse(`HOToast-${view.key}`)
       if (!shown || shown.look !== look || !toastPanel) {
@@ -76,7 +76,8 @@ function boot(): void {
     $.CreatePanel('CitadelAvatarImage', pic, '', { class: 'HOToastAvatar', steamid: friend })
     if (view.kind === 'unreached') {
       line(row, [[view.name, true], ['couldn’t get your invite.', false]])
-      button(row, 'SecondaryButton Outline Small Gold', 'Copy link', () => {
+      if (!view.pointer) escHint(row, 'to copy the link')
+      else button(row, 'SecondaryButton Outline Small Gold', 'Copy link', () => {
         $.DispatchEvent('CopyStringToClipboard', view.link, host)
         $.DispatchEvent('SteamChatWithFriend', view.friend)
         hidden.add(view.key)
@@ -98,16 +99,19 @@ function boot(): void {
         line(text, [[view.name, true], ['invited you to', false]])
         label(text, 'Title HOToastMode', view.invite.mode)
         label(text, 'HOToastLine', view.line)
-        button(row, 'Cream HOToastJoin', 'Join', join)
+        if (view.pointer) button(row, 'Cream HOToastJoin', 'Join', join)
       } else {
         line(row, [[view.name, true], ['invited you to', false], [view.invite.mode, true]])
-        button(row, 'SecondaryButton Outline Small Gold', 'Join', join)
+        if (view.pointer) button(row, 'SecondaryButton Outline Small Gold', 'Join', join)
       }
+      if (!view.pointer) escHint(row, 'to join')
     }
-    const x = panel(row, 'HOToastClose', 'Button')
-    panel(x, 'HOCross A')
-    panel(x, 'HOCross B')
-    x.SetPanelEvent('onactivate', close)
+    if (view.pointer) {
+      const x = panel(row, 'HOToastClose', 'Button')
+      panel(x, 'HOCross A')
+      panel(x, 'HOCross B')
+      x.SetPanelEvent('onactivate', close)
+    }
     return view.kind === 'invite' && view.full ? panel(panel(toast, 'HOToastBar'), 'HOToastBarFill') : null
   }
 
@@ -171,22 +175,27 @@ function boot(): void {
     link.send({ k: 'act', action: b.action })
   }
 
-  /** Stock classes: the overlay is InHideout in the main-menu room, and its client status is InEscapeMenu while Esc is open. */
-  function menu(): 'room' | 'match' | null {
-    if (top.FindChildTraverse('HudAndDBOverlay')?.BHasClass('InHideout')) return 'room'
-    return top.FindChildTraverse('ClientStatus')?.BHasClass('InEscapeMenu') ? 'match' : null
+  /**
+   * Stock classes: the overlay is InHideout in the main-menu room. Its client status is InEscapeMenu while Esc is open and
+   * InDashboard while a room screen such as Play is, the only times the game gives the player a mouse pointer.
+   */
+  function screen(): { room: boolean; pointer: boolean } {
+    const status = top.FindChildTraverse('ClientStatus')
+    return {
+      room: top.FindChildTraverse('HudAndDBOverlay')?.BHasClass('InHideout') ?? false,
+      pointer: status !== null && (status.BHasClass('InEscapeMenu') || status.BHasClass('InDashboard')),
+    }
   }
 
   const strip = new Section()
   let stopPressed: { in: Game | null } | null = null
 
-  function drawStrip(): void {
+  function drawStrip(where: { room: boolean; pointer: boolean }): void {
     if (stopPressed && stopPressed.in !== link.snapshot.game) stopPressed = null
-    const view = viewStrip(link.snapshot, link.status, stopPressed !== null)
+    const view = viewStrip(link.snapshot, link.status, stopPressed !== null, where.pointer)
     const into = find('HOStrip')
-    const open = menu()
-    find('HOCorner').SetHasClass('MatchMenu', open === 'match')
-    into.SetHasClass('Shown', view !== null && open !== null)
+    find('HOCorner').SetHasClass('MatchMenu', !where.room && where.pointer)
+    into.SetHasClass('Shown', view !== null && (where.room || where.pointer))
     strip.draw(into, JSON.stringify(view), (into) => {
       if (view) buildStrip(into, view)
     })
@@ -200,6 +209,10 @@ function boot(): void {
     art(panel(row, 'HOToastArt'), 'HOToastPic', view.art)
     if (view.kind === 'hosting') line(row, [['Hosting', false], [view.mode, true], ...(view.players ? ([[`· ${view.players}`, false]] as [string, boolean][]) : [])])
     else line(row, [[view.mode, true], [`· ${view.words}`, false]])
+    if (view.button === 'esc') {
+      escHint(row, 'to stop')
+      return
+    }
     const spins = view.button === 'spinner'
     const stop = button(row, `SecondaryButton Outline Small Gold HOStop${spins ? ' Busy' : ''}`, spins ? '' : 'Stop', spins ? null : stopGame)
     if (spins) spinner(stop)
@@ -222,8 +235,9 @@ function boot(): void {
     const joining = drawJoining()
     const games = top.FindChildTraverse('HideoutGames')
     find('HOCorner').SetHasClass('Away', joining || (games !== null && games.visible))
-    drawToasts(wantedToasts(link.snapshot, friends.current, now, arrived, hidden))
-    drawStrip()
+    const where = screen()
+    drawToasts(wantedToasts(link.snapshot, friends.current, now, arrived, hidden, where.pointer))
+    drawStrip(where)
   }
 
   // The countdown bars move on their own clock.
