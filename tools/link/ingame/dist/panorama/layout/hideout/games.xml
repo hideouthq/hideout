@@ -16,6 +16,7 @@
 			<CitadelFriendMenu id="HGFriendMenu" />
 			<CitadelUserName id="HGMe" accountid="local" />
 		</Panel>
+		<Panel class="Grain" hittest="false" />
 		<Panel class="HGContent">
 			<Panel class="HGHeader">
 				<Panel class="HGTitleBlock">
@@ -82,6 +83,5 @@
 				<Panel id="HGServerNote" class="HGMore" />
 			</Panel>
 		</Panel>
-		<Panel class="Grain" hittest="false" />
 	</Panel>
 </root>

@@ -648,8 +648,8 @@
       }
     }
     function buildToast(toast, view) {
-      const row = panel(toast, "HOToastRow");
       panel(toast, "Grain", "Panel", { hittest: "false" });
+      const row = panel(toast, "HOToastRow");
       const close = () => {
         hidden.add(view.key);
         if (view.kind === "invite") send({ k: "forget", invite: view.invite.id });
