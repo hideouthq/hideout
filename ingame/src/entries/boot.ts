@@ -6,7 +6,7 @@ import { FriendWatch } from '../friends.ts'
 import { type JoiningButton, viewJoining } from '../joining.ts'
 import { Link } from '../link.ts'
 import { type ToastView, wantedToasts } from '../toasts.ts'
-import { Section, art, button, esc, label, mark, panel, rich, spinner, tear } from '../ui.ts'
+import { Section, art, button, label, mark, panel, paper, spinner, tear } from '../ui.ts'
 import type { Command, Config, JoinCard } from '../wire.ts'
 
 declare const HideoutConfig: Config
@@ -20,6 +20,7 @@ function boot(): void {
   const host = $.CreatePanel('Panel', overlay ?? $.GetContextPanel(), 'HideoutRoot', { hittest: 'false' })
   host.BLoadLayout('file://{resources}/layout/hideout/root.xml', false, false)
   const find = (id: string) => host.FindChildTraverse(id)!
+  paper(find('HODialog'), 700, 640, 11)
 
   let wasOnline = false
   const link = new Link(host, HideoutConfig, () => {
@@ -52,6 +53,7 @@ function boot(): void {
       if (!shown || shown.look !== look || !toastPanel) {
         toastPanel?.DeleteAsync(0)
         toastPanel = $.CreatePanel('Panel', stack, `HOToast-${view.key}`, { class: `HOToast${view.full ? '' : ' Slim'}` })
+        paper(toastPanel, 580, view.full ? 130 : 70, view.key.length * 31 + 5)
         shown = { look, bar: buildToast(toastPanel, view) }
         toasts.set(view.key, shown)
       }
@@ -63,6 +65,7 @@ function boot(): void {
 
   function buildToast(toast: Panel, view: ToastView): Panel | null {
     const row = panel(toast, 'HOToastRow')
+    panel(toast, 'Grain', 'Panel', { hittest: 'false' })
     const close = () => {
       hidden.add(view.key)
       if (view.kind === 'invite') send({ k: 'forget', invite: view.invite.id })
@@ -73,7 +76,7 @@ function boot(): void {
     art(pic, 'HOToastPic', view.kind === 'invite' ? view.invite.tile : null)
     $.CreatePanel('CitadelAvatarImage', pic, '', { class: 'HOToastAvatar', steamid: friend })
     if (view.kind === 'unreached') {
-      rich(row, 'HOToastText HOToastFrom', `<b>${esc(view.name)}</b> couldn’t get your invite.`)
+      line(row, [[view.name, true], ['couldn’t get your invite.', false]])
       button(row, 'SecondaryButton Outline Small Gold', 'Copy link', () => {
         $.DispatchEvent('CopyStringToClipboard', view.link, host)
         $.DispatchEvent('SteamChatWithFriend', view.friend)
@@ -93,12 +96,12 @@ function boot(): void {
         const cap = panel(text, 'CapRow')
         mark(cap, 14)
         label(cap, 'Cap', 'Hideout invite')
-        rich(text, 'HOToastFrom', `<b>${esc(view.name)}</b> invited you to`)
+        line(text, [[view.name, true], ['invited you to', false]])
         label(text, 'Title HOToastMode', view.invite.mode)
         label(text, 'HOToastLine', view.line)
         button(row, 'Cream HOToastJoin', 'Join', join)
       } else {
-        rich(row, 'HOToastText HOToastFrom', `<b>${esc(view.name)}</b> invited you to <b>${esc(view.invite.mode)}</b>`)
+        line(row, [[view.name, true], ['invited you to', false], [view.invite.mode, true]])
         button(row, 'SecondaryButton Outline Small Gold', 'Join', join)
       }
     }
@@ -107,6 +110,12 @@ function boot(): void {
     panel(x, 'HOCross B')
     x.SetPanelEvent('onactivate', close)
     return view.kind === 'invite' && view.full ? panel(panel(toast, 'HOToastBar'), 'HOToastBarFill') : null
+  }
+
+  /** The toast's sentence as runs of text, the names in bold. */
+  function line(parent: Panel, runs: [string, boolean][]): void {
+    const row = panel(parent, 'HOToastRuns')
+    for (const [text, bold] of runs) label(row, `HOToastFrom${bold ? ' Bold' : ''}`, text)
   }
 
   const banner = new Section()

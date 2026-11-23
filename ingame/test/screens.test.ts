@@ -140,6 +140,7 @@ test('servers read as rows with places, fill, ping tone and joinability', () => 
   assert.equal(view.lines[0]?.sub, 'Bebop Wars · 3v3 · Hosted by Mugi')
   assert.equal(viewServers(snapshotOf('servers-unavailable.json')).note, 'This Hideout can’t list servers.')
   assert.equal(viewServers(snapshotOf('servers-loading.json')).note, null)
+  assert.equal(run(EMPTY, { kind: 'servers-answered', result: 'unavailable' }).view.servers.note, 'This Hideout can’t list servers.')
   const { effects } = run(snapshotOf('servers.json'), { kind: 'tab', tab: 'servers' }, { kind: 'join', server: '3c41a9e07d5b2f18' })
   assert.deepEqual(effects, [{ kind: 'send', what: 'join', command: { k: 'join', server: '3c41a9e07d5b2f18' } }])
 })

@@ -1,8 +1,19 @@
-.Paper
+.PaperEdge
+{
+	width: 100%;
+	height: 100%;
+	flow-children: none;
+}
+
+.PaperBody
 {
 	background-color: #2A2723;
-	opacity-mask: url("s2r://panorama/images/masks/rough_edge_01_png.vtex");
 	box-shadow: 0px 30px 60px #0000008c;
+}
+
+.PaperTooth
+{
+	background-color: #2A2723;
 }
 
 .Grain
@@ -179,6 +190,11 @@
 	opacity: 0.55;
 }
 
+.Cream.Busy:disabled
+{
+	opacity: 1;
+}
+
 .HSpinner
 {
 	width: 22px;
@@ -198,101 +214,10 @@
 	wash-color: #1A1714;
 }
 
-.Mark
+.Mark, .MarkPart
 {
 	flow-children: none;
-}
-
-.MarkArt
-{
-	width: 64px;
-	height: 64px;
-	transform-origin: 0% 0%;
-}
-
-.MarkBack
-{
-	x: 15.5px;
-	y: 12.5px;
-	width: 25px;
-	height: 37px;
-	border-radius: 3.4px;
-	background-color: #F1DFB8;
-	transform-origin: 50% 115%;
-	transform: rotateZ(-14deg);
-}
-
-.MarkFront
-{
-	x: 21.3px;
-	y: 10.3px;
-	width: 29.4px;
-	height: 41.4px;
-	border-radius: 5.4px;
-	background-color: #141313;
-	transform-origin: 50% 108%;
-	transform: rotateZ(9deg);
-}
-
-.MarkFace
-{
-	x: 2.2px;
-	y: 2.2px;
-	width: 25px;
-	height: 37px;
-	border-radius: 3.4px;
-	background-color: #F1DFB8;
-}
-
-.MarkHead
-{
-	x: 4.3px;
-	y: 7.4px;
-	width: 16.4px;
-	height: 16.4px;
-	border-radius: 50%;
-	background-color: #2F8F5B;
-}
-
-.MarkSmile
-{
-	x: 6.3px;
-	y: 13px;
-	width: 12.4px;
-	height: 12px;
-	border-radius: 50%;
-	border-bottom: 2.3px solid #141313;
-}
-
-.MarkSeat
-{
-	x: 5.4px;
-	y: 28.3px;
-	width: 14.3px;
-	height: 2.3px;
-	border-radius: 1.2px;
-	background-color: #141313;
-}
-
-.MarkLeg
-{
-	y: 25.4px;
-	width: 2.3px;
-	height: 4.3px;
-	border-radius: 1.2px;
-	background-color: #141313;
-}
-
-.MarkLeg.Left
-{
-	x: 6.9px;
-	transform: rotateZ(28deg);
-}
-
-.MarkLeg.Right
-{
-	x: 16.1px;
-	transform: rotateZ(-28deg);
+	overflow: noclip;
 }
 
 .Tear

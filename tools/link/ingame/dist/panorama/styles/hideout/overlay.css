@@ -6,6 +6,7 @@
 
 .HOHiddenParts
 {
+	x: -2000px;
 	width: 320px;
 	height: 320px;
 	opacity: 0.01;
@@ -28,31 +29,34 @@
 
 .HOToast
 {
-	width: 100%;
+	width: 580px;
+	height: 130px;
 	margin-bottom: 10px;
 	flow-children: none;
-	background-color: #2A2723;
-	border-left: 4px solid #D4A35E;
-	opacity-mask: url("s2r://panorama/images/masks/rough_edge_01_png.vtex");
-	box-shadow: 0px 30px 60px #0000008c;
-}
-
-.HOToastRow
-{
-	width: 100%;
-	flow-children: right;
-	padding: 16px 18px 18px 18px;
+	overflow: noclip;
 }
 
 .HOToast.Slim
 {
+	height: 70px;
 	opacity: 0.9;
+}
+
+.HOToastRow
+{
+	x: 2px;
+	y: 2px;
+	width: 576px;
+	height: 126px;
+	flow-children: right;
+	padding: 14px 16px 16px 18px;
+	border-left: 4px solid #D4A35E;
 }
 
 .HOToast.Slim .HOToastRow
 {
-	height: 70px;
-	padding: 13px 12px 13px 16px;
+	height: 66px;
+	padding: 11px 10px 11px 16px;
 }
 
 .HOToastArt
@@ -124,6 +128,28 @@
 	vertical-align: middle;
 }
 
+.HOToastRuns
+{
+	flow-children: right;
+}
+
+.HOToastRuns Label
+{
+	margin-right: 5px;
+}
+
+.HOToastRow > .HOToastRuns
+{
+	vertical-align: middle;
+	width: fill-parent-flow( 1.0 );
+}
+
+.HOToastFrom.Bold
+{
+	font-weight: bold;
+	color: #F3E7D3;
+}
+
 .HOToastMode
 {
 	font-size: 26px;
@@ -188,9 +214,10 @@
 
 .HOToastBar
 {
-	width: 100%;
+	x: 6px;
+	y: 125px;
+	width: 572px;
 	height: 3px;
-	vertical-align: bottom;
 	background-color: #EFE6D614;
 }
 
@@ -223,6 +250,7 @@
 {
 	width: 700px;
 	height: 640px;
+	overflow: noclip;
 	horizontal-align: center;
 	vertical-align: middle;
 	flow-children: none;
@@ -392,6 +420,12 @@
 {
 	height: 100%;
 	background-color: #D4A35E;
+}
+
+.HOBoxHolder
+{
+	width: 100%;
+	flow-children: down;
 }
 
 .HOBox

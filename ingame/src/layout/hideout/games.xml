@@ -11,7 +11,7 @@
 		<include src="file://{resources}/scripts/hideout/config.js" />
 		<include src="file://{resources}/scripts/hideout/games.js" />
 	</scripts>
-	<Panel id="HideoutGames" class="PopupPanel Hidden Paper HGPopup" popupbackground="dim" oncancel="UIPopupButtonClicked()">
+	<Panel id="HideoutGames" class="PopupPanel Hidden HGPopup" popupbackground="dim" oncancel="UIPopupButtonClicked()">
 		<Panel class="HGHiddenParts" hittest="false" hittestchildren="false">
 			<CitadelFriendMenu id="HGFriendMenu" />
 			<CitadelUserName id="HGMe" accountid="local" />

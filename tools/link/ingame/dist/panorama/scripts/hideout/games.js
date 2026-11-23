@@ -60,28 +60,32 @@
     return raw;
   }
   var FriendWatch = class {
+    /** [changed] runs from the next read on, never from the constructor. */
     constructor(menu, changed) {
       __publicField(this, "current", NO_FRIENDS);
       __publicField(this, "key", "");
       menu.RemoveClass("Hidden");
-      const tick = () => {
-        if (!menu.IsValid()) return;
+      const read = () => {
         const now = friendsOf(readMenu(menu));
         const key = JSON.stringify(now);
-        if (key !== this.key) {
-          this.key = key;
-          this.current = now;
-          changed();
-        }
+        if (key === this.key) return false;
+        this.key = key;
+        this.current = now;
+        return true;
+      };
+      const tick = () => {
+        if (!menu.IsValid()) return;
+        if (read()) changed();
         $.Schedule(2, tick);
       };
-      tick();
+      read();
+      $.Schedule(2, tick);
     }
   };
 
   // src/games.ts
   function initialGames(tab) {
-    return { tab, draft: { mode: null, picks: {}, listing: "invite-only", invitees: [] }, request: { kind: "idle" } };
+    return { tab, draft: { mode: null, picks: {}, listing: "invite-only", invitees: [] }, request: { kind: "idle" }, serversAnswer: null };
   }
   function runningHost(snapshot) {
     const host2 = snapshot.game?.host ?? null;
@@ -143,6 +147,8 @@
         if (event.result !== "accepted") return [{ ...state2, request: { kind: "refused", what: event.what, result: event.result } }, []];
         if (event.what === "play" && !host2) return [state2, []];
         return [{ ...state2, request: { kind: "idle" } }, []];
+      case "servers-answered":
+        return [{ ...state2, serversAnswer: event.result }, []];
       case "seen":
         if (state2.request.kind === "sending" && state2.request.what === "play" && host2) return [{ ...state2, request: { kind: "idle" } }, []];
         return [state2, []];
@@ -267,9 +273,12 @@
       joinable: row.status !== "full"
     };
   }
-  function viewServers(snapshot) {
+  function viewServers(snapshot, answer = null) {
     const servers2 = snapshot.servers;
-    if (!servers2) return { state: "idle", lines: [], note: null };
+    if (!servers2) {
+      if (answer === "unavailable") return { state: "unavailable", lines: [], note: SERVER_NOTES.unavailable };
+      return answer && answer !== "accepted" ? { state: "unreachable", lines: [], note: REFUSALS[answer] } : { state: "idle", lines: [], note: null };
+    }
     const lines = servers2.rows.map(serverLine);
     return { state: servers2.state, lines, note: lines.length ? null : SERVER_NOTES[servers2.state] };
   }
@@ -286,7 +295,7 @@
       const minutes = selected.minutes;
       if (minutes) chips2.push({ icon: "time", text: minutes[0] === minutes[1] ? `~${minutes[0]} min` : `${minutes[0]}\u2013${minutes[1]} min` });
     }
-    const servers2 = viewServers(snapshot);
+    const servers2 = viewServers(snapshot, state2.serversAnswer);
     return {
       tab: state2.tab,
       counts: { games: modes.length, servers: snapshot.servers?.state === "ready" ? servers2.lines.length : null },
@@ -687,17 +696,59 @@
   function spinner(parent, cls = "") {
     return panel(parent, `HSpinner ${cls}`);
   }
+  var BACK = { x: 15.5, y: 12.5, w: 25, h: 37, round: 3.4, color: "#F1DFB8", rotate: -14, origin: "50% 115%" };
+  var FRONT = { x: 21.3, y: 10.3, w: 29.4, h: 41.4, round: 5.4, color: "#141313", rotate: 9, origin: "50% 108%" };
+  var FACE = [
+    { x: 2.2, y: 2.2, w: 25, h: 37, round: 3.4, color: "#F1DFB8" },
+    { x: 6.5, y: 9.6, w: 16.4, h: 16.4, round: 8.2, color: "#2F8F5B" },
+    { x: 8.6, y: 14.3, w: 12.1, h: 12.1, round: 6, color: "transparent", smile: true },
+    { x: 7.6, y: 30.5, w: 14.3, h: 2.3, round: 1.1, color: "#141313" },
+    { x: 9.1, y: 27.5, w: 2.3, h: 4.2, round: 1.1, color: "#141313", rotate: 28 },
+    { x: 18.3, y: 27.5, w: 2.3, h: 4.2, round: 1.1, color: "#141313", rotate: -28 }
+  ];
+  function part(parent, p, k) {
+    const px = (v) => `${(v * k).toFixed(2)}px`;
+    const style = [
+      `x: ${px(p.x)}`,
+      `y: ${px(p.y)}`,
+      `width: ${px(p.w)}`,
+      `height: ${px(p.h)}`,
+      `background-color: ${p.color}`,
+      p.round ? `border-radius: ${px(p.round)}` : "",
+      p.smile ? `border-bottom: ${px(2.3)} solid #141313` : "",
+      p.rotate ? `transform: rotateZ(${p.rotate}deg)` : "",
+      p.origin ? `transform-origin: ${p.origin}` : ""
+    ];
+    return panel(parent, "MarkPart", "Panel", { style: style.filter(Boolean).join("; ") + ";" });
+  }
   function mark(parent, size) {
+    const k = size / 64;
     const box = panel(parent, "Mark", "Panel", { style: `width: ${size}px; height: ${size}px;` });
-    const art2 = panel(box, "MarkArt", "Panel", { style: `transform: scale3d(${size / 64}, ${size / 64}, 1);` });
-    panel(art2, "MarkBack");
-    const front = panel(panel(art2, "MarkFront"), "MarkFace");
-    panel(front, "MarkHead");
-    panel(front, "MarkSmile");
-    panel(front, "MarkSeat");
-    panel(front, "MarkLeg Left");
-    panel(front, "MarkLeg Right");
+    part(box, BACK, k);
+    const front = part(box, FRONT, k);
+    for (const p of FACE) part(front, p, k);
     return box;
+  }
+  function paper(into, width, height, seed) {
+    const edge = panel(into, "PaperEdge");
+    panel(edge, "PaperBody", "Panel", { style: `x: 2px; y: 2px; width: ${width - 4}px; height: ${height - 4}px;` });
+    let s = seed;
+    const depth = () => {
+      s = s * 16807 % 2147483647;
+      return s % 3;
+    };
+    for (let x = 2; x < width - 2; x += 26) {
+      const w = Math.min(26, width - 2 - x);
+      panel(edge, "PaperTooth", "Panel", { style: `x: ${x}px; y: ${2 - depth()}px; width: ${w}px; height: 2px;` });
+      panel(edge, "PaperTooth", "Panel", { style: `x: ${x}px; y: ${height - 4 + depth()}px; width: ${w}px; height: 2px;` });
+    }
+    for (let y = 2; y < height - 2; y += 26) {
+      const h = Math.min(26, height - 2 - y);
+      panel(edge, "PaperTooth", "Panel", { style: `x: ${2 - depth()}px; y: ${y}px; width: 2px; height: ${h}px;` });
+      panel(edge, "PaperTooth", "Panel", { style: `x: ${width - 4 + depth()}px; y: ${y}px; width: 2px; height: ${h}px;` });
+    }
+    into.MoveChildBefore(edge, into.GetChild(0));
+    return edge;
   }
   function tear(parent, width, seed) {
     const strip = panel(parent, "Tear");
@@ -725,6 +776,7 @@
   var find = (id) => root.FindChildTraverse(id);
   var me = find("HGMe");
   var state = initialGames(root.GetAttributeString("tab", "games") === "servers" ? "servers" : "games");
+  paper(root, 1440, 862, 7);
   var link = new Link(root, HideoutConfig, () => dispatch({ kind: "seen" }));
   var friends = new FriendWatch(find("HGFriendMenu"), render);
   for (const [id, size] of [["HGTitleRow", 40], ["HGMore", 16]]) {
@@ -733,12 +785,15 @@
   }
   find("HGTabGames").SetPanelEvent("onactivate", () => dispatch({ kind: "tab", tab: "games" }));
   find("HGTabServers").SetPanelEvent("onactivate", () => dispatch({ kind: "tab", tab: "servers" }));
+  function readServers() {
+    link.send({ k: "servers" }, (result) => dispatch({ kind: "servers-answered", result }));
+  }
   function dispatch(event) {
     const [next, effects] = reduceGames(state, event, link.snapshot);
     const wasServers = state.tab === "servers";
     state = next;
     effects.forEach(run);
-    if (state.tab === "servers" && !wasServers) link.send({ k: "servers" });
+    if (state.tab === "servers" && !wasServers) readServers();
     render();
   }
   function run(effect) {
@@ -865,6 +920,7 @@
       label(inner, "", view.play.label);
       const p = view.play;
       into.enabled = p.kind === "play" || p.kind === "act";
+      into.SetHasClass("Busy", p.kind === "busy");
       into.SetPanelEvent("onactivate", () => {
         if (p.kind === "play") dispatch({ kind: "play" });
         else if (p.kind === "act") dispatch({ kind: "act", action: p.action });
@@ -909,10 +965,10 @@
   }
   function refreshServers() {
     if (!root.IsValid()) return;
-    if (state.tab === "servers" && link.status === "online") link.send({ k: "servers" });
+    if (state.tab === "servers" && link.status === "online") readServers();
     $.Schedule(15, refreshServers);
   }
   $.Schedule(15, refreshServers);
-  if (state.tab === "servers") link.send({ k: "servers" });
+  if (state.tab === "servers") readServers();
   render();
 })();

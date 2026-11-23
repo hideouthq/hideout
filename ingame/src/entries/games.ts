@@ -3,7 +3,7 @@
 import { FriendWatch } from '../friends.ts'
 import { type GamesEffect, type GamesEvent, type GamesView, type ServersView, initialGames, reduceGames, refusalText, viewGames } from '../games.ts'
 import { Link } from '../link.ts'
-import { Section, art, button, label, mark, panel, spinner, tear } from '../ui.ts'
+import { Section, art, button, label, mark, panel, paper, spinner, tear } from '../ui.ts'
 import type { Config, Listing, ModeId } from '../wire.ts'
 
 declare const HideoutConfig: Config
@@ -13,6 +13,7 @@ const find = (id: string) => root.FindChildTraverse(id)!
 const me = find('HGMe')
 let state = initialGames(root.GetAttributeString('tab', 'games') === 'servers' ? 'servers' : 'games')
 
+paper(root, 1440, 862, 7)
 const link = new Link(root, HideoutConfig, () => dispatch({ kind: 'seen' }))
 const friends = new FriendWatch(find('HGFriendMenu'), render)
 
@@ -23,12 +24,16 @@ for (const [id, size] of [['HGTitleRow', 40], ['HGMore', 16]] as const) {
 find('HGTabGames').SetPanelEvent('onactivate', () => dispatch({ kind: 'tab', tab: 'games' }))
 find('HGTabServers').SetPanelEvent('onactivate', () => dispatch({ kind: 'tab', tab: 'servers' }))
 
+function readServers(): void {
+  link.send({ k: 'servers' }, (result) => dispatch({ kind: 'servers-answered', result }))
+}
+
 function dispatch(event: GamesEvent): void {
   const [next, effects] = reduceGames(state, event, link.snapshot)
   const wasServers = state.tab === 'servers'
   state = next
   effects.forEach(run)
-  if (state.tab === 'servers' && !wasServers) link.send({ k: 'servers' })
+  if (state.tab === 'servers' && !wasServers) readServers()
   render()
 }
 
@@ -161,6 +166,7 @@ function drawDetail(view: GamesView): void {
     label(inner, '', view.play.label)
     const p = view.play
     into.enabled = p.kind === 'play' || p.kind === 'act'
+    into.SetHasClass('Busy', p.kind === 'busy')
     into.SetPanelEvent('onactivate', () => {
       if (p.kind === 'play') dispatch({ kind: 'play' })
       else if (p.kind === 'act') dispatch({ kind: 'act', action: p.action })
@@ -209,9 +215,9 @@ function drawServers(view: ServersView, reachable: boolean): void {
 // The Servers tab keeps the app's list fresh while it shows.
 function refreshServers(): void {
   if (!root.IsValid()) return
-  if (state.tab === 'servers' && link.status === 'online') link.send({ k: 'servers' })
+  if (state.tab === 'servers' && link.status === 'online') readServers()
   $.Schedule(15, refreshServers)
 }
 $.Schedule(15, refreshServers)
-if (state.tab === 'servers') link.send({ k: 'servers' })
+if (state.tab === 'servers') readServers()
 render()

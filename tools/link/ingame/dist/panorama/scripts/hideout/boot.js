@@ -60,22 +60,26 @@
     return raw;
   }
   var FriendWatch = class {
+    /** [changed] runs from the next read on, never from the constructor. */
     constructor(menu, changed) {
       __publicField(this, "current", NO_FRIENDS);
       __publicField(this, "key", "");
       menu.RemoveClass("Hidden");
-      const tick = () => {
-        if (!menu.IsValid()) return;
+      const read = () => {
         const now = friendsOf(readMenu(menu));
         const key = JSON.stringify(now);
-        if (key !== this.key) {
-          this.key = key;
-          this.current = now;
-          changed();
-        }
+        if (key === this.key) return false;
+        this.key = key;
+        this.current = now;
+        return true;
+      };
+      const tick = () => {
+        if (!menu.IsValid()) return;
+        if (read()) changed();
         $.Schedule(2, tick);
       };
-      tick();
+      read();
+      $.Schedule(2, tick);
     }
   };
 
@@ -505,12 +509,6 @@
   function label(parent, cls, text2) {
     return $.CreatePanel("Label", parent, "", { class: cls, text: text2 });
   }
-  function rich(parent, cls, html) {
-    return $.CreatePanel("Label", parent, "", { class: cls, html: "true", text: html });
-  }
-  function esc(text2) {
-    return text2.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  }
   function art(parent, cls, url, style = "") {
     if (!url) return panel(parent, `${cls} NoArt`, "Panel", { style });
     return $.CreatePanel("Image", parent, "", { class: `${cls} Art`, src: url, scaling: "stretch-to-cover-preserve-aspect", style });
@@ -525,17 +523,59 @@
   function spinner(parent, cls = "") {
     return panel(parent, `HSpinner ${cls}`);
   }
+  var BACK = { x: 15.5, y: 12.5, w: 25, h: 37, round: 3.4, color: "#F1DFB8", rotate: -14, origin: "50% 115%" };
+  var FRONT = { x: 21.3, y: 10.3, w: 29.4, h: 41.4, round: 5.4, color: "#141313", rotate: 9, origin: "50% 108%" };
+  var FACE = [
+    { x: 2.2, y: 2.2, w: 25, h: 37, round: 3.4, color: "#F1DFB8" },
+    { x: 6.5, y: 9.6, w: 16.4, h: 16.4, round: 8.2, color: "#2F8F5B" },
+    { x: 8.6, y: 14.3, w: 12.1, h: 12.1, round: 6, color: "transparent", smile: true },
+    { x: 7.6, y: 30.5, w: 14.3, h: 2.3, round: 1.1, color: "#141313" },
+    { x: 9.1, y: 27.5, w: 2.3, h: 4.2, round: 1.1, color: "#141313", rotate: 28 },
+    { x: 18.3, y: 27.5, w: 2.3, h: 4.2, round: 1.1, color: "#141313", rotate: -28 }
+  ];
+  function part(parent, p, k) {
+    const px = (v) => `${(v * k).toFixed(2)}px`;
+    const style = [
+      `x: ${px(p.x)}`,
+      `y: ${px(p.y)}`,
+      `width: ${px(p.w)}`,
+      `height: ${px(p.h)}`,
+      `background-color: ${p.color}`,
+      p.round ? `border-radius: ${px(p.round)}` : "",
+      p.smile ? `border-bottom: ${px(2.3)} solid #141313` : "",
+      p.rotate ? `transform: rotateZ(${p.rotate}deg)` : "",
+      p.origin ? `transform-origin: ${p.origin}` : ""
+    ];
+    return panel(parent, "MarkPart", "Panel", { style: style.filter(Boolean).join("; ") + ";" });
+  }
   function mark(parent, size) {
+    const k = size / 64;
     const box = panel(parent, "Mark", "Panel", { style: `width: ${size}px; height: ${size}px;` });
-    const art2 = panel(box, "MarkArt", "Panel", { style: `transform: scale3d(${size / 64}, ${size / 64}, 1);` });
-    panel(art2, "MarkBack");
-    const front = panel(panel(art2, "MarkFront"), "MarkFace");
-    panel(front, "MarkHead");
-    panel(front, "MarkSmile");
-    panel(front, "MarkSeat");
-    panel(front, "MarkLeg Left");
-    panel(front, "MarkLeg Right");
+    part(box, BACK, k);
+    const front = part(box, FRONT, k);
+    for (const p of FACE) part(front, p, k);
     return box;
+  }
+  function paper(into, width, height, seed) {
+    const edge = panel(into, "PaperEdge");
+    panel(edge, "PaperBody", "Panel", { style: `x: 2px; y: 2px; width: ${width - 4}px; height: ${height - 4}px;` });
+    let s = seed;
+    const depth = () => {
+      s = s * 16807 % 2147483647;
+      return s % 3;
+    };
+    for (let x = 2; x < width - 2; x += 26) {
+      const w = Math.min(26, width - 2 - x);
+      panel(edge, "PaperTooth", "Panel", { style: `x: ${x}px; y: ${2 - depth()}px; width: ${w}px; height: 2px;` });
+      panel(edge, "PaperTooth", "Panel", { style: `x: ${x}px; y: ${height - 4 + depth()}px; width: ${w}px; height: 2px;` });
+    }
+    for (let y = 2; y < height - 2; y += 26) {
+      const h = Math.min(26, height - 2 - y);
+      panel(edge, "PaperTooth", "Panel", { style: `x: ${2 - depth()}px; y: ${y}px; width: 2px; height: ${h}px;` });
+      panel(edge, "PaperTooth", "Panel", { style: `x: ${width - 4 + depth()}px; y: ${y}px; width: 2px; height: ${h}px;` });
+    }
+    into.MoveChildBefore(edge, into.GetChild(0));
+    return edge;
   }
   function tear(parent, width, seed) {
     const strip = panel(parent, "Tear");
@@ -568,6 +608,7 @@
     const host2 = $.CreatePanel("Panel", overlay ?? $.GetContextPanel(), "HideoutRoot", { hittest: "false" });
     host2.BLoadLayout("file://{resources}/layout/hideout/root.xml", false, false);
     const find = (id) => host2.FindChildTraverse(id);
+    paper(find("HODialog"), 700, 640, 11);
     let wasOnline = false;
     const link = new Link(host2, HideoutConfig, () => {
       const online = link.status === "online";
@@ -597,6 +638,7 @@
         if (!shown || shown.look !== look || !toastPanel) {
           toastPanel?.DeleteAsync(0);
           toastPanel = $.CreatePanel("Panel", stack, `HOToast-${view.key}`, { class: `HOToast${view.full ? "" : " Slim"}` });
+          paper(toastPanel, 580, view.full ? 130 : 70, view.key.length * 31 + 5);
           shown = { look, bar: buildToast(toastPanel, view) };
           toasts.set(view.key, shown);
         }
@@ -607,6 +649,7 @@
     }
     function buildToast(toast, view) {
       const row = panel(toast, "HOToastRow");
+      panel(toast, "Grain", "Panel", { hittest: "false" });
       const close = () => {
         hidden.add(view.key);
         if (view.kind === "invite") send({ k: "forget", invite: view.invite.id });
@@ -617,7 +660,7 @@
       art(pic, "HOToastPic", view.kind === "invite" ? view.invite.tile : null);
       $.CreatePanel("CitadelAvatarImage", pic, "", { class: "HOToastAvatar", steamid: friend });
       if (view.kind === "unreached") {
-        rich(row, "HOToastText HOToastFrom", `<b>${esc(view.name)}</b> couldn\u2019t get your invite.`);
+        line(row, [[view.name, true], ["couldn\u2019t get your invite.", false]]);
         button(row, "SecondaryButton Outline Small Gold", "Copy link", () => {
           $.DispatchEvent("CopyStringToClipboard", view.link, host2);
           $.DispatchEvent("SteamChatWithFriend", view.friend);
@@ -637,12 +680,12 @@
           const cap = panel(text2, "CapRow");
           mark(cap, 14);
           label(cap, "Cap", "Hideout invite");
-          rich(text2, "HOToastFrom", `<b>${esc(view.name)}</b> invited you to`);
+          line(text2, [[view.name, true], ["invited you to", false]]);
           label(text2, "Title HOToastMode", view.invite.mode);
           label(text2, "HOToastLine", view.line);
           button(row, "Cream HOToastJoin", "Join", join2);
         } else {
-          rich(row, "HOToastText HOToastFrom", `<b>${esc(view.name)}</b> invited you to <b>${esc(view.invite.mode)}</b>`);
+          line(row, [[view.name, true], ["invited you to", false], [view.invite.mode, true]]);
           button(row, "SecondaryButton Outline Small Gold", "Join", join2);
         }
       }
@@ -651,6 +694,10 @@
       panel(x, "HOCross B");
       x.SetPanelEvent("onactivate", close);
       return view.kind === "invite" && view.full ? panel(panel(toast, "HOToastBar"), "HOToastBarFill") : null;
+    }
+    function line(parent, runs) {
+      const row = panel(parent, "HOToastRuns");
+      for (const [text2, bold] of runs) label(row, `HOToastFrom${bold ? " Bold" : ""}`, text2);
     }
     const banner = new Section();
     const steps = new Section();

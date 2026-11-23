@@ -13,7 +13,7 @@
 		<Panel id="HOToasts" class="HOToasts" hittest="false" />
 		<Panel id="HOJoining" class="HOJoining">
 			<Panel class="HOScrim" />
-			<Panel class="Paper HODialog">
+			<Panel id="HODialog" class="HODialog">
 				<Panel id="HOJoinBanner" class="HOJoinBanner" />
 				<Panel class="HOJoinBody">
 					<Label id="HOJoinTitle" class="Title HOJoinTitle" text="" />

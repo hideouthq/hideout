@@ -373,16 +373,37 @@
     if (!url) return panel(parent, `${cls} NoArt`, "Panel", { style });
     return $.CreatePanel("Image", parent, "", { class: `${cls} Art`, src: url, scaling: "stretch-to-cover-preserve-aspect", style });
   }
+  var BACK = { x: 15.5, y: 12.5, w: 25, h: 37, round: 3.4, color: "#F1DFB8", rotate: -14, origin: "50% 115%" };
+  var FRONT = { x: 21.3, y: 10.3, w: 29.4, h: 41.4, round: 5.4, color: "#141313", rotate: 9, origin: "50% 108%" };
+  var FACE = [
+    { x: 2.2, y: 2.2, w: 25, h: 37, round: 3.4, color: "#F1DFB8" },
+    { x: 6.5, y: 9.6, w: 16.4, h: 16.4, round: 8.2, color: "#2F8F5B" },
+    { x: 8.6, y: 14.3, w: 12.1, h: 12.1, round: 6, color: "transparent", smile: true },
+    { x: 7.6, y: 30.5, w: 14.3, h: 2.3, round: 1.1, color: "#141313" },
+    { x: 9.1, y: 27.5, w: 2.3, h: 4.2, round: 1.1, color: "#141313", rotate: 28 },
+    { x: 18.3, y: 27.5, w: 2.3, h: 4.2, round: 1.1, color: "#141313", rotate: -28 }
+  ];
+  function part(parent, p, k) {
+    const px = (v) => `${(v * k).toFixed(2)}px`;
+    const style = [
+      `x: ${px(p.x)}`,
+      `y: ${px(p.y)}`,
+      `width: ${px(p.w)}`,
+      `height: ${px(p.h)}`,
+      `background-color: ${p.color}`,
+      p.round ? `border-radius: ${px(p.round)}` : "",
+      p.smile ? `border-bottom: ${px(2.3)} solid #141313` : "",
+      p.rotate ? `transform: rotateZ(${p.rotate}deg)` : "",
+      p.origin ? `transform-origin: ${p.origin}` : ""
+    ];
+    return panel(parent, "MarkPart", "Panel", { style: style.filter(Boolean).join("; ") + ";" });
+  }
   function mark(parent, size) {
+    const k = size / 64;
     const box = panel(parent, "Mark", "Panel", { style: `width: ${size}px; height: ${size}px;` });
-    const art2 = panel(box, "MarkArt", "Panel", { style: `transform: scale3d(${size / 64}, ${size / 64}, 1);` });
-    panel(art2, "MarkBack");
-    const front = panel(panel(art2, "MarkFront"), "MarkFace");
-    panel(front, "MarkHead");
-    panel(front, "MarkSmile");
-    panel(front, "MarkSeat");
-    panel(front, "MarkLeg Left");
-    panel(front, "MarkLeg Right");
+    part(box, BACK, k);
+    const front = part(box, FRONT, k);
+    for (const p of FACE) part(front, p, k);
     return box;
   }
   var Section = class {
@@ -399,6 +420,7 @@
 
   // src/entries/popup.ts
   var dialog = $.GetContextPanel();
+  dialog.style.padding = "32px 0px 0px 0px";
   var band = $.CreatePanel("Button", dialog, "HideoutBand");
   band.BLoadLayout("file://{resources}/layout/hideout/band.xml", false, false);
   var cap = band.FindChildTraverse("HBandCap");

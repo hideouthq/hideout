@@ -94,19 +94,23 @@ export class FriendWatch {
   current: Friends = NO_FRIENDS
   private key = ''
 
+  /** [changed] runs from the next read on, never from the constructor. */
   constructor(menu: Panel, changed: () => void) {
     menu.RemoveClass('Hidden')
-    const tick = () => {
-      if (!menu.IsValid()) return
+    const read = () => {
       const now = friendsOf(readMenu(menu))
       const key = JSON.stringify(now)
-      if (key !== this.key) {
-        this.key = key
-        this.current = now
-        changed()
-      }
+      if (key === this.key) return false
+      this.key = key
+      this.current = now
+      return true
+    }
+    const tick = () => {
+      if (!menu.IsValid()) return
+      if (read()) changed()
       $.Schedule(2, tick)
     }
-    tick()
+    read()
+    $.Schedule(2, tick)
   }
 }

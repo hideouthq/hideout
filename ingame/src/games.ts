@@ -26,6 +26,8 @@ export interface GamesState {
   tab: Tab
   draft: Draft
   request: Request
+  /** What the app said to the last servers read, which says why no list comes. */
+  serversAnswer: CommandResult | null
 }
 
 export type GamesEvent =
@@ -38,6 +40,7 @@ export type GamesEvent =
   | { kind: 'act'; action: Action }
   | { kind: 'join'; server: string }
   | { kind: 'settled'; what: Press; result: CommandResult }
+  | { kind: 'servers-answered'; result: CommandResult }
   | { kind: 'seen' }
 
 export type GamesEffect =
@@ -46,7 +49,7 @@ export type GamesEffect =
   | { kind: 'copy-and-chat'; link: string; friend: SteamId }
 
 export function initialGames(tab: Tab): GamesState {
-  return { tab, draft: { mode: null, picks: {}, listing: 'invite-only', invitees: [] }, request: { kind: 'idle' } }
+  return { tab, draft: { mode: null, picks: {}, listing: 'invite-only', invitees: [] }, request: { kind: 'idle' }, serversAnswer: null }
 }
 
 /** A hosted game that still runs or is on its way. An ended one leaves the Play button to the next game. */
@@ -114,6 +117,8 @@ export function reduceGames(state: GamesState, event: GamesEvent, snapshot: Snap
       // Play stays Starting until the game topic shows the hosted game, so the button never flashes back.
       if (event.what === 'play' && !host) return [state, []]
       return [{ ...state, request: { kind: 'idle' } }, []]
+    case 'servers-answered':
+      return [{ ...state, serversAnswer: event.result }, []]
     case 'seen':
       if (state.request.kind === 'sending' && state.request.what === 'play' && host) return [{ ...state, request: { kind: 'idle' } }, []]
       return [state, []]
@@ -291,9 +296,12 @@ function serverLine(row: ServerRow): ServerLine {
   }
 }
 
-export function viewServers(snapshot: Snapshot): ServersView {
+export function viewServers(snapshot: Snapshot, answer: CommandResult | null = null): ServersView {
   const servers = snapshot.servers
-  if (!servers) return { state: 'idle', lines: [], note: null }
+  if (!servers) {
+    if (answer === 'unavailable') return { state: 'unavailable', lines: [], note: SERVER_NOTES.unavailable }
+    return answer && answer !== 'accepted' ? { state: 'unreachable', lines: [], note: REFUSALS[answer] } : { state: 'idle', lines: [], note: null }
+  }
   const lines = servers.rows.map(serverLine)
   return { state: servers.state, lines, note: lines.length ? null : SERVER_NOTES[servers.state] }
 }
@@ -312,7 +320,7 @@ export function viewGames(state: GamesState, snapshot: Snapshot, link: LinkStatu
     const minutes = selected.minutes
     if (minutes) chips.push({ icon: 'time', text: minutes[0] === minutes[1] ? `~${minutes[0]} min` : `${minutes[0]}–${minutes[1]} min` })
   }
-  const servers = viewServers(snapshot)
+  const servers = viewServers(snapshot, state.serversAnswer)
   return {
     tab: state.tab,
     counts: { games: modes.length, servers: snapshot.servers?.state === 'ready' ? servers.lines.length : null },

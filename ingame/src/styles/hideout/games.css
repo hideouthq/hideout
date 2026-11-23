@@ -6,13 +6,13 @@
 	min-width: 0px;
 	flow-children: none;
 	background-image: none;
-	background-color: #2A2723;
-	opacity-mask: url("s2r://panorama/images/masks/rough_edge_01_png.vtex");
-	opacity-mask-scale: 100% 100%;
+	background-color: transparent;
+	overflow: noclip;
 }
 
 .HGHiddenParts
 {
+	x: -2000px;
 	width: 320px;
 	height: 320px;
 	opacity: 0.01;
@@ -52,13 +52,13 @@
 .HGTitle
 {
 	font-size: 46px;
+	margin-top: -9px;
 	vertical-align: middle;
 }
 
 .HGSubtitle
 {
 	font-size: 20px;
-	margin-top: 8px;
 }
 
 .HGTabs
@@ -584,6 +584,12 @@
 	width: 100%;
 	padding: 0px 18px;
 	flow-children: right;
+}
+
+.HGServerRows
+{
+	width: 100%;
+	flow-children: down;
 }
 
 .HGServerHead

@@ -9,6 +9,9 @@ import type { Config } from '../wire.ts'
 declare const HideoutConfig: Config
 
 const dialog = $.GetContextPanel()
+// The band runs edge to edge along the dialog's bottom, so the dialog gives up its side and bottom padding. Valve's
+// part is centred and doesn't move.
+dialog.style.padding = '32px 0px 0px 0px'
 const band = $.CreatePanel('Button', dialog, 'HideoutBand')
 band.BLoadLayout('file://{resources}/layout/hideout/band.xml', false, false)
 const cap = band.FindChildTraverse('HBandCap')!
