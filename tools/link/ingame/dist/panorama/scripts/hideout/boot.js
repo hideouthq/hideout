@@ -60,7 +60,6 @@
     return raw;
   }
   var FriendWatch = class {
-    /** [changed] runs from the next read on, never from the constructor. */
     constructor(menu, changed) {
       __publicField(this, "current", NO_FRIENDS);
       __publicField(this, "key", "");
@@ -390,7 +389,6 @@
       });
       this.load(LOAD_DEADLINE);
     }
-    /** Commands go one image at a time, each with this context's boot id and the next sequence number. */
     send(command, done = () => {
     }) {
       this.queue.push({ command, done });

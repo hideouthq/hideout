@@ -41,8 +41,8 @@ func runMenus(cfg MenusConfig, emit Sink) Stopped {
 	return stopped
 }
 
-// writeMenus writes the pack and returns the token its config.js holds. The token leaves only
-// on stdout, so no other process reads it from our argv.
+// writeMenus draws the pack token itself and returns it for stdout, so no other process
+// reads it from our argv.
 func writeMenus(cfg MenusConfig) (string, error) {
 	stock, err := vpk.OpenArchive(filepath.Join(cfg.Game, "game", "citadel", "pak01_dir.vpk"))
 	if err != nil {

@@ -1,21 +1,17 @@
-// The bridge page's title protocol, read without Panorama so node can test it. The page streams the endpoint's lines
-// "~<seq>:<packed>" into titles "modlock:frame:<id>:<offset>:<total>:<seq>:<chunk>" and sends the next part when the
-// fragment flips between #0 and #1. An empty title means it has no stream.
+// The bridge page streams the endpoint's lines "~<seq>:<packed>" into titles
+// "modlock:frame:<id>:<offset>:<total>:<seq>:<chunk>" and sends the next part when the fragment flips between #0
+// and #1. An empty title means it has no stream.
 
 const PART = 'modlock:frame:'
-/** Modlock's relay keepalive. Acknowledged like a part, then ignored. */
 const LINE = 'modlock:snapshot:'
 
 export type Read =
-  /** A part to acknowledge. [line] is set once it completes one, as text. */
   | { kind: 'part'; line: string | null }
   /** A title already read, which navigating to a fragment repeats. */
   | { kind: 'repeat' }
-  /** The page has no stream: the app is closed or refused it. */
   | { kind: 'offline' }
-  /** The page loaded and is still reaching the app. */
   | { kind: 'waiting' }
-  /** A part that doesn't follow the one before. The page times it out and sends the line again. */
+  /** Out of order. The page times it out and sends the line again. */
   | { kind: 'broken' }
 
 export class TitleReader {
@@ -68,7 +64,7 @@ function unpack(packed: string): Uint8Array | null {
   return bytes
 }
 
-/** UTF-8 without TextDecoder, which Panorama lacks. Null on malformed bytes. */
+/** Panorama lacks TextDecoder. */
 function utf8(bytes: Uint8Array): string | null {
   let latin = ''
   for (let at = 0; at < bytes.length; at += 4096) latin += String.fromCharCode.apply(null, bytes.subarray(at, at + 4096) as unknown as number[])

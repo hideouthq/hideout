@@ -1,16 +1,14 @@
-// Link is one Panorama context's connection to the Hideout app. The overlay, the Custom Match band and the games
-// popup each run their own script context, so each makes its own. Down: a hidden HTML panel loads the bridge page
-// and reads the app's frames from its titles. Up: each command is one Image panel loading /c on the app's port, and
-// the loaded width is the answer.
+// The overlay, the Custom Match band and the games popup each run their own script context, so each makes its own Link.
+// Down: a hidden HTML panel loads the bridge page and reads the app's frames from its titles. Up: each command is one
+// Image panel loading /c, and the loaded width is the answer.
 
 import { TitleReader } from './titles.ts'
 import { type Command, type CommandResult, type Config, EMPTY, PROTOCOL, type Snapshot, decodeFrame, resultOfWidth, withFrame } from './wire.ts'
 
 export type LinkStatus = 'connecting' | 'online' | 'offline' | 'outdated'
 
-/** Seconds without a frame, keepalive included, before the page loads again. The app sends one every 10. */
+/** Must outlast the app's 10 s keepalive. */
 const STALE = 25
-/** Seconds a page may take to give its first title. */
 const LOAD_DEADLINE = 10
 /** The size an image reports right at ImageLoaded can be stale. */
 const SIZE_DELAY = 0.1
@@ -44,7 +42,6 @@ export class Link {
     this.load(LOAD_DEADLINE)
   }
 
-  /** Commands go one image at a time, each with this context's boot id and the next sequence number. */
   send(command: Command, done: (result: CommandResult) => void = () => {}): void {
     this.queue.push({ command, done })
     if (!this.sending) this.next()

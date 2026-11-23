@@ -1,6 +1,5 @@
-// Runs in the overlay, citadel_hud_and_db_overlay, which the pack shadows with one added include. The overlay draws
-// over the main-menu room, the Esc menu and the match HUD, and lives as long as the game, so the invite toasts and
-// the joining dialog hang here.
+// Runs in the overlay, citadel_hud_and_db_overlay, which draws over the main-menu room, the Esc menu and the match HUD
+// and lives as long as the game, so the invite toasts and the joining dialog hang here.
 
 import { FriendWatch } from '../friends.ts'
 import { type JoiningButton, viewJoining } from '../joining.ts'
@@ -111,7 +110,6 @@ function boot(): void {
     return view.kind === 'invite' && view.full ? panel(panel(toast, 'HOToastBar'), 'HOToastBarFill') : null
   }
 
-  /** The toast's sentence as runs of text, the names in bold. */
   function line(parent: Panel, runs: [string, boolean][]): void {
     const row = panel(parent, 'HOToastRuns')
     for (const [text, bold] of runs) label(row, `HOToastFrom${bold ? ' Bold' : ''}`, text)

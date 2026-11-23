@@ -1,5 +1,4 @@
-// Steam friends, read from Deadlock's own friend menu. A layout embeds a CitadelFriendMenu, which fills its groups
-// once its Hidden class is off, and FriendWatch reads its CitadelFriend entries every two seconds.
+// Steam friends, read from a CitadelFriendMenu the layout embeds, which fills its groups once its Hidden class is off.
 
 import type { SteamId } from './wire.ts'
 
@@ -8,16 +7,14 @@ export type Presence = 'playing' | 'online' | 'offline'
 export interface Friend {
   id: SteamId
   name: string
-  /** The rich presence line as Deadlock words it. */
   status: string
   presence: Presence
 }
 
 export interface Friends {
-  /** Playing Deadlock first, then online elsewhere. */
   online: Friend[]
   offline: number
-  /** Every friend's name by id, offline ones too. Only these may show an invite. */
+  /** Offline friends too. Only these may show an invite. */
   names: Record<string, string>
 }
 
@@ -37,7 +34,6 @@ export interface RawFriend {
   currentUser: boolean
 }
 
-/** Drops the player, ids that aren't SteamID64s and repeats. A friend in two groups keeps the first. */
 export function friendsOf(raw: RawFriend[]): Friends {
   const seen = new Set<string>()
   const online: Friend[] = []
@@ -94,7 +90,6 @@ export class FriendWatch {
   current: Friends = NO_FRIENDS
   private key = ''
 
-  /** [changed] runs from the next read on, never from the constructor. */
   constructor(menu: Panel, changed: () => void) {
     menu.RemoveClass('Hidden')
     const read = () => {

@@ -1,5 +1,3 @@
-// The parts of the game's Panorama script API the in-game UI uses.
-
 interface Panel {
   readonly id: string
   readonly paneltype: string

@@ -1,5 +1,5 @@
-// The in-game wire as Panorama reads and writes it. The app's InGameWire.kt is the other half, and both are checked
-// against the golden files in ingame/fixtures.
+// The app's InGameWire.kt is the other half of this wire, and both are checked against the golden files in
+// ingame/fixtures.
 
 export const PROTOCOL = 1
 
@@ -18,7 +18,6 @@ export type Listing = 'invite-only' | 'public'
 export type Action = 'stop' | 'restart' | 'play' | 'dismiss' | 'again'
 export type StepState = 'done' | 'running' | 'waiting'
 export type RestartReason = 'not-set-up' | 'game-updated' | 'menus-did-not-start'
-/** Off is a build without invites or no Steam login the app reads. Other-account is a game on another Steam account. */
 export type Social = 'on' | 'off' | 'other-account'
 export type Delivery = 'sending' | 'delivered' | 'not-reached'
 export type ServersState = 'idle' | 'loading' | 'ready' | 'unreachable' | 'unavailable'
@@ -71,7 +70,6 @@ export interface ModeCard {
   players: [number, number]
   minutes: [number, number] | null
   by: string[]
-  /** What hosting it downloads first, or null when it is on this computer. */
   bytes: number | null
   art: ModeArt
   settings: Setting[]
@@ -88,7 +86,6 @@ export interface HostCard {
   players: [number, number] | null
   listing: Listing
   invitees: SteamId[]
-  /** By invitee. One missing waits for the game to be ready. */
   deliveries: Record<string, Delivery>
   actions: Action[]
 }
@@ -110,24 +107,21 @@ export interface JoinCard {
 
 export interface InviteCard {
   id: string
-  /** The sender's claim. Shown only for a Steam friend, under the friend list's name. */
+  /** The sender's claim, never shown: a toast shows only a Steam friend, under the friend list's name. */
   from: SteamId
   mode: string
   picks: string[]
   tile: string | null
   players: [number, number]
-  /** Epoch milliseconds. */
   expires: number
 }
 
 export interface ServerRow {
   id: string
-  /** Null for a Hideout server. */
   host: string | null
   mode: string
   picks: string[]
   tile: string | null
-  /** The host's relay region code. */
   region: string
   players: [number, number]
   ping: number | null
@@ -151,10 +145,8 @@ export type Command =
   | { k: 'join'; server: string }
   | { k: 'forget'; invite: string }
   | { k: 'servers' }
-  /** The game's own Steam account, when the UI can read it. */
   | { k: 'hello'; self: SteamId | null }
 
-/** What the app answered, from the width of the one-pixel-high PNG. A failed load is unreachable. */
 export type CommandResult = 'accepted' | 'busy' | 'gone' | 'invalid' | 'unavailable' | 'outdated' | 'unreachable'
 
 const RESULTS: CommandResult[] = ['accepted', 'busy', 'gone', 'invalid', 'unavailable', 'outdated']
@@ -163,7 +155,6 @@ export function resultOfWidth(width: number): CommandResult {
   return RESULTS[width - 1] ?? 'unreachable'
 }
 
-/** What the app has said, topic by topic. Null until the topic first arrives. */
 export interface Snapshot {
   hello: Hello | null
   catalog: Catalog | null
@@ -330,7 +321,6 @@ function server(v: Json): ServerRow {
   }
 }
 
-/** Parses one frame's JSON. Anything malformed or of an unknown topic is null, and the stream reads on. */
 export function decodeFrame(text: string): Frame | null {
   try {
     const o = obj(JSON.parse(text))

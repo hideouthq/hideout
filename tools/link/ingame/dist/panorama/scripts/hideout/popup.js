@@ -275,7 +275,6 @@
       });
       this.load(LOAD_DEADLINE);
     }
-    /** Commands go one image at a time, each with this context's boot id and the next sequence number. */
     send(command, done = () => {
     }) {
       this.queue.push({ command, done });

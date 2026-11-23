@@ -1,6 +1,5 @@
-// Runs in the stock Custom Match popup, which the pack shadows with one added include. It puts the Hideout games band
-// under Valve's part of the dialog. The band opens our popup, which only a popup can do: from the overlay the same
-// event does nothing.
+// Runs in the stock Custom Match popup. The Hideout games band lives here because only a popup can open our popup: from
+// the overlay the same event does nothing.
 
 import { Link } from '../link.ts'
 import { Section, art, mark } from '../ui.ts'
@@ -9,8 +8,8 @@ import type { Config } from '../wire.ts'
 declare const HideoutConfig: Config
 
 const dialog = $.GetContextPanel()
-// The band runs edge to edge along the dialog's bottom, so the dialog gives up its side and bottom padding. Valve's
-// part is centred and doesn't move.
+// The band runs edge to edge along the bottom, so the dialog gives up its side and bottom padding. Valve's centred part
+// doesn't move.
 dialog.style.padding = '32px 0px 0px 0px'
 const band = $.CreatePanel('Button', dialog, 'HideoutBand')
 band.BLoadLayout('file://{resources}/layout/hideout/band.xml', false, false)

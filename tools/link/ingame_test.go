@@ -25,8 +25,6 @@ const (
 	popupLayout   = "panorama/layout/popups/citadel_popup_custom_match.vxml_c"
 )
 
-// stockLayouts is the news layout and the decompiled stock layouts under testdata/stock, as
-// sources a stub install compiles.
 func stockLayouts(t testing.TB) fstest.MapFS {
 	t.Helper()
 	layouts := maps.Clone(stockNews)
@@ -202,7 +200,6 @@ func TestASheetRecordsTheSizeOfTheGamesOwnTexture(t *testing.T) {
 	}
 }
 
-// textureSizes reads a compiled sheet's table of the resources it references with their sizes.
 func textureSizes(t testing.TB, sheet []byte) map[string][2]uint16 {
 	t.Helper()
 	data, err := resource.ReadBlock(sheet, "DATA")

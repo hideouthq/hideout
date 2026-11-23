@@ -20,7 +20,6 @@ type Region struct {
 	Code string `json:"code"`
 }
 
-// Built is the token the menus pack's config.js holds, which the app stores beside the pack.
 type Built struct {
 	Token string `json:"token"`
 }
@@ -29,8 +28,6 @@ type Regions struct {
 	Regions []RegionLatency `json:"regions"`
 }
 
-// RegionLatency is a relay region and this computer's round trip to it, absent when it
-// didn't answer.
 type RegionLatency struct {
 	Region
 	MS *int `json:"ms,omitempty"`

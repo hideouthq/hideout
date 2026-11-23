@@ -22,8 +22,8 @@ type RegionsConfig struct {
 	DERPMapURL string
 }
 
-// runRegions measures this computer's round trip to every relay region the way Tailcat
-// picks a host's region, with netcheck, so a listed game's ping is the one its host chose by.
+// runRegions measures with netcheck, as Tailcat does to pick a host's region, so a listed
+// game's ping is the one its host chose by.
 func runRegions(ctx context.Context, cfg RegionsConfig, emit Sink) Stopped {
 	ctx, cancel := context.WithTimeout(ctx, regionsWithin)
 	defer cancel()

@@ -15,7 +15,7 @@ import (
 	"github.com/paralin/modlock/source2/vpk"
 )
 
-// ingameProtocol is the in-game UI's wire version. The app's InGameProtocol must equal it.
+// ingameProtocol must equal the app's InGameProtocol.
 const ingameProtocol = 1
 
 //go:embed all:ingame/dist
@@ -29,7 +29,6 @@ func ingameSources() fs.FS {
 	return sources
 }
 
-// shadow is a stock layout the pack replaces with the player's own copy plus script includes.
 type shadow struct {
 	layout  string
 	scripts []string
@@ -58,9 +57,7 @@ type IngameConfig struct {
 	Token string `json:"token"`
 }
 
-// ingameFiles compiles the in-game UI against the player's install: each shadowed layout
-// decompiled from stock with its includes added, the UI's sources, and config.js. Nothing
-// raw ships, since a raw include crashes the game when its layout opens.
+// ingameFiles ships nothing raw, since a raw include crashes the game when its layout opens.
 func ingameFiles(stock *vpk.Archive, sources fs.FS, cfg IngameConfig) (fstest.MapFS, error) {
 	own := fstest.MapFS{}
 	if err := fs.WalkDir(sources, ".", func(name string, entry fs.DirEntry, err error) error {
@@ -145,7 +142,6 @@ func newPackToken() string {
 	return hex.EncodeToString(token)
 }
 
-// merged refuses a name in two parts, so no part silently replaces another's file.
 func merged(parts ...fstest.MapFS) (fstest.MapFS, error) {
 	out := fstest.MapFS{}
 	for _, part := range parts {

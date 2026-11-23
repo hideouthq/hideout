@@ -6,7 +6,6 @@ export function label(parent: Panel, cls: string, text: string): Panel {
   return $.CreatePanel('Label', parent, '', { class: cls, text })
 }
 
-/** Mode art from the feed, or the plain backdrop when the mode has none. */
 export function art(parent: Panel, cls: string, url: string | null, style = ''): Panel {
   if (!url) return panel(parent, `${cls} NoArt`, 'Panel', { style })
   return $.CreatePanel('Image', parent, '', { class: `${cls} Art`, src: url, scaling: 'stretch-to-cover-preserve-aspect', style })
@@ -28,7 +27,6 @@ type Part = { x: number; y: number; w: number; h: number; color: string; round?:
 
 const BACK: Part = { x: 15.5, y: 12.5, w: 25, h: 37, round: 3.4, color: '#F1DFB8', rotate: -14, origin: '50% 115%' }
 const FRONT: Part = { x: 21.3, y: 10.3, w: 29.4, h: 41.4, round: 5.4, color: '#141313', rotate: 9, origin: '50% 108%' }
-/** Inside FRONT, in FRONT's own coordinates, so they turn with it. */
 const FACE: Part[] = [
   { x: 2.2, y: 2.2, w: 25, h: 37, round: 3.4, color: '#F1DFB8' },
   { x: 6.5, y: 9.6, w: 16.4, h: 16.4, round: 8.2, color: '#2F8F5B' },
@@ -54,7 +52,6 @@ function part(parent: Panel, p: Part, k: number): Panel {
   return panel(parent, 'MarkPart', 'Panel', { style: style.filter(Boolean).join('; ') + ';' })
 }
 
-/** Hideout's mark, two cards with the smiling green face, drawn from panels at [size] px. */
 export function mark(parent: Panel, size: number): Panel {
   const k = size / 64
   const box = panel(parent, 'Mark', 'Panel', { style: `width: ${size}px; height: ${size}px;` })
@@ -64,7 +61,6 @@ export function mark(parent: Panel, size: number): Panel {
   return box
 }
 
-/** Paper's slightly torn outline: a body inset by 2 px, and paper teeth up to 2 px deep along every edge. */
 export function paper(into: Panel, width: number, height: number, seed: number): Panel {
   const edge = panel(into, 'PaperEdge')
   panel(edge, 'PaperBody', 'Panel', { style: `x: 2px; y: 2px; width: ${width - 4}px; height: ${height - 4}px;` })
@@ -87,7 +83,6 @@ export function paper(into: Panel, width: number, height: number, seed: number):
   return edge
 }
 
-/** A 7 px torn edge along a banner's bottom, in the paper's colour. */
 export function tear(parent: Panel, width: number, seed: number): Panel {
   const strip = panel(parent, 'Tear')
   let s = seed
@@ -98,7 +93,6 @@ export function tear(parent: Panel, width: number, seed: number): Panel {
   return strip
 }
 
-/** Redraws [into] only when [key] changed since the last draw. */
 export class Section {
   private last = '\u0000'
   draw(into: Panel, key: string, build: (into: Panel) => void): void {

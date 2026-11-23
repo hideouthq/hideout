@@ -13,7 +13,6 @@ import (
 
 var entries = []string{"boot", "popup", "games"}
 
-// Build returns the dist tree for the sources under dir, keyed by slash path.
 func Build(dir string) (map[string][]byte, error) {
 	files := map[string][]byte{}
 	abs, err := filepath.Abs(dir)
@@ -57,7 +56,6 @@ func Build(dir string) (map[string][]byte, error) {
 	return files, nil
 }
 
-// Write replaces out's panorama tree with files.
 func Write(files map[string][]byte, out string) error {
 	if err := os.RemoveAll(filepath.Join(out, "panorama")); err != nil {
 		return err
@@ -74,7 +72,6 @@ func Write(files map[string][]byte, out string) error {
 	return nil
 }
 
-// Read returns the files under out's panorama tree, keyed as Build keys them.
 func Read(out string) (map[string][]byte, error) {
 	files := map[string][]byte{}
 	err := filepath.WalkDir(filepath.Join(out, "panorama"), func(path string, d fs.DirEntry, err error) error {

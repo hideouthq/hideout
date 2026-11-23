@@ -1,5 +1,4 @@
-// The Hideout games popup's state and everything it draws, without Panorama so node can test it. The popup holds
-// only what the player is choosing before Play. Everything after Play is the game topic's, as the app sends it.
+// The popup holds only what the player chooses before Play. Everything after Play is the game topic's.
 
 import type { Friend, Friends } from './friends.ts'
 import type { LinkStatus } from './link.ts'
@@ -8,7 +7,6 @@ import type { Action, Command, CommandResult, HostCard, Listing, ModeCard, ModeI
 export type Tab = 'games' | 'servers'
 
 export interface Draft {
-  /** Null picks the catalog's first mode. */
   mode: ModeId | null
   picks: Record<string, string>
   listing: Listing
@@ -26,7 +24,6 @@ export interface GamesState {
   tab: Tab
   draft: Draft
   request: Request
-  /** What the app said to the last servers read, which says why no list comes. */
   serversAnswer: CommandResult | null
 }
 
@@ -51,7 +48,6 @@ export function initialGames(tab: Tab): GamesState {
   return { tab, draft: { mode: null, picks: {}, listing: 'invite-only', invitees: [] }, request: { kind: 'idle' }, serversAnswer: null }
 }
 
-/** A hosted game that still runs or is on its way. An ended one leaves the Play button to the next game. */
 function runningHost(snapshot: Snapshot): HostCard | null {
   const host = snapshot.game?.host ?? null
   return host && host.phase !== 'ended' ? host : null
@@ -146,10 +142,8 @@ export interface SettingRow {
 export interface ServerLine {
   row: ServerRow
   name: string
-  /** "Bebop Wars · Hosted by Mugi" */
   sub: string
   region: string
-  /** 0 to 1. */
   fill: number
   ping: { text: string; tone: 'good' | 'fair' | 'poor' } | null
   status: string
@@ -159,7 +153,6 @@ export interface ServerLine {
 export interface ServersView {
   state: ServersState
   lines: ServerLine[]
-  /** What the tab says in place of rows, if anything. */
   note: string | null
 }
 
@@ -170,7 +163,6 @@ export interface GamesView {
   link: LinkStatus
   rows: ModeRow[]
   selected: ModeCard | null
-  /** "by Hideout team · 12 MB" */
   byline: string
   chips: { icon: 'kind' | 'players' | 'time'; text: string }[]
   settings: SettingRow[]
@@ -263,7 +255,6 @@ function friendButton(id: SteamId, state: GamesState, snapshot: Snapshot): Frien
   return host.link ? 'copy-link' : 'off'
 }
 
-/** Relay region codes as places. An unknown one shows as its code. */
 const REGIONS: Record<string, string> = {
   ams: 'Amsterdam', blr: 'Bangalore', dbi: 'Dubai', den: 'Denver', dfw: 'Dallas', fra: 'Frankfurt', hkg: 'Hong Kong',
   hnl: 'Honolulu', jnb: 'Johannesburg', lax: 'Los Angeles', lhr: 'London', mad: 'Madrid', mia: 'Miami', nai: 'Nairobi',
@@ -305,7 +296,6 @@ export function viewServers(snapshot: Snapshot, answer: CommandResult | null = n
   return { state: servers.state, lines, note: lines.length ? null : SERVER_NOTES[servers.state] }
 }
 
-/** Everything the popup draws. [me] is the player's own name, for the listing line. */
 export function viewGames(state: GamesState, snapshot: Snapshot, link: LinkStatus, friends: Friends, me: string): GamesView {
   const modes = snapshot.catalog?.modes ?? []
   const selected = selectedMode(state, snapshot)

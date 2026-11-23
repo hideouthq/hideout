@@ -1,5 +1,3 @@
-// The Hideout games popup, opened from the Custom Match band with UIShowCustomLayoutPopupParameters.
-
 import { FriendWatch, textOf } from '../friends.ts'
 import { type GamesEffect, type GamesEvent, type GamesView, type ServersView, initialGames, reduceGames, refusalText, viewGames } from '../games.ts'
 import { Link } from '../link.ts'
