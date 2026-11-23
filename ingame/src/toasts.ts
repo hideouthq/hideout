@@ -30,11 +30,19 @@ export function wantedToasts(snapshot: Snapshot, friends: Friends, now: number, 
   }
   const host = snapshot.game?.host
   if (host?.link) {
+    const game = tagOf(host.link)
     for (const [id, delivery] of Object.entries(host.deliveries)) {
-      const key = `unreached:${id}`
+      const key = `unreached:${game}:${id}`
       if (delivery !== 'not-reached' || hidden.has(key)) continue
       views.push({ kind: 'unreached', key, friend: id as SteamId, name: friends.names[id] ?? 'A friend', link: host.link, full: views.length === 0 })
     }
   }
   return views
+}
+
+/** The key closes a toast for one game, and is a panel id, so the game's link goes in as a short FNV-1a tag. */
+function tagOf(link: string): string {
+  let hash = 0x811c9dc5
+  for (let i = 0; i < link.length; i++) hash = Math.imul(hash ^ link.charCodeAt(i), 0x01000193)
+  return (hash >>> 0).toString(36)
 }

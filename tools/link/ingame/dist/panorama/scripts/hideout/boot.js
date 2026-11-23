@@ -488,13 +488,19 @@
     }
     const host2 = snapshot.game?.host;
     if (host2?.link) {
+      const game = tagOf(host2.link);
       for (const [id, delivery] of Object.entries(host2.deliveries)) {
-        const key = `unreached:${id}`;
+        const key = `unreached:${game}:${id}`;
         if (delivery !== "not-reached" || hidden.has(key)) continue;
         views.push({ kind: "unreached", key, friend: id, name: friends.names[id] ?? "A friend", link: host2.link, full: views.length === 0 });
       }
     }
     return views;
+  }
+  function tagOf(link) {
+    let hash = 2166136261;
+    for (let i = 0; i < link.length; i++) hash = Math.imul(hash ^ link.charCodeAt(i), 16777619);
+    return (hash >>> 0).toString(36);
   }
 
   // src/ui.ts

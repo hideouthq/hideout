@@ -158,7 +158,15 @@ test('toasts show friends’ unexpired invites, one full then slim, with the fri
 
 test('a not-reached invite of the hosted game shows a Copy link toast', () => {
   const toasts = wantedToasts(snapshotOf('game-invites.json'), friends, 0, {}, new Set())
-  assert.deepEqual(toasts, [{ kind: 'unreached', key: 'unreached:76561198000000008', friend: '76561198000000008', name: 'A friend', link: 'https://hideouthq.gg/join#P95-MAN-26D', full: true }])
+  assert.deepEqual(toasts.map((t) => t.kind === 'unreached' && [t.friend, t.name, t.link, t.full]), [['76561198000000008', 'A friend', 'https://hideouthq.gg/join#P95-MAN-26D', true]])
+})
+
+test('closing a not-reached toast hides it for that game alone', () => {
+  const first = snapshotOf('game-invites.json')
+  const closed = new Set(wantedToasts(first, friends, 0, {}, new Set()).map((t) => t.key))
+  assert.deepEqual(wantedToasts(first, friends, 0, {}, closed), [])
+  const next = withFrame(first, { ...first.game!, t: 'game', host: { ...first.game!.host!, link: 'https://hideouthq.gg/join#T4N-GL3-ZZ9' } })
+  assert.deepEqual(wantedToasts(next, friends, 0, {}, closed).map((t) => t.kind === 'unreached' && t.friend), ['76561198000000008'], 'a later game that misses the same friend says so again')
 })
 
 test('the joining dialog is the join card: review shows the restart and Join echoes it', () => {
