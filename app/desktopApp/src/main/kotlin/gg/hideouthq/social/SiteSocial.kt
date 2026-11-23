@@ -69,6 +69,7 @@ import javax.crypto.Mac
 import kotlin.math.abs
 import kotlin.time.Clock
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
@@ -191,7 +192,7 @@ internal class SiteMailbox(private val routes: SiteRoutes, private val scope: Co
 
             override fun onMessage(webSocket: WebSocket, text: String) {
                 heard.set(clock.now())
-                parseInvite(text)?.let(incoming::tryEmit)
+                parseInvite(text, clock.now())?.let(incoming::tryEmit)
             }
 
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
@@ -322,7 +323,8 @@ private fun JsonObject.text(key: String): String? = (this[key] as? JsonPrimitive
 
 private fun JsonObject.int(key: String): Int? = (this[key] as? JsonPrimitive)?.takeIf { !it.isString }?.intOrNull
 
-internal fun parseInvite(text: String): Invitation? {
+/** The site sends an invite's remaining lifetime, not its clock's deadline, so this computer's clock can't make one look expired. */
+internal fun parseInvite(text: String, now: Instant): Invitation? {
     val message = objectOf(text)?.takeIf { it.text("type") == "invite" } ?: return null
     val invite = message["invite"] as? JsonObject ?: return null
     val id = invite.text("id")?.let(InvitationId::parse) ?: return null
@@ -330,8 +332,8 @@ internal fun parseInvite(text: String): Invitation? {
     val code = invite.text("code")?.let(InviteCode::parse) ?: return null
     val offer = invite.text("offer")?.let(InviteOffer::decode) ?: return null
     val players = invite.int("players")?.takeIf { it in 1..offer.capacity.coerceAtLeast(1) } ?: return null
-    val expires = (invite["expires"] as? JsonPrimitive)?.takeIf { !it.isString }?.longOrNull?.let(Instant::fromEpochMilliseconds) ?: return null
-    return Invitation(id, from, JoinTicket(code, offer), players, expires)
+    val ttl = (invite["ttl"] as? JsonPrimitive)?.takeIf { !it.isString }?.longOrNull?.takeIf { it > 0 }?.milliseconds ?: return null
+    return Invitation(id, from, JoinTicket(code, offer), players, now + ttl)
 }
 
 private fun publicGame(row: JsonObject): PublicGame? {

@@ -14,6 +14,9 @@ import gg.hideouthq.core.customgames.social.ListingId
 import gg.hideouthq.core.customgames.social.ListingToken
 import gg.hideouthq.core.customgames.social.ListingWanted
 import gg.hideouthq.core.customgames.social.Resolved
+import gg.hideouthq.core.customgames.social.SocialInput
+import gg.hideouthq.core.customgames.social.SocialState
+import gg.hideouthq.core.customgames.social.reduceSocial
 import gg.hideouthq.core.data.fake.FakeCustomGamesFeed
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -40,8 +43,11 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 import kotlin.time.TimeSource
 
 private val Code = checkNotNull(InviteCode.parse("P95-MAN-26D"))
@@ -210,13 +216,29 @@ class SiteSocialTest {
 
     @Test
     fun aMailboxMessageIsAnInviteOnlyWhenEveryFieldReads() {
-        val good = """{"type":"invite","invite":{"id":"${"9f".repeat(16)}","from":"${Friend.value}","code":"${Code.value}","offer":"${Offer.encoded}","players":2,"expires":1763900060000}}"""
-        val invite = checkNotNull(parseInvite(good))
+        val arrived = Instant.fromEpochMilliseconds(1_763_900_000_000)
+        val good = """{"type":"invite","invite":{"id":"${"9f".repeat(16)}","from":"${Friend.value}","code":"${Code.value}","offer":"${Offer.encoded}","players":2,"ttl":60000}}"""
+        val invite = checkNotNull(parseInvite(good, arrived))
         assertEquals(Friend, invite.from)
         assertEquals(JoinTicket(Code, Offer), invite.ticket)
-        assertEquals(1_763_900_060_000, invite.expires.toEpochMilliseconds())
-        for (bad in listOf(good.replace("invite\",", "other\","), good.replace(Friend.value, "12345"), good.replace("\"players\":2", "\"players\":\"2\""), good.replace("9f".repeat(16), "9F"), "pong", "")) {
-            assertNull(parseInvite(bad), bad)
+        assertEquals(arrived + 60.seconds, invite.expires)
+        for (bad in listOf(
+            good.replace("invite\",", "other\","), good.replace(Friend.value, "12345"), good.replace("\"players\":2", "\"players\":\"2\""), good.replace("9f".repeat(16), "9F"),
+            good.replace("60000", "\"60000\""), good.replace("60000", "0"), "pong", "",
+        )) {
+            assertNull(parseInvite(bad, arrived), bad)
+        }
+    }
+
+    @Test
+    fun anInviteLastsItsLifetimeFromArrivalWhateverThisComputersClockSays() {
+        val message = """{"type":"invite","invite":{"id":"${"9f".repeat(16)}","from":"${Friend.value}","code":"${Code.value}","offer":"${Offer.encoded}","players":2,"ttl":59000}}"""
+        for (ahead in listOf(0.seconds, 61.seconds, 1.hours, (-1).hours)) {
+            val here = Clock.System.now() + ahead
+            val (state, _) = reduceSocial(SocialState(), SocialInput.Came(checkNotNull(parseInvite(message, here))), here) { ListingToken("t") }
+            assertEquals(1, state.inbox.size, "a clock $ahead off")
+            assertEquals(1, reduceSocial(state, SocialInput.Tick, here + 58.seconds) { ListingToken("t") }.first.inbox.size, "kept until its lifetime runs out")
+            assertEquals(0, reduceSocial(state, SocialInput.Tick, here + 59.seconds) { ListingToken("t") }.first.inbox.size, "and gone once it has")
         }
     }
 
