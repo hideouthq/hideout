@@ -8,6 +8,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
 import okhttp3.HttpUrl.Companion.toHttpUrl
+import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.attribute.PosixFilePermissions
 import java.security.SecureRandom
@@ -18,7 +19,9 @@ import kotlin.io.path.createTempDirectory
 import kotlin.io.path.div
 import kotlin.io.path.readBytes
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNotEquals
 
 /** resources/social/invite-signing.json is a copy of hideout-site's worker/test/fixtures/invite-signing.json, which the Worker's own tests verify. */
@@ -75,6 +78,23 @@ class SiteSigningTest {
             assertEquals("rw-------", PosixFilePermissions.toString(Files.getPosixFilePermissions(file)))
             val message = "GET\nhideouthq.gg\n/api/mailbox/76561198000000001\n1\n0.3.0\n".encodeToByteArray()
             assertEquals(made.sign(message), again.sign(message), "Ed25519 signs alike with the key read back")
+        } finally {
+            folder.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
+    fun aKeyThatCantBeReadIsKeptNotReplaced() {
+        val folder = createTempDirectory("device-key")
+        try {
+            val file = folder / "device.key"
+            val made = DeviceKey.load(file)
+            val stored = file.readBytes()
+            Files.setPosixFilePermissions(file, emptySet())
+            assertFailsWith<IOException> { DeviceKey.load(file) }
+            Files.setPosixFilePermissions(file, PosixFilePermissions.fromString("rw-------"))
+            assertContentEquals(stored, file.readBytes(), "the key on disk is untouched")
+            assertEquals(made.header, DeviceKey.load(file).header, "and is read back once it can be")
         } finally {
             folder.toFile().deleteRecursively()
         }

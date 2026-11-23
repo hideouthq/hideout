@@ -1,7 +1,7 @@
 package gg.hideouthq.social
 
-import java.io.IOException
 import java.nio.file.Files
+import java.nio.file.NoSuchFileException
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 import java.nio.file.attribute.PosixFilePermissions
@@ -57,7 +57,7 @@ class DeviceKey private constructor(private val key: PrivateKey, private val pub
         private fun read(file: Path): DeviceKey? {
             val stored = try {
                 Files.readAllBytes(file)
-            } catch (e: IOException) {
+            } catch (e: NoSuchFileException) {
                 return null
             }
             if (stored.size != Half * 2) return null
