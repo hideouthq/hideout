@@ -557,7 +557,7 @@ class DesktopCustomGamesTest {
     private fun rendererHere(digit: Char) = checkNotNull(Sha256.parse("$digit".repeat(64))).also { Files.createDirectories(runtimeFolder.resolve(it.hex)) }
 
     @Test
-    fun menusAreBuiltOnceForTheRendererSiteAndGameAndAFailedRebuildKeepsThePack() {
+    fun menusAreBuiltOnceForTheRendererSiteAndGame() {
         val renderer = rendererHere('c')
         val games = games(writesPack())
         assertNull(runBlocking { games.menus(game, renderer, rebuild = false) }, "no pack, and no build asked for")
@@ -577,13 +577,47 @@ class DesktopCustomGamesTest {
         assertFalse(record.exists(), "a current pack is not built again")
 
         val failing = games("echo '{\"type\":\"stopped\",\"reason\":\"failed\",\"message\":\"no news layout\"}'\nexit 1")
-        assertEquals(stamp, runBlocking { failing.menus(game, rendererHere('d'), rebuild = true) }, "a failed build keeps the pack that was there")
-        assertEquals("pack\n", gamesFolder.resolve("menus/pak01_dir.vpk").readText())
-        assertTrue(logs.any { "no news layout" in it })
         assertEquals(stamp, runBlocking { failing.menus(game, checkNotNull(Sha256.parse("e".repeat(64))), rebuild = true) }, "a renderer never fetched builds nothing")
 
         val tokenless = games(writesPack(token = null))
-        assertEquals(stamp, runBlocking { tokenless.menus(game, rendererHere('d'), rebuild = true) }, "a pack with no token is no pack, and the one there stays")
+        val d = rendererHere('d')
+        assertEquals(MenusStamp(d.hex, "https://menus.example/bridge/", MenusScreenPort, null), runBlocking { tokenless.menus(game, d, rebuild = true) }, "an in-game build that names no token failed")
+    }
+
+    private fun failsUnlessRendererOnly(message: String) = """
+        case " ${'$'}* " in *" --renderer-only "*) ;; *) echo '{"type":"stopped","reason":"failed","message":"$message"}'; exit 1;; esac
+    """.trimIndent() + "\n" + writesPack(token = null)
+
+    private fun updateGameTo(revision: Long) {
+        Files.createDirectories(Path.of(game.path, "game", "citadel"))
+        Files.writeString(Path.of(game.path, "game", "citadel", "steam.inf"), "SourceRevision=$revision\n")
+    }
+
+    @Test
+    fun aGameUpdateTheInGamePartCannotFollowLeavesTheRendererAlone() {
+        val renderer = rendererHere('c')
+        updateGameTo(100)
+        assertEquals(100, runBlocking { games(writesPack()).menus(game, renderer, rebuild = true) }?.revision)
+        assertNotNull(runBlocking { games(writesPack()).menusPack(game) }?.token)
+
+        updateGameTo(101)
+        Files.deleteIfExists(record)
+        val games = games(failsUnlessRendererOnly("want one </styles>, found 2"))
+        val rendererOnly = MenusStamp(renderer.hex, "https://menus.example/bridge/", MenusScreenPort, 101)
+        assertEquals(rendererOnly, runBlocking { games.menus(game, renderer, rebuild = true) }, "the overlay copied from the game before its update is gone")
+        assertEquals(MenusPack(rendererOnly, null), runBlocking { games.menusPack(game) })
+        assertEquals(listOf(false, true), record.readLines().joinToString("\n").split("menus\n").drop(1).map { "--renderer-only" in it }, "the in-game build, then the renderer alone")
+        assertTrue(logs.any { "want one </styles>" in it })
+
+        Files.delete(record)
+        assertEquals(rendererOnly, runBlocking { games.menus(game, renderer, rebuild = true) })
+        assertFalse(record.exists(), "the same game and helper are not tried again")
+
+        assertNotNull(runBlocking { games(writesPack()).menus(game, renderer, rebuild = true) }?.inGame)
+        updateGameTo(102)
+        val broken = games("echo '{\"type\":\"stopped\",\"reason\":\"failed\",\"message\":\"no news layout\"}'\nexit 1")
+        assertNull(runBlocking { broken.menus(game, renderer, rebuild = true) }, "with nothing built, the in-game part of the last pack goes too")
+        assertFalse(gamesFolder.resolve("menus/pak01_dir.vpk").exists())
     }
 
     @Test

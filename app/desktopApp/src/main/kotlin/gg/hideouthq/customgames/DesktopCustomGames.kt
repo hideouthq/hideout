@@ -261,9 +261,21 @@ class DesktopCustomGames internal constructor(
     override suspend fun menus(game: GameRoot, renderer: Sha256?, rebuild: Boolean): MenusStamp? = withContext(Dispatchers.IO) {
         val have = gamesFolder.pack(game)?.stamp
         val built = renderer?.takeIf { rebuild }?.let(::ifFetched) ?: return@withContext have
-        val want = MenusStamp(built.hex, pageUrl, MenusScreenPort, SteamInf.revision(game)?.source, InGameStamp(InGamePort, helperDigest))
-        if (have == want) have else gamesFolder.buildMenus(game, store.folderOf(built), want)?.stamp ?: have
+        val rendererOnly = MenusStamp(built.hex, pageUrl, MenusScreenPort, SteamInf.revision(game)?.source)
+        val want = rendererOnly.copy(inGame = InGameStamp(InGamePort, helperDigest))
+        if (have == want) return@withContext have
+        if (want != unbuildable) {
+            gamesFolder.buildMenus(game, store.folderOf(built), want)?.let { return@withContext it.stamp }
+            unbuildable = want
+        }
+        // A copy of the game's own layouts from before an update can break its HUD, so it never outlives a failed build.
+        if (have == rendererOnly) return@withContext have
+        gamesFolder.buildMenus(game, store.folderOf(built), rendererOnly)?.let { return@withContext it.stamp }
+        if (have?.inGame == null || !gamesFolder.removeMenus(game)) have else null
     }
+
+    @Volatile
+    private var unbuildable: MenusStamp? = null
 
     suspend fun menusPack(game: GameRoot): MenusPack? = withContext(Dispatchers.IO) { gamesFolder.pack(game) }
 

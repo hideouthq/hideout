@@ -57,10 +57,10 @@ internal class GamesFolder(private val helper: Path, private val workFolder: Pat
         val part = root.resolve(PartPrefix + UUID.randomUUID())
         val ran = run(
             listOf("menus", "--game", game.path, "--renderer", renderer.pathString, "--page", want.page, "--screen-port", want.screen.toString()) +
-                want.inGame?.let { listOf("--ingame-port", it.endpoint.toString()) }.orEmpty() + listOf("--out", part.pathString),
+                (want.inGame?.let { listOf("--ingame-port", it.endpoint.toString()) } ?: listOf("--renderer-only")) + listOf("--out", part.pathString),
         )
         val token = ran.token
-        if (!ran.done || token == null) {
+        if (!ran.done || (want.inGame != null && token == null)) {
             log("Custom games: the menus were not built: ${if (ran.done) "the helper named no pack token" else ran.message}")
             Files.deleteIfExists(part)
             return@locked null
@@ -68,9 +68,16 @@ internal class GamesFolder(private val helper: Path, private val workFolder: Pat
         Files.createDirectories(root.resolve(MenusFolder))
         Files.move(part, root.resolve(MenusFolder).resolve(PackFile), StandardCopyOption.REPLACE_EXISTING)
         val stamp = root.resolve("$StampFile.part")
-        Files.writeString(stamp, JsonObject(Json.encodeToJsonElement(MenusStamp.serializer(), want).jsonObject + (TokenKey to JsonPrimitive(token.hex))).toString())
+        val written = Json.encodeToJsonElement(MenusStamp.serializer(), want).jsonObject
+        Files.writeString(stamp, (if (token == null) written else JsonObject(written + (TokenKey to JsonPrimitive(token.hex)))).toString())
         Files.move(stamp, root.resolve(StampFile), StandardCopyOption.REPLACE_EXISTING)
         MenusPack(want, token)
+    }
+
+    suspend fun removeMenus(game: GameRoot): Boolean = locked(game, { false }) { root ->
+        Files.deleteIfExists(root.resolve(StampFile))
+        Files.deleteIfExists(root.resolve(MenusFolder).resolve(PackFile))
+        true
     }
 
     suspend fun stage(game: GameRoot, content: List<String>): StageResult = locked(game, StageResult::Failed) { root ->

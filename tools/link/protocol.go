@@ -21,7 +21,7 @@ type Region struct {
 }
 
 type Built struct {
-	Token string `json:"token"`
+	Token string `json:"token,omitempty"`
 }
 
 type Regions struct {

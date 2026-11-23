@@ -205,6 +205,7 @@ class CustomGames(
             for (input in inbox) take(input)
         }
         scope.launch { files.clientActivity.collect { post(ClientActivity(it)) } }
+        watchIdleRevision()
         readLocalPlayer()
         scope.launch { readInstalled() }
         scope.launch {
@@ -743,6 +744,22 @@ class CustomGames(
                 val now = logged("read the game's revision") { platform.gameRevision(game) } ?: continue
                 if (started == null) started = now
                 if (now != started) post(GameUpdated)
+            }
+        }
+    }
+
+    /** Steam can update a closed Deadlock while Hideout runs, and the pack must follow before the game next starts. */
+    private fun watchIdleRevision() = scope.launch {
+        var seen: GameRevision? = null
+        while (isActive) {
+            delay(RevisionCheck)
+            queued {
+                val game = files.game()?.takeIf { noSession() && client == GameActivity.Closed }
+                game?.let { logged("read the game's revision") { platform.gameRevision(it) } }?.let { now ->
+                    if (seen != null && now != seen) upkeepGame()
+                    seen = now
+                }
+                null
             }
         }
     }

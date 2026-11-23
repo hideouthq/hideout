@@ -25,6 +25,8 @@ type MenusConfig struct {
 	IngamePort uint16
 	Out        string
 	Ingame     fs.FS
+	// RendererOnly leaves out the in-game UI and its copies of the game's layouts.
+	RendererOnly bool
 }
 
 func runMenus(cfg MenusConfig, emit Sink) Stopped {
@@ -52,18 +54,20 @@ func writeMenus(cfg MenusConfig) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	page, err := bridgeURL(cfg.PageURL, cfg.IngamePort)
-	if err != nil {
-		return "", err
-	}
-	token := newPackToken()
-	ingame, err := ingameFiles(stock, cfg.Ingame, IngameConfig{Port: cfg.IngamePort, Page: page, Token: token})
-	if err != nil {
-		return "", err
-	}
-	built, err := merged(renderer, ingame)
-	if err != nil {
-		return "", err
+	built, token := renderer, ""
+	if !cfg.RendererOnly {
+		page, err := bridgeURL(cfg.PageURL, cfg.IngamePort)
+		if err != nil {
+			return "", err
+		}
+		token = newPackToken()
+		ingame, err := ingameFiles(stock, cfg.Ingame, IngameConfig{Port: cfg.IngamePort, Page: page, Token: token})
+		if err != nil {
+			return "", err
+		}
+		if built, err = merged(renderer, ingame); err != nil {
+			return "", err
+		}
 	}
 	file, err := os.Create(cfg.Out)
 	if err != nil {

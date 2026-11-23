@@ -226,3 +226,44 @@ func TestTheInGameProtocolIsTheApps(t *testing.T) {
 		t.Errorf("the app's InGameProtocol is %q and the pack's is %d", found, ingameProtocol)
 	}
 }
+
+func TestAGameUpdateTheOverlayCannotFollowLeavesOnlyTheRenderer(t *testing.T) {
+	const overlaySource = "panorama/layout/citadel_hud_and_db_overlay.xml"
+	updated := func(from, to string) string {
+		layouts := stockLayouts(t)
+		layouts[overlaySource] = &fstest.MapFile{Data: bytes.Replace(layouts[overlaySource].Data, []byte(from), []byte(to), 1)}
+		return writeStockGame(t, layouts)
+	}
+	menus := func(game string, flags ...string) ([]line, map[string][]byte) {
+		t.Helper()
+		out := filepath.Join(t.TempDir(), "menus.part")
+		args := append([]string{"menus", "--game", game, "--renderer", writeRenderer(t), "--page", "https://menus.example/bridge/", "--screen-port", "29700", "--out", out}, flags...)
+		said, code := runVerb(t, args...)
+		if code != 0 {
+			return said, nil
+		}
+		return said, readPack(t, out)
+	}
+
+	_, files := menus(updated("<CitadelTooltipManager", `<Panel id="ValveNewPanel" />`+"\n\t\t<CitadelTooltipManager"))
+	if files == nil || !strings.Contains(decompiled(t, files, overlayLayout), "ValveNewPanel") {
+		t.Fatal("a rebuild after an update that keeps the overlay's shape does not follow it")
+	}
+
+	game := updated("</styles>", "</styles>\n\t<styles>\n\t\t<include src=\"s2r://panorama/styles/citadel_new.vcss\" />\n\t</styles>")
+	if said, files := menus(game); files != nil || said[len(said)-1].Reason != "failed" {
+		t.Fatalf("an overlay with two </styles> built: %v", said)
+	}
+	said, files := menus(game, "--renderer-only")
+	if files == nil || len(said) != 2 || said[0].Type != "built" || said[1].Reason != "done" {
+		t.Fatalf("the renderer alone did not build: %v", said)
+	}
+	if strings.Contains(said[0].Raw, "token") {
+		t.Errorf("a pack with no in-game part names a token: %s", said[0].Raw)
+	}
+	for name := range files {
+		if name != "panorama/layout/latest_news.vxml_c" && !strings.HasPrefix(name, "panorama/scripts/modlock/") && !strings.HasPrefix(name, "panorama/layout/modlock/") {
+			t.Errorf("the renderer-only pack holds %s", name)
+		}
+	}
+}

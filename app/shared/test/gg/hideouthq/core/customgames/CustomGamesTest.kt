@@ -1325,9 +1325,10 @@ class CustomGamesTest {
         assertEquals(1, link.stops)
         assertEquals(Session.Ended(EndReason.GameUpdated), session)
 
-        val reads = platform.revisionReads
+        platform.revision = GameRevision(3)
         wait(10.minutes)
-        assertEquals(reads, platform.revisionReads, "the watch ends with the session")
+        assertEquals(1, link.stops, "the hosting watch ends with the session")
+        assertEquals(Session.Ended(EndReason.GameUpdated), session)
     }
 
     @Test
@@ -2440,6 +2441,27 @@ class CustomGamesTest {
         assertEquals(listOf<Sha256?>(null), platform.menusRebuilds, "no list read yet, so the pack keeps its renderer")
         assertEquals(listOf<Pair<GameRoot, ModeContent?>>(Game to null), platform.staged, "the last mode's files go")
         assertEquals(emptyList(), platform.gamesFoldersRemoved)
+    }
+
+    @Test
+    fun aGameUpdateWhileHideoutIdlesSeesToThePackBeforeDeadlockStarts() = scenario {
+        platform.installedModes[older.mode.id] = older
+        files.lines = GamesLines.Mounted
+        val run = started()
+        run.wait(5.minutes)
+        assertEquals(listOf<Sha256?>(null), platform.menusRebuilds)
+
+        platform.revision = GameRevision(2)
+        run.wait(1.minutes + 1.seconds)
+        assertEquals(listOf<Sha256?>(null, null), platform.menusRebuilds, "the update is seen with Deadlock still closed")
+        run.wait(10.minutes)
+        assertEquals(2, platform.menusRebuilds.size, "one update, one look")
+
+        files.clientActivity.value = GameActivity.Running
+        run.settle()
+        platform.revision = GameRevision(3)
+        run.wait(10.minutes)
+        assertEquals(2, platform.menusRebuilds.size, "a running Deadlock's pack is left as it is")
     }
 
     @Test
