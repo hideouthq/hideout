@@ -15,13 +15,17 @@ const val InGamePort = 29701
 
 /**
  * The pack in `menus/`, as `menus.json` records it. Two stamps are equal exactly when the pack needs no rebuild.
- * [helper] is the digest of the `hideout-link` that built it, since that embeds the in-game UI. A `menus.json` from
- * before [endpoint] and [helper] fails to read, so the next close of Deadlock rebuilds the pack.
+ * [inGame] is null for a pack holding only the renderer, the only kind releases before the in-game UI wrote.
  */
 @Serializable
-data class MenusStamp(val renderer: String, val page: String, val screen: Int, val revision: Long?, val endpoint: Int, val helper: String)
+data class MenusStamp(val renderer: String, val page: String, val screen: Int, val revision: Long?, val inGame: InGameStamp? = null)
 
-data class MenusPack(val stamp: MenusStamp, val token: PackToken)
+/** [helper] is the digest of the `hideout-link` that built the pack, since that embeds the in-game UI. */
+@Serializable
+data class InGameStamp(val endpoint: Int, val helper: String)
+
+/** [token] is null exactly when the pack has no in-game part, so nothing in the game can ask for one. */
+data class MenusPack(val stamp: MenusStamp, val token: PackToken?)
 
 @JvmInline
 value class PackToken private constructor(val hex: String) {

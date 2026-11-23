@@ -15,6 +15,7 @@ import gg.hideouthq.core.customgames.GameSetup
 import gg.hideouthq.core.customgames.GameTraffic
 import gg.hideouthq.core.customgames.HowToPlay
 import gg.hideouthq.core.customgames.InGamePort
+import gg.hideouthq.core.customgames.InGameStamp
 import gg.hideouthq.core.customgames.InstalledMode
 import gg.hideouthq.core.customgames.InviteCode
 import gg.hideouthq.core.customgames.InviteOffer
@@ -314,7 +315,7 @@ class FakeCustomGamesPlatform(
         const val SamplePort = 27_015
         val SampleContent = ModeContent(listOf("content"))
         val SampleRenderer = Sha256.parse("e".repeat(64))
-        val SampleStamp = MenusStamp("e".repeat(64), "https://hideouthq.gg/bridge/", MenusScreenPort, 1, InGamePort, "a".repeat(64))
+        val SampleStamp = MenusStamp("e".repeat(64), "https://hideouthq.gg/bridge/", MenusScreenPort, 1, InGameStamp(InGamePort, "a".repeat(64)))
         val SampleSetup = GameSetup(SampleStamp.screen, SampleStamp.page)
         val SampleOwned = SessionOwned(appIdFile = true)
         val SamplePlayedAt: Instant = Instant.fromEpochSeconds(1_800_000_000)

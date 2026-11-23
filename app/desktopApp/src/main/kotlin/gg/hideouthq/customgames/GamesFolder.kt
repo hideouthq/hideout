@@ -17,13 +17,13 @@ import gg.hideouthq.library.headOf
 import gg.hideouthq.library.readSmallText
 import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.withTimeoutOrNull
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.jsonObject
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.InvalidPathException
@@ -40,23 +40,24 @@ internal class GamesFolder(private val helper: Path, private val workFolder: Pat
     fun pack(game: GameRoot): MenusPack? {
         val root = rootOf(game)
         if (!Files.isRegularFile(root.resolve(MenusFolder).resolve(PackFile))) return null
-        val read = readSmallText(root.resolve(StampFile))?.let { text ->
-            try {
-                Json.decodeFromString(MenusFile.serializer(), text)
-            } catch (e: SerializationException) {
-                null
-            } catch (e: IllegalArgumentException) {
-                null
-            }
-        } ?: return null
-        return PackToken.parse(read.token)?.let { MenusPack(read.stamp, it) }
+        val read = readSmallText(root.resolve(StampFile))?.let(::objectOf) ?: return null
+        val stamp = try {
+            Json.decodeFromJsonElement(MenusStamp.serializer(), JsonObject(read - TokenKey))
+        } catch (e: SerializationException) {
+            return null
+        } catch (e: IllegalArgumentException) {
+            return null
+        }
+        val token = read.text(TokenKey)?.let(PackToken::parse)?.takeIf { stamp.inGame != null }
+        return MenusPack(if (token == null) stamp.copy(inGame = null) else stamp, token)
     }
 
     suspend fun buildMenus(game: GameRoot, renderer: Path, want: MenusStamp): MenusPack? = locked(game, { null }) { root ->
         Files.newDirectoryStream(root, "$PartPrefix*").use { leftovers -> leftovers.forEach(Files::deleteIfExists) }
         val part = root.resolve(PartPrefix + UUID.randomUUID())
         val ran = run(
-            listOf("menus", "--game", game.path, "--renderer", renderer.pathString, "--page", want.page, "--screen-port", want.screen.toString(), "--ingame-port", want.endpoint.toString(), "--out", part.pathString),
+            listOf("menus", "--game", game.path, "--renderer", renderer.pathString, "--page", want.page, "--screen-port", want.screen.toString()) +
+                want.inGame?.let { listOf("--ingame-port", it.endpoint.toString()) }.orEmpty() + listOf("--out", part.pathString),
         )
         val token = ran.token
         if (!ran.done || token == null) {
@@ -67,7 +68,7 @@ internal class GamesFolder(private val helper: Path, private val workFolder: Pat
         Files.createDirectories(root.resolve(MenusFolder))
         Files.move(part, root.resolve(MenusFolder).resolve(PackFile), StandardCopyOption.REPLACE_EXISTING)
         val stamp = root.resolve("$StampFile.part")
-        Files.writeString(stamp, Json.encodeToString(MenusFile.serializer(), MenusFile(want, token.hex)))
+        Files.writeString(stamp, JsonObject(Json.encodeToJsonElement(MenusStamp.serializer(), want).jsonObject + (TokenKey to JsonPrimitive(token.hex))).toString())
         Files.move(stamp, root.resolve(StampFile), StandardCopyOption.REPLACE_EXISTING)
         MenusPack(want, token)
     }
@@ -176,9 +177,6 @@ internal class GamesFolder(private val helper: Path, private val workFolder: Pat
     /** [devSession] is whether a Modlock development session's block was live, null when there was none. */
     private class Ran(val done: Boolean, val held: List<String>, val message: String?, val devSession: Boolean? = null, val token: PackToken? = null)
 
-    @Serializable
-    private class MenusFile(val stamp: MenusStamp, val token: String)
-
     private fun rootOf(game: GameRoot): Path = Path.of(game.path, "game", GameInfoPatch.CustomGamesFolder)
 
     private companion object {
@@ -186,6 +184,7 @@ internal class GamesFolder(private val helper: Path, private val workFolder: Pat
         const val ModeFolder = "mode"
         const val PackFile = "pak01_dir.vpk"
         const val StampFile = "menus.json"
+        const val TokenKey = "token"
         const val PartPrefix = "menus.part-"
         const val LockFile = "hideout.lock"
         const val OutputWaitMillis = 1_000L

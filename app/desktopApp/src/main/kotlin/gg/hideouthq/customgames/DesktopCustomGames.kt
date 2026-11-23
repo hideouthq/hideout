@@ -12,6 +12,7 @@ import gg.hideouthq.core.customgames.FolderRead
 import gg.hideouthq.core.customgames.GameRevision
 import gg.hideouthq.core.customgames.GameSetup
 import gg.hideouthq.core.customgames.InGamePort
+import gg.hideouthq.core.customgames.InGameStamp
 import gg.hideouthq.core.customgames.InstalledMode
 import gg.hideouthq.core.customgames.InviteCode
 import gg.hideouthq.core.customgames.InviteOffer
@@ -260,7 +261,7 @@ class DesktopCustomGames internal constructor(
     override suspend fun menus(game: GameRoot, renderer: Sha256?, rebuild: Boolean): MenusStamp? = withContext(Dispatchers.IO) {
         val have = gamesFolder.pack(game)?.stamp
         val built = renderer?.takeIf { rebuild }?.let(::ifFetched) ?: return@withContext have
-        val want = MenusStamp(built.hex, pageUrl, MenusScreenPort, SteamInf.revision(game)?.source, InGamePort, helperDigest)
+        val want = MenusStamp(built.hex, pageUrl, MenusScreenPort, SteamInf.revision(game)?.source, InGameStamp(InGamePort, helperDigest))
         if (have == want) have else gamesFolder.buildMenus(game, store.folderOf(built), want)?.stamp ?: have
     }
 

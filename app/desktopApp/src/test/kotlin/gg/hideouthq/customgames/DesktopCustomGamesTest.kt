@@ -6,6 +6,9 @@ import gg.hideouthq.core.customgames.CustomGamesFeed
 import gg.hideouthq.core.customgames.CustomGamesPlatform
 import gg.hideouthq.core.customgames.DesktopOs
 import gg.hideouthq.core.customgames.InGamePort
+import gg.hideouthq.core.customgames.InGameStamp
+import gg.hideouthq.core.customgames.SetupAnswer
+import gg.hideouthq.core.customgames.setupOf
 import gg.hideouthq.core.customgames.InviteCode
 import gg.hideouthq.core.customgames.JournalEntry
 import gg.hideouthq.core.customgames.LinkEvent
@@ -558,7 +561,7 @@ class DesktopCustomGamesTest {
         val renderer = rendererHere('c')
         val games = games(writesPack())
         assertNull(runBlocking { games.menus(game, renderer, rebuild = false) }, "no pack, and no build asked for")
-        val stamp = MenusStamp(renderer.hex, "https://menus.example/bridge/", MenusScreenPort, null, InGamePort, helperDigest)
+        val stamp = MenusStamp(renderer.hex, "https://menus.example/bridge/", MenusScreenPort, null, InGameStamp(InGamePort, helperDigest))
         assertEquals(stamp, runBlocking { games.menus(game, renderer, rebuild = true) })
         val asked = record.readLines().filterNot { it.startsWith("env ") }
         assertEquals(
@@ -581,9 +584,26 @@ class DesktopCustomGamesTest {
 
         val tokenless = games(writesPack(token = null))
         assertEquals(stamp, runBlocking { tokenless.menus(game, rendererHere('d'), rebuild = true) }, "a pack with no token is no pack, and the one there stays")
+    }
 
+    @Test
+    fun aPackFromBeforeTheInGameUiStillHostsAndJoinsUntilItIsRebuilt() {
+        val renderer = rendererHere('c')
+        Files.createDirectories(gamesFolder.resolve("menus"))
+        Files.writeString(gamesFolder.resolve("menus/pak01_dir.vpk"), "pack\n")
         Files.writeString(gamesFolder.resolve("menus.json"), """{"renderer":"${renderer.hex}","page":"https://menus.example/bridge/","screen":29700,"revision":null}""")
-        assertNull(runBlocking { tokenless.menus(game, null, rebuild = false) }, "a menus.json from before the in-game UI reads as no pack, so it is rebuilt")
+        val games = games(writesPack())
+        val old = runBlocking { games.menus(game, renderer, rebuild = false) }
+        assertEquals(
+            SetupAnswer.Ready(GameSetup(MenusScreenPort, "https://menus.example/bridge/")),
+            setupOf(GameActivity.Running, GamesLines.Mounted, old, renderer, menusFailedThisRun = false, menusBlockedBy = null),
+            "a running Deadlock that loaded the old pack takes a mode with no restart",
+        )
+        assertNull(runBlocking { games.menusPack(game) }?.token, "the old pack has no in-game part to admit")
+
+        val rebuilt = runBlocking { games.menus(game, renderer, rebuild = true) }
+        assertEquals(MenusStamp(renderer.hex, "https://menus.example/bridge/", MenusScreenPort, null, InGameStamp(InGamePort, helperDigest)), rebuilt, "a closed Deadlock gets the in-game part")
+        assertEquals(checkNotNull(PackToken.parse(Token)), runBlocking { games.menusPack(game) }?.token)
     }
 
     @Test
