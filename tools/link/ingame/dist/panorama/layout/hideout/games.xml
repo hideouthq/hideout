@@ -61,10 +61,8 @@
 								<Label id="HGOnline" class="CapCount" text="" />
 							</Panel>
 							<Panel id="HGFriends" class="HGFriends" />
-							<Label id="HGOffline" class="HGOffline" text="" />
 						</Panel>
 					</Panel>
-					<Panel class="Fill" />
 					<Panel class="HGFoot">
 						<Panel id="HGHint" class="HGHint" />
 						<Button id="HGPlay" class="Cream HGPlay" />

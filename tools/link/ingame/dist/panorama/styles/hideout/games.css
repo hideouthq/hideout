@@ -371,6 +371,7 @@
 .HGTwo
 {
 	width: 100%;
+	height: fill-parent-flow( 1.0 );
 	flow-children: right;
 	margin-top: 22px;
 }
@@ -383,6 +384,7 @@
 
 .HGRight
 {
+	height: 100%;
 	margin-left: 30px;
 }
 
@@ -467,7 +469,9 @@
 .HGFriends
 {
 	width: 100%;
+	height: fill-parent-flow( 1.0 );
 	flow-children: down;
+	overflow: squish scroll;
 }
 
 .HGFriend
@@ -531,6 +535,7 @@
 .HGFoot
 {
 	width: 100%;
+	margin-top: 18px;
 	vertical-align: bottom;
 	flow-children: right;
 }

@@ -133,7 +133,7 @@ function drawDetail(view: GamesView): void {
     )
   })
   find('HGOnline').text = `${view.friends.length} online`
-  friendRows.draw(find('HGFriends'), JSON.stringify(view.friends), (into) => {
+  friendRows.draw(find('HGFriends'), JSON.stringify([view.friends, view.offline]), (into) => {
     if (!view.friends.length) label(into, 'HGFriendsEmpty', 'No friends online right now.')
     for (const { friend, button: kind } of view.friends) {
       const row = panel(into, 'HGFriend')
@@ -146,8 +146,8 @@ function drawDetail(view: GamesView): void {
       const caption = kind === 'invited' ? 'Invited' : kind === 'copy-link' ? 'Copy link' : 'Invite'
       button(row, `SecondaryButton Outline Small ${look}`, caption, press)
     }
+    if (view.offline) label(into, 'HGOffline', `${view.offline} ${view.offline === 1 ? 'friend' : 'friends'} offline`)
   })
-  find('HGOffline').text = view.offline ? `${view.offline} ${view.offline === 1 ? 'friend' : 'friends'} offline` : ''
   hint.draw(find('HGHint'), view.play.hint, (into) => {
     if (!view.play.hint) return
     mark(into, 20)
