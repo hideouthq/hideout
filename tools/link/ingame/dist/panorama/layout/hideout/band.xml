@@ -1,9 +1,19 @@
 <root>
 	<styles>
-		<include src="file://{resources}/styles/hideout/band.css" />
+		<include src="s2r://panorama/styles/hideout/common.vcss" />
+		<include src="s2r://panorama/styles/hideout/band.vcss" />
 	</styles>
-	<Panel class="HideoutBand">
-		<Panel class="HideoutGrain" hittest="false" />
-		<Label class="HideoutBandTitle" text="Hideout games" />
-	</Panel>
+	<Button class="HBand">
+		<Panel id="HBandHand" class="HBandHand" />
+		<Panel class="HBandText">
+			<Panel id="HBandCap" class="CapRow">
+				<Label class="Cap HBandCap" text="Hideout games" />
+			</Panel>
+			<Label id="HBandSub" class="HBandSub" text="Community modes to play with friends" />
+		</Panel>
+		<Panel class="HBandGo">
+			<Label class="HBandGoText" text="Browse" />
+			<Label class="HBandGoText HBandArrow" text="›" />
+		</Panel>
+	</Button>
 </root>

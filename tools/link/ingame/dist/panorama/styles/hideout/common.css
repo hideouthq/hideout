@@ -1,0 +1,316 @@
+.Paper
+{
+	background-color: #2A2723;
+	opacity-mask: url("s2r://panorama/images/masks/rough_edge_01_png.vtex");
+	box-shadow: 0px 30px 60px #0000008c;
+}
+
+.Grain
+{
+	width: 100%;
+	height: 100%;
+	background-image: url("s2r://panorama/images/textures/filmgrain_psd.vtex");
+	background-size: 512px 512px;
+	opacity: 0.04;
+	-s2-mix-blend-mode: screen;
+}
+
+.Title
+{
+	font-family: Reaver;
+	font-weight: bold;
+	color: #F3E7D3;
+}
+
+.Body
+{
+	font-family: Radiance;
+	color: #EFE6D6;
+}
+
+.Sub
+{
+	font-family: Radiance;
+	color: #BDB4A6;
+}
+
+.Cap
+{
+	font-family: VALVEPulp;
+	font-size: 14px;
+	letter-spacing: 2px;
+	text-transform: uppercase;
+	color: #D4A35E;
+}
+
+.CapRow
+{
+	flow-children: right;
+}
+
+.CapRow .Mark
+{
+	vertical-align: middle;
+	margin-right: 8px;
+}
+
+.CapRow .Cap
+{
+	vertical-align: middle;
+}
+
+.CapCount
+{
+	font-family: VALVEPulp;
+	font-size: 14px;
+	color: #8F877B;
+	margin-left: 8px;
+	vertical-align: middle;
+}
+
+.Plate
+{
+	background-color: #141313;
+	padding: 7px 12px 5px 12px;
+	box-shadow: 4px 4px 0px #00000073;
+}
+
+.Plate Label, Label.Plate
+{
+	font-family: VALVEOracle;
+	font-weight: bold;
+	text-transform: uppercase;
+	color: #EFE6D6;
+}
+
+.NoArt
+{
+	background-color: gradient( linear, 0% 0%, 100% 100%, from( #4A2A22 ), to( #1B1513 ) );
+}
+
+.Art
+{
+	background-color: #1A1714;
+}
+
+.Outline
+{
+	height: 42px;
+	padding: 0px 30px;
+	margin: 0px;
+	border-radius: 21px;
+	border: 2px solid #EFE6D680;
+	background-color: transparent;
+}
+
+.Outline Label
+{
+	font-size: 19px;
+	color: #EFE6D6;
+	margin-bottom: 0px;
+}
+
+.Outline:enabled:hover
+{
+	border: 2px solid #EFE6D6;
+}
+
+.Outline.Small
+{
+	height: 34px;
+	padding: 0px 18px;
+	border-radius: 17px;
+}
+
+.Outline.Small Label
+{
+	font-size: 16px;
+}
+
+.Outline.Gold
+{
+	border: 2px solid #D4A35EBF;
+}
+
+.Outline.Gold Label
+{
+	color: #EBC487;
+}
+
+.Outline.Done
+{
+	border: 2px solid transparent;
+	background-color: #74D49A1F;
+}
+
+.Outline.Done Label
+{
+	color: #8FE0B0;
+}
+
+.Outline:disabled
+{
+	opacity: 0.4;
+}
+
+.Cream
+{
+	background-color: #FFF1DC;
+	flow-children: right;
+}
+
+.Cream:enabled:hover
+{
+	background-color: #FFF8EE;
+}
+
+.Cream Label
+{
+	font-family: VALVEPulp;
+	text-transform: uppercase;
+	letter-spacing: 2px;
+	color: #1A1714;
+	horizontal-align: center;
+	vertical-align: middle;
+}
+
+.Cream:disabled
+{
+	opacity: 0.55;
+}
+
+.HSpinner
+{
+	width: 22px;
+	height: 22px;
+	vertical-align: middle;
+	background-image: url("s2r://panorama/images/control_icons/spinner_png.vtex");
+	background-size: contain;
+	wash-color: #D4A35E;
+	animation-name: RotateIcon;
+	animation-duration: 2s;
+	animation-timing-function: linear;
+	animation-iteration-count: infinite;
+}
+
+.HSpinner.Dark
+{
+	wash-color: #1A1714;
+}
+
+.Mark
+{
+	flow-children: none;
+}
+
+.MarkArt
+{
+	width: 64px;
+	height: 64px;
+	transform-origin: 0% 0%;
+}
+
+.MarkBack
+{
+	x: 15.5px;
+	y: 12.5px;
+	width: 25px;
+	height: 37px;
+	border-radius: 3.4px;
+	background-color: #F1DFB8;
+	transform-origin: 50% 115%;
+	transform: rotateZ(-14deg);
+}
+
+.MarkFront
+{
+	x: 21.3px;
+	y: 10.3px;
+	width: 29.4px;
+	height: 41.4px;
+	border-radius: 5.4px;
+	background-color: #141313;
+	transform-origin: 50% 108%;
+	transform: rotateZ(9deg);
+}
+
+.MarkFace
+{
+	x: 2.2px;
+	y: 2.2px;
+	width: 25px;
+	height: 37px;
+	border-radius: 3.4px;
+	background-color: #F1DFB8;
+}
+
+.MarkHead
+{
+	x: 4.3px;
+	y: 7.4px;
+	width: 16.4px;
+	height: 16.4px;
+	border-radius: 50%;
+	background-color: #2F8F5B;
+}
+
+.MarkSmile
+{
+	x: 6.3px;
+	y: 13px;
+	width: 12.4px;
+	height: 12px;
+	border-radius: 50%;
+	border-bottom: 2.3px solid #141313;
+}
+
+.MarkSeat
+{
+	x: 5.4px;
+	y: 28.3px;
+	width: 14.3px;
+	height: 2.3px;
+	border-radius: 1.2px;
+	background-color: #141313;
+}
+
+.MarkLeg
+{
+	y: 25.4px;
+	width: 2.3px;
+	height: 4.3px;
+	border-radius: 1.2px;
+	background-color: #141313;
+}
+
+.MarkLeg.Left
+{
+	x: 6.9px;
+	transform: rotateZ(28deg);
+}
+
+.MarkLeg.Right
+{
+	x: 16.1px;
+	transform: rotateZ(-28deg);
+}
+
+.Tear
+{
+	width: 100%;
+	height: 8px;
+	vertical-align: bottom;
+	flow-children: right;
+}
+
+.Tooth
+{
+	width: 11px;
+	vertical-align: bottom;
+	background-color: #2A2723;
+}
+
+.Fill
+{
+	height: fill-parent-flow( 1.0 );
+}

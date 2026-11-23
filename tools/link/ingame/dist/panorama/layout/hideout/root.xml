@@ -1,0 +1,30 @@
+<root>
+	<styles>
+		<include src="s2r://panorama/styles/citadel_base_styles.vcss" />
+		<include src="s2r://panorama/styles/citadel_ui_friend_menu.vcss" />
+		<include src="s2r://panorama/styles/citadel_ui_friend.vcss" />
+		<include src="s2r://panorama/styles/hideout/common.vcss" />
+		<include src="s2r://panorama/styles/hideout/overlay.vcss" />
+	</styles>
+	<Panel class="HORoot" hittest="false">
+		<Panel class="HOHiddenParts" hittest="false" hittestchildren="false">
+			<CitadelFriendMenu id="HOFriendMenu" />
+		</Panel>
+		<Panel id="HOToasts" class="HOToasts" hittest="false" />
+		<Panel id="HOJoining" class="HOJoining">
+			<Panel class="HOScrim" />
+			<Panel class="Paper HODialog">
+				<Panel id="HOJoinBanner" class="HOJoinBanner" />
+				<Panel class="HOJoinBody">
+					<Label id="HOJoinTitle" class="Title HOJoinTitle" text="" />
+					<Label id="HOJoinLine" class="Sub HOJoinLine" text="" />
+					<Panel id="HOSteps" class="HOSteps" />
+					<Panel id="HOBox" class="HOBoxHolder" />
+					<Panel class="Fill" />
+					<Panel id="HOActs" class="HOActs" />
+				</Panel>
+				<Panel class="Grain" hittest="false" />
+			</Panel>
+		</Panel>
+	</Panel>
+</root>

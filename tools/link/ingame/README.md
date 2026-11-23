@@ -1,6 +1,6 @@
 # In-game UI for the menus pack
 
-`dist/` is what `hideout-link menus` embeds (`//go:embed all:ingame/dist` in `ingame.go`) and compiles into the menus pack on the player's machine. It lives inside `tools/link` because `go:embed` can't reach outside the module. The UI's build writes its output here. The files here now are placeholders.
+`dist/` is what `hideout-link menus` embeds (`//go:embed all:ingame/dist` in `ingame.go`) and compiles into the menus pack on the player's machine. It lives inside `tools/link` because `go:embed` can't reach outside the module. The UI's sources are in `ingame/src`, and `go run ./compile` in `ingame/` writes them here: one plain script per entry, since Panorama has no modules, and the layouts and sheets as they are. `go test ./compile` there fails while this folder is stale.
 
 `dist/` mirrors the pack, as Panorama sources:
 

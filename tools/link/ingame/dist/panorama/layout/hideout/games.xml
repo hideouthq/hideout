@@ -1,0 +1,87 @@
+<root>
+	<styles>
+		<include src="s2r://panorama/styles/citadel_base_styles.vcss" />
+		<include src="s2r://panorama/styles/popups/popups_shared.vcss" />
+		<include src="s2r://panorama/styles/citadel_ui_friend_menu.vcss" />
+		<include src="s2r://panorama/styles/citadel_ui_friend.vcss" />
+		<include src="s2r://panorama/styles/hideout/common.vcss" />
+		<include src="s2r://panorama/styles/hideout/games.vcss" />
+	</styles>
+	<scripts>
+		<include src="file://{resources}/scripts/hideout/config.js" />
+		<include src="file://{resources}/scripts/hideout/games.js" />
+	</scripts>
+	<Panel id="HideoutGames" class="PopupPanel Hidden Paper HGPopup" popupbackground="dim" oncancel="UIPopupButtonClicked()">
+		<Panel class="HGHiddenParts" hittest="false" hittestchildren="false">
+			<CitadelFriendMenu id="HGFriendMenu" />
+			<CitadelUserName id="HGMe" accountid="local" />
+		</Panel>
+		<Panel class="HGContent">
+			<Panel class="HGHeader">
+				<Panel class="HGTitleBlock">
+					<Panel id="HGTitleRow" class="HGTitleRow">
+						<Label class="Title HGTitle" text="Hideout games" />
+					</Panel>
+					<Label class="Sub HGSubtitle" text="Community game modes for you and your friends" />
+				</Panel>
+				<Panel class="HGTabs">
+					<Button id="HGTabGames" class="HGTab">
+						<Label class="HGTabName" text="Games" />
+						<Label id="HGGamesCount" class="HGTabCount" text="" />
+					</Button>
+					<Button id="HGTabServers" class="HGTab">
+						<Label class="HGTabName" text="Servers" />
+						<Label id="HGServersCount" class="HGTabCount" text="" />
+					</Button>
+				</Panel>
+				<Button id="HGClose" class="SecondaryButton Outline HGClose" onactivate="UIPopupButtonClicked()">
+					<Label text="Close" />
+				</Button>
+			</Panel>
+			<Panel id="HGGames" class="HGBody">
+				<Panel class="HGListColumn">
+					<Panel id="HGList" class="HGList" />
+					<Panel id="HGMore" class="HGMore">
+						<Label class="HGMoreText" text="More modes in the Hideout app" />
+					</Panel>
+				</Panel>
+				<Panel id="HGDetail" class="HGDetail">
+					<Panel id="HGBanner" class="HGBanner" />
+					<Label id="HGDesc" class="HGDesc" text="" />
+					<Panel id="HGChips" class="HGChips" />
+					<Panel class="HGTwo">
+						<Panel class="HGColumn">
+							<Label class="Cap" text="Settings" />
+							<Panel id="HGSettings" class="HGSettingRows" />
+						</Panel>
+						<Panel class="HGColumn HGRight">
+							<Panel class="CapRow">
+								<Label class="Cap" text="Invite friends" />
+								<Label id="HGOnline" class="CapCount" text="" />
+							</Panel>
+							<Panel id="HGFriends" class="HGFriends" />
+							<Label id="HGOffline" class="HGOffline" text="" />
+						</Panel>
+					</Panel>
+					<Panel class="Fill" />
+					<Panel class="HGFoot">
+						<Panel id="HGHint" class="HGHint" />
+						<Button id="HGPlay" class="Cream HGPlay" />
+					</Panel>
+				</Panel>
+			</Panel>
+			<Panel id="HGServers" class="HGServers">
+				<Panel class="HGServerHead">
+					<Label class="HGColName" text="Server" />
+					<Label class="HGColRegion" text="Region" />
+					<Label class="HGColPlayers" text="Players" />
+					<Label class="HGColPing" text="Ping" />
+					<Label class="HGColStatus" text="Status" />
+				</Panel>
+				<Panel id="HGServerRows" class="HGServerRows" />
+				<Panel id="HGServerNote" class="HGMore" />
+			</Panel>
+		</Panel>
+		<Panel class="Grain" hittest="false" />
+	</Panel>
+</root>

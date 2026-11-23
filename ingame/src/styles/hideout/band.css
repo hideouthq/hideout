@@ -1,0 +1,78 @@
+.HBand
+{
+	width: 828px;
+	height: 112px;
+	margin: 48px 0px -32px -64px;
+	padding: 0px 38px 0px 40px;
+	flow-children: right;
+	background-color: #0000004d;
+	border-top: 1px solid #EFE6D614;
+	border-left: 4px solid #D4A35E;
+}
+
+.HBand:hover
+{
+	background-color: #D4A35E1a;
+}
+
+.HBandHand
+{
+	width: 150px;
+	height: 84px;
+	margin-top: 6px;
+	margin-right: 18px;
+	vertical-align: middle;
+	flow-children: none;
+}
+
+.HBandCard
+{
+	y: 0px;
+	width: 60px;
+	height: 80px;
+	border-radius: 5px;
+	border: 2px solid #1A1714;
+	box-shadow: 0px 8px 18px #00000080;
+	transform-origin: 50% 100%;
+}
+
+.HBandText
+{
+	width: fill-parent-flow( 1.0 );
+	vertical-align: middle;
+	flow-children: down;
+}
+
+.HBandCap
+{
+	font-size: 14px;
+}
+
+.HBandSub
+{
+	margin-top: 6px;
+	font-size: 18px;
+	color: #DCD2C2;
+}
+
+.HBandGo
+{
+	vertical-align: middle;
+	flow-children: right;
+}
+
+.HBandGoText
+{
+	font-family: VALVEPulp;
+	font-size: 19px;
+	color: #EBC487;
+	vertical-align: middle;
+}
+
+.HBandArrow
+{
+	margin-left: 6px;
+	font-family: Radiance;
+	font-size: 26px;
+	margin-bottom: 3px;
+}
