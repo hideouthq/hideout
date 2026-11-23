@@ -22,7 +22,7 @@
 	height: 100%;
 	background-image: url("s2r://panorama/images/textures/filmgrain_psd.vtex");
 	background-size: 512px 512px;
-	opacity: 0.02;
+	opacity: 0.017;
 	-s2-mix-blend-mode: screen;
 }
 
