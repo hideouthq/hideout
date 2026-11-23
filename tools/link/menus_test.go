@@ -57,11 +57,11 @@ func runVerb(t testing.TB, args ...string) ([]line, int) {
 }
 
 func TestMenusNameThePageAndPortAndKeepTheStockNewsLayout(t *testing.T) {
-	game := writeStockGame(t, stockNews)
+	game := writeStockGame(t, stockLayouts(t))
 	out := filepath.Join(t.TempDir(), "menus.part")
 	page := "https://menus.example/bridge/"
 	said, code := runVerb(t, "menus", "--game", game, "--renderer", writeRenderer(t), "--page", page, "--screen-port", "29700", "--out", out)
-	if code != 0 || len(said) != 1 || said[0].Reason != "done" {
+	if code != 0 || said[len(said)-1].Reason != "done" {
 		t.Fatalf("exit %d, said %v", code, said)
 	}
 	pack, err := vpk.OpenArchive(out)

@@ -1,0 +1,23 @@
+.HideoutBand
+{
+	width: 420px;
+	height: 78px;
+	margin-top: 10px;
+	background-color: #2A2723;
+	opacity-mask: url("s2r://panorama/images/masks/rough_edge_01_png.vtex");
+}
+
+.HideoutGrain
+{
+	width: 100%;
+	height: 100%;
+	opacity: 0.04;
+	background-image: url("s2r://panorama/images/textures/filmgrain_psd.vtex");
+	-s2-mix-blend-mode: screen;
+}
+
+.HideoutBandTitle
+{
+	margin-top: 10px;
+	color: #FFEFD7;
+}

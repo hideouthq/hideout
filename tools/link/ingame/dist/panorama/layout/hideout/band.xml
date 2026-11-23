@@ -1,0 +1,9 @@
+<root>
+	<styles>
+		<include src="file://{resources}/styles/hideout/band.css" />
+	</styles>
+	<Panel class="HideoutBand">
+		<Panel class="HideoutGrain" hittest="false" />
+		<Label class="HideoutBandTitle" text="Hideout games" />
+	</Panel>
+</root>

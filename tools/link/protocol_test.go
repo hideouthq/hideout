@@ -11,7 +11,9 @@ func TestEventLines(t *testing.T) {
 		event Event
 		want  string
 	}{
-		{Invite{Code: "P95MAN26D"}, `{"type":"invite","code":"P95MAN26D"}`},
+		{Invite{Code: "P95MAN26D", Region: Region{ID: 303, Code: "fra"}}, `{"type":"invite","code":"P95MAN26D","region":{"id":303,"code":"fra"}}`},
+		{Built{Token: "00112233445566778899aabbccddeeff"}, `{"type":"built","token":"00112233445566778899aabbccddeeff"}`},
+		{Regions{Regions: []RegionLatency{{Region{1, "nyc"}, nil}, {Region{3, "fra"}, new(31)}}}, `{"type":"regions","regions":[{"id":1,"code":"nyc"},{"id":3,"code":"fra","ms":31}]}`},
 		{Offer{Offer: "eyJt_-9"}, `{"type":"offer","offer":"eyJt_-9"}`},
 		{ServerEvent{Event: json.RawMessage(`{"host":{"ready":"<a&b>"}}`)}, `{"type":"server","event":{"host":{"ready":"<a&b>"}}}`},
 		{ServerLog{Line: "not json <x>"}, `{"type":"server-log","line":"not json <x>"}`},

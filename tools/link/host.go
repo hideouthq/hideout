@@ -87,7 +87,7 @@ func hostSession(ctx context.Context, cfg HostConfig, lines <-chan string, emit 
 		closeWithin(tunnel.Close)
 		return Stopped{Reason: ReasonServerStartFailed, Message: err.Error()}
 	}
-	emit(Invite{Code: inviteCode(secret, tunnel.Region.RegionID)})
+	emit(Invite{Code: inviteCode(secret, tunnel.Region.RegionID), Region: Region{ID: int(tunnel.Region.RegionID), Code: tunnel.Region.RegionCode}})
 	guestsCtx, stopGuests := context.WithCancel(ctx)
 	go watchGuests(guestsCtx, tunnel.Status, emit)
 

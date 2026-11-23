@@ -11,7 +11,30 @@ import (
 type Event interface{ eventType() string }
 
 type Invite struct {
+	Code   string `json:"code"`
+	Region Region `json:"region"`
+}
+
+// Region is a Tailcat relay region.
+type Region struct {
+	ID   int    `json:"id"`
 	Code string `json:"code"`
+}
+
+// Built is the token the menus pack's config.js holds, which the app stores beside the pack.
+type Built struct {
+	Token string `json:"token"`
+}
+
+type Regions struct {
+	Regions []RegionLatency `json:"regions"`
+}
+
+// RegionLatency is a relay region and this computer's round trip to it, absent when it
+// didn't answer.
+type RegionLatency struct {
+	Region
+	MS *int `json:"ms,omitempty"`
 }
 
 type Offer struct {
@@ -98,6 +121,8 @@ type Stopped struct {
 }
 
 func (Invite) eventType() string       { return "invite" }
+func (Built) eventType() string        { return "built" }
+func (Regions) eventType() string      { return "regions" }
 func (Offer) eventType() string        { return "offer" }
 func (ServerEvent) eventType() string  { return "server" }
 func (ServerLog) eventType() string    { return "server-log" }

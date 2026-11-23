@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io/fs"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -21,33 +22,58 @@ type MenusConfig struct {
 	Renderer   string
 	PageURL    string
 	ScreenPort uint16
+	IngamePort uint16
 	Out        string
+	Ingame     fs.FS
 }
 
 func runMenus(cfg MenusConfig, emit Sink) Stopped {
-	stopped := Stopped{Reason: ReasonDone}
-	if err := writeMenus(cfg); err != nil {
+	token, err := writeMenus(cfg)
+	if err != nil {
 		os.Remove(cfg.Out)
-		stopped = Stopped{Reason: ReasonFailed, Message: err.Error()}
+		stopped := Stopped{Reason: ReasonFailed, Message: err.Error()}
+		emit(stopped)
+		return stopped
 	}
+	emit(Built{Token: token})
+	stopped := Stopped{Reason: ReasonDone}
 	emit(stopped)
 	return stopped
 }
 
-func writeMenus(cfg MenusConfig) error {
-	built, err := rendererFiles(cfg)
+// writeMenus writes the pack and returns the token its config.js holds. The token leaves only
+// on stdout, so no other process reads it from our argv.
+func writeMenus(cfg MenusConfig) (string, error) {
+	stock, err := vpk.OpenArchive(filepath.Join(cfg.Game, "game", "citadel", "pak01_dir.vpk"))
 	if err != nil {
-		return err
+		return "", err
+	}
+	renderer, err := rendererFiles(cfg)
+	if err != nil {
+		return "", err
+	}
+	page, err := bridgeURL(cfg.PageURL, cfg.IngamePort)
+	if err != nil {
+		return "", err
+	}
+	token := newPackToken()
+	ingame, err := ingameFiles(stock, cfg.Ingame, IngameConfig{Port: cfg.IngamePort, Page: page, Token: token})
+	if err != nil {
+		return "", err
+	}
+	built, err := merged(renderer, ingame)
+	if err != nil {
+		return "", err
 	}
 	file, err := os.Create(cfg.Out)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if err := vpk.Write(file, built); err != nil {
 		file.Close()
-		return err
+		return "", err
 	}
-	return file.Close()
+	return token, file.Close()
 }
 
 // rendererFiles shadows the stock news layout, read from this player's install so

@@ -31,7 +31,7 @@ func main() {
 
 func run(args []string, stdin io.Reader, stdout io.Writer) int {
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: hideout-link host|join|menus|stage|clear-dev [flags]")
+		fmt.Fprintln(os.Stderr, "usage: hideout-link host|join|menus|stage|clear-dev|regions [flags]")
 		return usageExit
 	}
 	emit := newLineSink(stdout)
@@ -66,8 +66,14 @@ func run(args []string, stdin io.Reader, stdout io.Writer) int {
 			return usageExit
 		}
 		return exitCode(runClearDev(cfg, emit))
+	case "regions":
+		if len(args) != 1 {
+			fmt.Fprintln(os.Stderr, "usage: hideout-link regions")
+			return usageExit
+		}
+		return exitCode(runRegions(signalContext(), RegionsConfig{}, emit))
 	default:
-		fmt.Fprintf(os.Stderr, "unknown verb %q: want host, join, menus, stage or clear-dev\n", args[0])
+		fmt.Fprintf(os.Stderr, "unknown verb %q: want host, join, menus, stage, clear-dev or regions\n", args[0])
 		return usageExit
 	}
 }
@@ -166,16 +172,17 @@ func parseMenusArgs(args []string) (MenusConfig, error) {
 	renderer := fs.String("renderer", "", "the folder holding Modlock's built renderer")
 	page := fs.String("page", "", "the bridge page's address")
 	screenPort := fs.Uint("screen-port", 0, "the local TCP port the game reads its screen from")
+	ingamePort := fs.Uint("ingame-port", 29701, "the local TCP port of Hideout's in-game endpoint")
 	out := fs.String("out", "", "the file to write the pack to")
 	if err := fs.Parse(args); err != nil {
 		return MenusConfig{}, err
 	}
-	if *game == "" || *renderer == "" || !validPage(*page) || *screenPort == 0 || *screenPort > 65535 || *out == "" {
-		err := errors.New("usage: hideout-link menus --game DIR --renderer DIR --page URL --screen-port P --out FILE")
+	if *game == "" || *renderer == "" || !validPage(*page) || *screenPort == 0 || *screenPort > 65535 || *ingamePort == 0 || *ingamePort > 65535 || *out == "" {
+		err := errors.New("usage: hideout-link menus --game DIR --renderer DIR --page URL --screen-port P [--ingame-port P] --out FILE")
 		fmt.Fprintln(os.Stderr, err)
 		return MenusConfig{}, err
 	}
-	return MenusConfig{Game: *game, Renderer: *renderer, PageURL: *page, ScreenPort: uint16(*screenPort), Out: *out}, nil
+	return MenusConfig{Game: *game, Renderer: *renderer, PageURL: *page, ScreenPort: uint16(*screenPort), IngamePort: uint16(*ingamePort), Out: *out, Ingame: ingameSources()}, nil
 }
 
 func parseStageArgs(args []string) (StageConfig, error) {
