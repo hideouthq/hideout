@@ -192,9 +192,16 @@
     if (n) return `${n} ${n === 1 ? "friend gets" : "friends get"} an invite when your game is ready.`;
     return `Your PC hosts this game. ${state2.draft.listing === "public" ? "Anyone in Servers can join." : "Invite friends here or share the code."}`;
   }
+  var OFFLINE = { title: "Open Hideout to play", body: "Hideout games run from the Hideout app on this PC." };
+  var OUTDATED = { title: "Restart Deadlock", body: REFUSALS.outdated };
+  function emptyList(link2) {
+    if (link2 === "offline") return { kind: "note", ...OFFLINE };
+    if (link2 === "outdated") return { kind: "note", ...OUTDATED };
+    return { kind: "loading" };
+  }
   function playButton(state2, snapshot, link2, mode2) {
-    if (link2 === "offline") return { kind: "blocked", label: "Open Hideout to play", hint: "Hideout games run from the Hideout app on this PC." };
-    if (link2 === "outdated") return { kind: "blocked", label: "Restart Deadlock", hint: REFUSALS.outdated };
+    if (link2 === "offline") return { kind: "blocked", label: OFFLINE.title, hint: OFFLINE.body };
+    if (link2 === "outdated") return { kind: "blocked", label: OUTDATED.title, hint: OUTDATED.body };
     if (link2 === "connecting" && !snapshot.catalog) return { kind: "busy", label: "Reaching Hideout\u2026", hint: "" };
     const host2 = runningHost(snapshot);
     if (host2) {
@@ -304,6 +311,7 @@
       servers: servers2,
       link: link2,
       rows: modes.map((mode2) => ({ mode: mode2, selected: mode2 === selected, meta: metaLine(mode2) })),
+      empty: modes.length ? null : emptyList(link2),
       selected,
       byline: selected ? [`by ${selected.by.join(", ")}`, selected.bytes === null ? null : sizeText(selected.bytes)].filter(Boolean).join(" \xB7 ") : "",
       chips: chips2,
@@ -826,12 +834,16 @@
     drawServers(view.servers, view.link === "online" && link.snapshot.hello?.social !== void 0);
   }
   function drawList(view) {
-    const key = JSON.stringify(view.rows.map((r) => [r.mode.id, r.mode.name, r.mode.tagline, r.meta, r.mode.art, r.selected]));
+    const key = JSON.stringify([view.empty, view.rows.map((r) => [r.mode.id, r.mode.name, r.mode.tagline, r.meta, r.mode.art, r.selected])]);
     list2.draw(find("HGList"), key, (into) => {
-      if (!view.rows.length) {
-        const empty = panel(into, "HGRow");
-        spinner(empty, "HGEmptySpinner");
-        return;
+      const empty = view.empty;
+      if (empty?.kind === "loading") spinner(panel(into, "HGRow"), "HGEmptySpinner");
+      if (empty?.kind === "note") {
+        const row = panel(into, "HGRow HGEmpty");
+        mark(row, 48);
+        const text2 = panel(row, "HGRowText");
+        label(text2, "Title HGRowName", empty.title);
+        label(text2, "HGRowDesc Wrap", empty.body);
       }
       for (const row of view.rows) {
         const b = panel(into, `HGRow${row.selected ? " On" : ""}`, "Button");

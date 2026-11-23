@@ -128,6 +128,15 @@ test('with Hideout closed Play says to open it', () => {
   assert.equal(view.play.label, 'Open Hideout to play')
 })
 
+test('with Hideout closed before any list came, the panel says to open it, and lists the games once it is back', () => {
+  const closed = viewGames(initialGames('games'), EMPTY, 'offline', friends, '')
+  assert.deepEqual(closed.empty, { kind: 'note', title: 'Open Hideout to play', body: 'Hideout games run from the Hideout app on this PC.' })
+  assert.deepEqual(viewGames(initialGames('games'), EMPTY, 'connecting', friends, '').empty, { kind: 'loading' })
+  const back = viewGames(initialGames('games'), snapshotOf('hello.json', 'catalog.json', 'game-idle.json'), 'online', friends, '')
+  assert.equal(back.empty, null)
+  assert.equal(back.rows.length, 2)
+})
+
 test('servers read as rows with places, fill, ping tone and joinability', () => {
   const view = viewServers(snapshotOf('servers.json'))
   assert.deepEqual(

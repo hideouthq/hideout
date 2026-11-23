@@ -160,12 +160,16 @@ export interface ServersView {
   note: string | null
 }
 
+/** What the list shows while it has no games: a spinner while Hideout answers, or why it can't. */
+export type EmptyList = { kind: 'loading' } | { kind: 'note'; title: string; body: string }
+
 export interface GamesView {
   tab: Tab
   counts: { games: number; servers: number | null }
   servers: ServersView
   link: LinkStatus
   rows: ModeRow[]
+  empty: EmptyList | null
   selected: ModeCard | null
   byline: string
   chips: { icon: 'kind' | 'players' | 'time'; text: string }[]
@@ -222,9 +226,18 @@ function inviteHint(state: GamesState, snapshot: Snapshot): string {
   return `Your PC hosts this game. ${state.draft.listing === 'public' ? 'Anyone in Servers can join.' : 'Invite friends here or share the code.'}`
 }
 
+const OFFLINE = { title: 'Open Hideout to play', body: 'Hideout games run from the Hideout app on this PC.' }
+const OUTDATED = { title: 'Restart Deadlock', body: REFUSALS.outdated }
+
+function emptyList(link: LinkStatus): EmptyList {
+  if (link === 'offline') return { kind: 'note', ...OFFLINE }
+  if (link === 'outdated') return { kind: 'note', ...OUTDATED }
+  return { kind: 'loading' }
+}
+
 function playButton(state: GamesState, snapshot: Snapshot, link: LinkStatus, mode: ModeCard | null): PlayButton {
-  if (link === 'offline') return { kind: 'blocked', label: 'Open Hideout to play', hint: 'Hideout games run from the Hideout app on this PC.' }
-  if (link === 'outdated') return { kind: 'blocked', label: 'Restart Deadlock', hint: REFUSALS.outdated }
+  if (link === 'offline') return { kind: 'blocked', label: OFFLINE.title, hint: OFFLINE.body }
+  if (link === 'outdated') return { kind: 'blocked', label: OUTDATED.title, hint: OUTDATED.body }
   if (link === 'connecting' && !snapshot.catalog) return { kind: 'busy', label: 'Reaching Hideout…', hint: '' }
   const host = runningHost(snapshot)
   if (host) {
@@ -320,6 +333,7 @@ export function viewGames(state: GamesState, snapshot: Snapshot, link: LinkStatu
     servers,
     link,
     rows: modes.map((mode) => ({ mode, selected: mode === selected, meta: metaLine(mode) })),
+    empty: modes.length ? null : emptyList(link),
     selected,
     byline: selected ? [`by ${selected.by.join(', ')}`, selected.bytes === null ? null : sizeText(selected.bytes)].filter(Boolean).join(' · ') : '',
     chips,

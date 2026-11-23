@@ -70,12 +70,16 @@ function render(): void {
 }
 
 function drawList(view: GamesView): void {
-  const key = JSON.stringify(view.rows.map((r) => [r.mode.id, r.mode.name, r.mode.tagline, r.meta, r.mode.art, r.selected]))
+  const key = JSON.stringify([view.empty, view.rows.map((r) => [r.mode.id, r.mode.name, r.mode.tagline, r.meta, r.mode.art, r.selected])])
   list.draw(find('HGList'), key, (into) => {
-    if (!view.rows.length) {
-      const empty = panel(into, 'HGRow')
-      spinner(empty, 'HGEmptySpinner')
-      return
+    const empty = view.empty
+    if (empty?.kind === 'loading') spinner(panel(into, 'HGRow'), 'HGEmptySpinner')
+    if (empty?.kind === 'note') {
+      const row = panel(into, 'HGRow HGEmpty')
+      mark(row, 48)
+      const text = panel(row, 'HGRowText')
+      label(text, 'Title HGRowName', empty.title)
+      label(text, 'HGRowDesc Wrap', empty.body)
     }
     for (const row of view.rows) {
       const b = panel(into, `HGRow${row.selected ? ' On' : ''}`, 'Button')
