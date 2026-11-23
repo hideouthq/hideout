@@ -11,9 +11,7 @@ import kotlin.io.path.readText
 import kotlin.io.path.writeText
 
 @TaskAction(executionAvoidance = ExecutionAvoidance.Disabled)
-fun writeAppProperties(id: String, version: String, @Output outputDir: Path) = writeAppPropertiesFile(id, version, outputDir)
-
-internal fun writeAppPropertiesFile(id: String, version: String, outputDir: Path) {
+fun writeAppProperties(id: String, version: String, @Output outputDir: Path) {
     val content = "version=$version\n"
     val file = outputDir / (id.replace('.', '/') + "/app.properties")
     if (!file.exists() || file.readText() != content) {

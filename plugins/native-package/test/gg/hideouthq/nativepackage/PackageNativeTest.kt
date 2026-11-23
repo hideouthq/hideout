@@ -141,7 +141,7 @@ class PackageNativeTest {
 
     @Test
     fun theGeneratedVersionResourceSitsInTheIdsFolder() {
-        writeAppPropertiesFile("gg.example.App", "2.3.4", root / "generated")
+        writeAppProperties("gg.example.App", "2.3.4", root / "generated")
 
         assertEquals("version=2.3.4\n", (root / "generated" / "gg" / "example" / "App" / "app.properties").readText())
     }
