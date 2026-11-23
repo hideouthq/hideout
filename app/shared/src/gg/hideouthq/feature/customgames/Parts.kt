@@ -591,6 +591,9 @@ fun problemWords(problem: Problem, host: Boolean, hostName: DisplayName?, mode: 
         Problem.GameNotFound -> Res.string.cg_problem_not_found_title to Res.string.cg_problem_not_found_body
         Problem.FriendEnded -> (if (hostName != null) Res.string.cg_friend_ended_title else Res.string.cg_friend_ended_title_friend) to Res.string.cg_problem_friend_ended_body
         Problem.InviteNotWorking -> Res.string.cg_problem_invite_title to Res.string.cg_problem_invite_body
+        Problem.ListingClosed -> Res.string.cg_problem_listing_closed_title to Res.string.cg_problem_listing_closed_body
+        Problem.ListingFull -> Res.string.cg_problem_listing_full_title to Res.string.cg_problem_listing_full_body
+        Problem.ListingUnreachable -> Res.string.cg_problem_listing_unreachable_title to Res.string.cg_problem_listing_unreachable_body
         Problem.ArenaFailed -> Res.string.cg_problem_arena_title to if (host) Res.string.cg_problem_arena_body else Res.string.cg_problem_arena_guest_body
         Problem.Unexpected -> Res.string.cg_problem_unexpected_title to Res.string.cg_problem_unexpected_body
     }
@@ -603,19 +606,21 @@ fun problemWords(problem: Problem, host: Boolean, hostName: DisplayName?, mode: 
 }
 
 fun tryAgainHelps(problem: Problem): Boolean = when (problem) {
-    Problem.NoModeList, Problem.NothingToHostWithHere, Problem.SteamUnsupported, Problem.FolderMissing, Problem.DifferentVersion, Problem.InviteNotWorking, Problem.FriendEnded -> false
+    Problem.NoModeList, Problem.NothingToHostWithHere, Problem.SteamUnsupported, Problem.FolderMissing, Problem.DifferentVersion, Problem.InviteNotWorking, Problem.FriendEnded,
+    Problem.ListingClosed -> false
     Problem.DeadlockNotInstalled, Problem.NoSteamAccount, Problem.DeadlockUpdated, Problem.MenusUnavailable, Problem.MenusBlocked, Problem.ModeListUnreachable, Problem.DownloadStopped, Problem.DiskFull,
-    Problem.FilesDamaged, Problem.ContentNotStaged, Problem.TookTooLong, Problem.CouldNotReach, Problem.GameNotFound, Problem.ArenaFailed, Problem.Unexpected -> true
+    Problem.FilesDamaged, Problem.ContentNotStaged, Problem.TookTooLong, Problem.CouldNotReach, Problem.GameNotFound, Problem.ArenaFailed, Problem.Unexpected,
+    Problem.ListingFull, Problem.ListingUnreachable -> true
 }
 
 fun problemIcon(problem: Problem): ImageVector = when (problem) {
     Problem.DeadlockNotInstalled, Problem.NoSteamAccount, Problem.MenusUnavailable, Problem.MenusBlocked -> HideoutIcons.Monitor
     Problem.DeadlockUpdated, Problem.DifferentVersion -> HideoutIcons.SwapVersions
     Problem.DownloadStopped, Problem.DiskFull, Problem.FilesDamaged -> HideoutIcons.Download
-    Problem.CouldNotReach, Problem.ModeListUnreachable -> HideoutIcons.WifiOff
+    Problem.CouldNotReach, Problem.ModeListUnreachable, Problem.ListingUnreachable -> HideoutIcons.WifiOff
     Problem.GameNotFound, Problem.InviteNotWorking -> HideoutIcons.Link
-    Problem.FriendEnded -> HideoutIcons.Stop
-    Problem.TookTooLong -> HideoutIcons.Clock
+    Problem.FriendEnded, Problem.ListingClosed -> HideoutIcons.Stop
+    Problem.TookTooLong, Problem.ListingFull -> HideoutIcons.Clock
     Problem.SteamUnsupported, Problem.NoModeList, Problem.NothingToHostWithHere, Problem.FolderMissing, Problem.ContentNotStaged,
     Problem.ArenaFailed, Problem.Unexpected -> HideoutIcons.Shield
 }

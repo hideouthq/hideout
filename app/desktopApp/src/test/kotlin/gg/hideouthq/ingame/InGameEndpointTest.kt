@@ -9,11 +9,13 @@ import gg.hideouthq.core.customgames.JoinTicket
 import gg.hideouthq.core.customgames.LocalPlayer
 import gg.hideouthq.core.customgames.MenusPack
 import gg.hideouthq.core.customgames.PackToken
+import gg.hideouthq.core.customgames.RelayRegion
 import gg.hideouthq.core.customgames.Session
 import gg.hideouthq.core.customgames.SiteOrigin
 import gg.hideouthq.core.customgames.SteamId
 import gg.hideouthq.core.customgames.social.Delivery
 import gg.hideouthq.core.customgames.social.Directory
+import gg.hideouthq.core.customgames.social.GameStatus
 import gg.hideouthq.core.customgames.social.Invitation
 import gg.hideouthq.core.customgames.social.ListingId
 import gg.hideouthq.core.customgames.social.ListingWanted
@@ -163,13 +165,14 @@ class InGameEndpointTest {
     }
 
     @Test
-    fun aJoinWaitingOnTheDirectoryHoldsNoOtherPanelsPress() {
+    fun aServerJoinIsAnsweredBeforeTheDirectoryIs() {
         listed()
         val asked = CompletableDeferred<Unit>()
         val answer = CompletableDeferred<Resolved>()
         val resolves = AtomicInteger()
+        val id = checkNotNull(ListingId.parse("3c41a9e07d5b2f18"))
         val directory = object : Directory {
-            override suspend fun list(): List<PublicGame> = emptyList()
+            override suspend fun list(): List<PublicGame> = listOf(PublicGame(id, Ticket.offer, RelayRegion(4, "fra"), 1, GameStatus.Lobby))
             override suspend fun resolve(id: ListingId): Resolved {
                 resolves.incrementAndGet()
                 asked.complete(Unit)
@@ -183,16 +186,16 @@ class InGameEndpointTest {
             override suspend fun deliver(to: SteamId, from: SteamId, ticket: JoinTicket, players: Int) = Delivery.Delivered
         }
         val social = Social(games, SocialNetwork(mailbox, directory) { null }, scope).apply { start() }
+        social.wantServers()
+        runBlocking { withTimeout(10.seconds) { social.state.first { it.servers.games.isNotEmpty() } } }
         InGameEndpoint(InGame(games, social, SiteOrigin.parse(Site), scope), { pack }, {}).use { other ->
             assertTrue(other.start(0))
-            val join = """{"k":"join","server":"3c41a9e07d5b2f18"}"""
-            val joined = pressFrom("games", join, other)
+            val join = """{"k":"join","server":"${id.value}"}"""
+            assertEquals(1, runBlocking { withTimeout(2.seconds) { pressFrom("games", join, other).await() } }, "accepted while the directory has not answered")
             runBlocking { withTimeout(10.seconds) { asked.await() } }
-            assertEquals(1, runBlocking { withTimeout(2.seconds) { pressFrom("overlay", """{"k":"forget","invite":"9f2c41d07e6b4a58b3c1d2e3f4a5b6c7"}""", other).await() } }, "another panel's press answers while the join waits")
-            val retried = pressFrom("games", join, other)
+            assertEquals(1, runBlocking { withTimeout(2.seconds) { pressFrom("games", join, other).await() } }, "a retried image gets the same answer")
             answer.complete(Resolved.Open(Ticket))
-            assertEquals(1, runBlocking { withTimeout(10.seconds) { joined.await() } }, "the join is accepted once the directory answers")
-            assertEquals(1, runBlocking { withTimeout(10.seconds) { retried.await() } }, "a retried image gets the same answer")
+            runBlocking { withTimeout(10.seconds) { games.live.first { it.session is Session.Finding } } }
             assertEquals(1, resolves.get(), "and asks the directory once")
         }
     }

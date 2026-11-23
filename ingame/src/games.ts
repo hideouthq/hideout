@@ -72,7 +72,7 @@ export function reduceGames(state: GamesState, event: GamesEvent, snapshot: Snap
   ]
   switch (event.kind) {
     case 'tab':
-      return [{ ...state, tab: event.tab }, []]
+      return [{ ...state, tab: event.tab, request: state.request.kind === 'refused' ? { kind: 'idle' } : state.request }, []]
     case 'mode':
       return [{ ...state, draft: { ...draft, mode: event.mode, picks: {} }, request: { kind: 'idle' } }, []]
     case 'pick':
@@ -114,9 +114,13 @@ export function reduceGames(state: GamesState, event: GamesEvent, snapshot: Snap
       return [{ ...state, request: { kind: 'idle' } }, []]
     case 'servers-answered':
       return [{ ...state, serversAnswer: event.result }, []]
-    case 'seen':
-      if (state.request.kind === 'sending' && state.request.what === 'play' && host) return [{ ...state, request: { kind: 'idle' } }, []]
+    case 'seen': {
+      const request = state.request
+      if (request.kind === 'sending' && request.what === 'play' && host) return [{ ...state, request: { kind: 'idle' } }, []]
+      // The answer to a join can come after the deadline, so the joining layer showing it says the press went through.
+      if (request.kind === 'refused' && request.what === 'join' && snapshot.game?.join) return [{ ...state, request: { kind: 'idle' } }, []]
       return [state, []]
+    }
   }
 }
 

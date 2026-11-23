@@ -107,7 +107,7 @@
     ];
     switch (event.kind) {
       case "tab":
-        return [{ ...state2, tab: event.tab }, []];
+        return [{ ...state2, tab: event.tab, request: state2.request.kind === "refused" ? { kind: "idle" } : state2.request }, []];
       case "mode":
         return [{ ...state2, draft: { ...draft, mode: event.mode, picks: {} }, request: { kind: "idle" } }, []];
       case "pick":
@@ -148,9 +148,12 @@
         return [{ ...state2, request: { kind: "idle" } }, []];
       case "servers-answered":
         return [{ ...state2, serversAnswer: event.result }, []];
-      case "seen":
-        if (state2.request.kind === "sending" && state2.request.what === "play" && host2) return [{ ...state2, request: { kind: "idle" } }, []];
+      case "seen": {
+        const request = state2.request;
+        if (request.kind === "sending" && request.what === "play" && host2) return [{ ...state2, request: { kind: "idle" } }, []];
+        if (request.kind === "refused" && request.what === "join" && snapshot.game?.join) return [{ ...state2, request: { kind: "idle" } }, []];
         return [state2, []];
+      }
     }
   }
   var KINDS = { duel: "Duel", teams: "Teams", "free-for-all": "Free-for-all", "co-op": "Co-op" };

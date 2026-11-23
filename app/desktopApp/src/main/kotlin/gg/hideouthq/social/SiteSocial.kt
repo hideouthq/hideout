@@ -246,7 +246,13 @@ internal class SiteMailbox(private val routes: SiteRoutes, private val scope: Co
 }
 
 /** The site expires a listing after 90 s, so a kept one is put again every [refresh] and lapses once this app stops. */
-internal class SiteDirectory(private val routes: SiteRoutes, scope: CoroutineScope, private val refresh: Duration = 30.seconds) : Directory {
+/** The joining layer says it is looking for the game until [resolveLimit] runs out. */
+internal class SiteDirectory(
+    private val routes: SiteRoutes,
+    scope: CoroutineScope,
+    private val refresh: Duration = 30.seconds,
+    private val resolveLimit: Duration = 15.seconds,
+) : Directory {
     private val wanted = MutableStateFlow<ListingWanted?>(null)
     private val listed = AtomicReference<ListingToken?>(null)
 
@@ -283,11 +289,19 @@ internal class SiteDirectory(private val routes: SiteRoutes, scope: CoroutineSco
     }
 
     override suspend fun resolve(id: ListingId): Resolved {
-        val (status, text) = routes.call("GET", "/api/games/${id.value}", limit = ResolveLimit) ?: return Resolved.Gone
-        val row = objectOf(text)?.takeIf { status == Ok } ?: return Resolved.Gone
-        val code = row.text("code")?.let(InviteCode::parse) ?: return Resolved.Gone
-        val offer = row.text("offer")?.let(InviteOffer::decode) ?: return Resolved.Gone
-        return Resolved.Open(JoinTicket(code, offer))
+        val (status, text) = routes.call("GET", "/api/games/${id.value}", limit = resolveLimit) ?: return Resolved.Refused.Unreachable
+        return when (status) {
+            Ok -> objectOf(text)?.let(::ticketOf)?.let(Resolved::Open) ?: Resolved.Refused.Closed
+            ListingClosed -> Resolved.Refused.Closed
+            ListingFull -> Resolved.Refused.Full
+            else -> Resolved.Refused.Unreachable
+        }
+    }
+
+    private fun ticketOf(row: JsonObject): JoinTicket? {
+        val code = row.text("code")?.let(InviteCode::parse) ?: return null
+        val offer = row.text("offer")?.let(InviteOffer::decode) ?: return null
+        return JoinTicket(code, offer)
     }
 
     private fun listingBody(wanted: ListingWanted): ByteArray = buildJsonObject {
@@ -305,9 +319,8 @@ internal class SiteDirectory(private val routes: SiteRoutes, scope: CoroutineSco
     private companion object {
         const val Ok = 200
         const val NoContent = 204
-
-        /** A join from the game waits on this, and the game's panel gives up on a press after 8 s. */
-        val ResolveLimit = 5.seconds
+        const val ListingFull = 409
+        const val ListingClosed = 410
     }
 }
 

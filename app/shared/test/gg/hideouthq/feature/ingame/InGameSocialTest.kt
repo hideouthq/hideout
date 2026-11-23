@@ -19,6 +19,7 @@ import gg.hideouthq.core.customgames.SiteOrigin
 import gg.hideouthq.core.customgames.SteamId
 import gg.hideouthq.core.customgames.social.Delivery
 import gg.hideouthq.core.customgames.social.Directory
+import gg.hideouthq.core.customgames.social.GameStatus
 import gg.hideouthq.core.customgames.social.Invitation
 import gg.hideouthq.core.customgames.social.InvitationId
 import gg.hideouthq.core.customgames.social.ListingId
@@ -31,6 +32,7 @@ import gg.hideouthq.core.customgames.social.SocialNetwork
 import gg.hideouthq.core.data.fake.FakeCustomGamesFeed
 import gg.hideouthq.core.data.fake.FakeCustomGamesPlatform
 import gg.hideouthq.core.data.fake.FakeSessionFiles
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -87,11 +89,14 @@ private class FakeMailbox : Mailbox {
 
 private class FakeDirectory : Directory {
     val kept = CopyOnWriteArrayList<ListingWanted?>()
-    var resolves: Resolved = Resolved.Gone
+    val listed = listOf(PublicGame(Listed, FriendOffer, Fra, 1, GameStatus.Lobby))
 
-    override suspend fun list(): List<PublicGame> = emptyList()
+    @Volatile
+    var answer = CompletableDeferred<Resolved>(Resolved.Refused.Closed)
 
-    override suspend fun resolve(id: ListingId): Resolved = resolves
+    override suspend fun list(): List<PublicGame> = listed
+
+    override suspend fun resolve(id: ListingId): Resolved = answer.await()
 
     override fun keep(wanted: ListingWanted?) {
         if (kept.isEmpty() || kept.last() != wanted) kept += wanted
@@ -209,20 +214,80 @@ class InGameSocialTest {
         mailbox.arriving.tryEmit(invite)
         inbox("the invite") { it.isNotEmpty() }
         assertEquals(CommandResult.Busy, press(PanelCommand.JoinInvite(invite.id)))
-        directory.resolves = Resolved.Open(JoinTicket(FriendCode, FriendOffer))
         assertEquals(CommandResult.Busy, press(PanelCommand.JoinServer(Listed)))
         assertEquals(1, inbox("still showing") { true }["invites"]!!.jsonArray.size)
         assertIs<Session.Hosting>(games.live.value.session)
     }
 
+    private fun serversRead() {
+        assertEquals(CommandResult.Accepted, press(PanelCommand.Servers))
+        social.state.awaited("the servers read") { it.servers.games.isNotEmpty() }
+    }
+
+    private fun join(what: String, wanted: (JsonObject) -> Boolean): JsonObject =
+        topic(Topic.Game, what) { (it["join"] as? JsonObject)?.let(wanted) == true }["join"]!!.jsonObject
+
+    private val JsonObject.phase get() = this["phase"]!!.jsonPrimitive.content
+    private val JsonObject.actions get() = this["actions"]!!.jsonArray.map { it.jsonPrimitive.content }
+    private val JsonObject.title get() = this["words"]!!.jsonObject["title"]!!.jsonPrimitive.content
+
     @Test
-    fun aServerThatClosedOrFilledIsGoneAtThePressAndAnOpenOneIsJoined() {
-        directory.resolves = Resolved.Gone
+    fun aServerJoinIsAcceptedAtOnceAndTheJoiningLayerLooksForTheGameUntilTheSiteAnswers() {
+        serversRead()
+        directory.answer = CompletableDeferred()
+        assertEquals(CommandResult.Accepted, press(PanelCommand.JoinServer(Listed)))
+        val looking = join("looking for the game") { it.phase == "finding" }
+        assertEquals("Looking for the game…", looking["busy"]!!.jsonPrimitive.content)
+        assertEquals(listOf("stop"), looking.actions)
+        assertEquals(Session.Idle, games.live.value.session, "nothing starts before the site answers")
+
+        directory.answer.complete(Resolved.Open(JoinTicket(FriendCode, FriendOffer)))
+        assertEquals(FriendCode, (games.live.awaited("finding the listed game") { it.session is Session.Finding }.session as Session.Finding).code)
+    }
+
+    @Test
+    fun aServerThatClosedFilledOrCouldNotBeAskedFailsInTheJoiningLayerWithItsOwnWords() {
+        serversRead()
+        directory.answer = CompletableDeferred(Resolved.Refused.Closed)
+        assertEquals(CommandResult.Accepted, press(PanelCommand.JoinServer(Listed)))
+        val closed = join("the closed game") { it.phase == "failed" }
+        assertEquals("That game has closed", closed.title)
+        assertEquals(listOf("dismiss"), closed.actions)
+        assertEquals(CommandResult.Accepted, press(PanelCommand.Act(Action.Dismiss)))
+        topic(Topic.Game, "the layer closed") { it["join"] !is JsonObject }
+
+        directory.answer = CompletableDeferred(Resolved.Refused.Full)
+        assertEquals(CommandResult.Accepted, press(PanelCommand.JoinServer(Listed)))
+        val full = join("the full game") { it.phase == "failed" }
+        assertEquals("That game is full", full.title)
+        assertEquals(listOf("again", "dismiss"), full.actions)
+
+        directory.answer = CompletableDeferred(Resolved.Refused.Unreachable)
+        assertEquals(CommandResult.Accepted, press(PanelCommand.Act(Action.Again)))
+        assertEquals("Couldn’t look up that game", join("the site unreachable") { it.phase == "failed" && it.title != full.title }.title)
+
+        directory.answer = CompletableDeferred(Resolved.Open(JoinTicket(FriendCode, FriendOffer)))
+        assertEquals(CommandResult.Accepted, press(PanelCommand.Act(Action.Again)))
+        games.live.awaited("finding the listed game") { it.session is Session.Finding }
+    }
+
+    @Test
+    fun cancellingWhileItLooksDropsTheSitesLateAnswer() {
+        serversRead()
+        directory.answer = CompletableDeferred()
+        assertEquals(CommandResult.Accepted, press(PanelCommand.JoinServer(Listed)))
+        join("looking for the game") { it.phase == "finding" }
+        assertEquals(CommandResult.Accepted, press(PanelCommand.Act(Action.Stop)))
+        topic(Topic.Game, "the layer closed") { it["join"] !is JsonObject }
+        directory.answer.complete(Resolved.Open(JoinTicket(FriendCode, FriendOffer)))
+        runBlocking { delay(300.milliseconds) }
+        assertEquals(Session.Idle, games.live.value.session)
+    }
+
+    @Test
+    fun aServerNoLongerListedIsGoneAtThePress() {
         assertEquals(CommandResult.Gone, press(PanelCommand.JoinServer(Listed)))
         assertEquals(Session.Idle, games.live.value.session)
-        directory.resolves = Resolved.Open(JoinTicket(FriendCode, FriendOffer))
-        assertEquals(CommandResult.Accepted, press(PanelCommand.JoinServer(Listed)))
-        assertEquals(FriendCode, (games.live.awaited("finding the listed game") { it.session is Session.Finding }.session as Session.Finding).code)
     }
 
     @Test

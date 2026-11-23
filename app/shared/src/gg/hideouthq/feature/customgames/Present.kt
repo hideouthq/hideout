@@ -255,6 +255,9 @@ enum class Problem {
     GameNotFound,
     FriendEnded,
     InviteNotWorking,
+    ListingClosed,
+    ListingFull,
+    ListingUnreachable,
     ArenaFailed,
     Unexpected,
 }

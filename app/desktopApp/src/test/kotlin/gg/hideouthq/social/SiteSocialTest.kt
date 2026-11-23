@@ -148,15 +148,17 @@ class SiteSocialTest {
         assertEquals(Resolved.Open(JoinTicket(Code, Offer)), directory.resolve(id))
         assertEquals("/api/games/${id.value}", site.seen.last().path)
         site.answer = { 410 to """{"error":"closed"}""" }
-        assertEquals(Resolved.Gone, directory.resolve(id))
+        assertEquals(Resolved.Refused.Closed, directory.resolve(id))
         site.answer = { 409 to """{"error":"full"}""" }
-        assertEquals(Resolved.Gone, directory.resolve(id))
+        assertEquals(Resolved.Refused.Full, directory.resolve(id))
+        site.answer = { 429 to """{"error":"limited"}""" }
+        assertEquals(Resolved.Refused.Unreachable, directory.resolve(id))
         site.close()
-        assertEquals(Resolved.Gone, directory.resolve(id), "unreachable")
+        assertEquals(Resolved.Refused.Unreachable, directory.resolve(id))
     }
 
     @Test
-    fun aSlowSiteGivesUpOnAListedGameBeforeTheGamesPanelDoes() = runBlocking {
+    fun aSlowSiteGivesUpOnAListedGame() = runBlocking {
         val release = CountDownLatch(1)
         site.answer = {
             release.await(30, TimeUnit.SECONDS)
@@ -164,9 +166,9 @@ class SiteSocialTest {
         }
         try {
             val asked = TimeSource.Monotonic.markNow()
-            assertEquals(Resolved.Gone, SiteDirectory(routes, scope).resolve(checkNotNull(ListingId.parse("3c41a9e07d5b2f18"))))
+            assertEquals(Resolved.Refused.Unreachable, SiteDirectory(routes, scope, resolveLimit = 1.seconds).resolve(checkNotNull(ListingId.parse("3c41a9e07d5b2f18"))))
             val took = asked.elapsedNow()
-            assertTrue(took < 6.seconds, "the panel waits 8 s for an answer, and this took $took")
+            assertTrue(took < 3.seconds, "the lookup has 1 s, and this took $took")
         } finally {
             release.countDown()
         }

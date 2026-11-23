@@ -100,7 +100,7 @@ class SiteRoundTripTest {
         withTimeout(10.seconds) { while (directory.list().orEmpty().none { it.id == id }) delay(100.milliseconds) }
         assertEquals(Resolved.Open(ticket), directory.resolve(id))
         directory.keep(null)
-        withTimeout(10.seconds) { while (directory.resolve(id) != Resolved.Gone) delay(100.milliseconds) }
+        withTimeout(10.seconds) { while (directory.resolve(id) != Resolved.Refused.Closed) delay(100.milliseconds) }
         hostMailbox.hold(null)
         friendMailbox.hold(null)
     }

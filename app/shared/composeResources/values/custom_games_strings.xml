@@ -320,6 +320,12 @@
     <string name="cg_problem_not_found_title">No game found</string>
     <string name="cg_problem_not_found_body">Check the code with your friend. Their game may have ended.</string>
     <string name="cg_problem_friend_ended_body">They ended it before you got in. Ask them for a new code if they host again.</string>
+    <string name="cg_problem_listing_closed_title">That game has closed</string>
+    <string name="cg_problem_listing_closed_body">Its host ended it before you got in. Pick another game in Servers.</string>
+    <string name="cg_problem_listing_full_title">That game is full</string>
+    <string name="cg_problem_listing_full_body">Try again when a player leaves, or pick another game in Servers.</string>
+    <string name="cg_problem_listing_unreachable_title">Couldn’t look up that game</string>
+    <string name="cg_problem_listing_unreachable_body">Hideout couldn’t reach hideouthq.gg. Check your connection, then try again.</string>
     <string name="cg_problem_invite_title">This code isn’t working</string>
     <string name="cg_problem_invite_body">Hideout couldn’t read your friend’s game. Make sure you both have the latest Hideout, then ask for a new code.</string>
     <string name="cg_problem_arena_title">%1$s couldn’t load its arena</string>

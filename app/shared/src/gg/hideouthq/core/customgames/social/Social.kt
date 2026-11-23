@@ -48,7 +48,8 @@ data class ListingWanted(val token: ListingToken, val ticket: JoinTicket, val re
 sealed interface Resolved {
     data class Open(val ticket: JoinTicket) : Resolved
 
-    data object Gone : Resolved
+    /** [Closed] is a listing its host took down or let lapse. */
+    enum class Refused : Resolved { Closed, Full, Unreachable }
 }
 
 interface Mailbox {
@@ -248,7 +249,7 @@ class Social(
 
     fun forget(id: InvitationId) = post(SocialInput.Closed(id))
 
-    suspend fun resolve(id: ListingId): Resolved = network?.directory?.resolve(id) ?: Resolved.Gone
+    suspend fun resolve(id: ListingId): Resolved = network?.directory?.resolve(id) ?: Resolved.Refused.Unreachable
 
     private fun post(input: SocialInput) {
         inputs.trySend(input)

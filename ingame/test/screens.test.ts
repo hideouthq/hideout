@@ -145,6 +145,16 @@ test('servers read as rows with places, fill, ping tone and joinability', () => 
   assert.deepEqual(effects, [{ kind: 'send', what: 'join', command: { k: 'join', server: '3c41a9e07d5b2f18' } }])
 })
 
+test('a join’s note goes once the joining layer shows the join, or the player changes tab', () => {
+  const servers = snapshotOf('servers.json')
+  const join = { kind: 'join', server: '3c41a9e07d5b2f18' } as const
+  const { state } = run(servers, { kind: 'tab', tab: 'servers' }, join, { kind: 'settled', what: 'join', result: 'unreachable' })
+  assert.deepEqual(state.request, { kind: 'refused', what: 'join', result: 'unreachable' })
+  assert.deepEqual(reduceGames(state, { kind: 'seen' }, servers)[0].request, state.request, 'a frame without the join keeps it')
+  assert.deepEqual(reduceGames(state, { kind: 'seen' }, withFrame(servers, frame('game-review.json')))[0].request, { kind: 'idle' })
+  assert.deepEqual(reduceGames(state, { kind: 'tab', tab: 'games' }, servers)[0].request, { kind: 'idle' })
+})
+
 test('toasts show friends’ unexpired invites, one full then slim, with the friend list’s name', () => {
   const snapshot = snapshotOf('inbox.json')
   const expires = snapshot.inbox!.invites[0]!.expires
