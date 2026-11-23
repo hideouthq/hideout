@@ -1,5 +1,3 @@
-// Small helpers for building panels from script, shared by every screen.
-
 export function panel(parent: Panel, cls: string, type = 'Panel', props: Record<string, string> = {}): Panel {
   return $.CreatePanel(type, parent, '', { class: cls, ...props })
 }

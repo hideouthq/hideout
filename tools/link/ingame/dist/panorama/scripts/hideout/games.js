@@ -385,9 +385,6 @@
   function resultOfWidth(width) {
     return RESULTS[width - 1] ?? "unreachable";
   }
-  function encodeCommand(command) {
-    return JSON.stringify(command);
-  }
   var EMPTY = { hello: null, catalog: null, game: null, inbox: null, servers: null };
   function withFrame(snapshot, frame) {
     switch (frame.t) {
@@ -588,7 +585,7 @@
       });
       this.load(LOAD_DEADLINE);
     }
-    /** Queues [command]. Commands go one image at a time, each with this context's boot id and the next sequence number. */
+    /** Commands go one image at a time, each with this context's boot id and the next sequence number. */
     send(command, done = () => {
     }) {
       this.queue.push({ command, done });
@@ -649,7 +646,7 @@
         `t=${this.config.token}`,
         `b=${this.boot}`,
         `n=${this.sequence++}`,
-        `c=${encodeURIComponent(encodeCommand(item.command))}`
+        `c=${encodeURIComponent(JSON.stringify(item.command))}`
       ].join("&");
       const image = $.CreatePanel("Image", this.host, "", {
         src: `http://127.0.0.1:${this.config.port}/c?${query}`,
@@ -807,14 +804,6 @@
         break;
     }
   }
-  function nameOf(panel2) {
-    if (panel2.paneltype === "Label" && panel2.text) return panel2.text;
-    for (let i = 0; i < panel2.GetChildCount(); i++) {
-      const text2 = nameOf(panel2.GetChild(i));
-      if (text2) return text2;
-    }
-    return "";
-  }
   var list2 = new Section();
   var banner = new Section();
   var chips = new Section();
@@ -824,7 +813,7 @@
   var play = new Section();
   var servers = new Section();
   function render() {
-    const view = viewGames(state, link.snapshot, link.status, friends.current, nameOf(me));
+    const view = viewGames(state, link.snapshot, link.status, friends.current, textOf(me));
     root.SetHasClass("Games", view.tab === "games");
     root.SetHasClass("Servers", view.tab === "servers");
     find("HGTabGames").SetHasClass("On", view.tab === "games");
@@ -904,8 +893,8 @@
         label(text2, "HGFriendStatus", friend.status || "Online");
         const press = kind === "off" ? null : () => dispatch({ kind: "friend", id: friend.id });
         const look = kind === "invited" ? "Done" : kind === "off" ? "" : "Gold";
-        const text22 = kind === "invited" ? "Invited" : kind === "copy-link" ? "Copy link" : "Invite";
-        button(row, `SecondaryButton Outline Small ${look}`, text22, press);
+        const caption = kind === "invited" ? "Invited" : kind === "copy-link" ? "Copy link" : "Invite";
+        button(row, `SecondaryButton Outline Small ${look}`, caption, press);
       }
     });
     find("HGOffline").text = view.offline ? `${view.offline} ${view.offline === 1 ? "friend" : "friends"} offline` : "";
@@ -938,9 +927,7 @@
   function drawServers(view, reachable) {
     const refusal = state.request.kind === "refused" && state.request.what === "join" ? state.request.result : null;
     servers.draw(find("HGServerRows"), JSON.stringify([view, reachable, refusal]), (into) => {
-      if (view.state === "idle" || view.state === "loading") {
-        if (!view.lines.length) spinner(panel(into, "HGServersLoading"));
-      }
+      if ((view.state === "idle" || view.state === "loading") && !view.lines.length) spinner(panel(into, "HGServersLoading"));
       for (const line of view.lines) {
         const row = panel(into, `HGServer${line.joinable ? "" : " Full"}`);
         const name = panel(row, "HGColName HGServerName");

@@ -21,9 +21,9 @@ export interface Friends {
   names: Record<string, string>
 }
 
-export const NO_FRIENDS: Friends = { online: [], offline: 0, names: {} }
+const NO_FRIENDS: Friends = { online: [], offline: 0, names: {} }
 
-export const GROUPS: { id: string; presence: Presence }[] = [
+const GROUPS: { id: string; presence: Presence }[] = [
   { id: 'FriendsPlayingCitadel', presence: 'playing' },
   { id: 'FriendsOnline', presence: 'online' },
   { id: 'FriendsOffline', presence: 'offline' },
@@ -53,7 +53,7 @@ export function friendsOf(raw: RawFriend[]): Friends {
   return { online, offline, names }
 }
 
-function textOf(panel: Panel | null): string {
+export function textOf(panel: Panel | null): string {
   if (!panel) return ''
   if (panel.paneltype === 'Label' && panel.text) return panel.text
   for (let i = 0; i < panel.GetChildCount(); i++) {
@@ -72,7 +72,7 @@ function friendPanels(root: Panel, out: Panel[] = []): Panel[] {
   return out
 }
 
-export function readMenu(menu: Panel): RawFriend[] {
+function readMenu(menu: Panel): RawFriend[] {
   const raw: RawFriend[] = []
   for (const group of GROUPS) {
     const box = menu.FindChildTraverse(group.id)

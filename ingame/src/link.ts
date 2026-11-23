@@ -4,7 +4,7 @@
 // the loaded width is the answer.
 
 import { TitleReader } from './titles.ts'
-import { type Command, type CommandResult, type Config, EMPTY, PROTOCOL, type Snapshot, decodeFrame, encodeCommand, resultOfWidth, withFrame } from './wire.ts'
+import { type Command, type CommandResult, type Config, EMPTY, PROTOCOL, type Snapshot, decodeFrame, resultOfWidth, withFrame } from './wire.ts'
 
 export type LinkStatus = 'connecting' | 'online' | 'offline' | 'outdated'
 
@@ -44,7 +44,7 @@ export class Link {
     this.load(LOAD_DEADLINE)
   }
 
-  /** Queues [command]. Commands go one image at a time, each with this context's boot id and the next sequence number. */
+  /** Commands go one image at a time, each with this context's boot id and the next sequence number. */
   send(command: Command, done: (result: CommandResult) => void = () => {}): void {
     this.queue.push({ command, done })
     if (!this.sending) this.next()
@@ -110,7 +110,7 @@ export class Link {
       `t=${this.config.token}`,
       `b=${this.boot}`,
       `n=${this.sequence++}`,
-      `c=${encodeURIComponent(encodeCommand(item.command))}`,
+      `c=${encodeURIComponent(JSON.stringify(item.command))}`,
     ].join('&')
     // An image at opacity 0 never loads.
     const image = $.CreatePanel('Image', this.host, '', {

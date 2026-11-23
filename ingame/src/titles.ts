@@ -57,7 +57,7 @@ export class TitleReader {
 }
 
 /** Modlock's packing: printable ASCII but the backslash stands for itself, any other byte is U+0100 plus it. */
-export function unpack(packed: string): Uint8Array | null {
+function unpack(packed: string): Uint8Array | null {
   const bytes = new Uint8Array(packed.length)
   for (let i = 0; i < packed.length; i++) {
     const code = packed.charCodeAt(i)
@@ -69,7 +69,7 @@ export function unpack(packed: string): Uint8Array | null {
 }
 
 /** UTF-8 without TextDecoder, which Panorama lacks. Null on malformed bytes. */
-export function utf8(bytes: Uint8Array): string | null {
+function utf8(bytes: Uint8Array): string | null {
   let latin = ''
   for (let at = 0; at < bytes.length; at += 4096) latin += String.fromCharCode.apply(null, bytes.subarray(at, at + 4096) as unknown as number[])
   try {

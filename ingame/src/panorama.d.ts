@@ -3,14 +3,11 @@
 interface Panel {
   readonly id: string
   readonly paneltype: string
-  hittest: boolean
   enabled: boolean
   visible: boolean
   text: string
   readonly steamid: string
   readonly contentwidth: number
-  readonly actuallayoutwidth: number
-  readonly actualuiscale_x: number
   readonly style: Record<string, string | null>
   IsValid(): boolean
   GetParent(): Panel | null
@@ -18,21 +15,16 @@ interface Panel {
   GetChild(index: number): Panel | null
   MoveChildBefore(child: Panel, before: Panel): void
   MoveChildAfter(child: Panel, after: Panel): void
-  SetImage(path: string): void
   SetURL(url: string): void
   SetPanelEvent(event: string, handler: () => void): void
-  SetAttributeString(name: string, value: string): void
   GetAttributeString(name: string, fallback: string): string
   BLoadLayout(path: string, overrideExisting: boolean, partial: boolean): boolean
   FindChildTraverse(id: string): Panel | null
-  FindChildrenWithClassTraverse(name: string): Panel[]
   BHasClass(name: string): boolean
-  AddClass(name: string): void
   RemoveClass(name: string): void
   SetHasClass(name: string, has: boolean): void
   RemoveAndDeleteChildren(): void
   DeleteAsync(seconds: number): void
-  SetDialogVariable(name: string, value: string): void
 }
 
 declare const $: {

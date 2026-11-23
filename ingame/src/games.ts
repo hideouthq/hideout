@@ -45,7 +45,6 @@ export type GamesEvent =
 
 export type GamesEffect =
   | { kind: 'send'; what: Press; command: Command }
-  /** The join link goes to the clipboard and the friend's Steam chat opens. */
   | { kind: 'copy-and-chat'; link: string; friend: SteamId }
 
 export function initialGames(tab: Tab): GamesState {
@@ -53,12 +52,12 @@ export function initialGames(tab: Tab): GamesState {
 }
 
 /** A hosted game that still runs or is on its way. An ended one leaves the Play button to the next game. */
-export function runningHost(snapshot: Snapshot): HostCard | null {
+function runningHost(snapshot: Snapshot): HostCard | null {
   const host = snapshot.game?.host ?? null
   return host && host.phase !== 'ended' ? host : null
 }
 
-export function selectedMode(state: GamesState, snapshot: Snapshot): ModeCard | null {
+function selectedMode(state: GamesState, snapshot: Snapshot): ModeCard | null {
   const modes = snapshot.catalog?.modes ?? []
   return modes.find((m) => m.id === state.draft.mode) ?? modes[0] ?? null
 }
@@ -184,17 +183,17 @@ export interface GamesView {
 
 const KINDS: Record<string, string> = { duel: 'Duel', teams: 'Teams', 'free-for-all': 'Free-for-all', 'co-op': 'Co-op' }
 
-export function playersText([least, most]: [number, number]): string {
+function playersText([least, most]: [number, number]): string {
   return least === most ? `${most} players` : `${least}–${most} players`
 }
 
-export function sizeText(bytes: number): string {
+function sizeText(bytes: number): string {
   if (bytes < 1e6) return `${Math.max(1, Math.round(bytes / 1e3))} KB`
   const mb = bytes / 1e6
   return `${mb < 10 ? Math.round(mb * 10) / 10 : Math.round(mb)} MB`
 }
 
-export function metaLine(mode: ModeCard): string {
+function metaLine(mode: ModeCard): string {
   const kind = mode.kind && KINDS[mode.kind]
   return [kind, playersText(mode.players)].filter(Boolean).join(' · ')
 }

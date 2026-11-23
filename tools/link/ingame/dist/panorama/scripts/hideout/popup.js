@@ -75,9 +75,6 @@
   function resultOfWidth(width) {
     return RESULTS[width - 1] ?? "unreachable";
   }
-  function encodeCommand(command) {
-    return JSON.stringify(command);
-  }
   var EMPTY = { hello: null, catalog: null, game: null, inbox: null, servers: null };
   function withFrame(snapshot, frame) {
     switch (frame.t) {
@@ -278,7 +275,7 @@
       });
       this.load(LOAD_DEADLINE);
     }
-    /** Queues [command]. Commands go one image at a time, each with this context's boot id and the next sequence number. */
+    /** Commands go one image at a time, each with this context's boot id and the next sequence number. */
     send(command, done = () => {
     }) {
       this.queue.push({ command, done });
@@ -339,7 +336,7 @@
         `t=${this.config.token}`,
         `b=${this.boot}`,
         `n=${this.sequence++}`,
-        `c=${encodeURIComponent(encodeCommand(item.command))}`
+        `c=${encodeURIComponent(JSON.stringify(item.command))}`
       ].join("&");
       const image = $.CreatePanel("Image", this.host, "", {
         src: `http://127.0.0.1:${this.config.port}/c?${query}`,

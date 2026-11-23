@@ -190,9 +190,6 @@
   function resultOfWidth(width) {
     return RESULTS[width - 1] ?? "unreachable";
   }
-  function encodeCommand(command) {
-    return JSON.stringify(command);
-  }
   var EMPTY = { hello: null, catalog: null, game: null, inbox: null, servers: null };
   function withFrame(snapshot, frame) {
     switch (frame.t) {
@@ -393,7 +390,7 @@
       });
       this.load(LOAD_DEADLINE);
     }
-    /** Queues [command]. Commands go one image at a time, each with this context's boot id and the next sequence number. */
+    /** Commands go one image at a time, each with this context's boot id and the next sequence number. */
     send(command, done = () => {
     }) {
       this.queue.push({ command, done });
@@ -454,7 +451,7 @@
         `t=${this.config.token}`,
         `b=${this.boot}`,
         `n=${this.sequence++}`,
-        `c=${encodeURIComponent(encodeCommand(item.command))}`
+        `c=${encodeURIComponent(JSON.stringify(item.command))}`
       ].join("&");
       const image = $.CreatePanel("Image", this.host, "", {
         src: `http://127.0.0.1:${this.config.port}/c?${query}`,
@@ -617,7 +614,6 @@
       draw();
     });
     const friends = new FriendWatch(find("HOFriendMenu"), draw);
-    const send = (command) => link.send(command);
     const hidden = /* @__PURE__ */ new Set();
     const arrived = {};
     const toasts = /* @__PURE__ */ new Map();
@@ -652,7 +648,7 @@
       const row = panel(toast, "HOToastRow");
       const close = () => {
         hidden.add(view.key);
-        if (view.kind === "invite") send({ k: "forget", invite: view.invite.id });
+        if (view.kind === "invite") link.send({ k: "forget", invite: view.invite.id });
         draw();
       };
       const pic = panel(row, "HOToastArt");
@@ -717,8 +713,7 @@
       find("HOJoinTitle").text = view.title;
       find("HOJoinLine").text = view.line;
       steps.draw(find("HOSteps"), JSON.stringify([view.steps, view.busy, view.card.phase]), (into) => {
-        const rows = view.steps.map((s) => ({ label: s.label, note: s.note, progress: s.progress, status: s.status }));
-        if (view.busy) rows.push({ label: view.busy, note: null, progress: null, status: "running" });
+        const rows = view.busy ? [...view.steps, { label: view.busy, note: null, progress: null, status: "running" }] : view.steps;
         for (const step2 of rows) {
           const look = step2.status === "done" ? "Done" : step2.status === "running" ? "Running" : "Waiting";
           const row = panel(into, `HOStep ${look}`);
@@ -745,12 +740,12 @@
       return true;
     }
     function press(b, phase) {
-      if (b.kind === "confirm") return send({ k: "confirm", restart: b.restart });
+      if (b.kind === "confirm") return link.send({ k: "confirm", restart: b.restart });
       if (b.action === "dismiss") {
         putAway = phase;
         draw();
       }
-      send({ k: "act", action: b.action });
+      link.send({ k: "act", action: b.action });
     }
     function draw() {
       var _a;

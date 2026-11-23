@@ -1,10 +1,10 @@
 // The Hideout games popup, opened from the Custom Match band with UIShowCustomLayoutPopupParameters.
 
-import { FriendWatch } from '../friends.ts'
+import { FriendWatch, textOf } from '../friends.ts'
 import { type GamesEffect, type GamesEvent, type GamesView, type ServersView, initialGames, reduceGames, refusalText, viewGames } from '../games.ts'
 import { Link } from '../link.ts'
 import { Section, art, button, label, mark, panel, paper, spinner, tear } from '../ui.ts'
-import type { Config, Listing, ModeId } from '../wire.ts'
+import type { Config, Listing } from '../wire.ts'
 
 declare const HideoutConfig: Config
 
@@ -49,15 +49,6 @@ function run(effect: GamesEffect): void {
   }
 }
 
-function nameOf(panel: Panel): string {
-  if (panel.paneltype === 'Label' && panel.text) return panel.text
-  for (let i = 0; i < panel.GetChildCount(); i++) {
-    const text = nameOf(panel.GetChild(i)!)
-    if (text) return text
-  }
-  return ''
-}
-
 const list = new Section()
 const banner = new Section()
 const chips = new Section()
@@ -68,7 +59,7 @@ const play = new Section()
 const servers = new Section()
 
 function render(): void {
-  const view = viewGames(state, link.snapshot, link.status, friends.current, nameOf(me))
+  const view = viewGames(state, link.snapshot, link.status, friends.current, textOf(me))
   root.SetHasClass('Games', view.tab === 'games')
   root.SetHasClass('Servers', view.tab === 'servers')
   find('HGTabGames').SetHasClass('On', view.tab === 'games')
@@ -95,7 +86,7 @@ function drawList(view: GamesView): void {
       label(text, 'Title HGRowName', row.mode.name)
       label(text, 'HGRowDesc', row.mode.tagline)
       label(text, 'HGRowMeta', row.meta)
-      b.SetPanelEvent('onactivate', () => dispatch({ kind: 'mode', mode: row.mode.id as ModeId }))
+      b.SetPanelEvent('onactivate', () => dispatch({ kind: 'mode', mode: row.mode.id }))
     }
   })
 }
@@ -150,8 +141,8 @@ function drawDetail(view: GamesView): void {
       label(text, 'HGFriendStatus', friend.status || 'Online')
       const press = kind === 'off' ? null : () => dispatch({ kind: 'friend', id: friend.id })
       const look = kind === 'invited' ? 'Done' : kind === 'off' ? '' : 'Gold'
-      const text2 = kind === 'invited' ? 'Invited' : kind === 'copy-link' ? 'Copy link' : 'Invite'
-      button(row, `SecondaryButton Outline Small ${look}`, text2, press)
+      const caption = kind === 'invited' ? 'Invited' : kind === 'copy-link' ? 'Copy link' : 'Invite'
+      button(row, `SecondaryButton Outline Small ${look}`, caption, press)
     }
   })
   find('HGOffline').text = view.offline ? `${view.offline} ${view.offline === 1 ? 'friend' : 'friends'} offline` : ''
@@ -186,9 +177,7 @@ function settingRow(into: Panel, name: string, hintText: string, options: { labe
 function drawServers(view: ServersView, reachable: boolean): void {
   const refusal = state.request.kind === 'refused' && state.request.what === 'join' ? state.request.result : null
   servers.draw(find('HGServerRows'), JSON.stringify([view, reachable, refusal]), (into) => {
-    if (view.state === 'idle' || view.state === 'loading') {
-      if (!view.lines.length) spinner(panel(into, 'HGServersLoading'))
-    }
+    if ((view.state === 'idle' || view.state === 'loading') && !view.lines.length) spinner(panel(into, 'HGServersLoading'))
     for (const line of view.lines) {
       const row = panel(into, `HGServer${line.joinable ? '' : ' Full'}`)
       const name = panel(row, 'HGColName HGServerName')
@@ -212,7 +201,6 @@ function drawServers(view: ServersView, reachable: boolean): void {
   })
 }
 
-// The Servers tab keeps the app's list fresh while it shows.
 function refreshServers(): void {
   if (!root.IsValid()) return
   if (state.tab === 'servers' && link.status === 'online') readServers()

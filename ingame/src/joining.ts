@@ -31,7 +31,7 @@ const LABELS: Record<Action, { label: string; primary: boolean }> = {
 }
 
 /** The mode's banner art, found by the name the card carries. */
-export function artFor(name: string, modes: ModeCard[]): string | null {
+function artFor(name: string, modes: ModeCard[]): string | null {
   const mode = modes.find((m) => m.name === name)
   return mode ? (mode.art.backdrop ?? mode.art.card ?? mode.art.tile) : null
 }

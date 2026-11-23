@@ -163,10 +163,6 @@ export function resultOfWidth(width: number): CommandResult {
   return RESULTS[width - 1] ?? 'unreachable'
 }
 
-export function encodeCommand(command: Command): string {
-  return JSON.stringify(command)
-}
-
 /** What the app has said, topic by topic. Null until the topic first arrives. */
 export interface Snapshot {
   hello: Hello | null

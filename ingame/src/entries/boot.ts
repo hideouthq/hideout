@@ -7,7 +7,7 @@ import { type JoiningButton, viewJoining } from '../joining.ts'
 import { Link } from '../link.ts'
 import { type ToastView, wantedToasts } from '../toasts.ts'
 import { Section, art, button, label, mark, panel, paper, spinner, tear } from '../ui.ts'
-import type { Command, Config, JoinCard } from '../wire.ts'
+import type { Config, JoinCard, Step } from '../wire.ts'
 
 declare const HideoutConfig: Config
 
@@ -30,7 +30,6 @@ function boot(): void {
     draw()
   })
   const friends = new FriendWatch(find('HOFriendMenu'), draw)
-  const send = (command: Command) => link.send(command)
 
   const hidden = new Set<string>()
   const arrived: Record<string, number> = {}
@@ -68,7 +67,7 @@ function boot(): void {
     const row = panel(toast, 'HOToastRow')
     const close = () => {
       hidden.add(view.key)
-      if (view.kind === 'invite') send({ k: 'forget', invite: view.invite.id })
+      if (view.kind === 'invite') link.send({ k: 'forget', invite: view.invite.id })
       draw()
     }
     const pic = panel(row, 'HOToastArt')
@@ -137,8 +136,7 @@ function boot(): void {
     find('HOJoinTitle').text = view.title
     find('HOJoinLine').text = view.line
     steps.draw(find('HOSteps'), JSON.stringify([view.steps, view.busy, view.card.phase]), (into) => {
-      const rows = view.steps.map((s) => ({ label: s.label, note: s.note, progress: s.progress, status: s.status as string }))
-      if (view.busy) rows.push({ label: view.busy, note: null, progress: null, status: 'running' })
+      const rows: Step[] = view.busy ? [...view.steps, { label: view.busy, note: null, progress: null, status: 'running' }] : view.steps
       for (const step of rows) {
         const look = step.status === 'done' ? 'Done' : step.status === 'running' ? 'Running' : 'Waiting'
         const row = panel(into, `HOStep ${look}`)
@@ -166,12 +164,12 @@ function boot(): void {
   }
 
   function press(b: JoiningButton, phase: JoinCard['phase']): void {
-    if (b.kind === 'confirm') return send({ k: 'confirm', restart: b.restart })
+    if (b.kind === 'confirm') return link.send({ k: 'confirm', restart: b.restart })
     if (b.action === 'dismiss') {
       putAway = phase
       draw()
     }
-    send({ k: 'act', action: b.action })
+    link.send({ k: 'act', action: b.action })
   }
 
   function draw(): void {
