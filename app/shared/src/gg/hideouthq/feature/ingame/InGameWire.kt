@@ -27,9 +27,10 @@ enum class Topic { Hello, Catalog, Game, Inbox, Servers }
 
 @Serializable
 sealed interface Frame {
+    /** [supportId] is set only while [social] is blocked: the player's own SteamID64, for support to reset this PC. */
     @Serializable
     @SerialName("hello")
-    data class Hello(val protocol: Int, val social: SocialWire) : Frame
+    data class Hello(val protocol: Int, val social: SocialWire, val supportId: String?) : Frame
 
     @Serializable
     @SerialName("catalog")
@@ -53,7 +54,7 @@ sealed interface Frame {
 }
 
 @Serializable
-enum class SocialWire { @SerialName("on") On, @SerialName("off") Off, @SerialName("other-account") OtherAccount }
+enum class SocialWire { @SerialName("on") On, @SerialName("off") Off, @SerialName("other-account") OtherAccount, @SerialName("blocked") Blocked }
 
 @Serializable
 data class ModeCard(

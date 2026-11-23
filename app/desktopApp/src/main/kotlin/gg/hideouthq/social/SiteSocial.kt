@@ -25,15 +25,20 @@ import gg.hideouthq.data.desktopOkHttp
 import gg.hideouthq.data.signedMessage
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runInterruptible
@@ -47,6 +52,7 @@ import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
+import okhttp3.Call
 import okhttp3.Headers
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
@@ -120,19 +126,36 @@ internal class SiteRoutes(private val client: OkHttpClient, private val signer: 
         return Request.Builder().url(url).headers(extra.newBuilder().addAll(signer.headers(method, url, body)).build()).method(method, content).build()
     }
 
-    /** A [limit] covers the whole exchange, a retry at the site's time included. */
-    suspend fun call(method: String, path: String, body: ByteArray = ByteArray(0), limit: Duration? = null): Pair<Int, String>? = runInterruptible(Dispatchers.IO) {
+    /**
+     * A [limit] covers the whole exchange, a retry at the site's time included. Cancelling the caller cancels the request,
+     * since a blocked socket read ignores the thread's interrupt.
+     */
+    suspend fun call(method: String, path: String, body: ByteArray = ByteArray(0), limit: Duration? = null): Pair<Int, String>? = coroutineScope {
         val deadline = limit?.let { System.nanoTime() + it.inWholeNanoseconds }
-        fun send() = client.newCall(signed(method, path, body)).apply { deadline?.let { timeout().deadlineNanoTime(it) } }.execute()
-        try {
-            var skewed = false
-            val first = send().use { response ->
-                skewed = signer.heard(response)
-                response.code to response.body.string()
+        val running = AtomicReference<Call?>()
+        val canceller = launch(start = CoroutineStart.UNDISPATCHED) {
+            try {
+                awaitCancellation()
+            } finally {
+                running.get()?.cancel()
             }
-            if (first.first == NotFound && skewed) send().use { it.code to it.body.string() } else first
-        } catch (e: IOException) {
-            null
+        }
+        try {
+            runInterruptible(Dispatchers.IO) {
+                fun send() = client.newCall(signed(method, path, body)).also(running::set).apply { deadline?.let { timeout().deadlineNanoTime(it) } }.execute()
+                try {
+                    var skewed = false
+                    val first = send().use { response ->
+                        skewed = signer.heard(response)
+                        response.code to response.body.string()
+                    }
+                    if (first.first == NotFound && skewed) send().use { it.code to it.body.string() } else first
+                } catch (e: IOException) {
+                    null
+                }
+            }
+        } finally {
+            canceller.cancel()
         }
     }
 
@@ -149,10 +172,13 @@ internal class SiteRoutes(private val client: OkHttpClient, private val signer: 
 /**
  * The site answers `ping` with `pong` without waking its object, and drops a socket silent for 75 s, as [Silent] does
  * here. A [Replaced] close means another app took the mailbox, so this waits the longest, and the two never take turns.
+ * A 404 signed at the site's time means it refused this PC's device for that mailbox, which only support can undo.
  */
 internal class SiteMailbox(private val routes: SiteRoutes, private val scope: CoroutineScope, private val log: (String) -> Unit, private val clock: Clock = Clock.System) : Mailbox {
     private val incoming = MutableSharedFlow<Invitation>(extraBufferCapacity = 64)
     override val invitations: Flow<Invitation> = incoming.asSharedFlow()
+    private val refusedOwner = MutableStateFlow<SteamId?>(null)
+    override val refused: StateFlow<SteamId?> = refusedOwner.asStateFlow()
 
     private var held: SteamId? = null
     private var connection: Job? = null
@@ -188,6 +214,7 @@ internal class SiteMailbox(private val routes: SiteRoutes, private val scope: Co
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 opened.set(true)
                 heard.set(clock.now())
+                refusedOwner.compareAndSet(owner, null)
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
@@ -206,8 +233,9 @@ internal class SiteMailbox(private val routes: SiteRoutes, private val scope: Co
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                 if (response != null) {
-                    routes.heard(response)
+                    val skewed = routes.heard(response)
                     log("Invites: the mailbox answered ${response.code}")
+                    if (response.code == NotFound && !skewed) refusedOwner.value = owner
                 }
                 ended.complete(if (opened.get()) Ended.AfterOpening else Ended.Refused)
             }
@@ -238,6 +266,7 @@ internal class SiteMailbox(private val routes: SiteRoutes, private val scope: Co
     private companion object {
         const val Replaced = 4000
         const val Ok = 200
+        const val NotFound = 404
         val PingEvery = 30.seconds
         val Silent = 75.seconds
         val FirstRetry = 1.seconds

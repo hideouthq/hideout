@@ -116,6 +116,18 @@ test('a friend the invite didn’t reach gets Copy link, which copies the game�
   assert.deepEqual(effects, [{ kind: 'copy-and-chat', link: 'https://hideouthq.gg/join#P95-MAN-26D', friend: notReached }])
 })
 
+test('on a PC the site refused, friends get Copy link and the panel gives only the player’s own id for support', () => {
+  const hosting = run(snapshotOf('hello-blocked.json', 'catalog.json', 'game-invites.json'), { kind: 'friend', id: KESTREL })
+  assert.deepEqual(hosting.view.friends.map((f) => f.button), ['copy-link', 'copy-link'], 'not Invited, even for a friend the site said it reached')
+  assert.deepEqual(hosting.effects, [{ kind: 'copy-and-chat', link: 'https://hideouthq.gg/join#P95-MAN-26D', friend: KESTREL }])
+  assert.deepEqual(hosting.view.blocked, { text: 'Invites are blocked on this PC. Send support this ID to reset it: 76561198000000001', id: '76561198000000001' })
+
+  const before = run(snapshotOf('hello-blocked.json', 'catalog.json', 'game-idle.json'), { kind: 'friend', id: KESTREL }, { kind: 'play' })
+  assert.deepEqual(before.view.friends.map((f) => f.button), ['off', 'off'])
+  assert.deepEqual(before.effects[0]?.kind === 'send' && before.effects[0].command.k === 'host' && before.effects[0].command.invite, [])
+  assert.equal(run(snapshotOf('hello-on.json', 'catalog.json', 'game-invites.json')).view.blocked, null)
+})
+
 test('a refused Play says why and lets the player press again', () => {
   const snapshot = snapshotOf('catalog.json', 'game-idle.json')
   const { view } = run(snapshot, { kind: 'play' }, { kind: 'settled', what: 'play', result: 'busy' })

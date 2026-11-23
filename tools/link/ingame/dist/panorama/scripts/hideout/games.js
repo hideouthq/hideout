@@ -134,7 +134,7 @@
           mode: mode2.id,
           picks,
           listing: draft.listing,
-          invite: draft.invitees,
+          invite: draftInvitees(state2, snapshot),
           restart: snapshot.game?.restartAhead?.reason ?? null
         });
       }
@@ -186,9 +186,17 @@
     const step2 = host2.steps.find((s) => s.status === "running");
     return step2 ? [step2.label, step2.note].filter(Boolean).join(" \xB7 ") : null;
   }
+  function draftInvitees(state2, snapshot) {
+    return snapshot.hello?.social === "blocked" ? [] : state2.draft.invitees;
+  }
+  function blockedLine(snapshot) {
+    const hello = snapshot.hello;
+    if (hello?.social !== "blocked" || !hello.supportId) return null;
+    return { text: `Invites are blocked on this PC. Send support this ID to reset it: ${hello.supportId}`, id: hello.supportId };
+  }
   function inviteHint(state2, snapshot) {
     if (state2.draft.invitees.length && snapshot.hello?.social === "other-account") return "Open Hideout with the Steam account playing Deadlock to send invites.";
-    const n = state2.draft.invitees.length;
+    const n = draftInvitees(state2, snapshot).length;
     if (n) return `${n} ${n === 1 ? "friend gets" : "friends get"} an invite when your game is ready.`;
     return `Your PC hosts this game. ${state2.draft.listing === "public" ? "Anyone in Servers can join." : "Invite friends here or share the code."}`;
   }
@@ -228,8 +236,9 @@
   }
   function friendButton(id, state2, snapshot) {
     const host2 = runningHost(snapshot);
-    if (!host2) return state2.draft.invitees.includes(id) ? "invited" : "invite";
-    if (host2.deliveries[id] === "not-reached") return host2.link ? "copy-link" : "off";
+    const blocked = snapshot.hello?.social === "blocked";
+    if (!host2) return blocked ? "off" : state2.draft.invitees.includes(id) ? "invited" : "invite";
+    if (blocked || host2.deliveries[id] === "not-reached") return host2.link ? "copy-link" : "off";
     if (host2.invitees.includes(id)) return "invited";
     if (snapshot.hello?.social === "on") return "invite";
     return host2.link ? "copy-link" : "off";
@@ -319,6 +328,7 @@
       listing: listing2,
       listingLine: listing2 === "public" ? me2 && selected ? `Listed in Servers as \u201C${me2}\u2019s ${selected.name}\u201D` : "Listed in Servers for anyone to join" : "Only friends you invite, or anyone with the code",
       friends: friends2.online.map((friend) => ({ friend, button: friendButton(friend.id, state2, snapshot) })),
+      blocked: blockedLine(snapshot),
       offline: friends2.offline,
       play: playButton(state2, snapshot, link2, selected)
     };
@@ -544,7 +554,12 @@
       const o = obj(JSON.parse(text2));
       switch (o.t) {
         case "hello":
-          return { t: "hello", protocol: num(o.protocol), social: oneOf(["on", "off", "other-account"])(o.social) };
+          return {
+            t: "hello",
+            protocol: num(o.protocol),
+            social: oneOf(["on", "off", "other-account", "blocked"])(o.social),
+            supportId: opt(o.supportId, (v) => str(v))
+          };
         case "catalog":
           return { t: "catalog", modes: list(o.modes, mode) };
         case "game":
@@ -896,7 +911,13 @@
       );
     });
     find("HGOnline").text = `${view.friends.length} online`;
-    friendRows.draw(find("HGFriends"), JSON.stringify([view.friends, view.offline]), (into) => {
+    friendRows.draw(find("HGFriends"), JSON.stringify([view.friends, view.offline, view.blocked]), (into) => {
+      const blocked = view.blocked;
+      if (blocked) {
+        const row = panel(into, "HGFriend");
+        label(row, "HGBlockedText", blocked.text);
+        button(row, "SecondaryButton Outline Small Gold", "Copy", () => $.DispatchEvent("CopyStringToClipboard", blocked.id, root));
+      }
       if (!view.friends.length) label(into, "HGFriendsEmpty", "No friends online right now.");
       for (const { friend, button: kind } of view.friends) {
         const row = panel(into, "HGFriend");

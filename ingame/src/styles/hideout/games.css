@@ -519,6 +519,15 @@
 	vertical-align: middle;
 }
 
+.HGBlockedText
+{
+	width: fill-parent-flow( 1.0 );
+	vertical-align: middle;
+	margin-right: 12px;
+	font-size: 14px;
+	color: #EFE6D6;
+}
+
 .HGOffline
 {
 	font-size: 14px;

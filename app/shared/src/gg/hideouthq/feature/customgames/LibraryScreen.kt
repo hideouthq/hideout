@@ -61,6 +61,8 @@ import gg.hideouthq.core.customgames.LibraryEntry
 import gg.hideouthq.core.customgames.LinkProblem
 import gg.hideouthq.core.customgames.ModeKind
 import gg.hideouthq.core.customgames.ModeList
+import gg.hideouthq.core.customgames.social.Social
+import gg.hideouthq.core.customgames.social.SocialStatus
 import gg.hideouthq.core.data.FolderPicker
 import gg.hideouthq.core.designsystem.component.ButtonSize
 import gg.hideouthq.core.designsystem.component.ButtonVariant
@@ -73,6 +75,7 @@ import gg.hideouthq.core.designsystem.component.HideoutIconButton
 import gg.hideouthq.core.designsystem.component.HideoutMenu
 import gg.hideouthq.core.designsystem.component.HideoutTooltip
 import gg.hideouthq.core.designsystem.component.MenuEntry
+import gg.hideouthq.core.designsystem.component.NoticeCard
 import gg.hideouthq.core.designsystem.component.PageHeader
 import gg.hideouthq.core.designsystem.component.PillTabs
 import gg.hideouthq.core.designsystem.component.ScrollColumn
@@ -111,6 +114,7 @@ fun CustomGamesRoute(
     /** Whether one notification is wanted when servers go live, and the switch that says so. */
     notifyServers: Boolean,
     onNotifyServers: (Boolean) -> Unit,
+    social: Social? = null,
 ) {
     val modes by games.modes.collectAsStateWithLifecycle()
     val live by games.live.collectAsStateWithLifecycle()
@@ -125,6 +129,7 @@ fun CustomGamesRoute(
     val toasts = rememberCgToasts()
     val scope = rememberCoroutineScope()
     val pickTitle = stringResource(Res.string.cg_pick_folder)
+    val copy = rememberCopy(toasts)
     LaunchedEffect(games) { games.refreshModes() }
     LaunchedEffect(linkProblem) {
         val problem = linkProblem ?: return@LaunchedEffect
@@ -150,6 +155,7 @@ fun CustomGamesRoute(
                 PageHeader(title, stringResource(Res.string.custom_games_subtitle), Modifier.fillMaxWidth().staggeredEnter(0), subtitleMaxWidth = 620.dp) {
                     CodeField(games::openInvite)
                 }
+                social?.let { InvitesBlocked(it) { id -> copy(id, Res.string.cg_toast_id_copied) } }
                 PillTabs(
                     ModeTab.entries, tab, { tab = it },
                     label = tabs::getValue,
@@ -194,6 +200,15 @@ fun CustomGamesRoute(
         }
     }
     HostDialog(hosting?.mode, modes, block, restarts, games, modal) { hosting = null }
+}
+
+/** Shown once the site refused this PC's mailbox, with the player's own id, the one support resets it by. */
+@Composable
+private fun InvitesBlocked(social: Social, onCopy: (String) -> Unit) {
+    val state by social.state.collectAsStateWithLifecycle()
+    val blocked = social.status(state) as? SocialStatus.Blocked ?: return
+    val id = blocked.self.value
+    NoticeCard(stringResource(Res.string.cg_invites_blocked_lead), stringResource(Res.string.cg_invites_blocked_body, id), stringResource(Res.string.cg_copy), { onCopy(id) })
 }
 
 private val FilterSaver = listSaver<ModeFilter, String>(

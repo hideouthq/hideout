@@ -71,7 +71,7 @@ import org.jetbrains.compose.resources.ResourceEnvironment
 import org.jetbrains.compose.resources.getSystemResourceEnvironment
 import java.util.concurrent.atomic.AtomicInteger
 
-class InGame(private val games: CustomGames, private val social: Social, site: SiteOrigin?, private val scope: CoroutineScope) {
+class InGame(private val games: CustomGames, val social: Social, site: SiteOrigin?, private val scope: CoroutineScope) {
     private val serverJoin = MutableStateFlow<ServerJoin?>(null)
     private var looking: Job? = null
 
@@ -207,7 +207,7 @@ suspend fun inGameFrames(inputs: PresentInputs, social: SocialView = SocialView(
     val join = serverJoin?.let { joinView(it, inputs.modes) } ?: shown.join
     val game = Frame.Game(host, join?.let { joinCard(it) }, inputs.restartsDeadlock?.let { Restart(RestartWire.of(it), restartAheadPhrase(it, host = true).load(words)) })
     return mapOf(
-        Topic.Hello to Frame.Hello(InGameProtocol, social = socialWire(social.status)),
+        Topic.Hello to Frame.Hello(InGameProtocol, social = socialWire(social.status), supportId = (social.status as? SocialStatus.Blocked)?.self?.value),
         Topic.Catalog to Frame.Catalog(catalog(inputs.modes)),
         Topic.Game to game,
         Topic.Inbox to Frame.Inbox(social.state.inbox.map { inviteCard(it, inputs.modes) }),
@@ -219,6 +219,7 @@ private fun socialWire(status: SocialStatus): SocialWire = when (status) {
     SocialStatus.On -> SocialWire.On
     SocialStatus.Off -> SocialWire.Off
     SocialStatus.OtherAccount -> SocialWire.OtherAccount
+    is SocialStatus.Blocked -> SocialWire.Blocked
 }
 
 private suspend fun inviteCard(invitation: Invitation, modes: ModeList): InviteCard {

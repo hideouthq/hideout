@@ -25,6 +25,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -203,6 +204,56 @@ class SiteSocialTest {
         assertEquals(Delivery.NotReached, mailbox.deliver(Friend, Me, JoinTicket(Code, Offer), 2))
         site.answer = { 429 to """{"error":"rate_limited"}""" }
         assertEquals(Delivery.NotReached, mailbox.deliver(Friend, Me, JoinTicket(Code, Offer), 2))
+        site.answer = { 404 to """{"error":"not_found"}""" }
+        assertEquals(Delivery.NotReached, mailbox.deliver(Friend, Me, JoinTicket(Code, Offer), 2), "this PC's device not admitted")
+        site.answer = { 503 to """{"error":"unavailable"}""" }
+        assertEquals(Delivery.NotReached, mailbox.deliver(Friend, Me, JoinTicket(Code, Offer), 2))
+        site.close()
+        assertEquals(Delivery.NotReached, mailbox.deliver(Friend, Me, JoinTicket(Code, Offer), 2))
+    }
+
+    @Test
+    fun aSendGivenUpOnStopsWaitingForTheSite() = runBlocking {
+        val release = CountDownLatch(1)
+        site.answer = {
+            release.await(30, TimeUnit.SECONDS)
+            200 to """{"delivered":true}"""
+        }
+        try {
+            val asked = TimeSource.Monotonic.markNow()
+            assertNull(withTimeoutOrNull(1.seconds) { SiteMailbox(routes, scope, {}).deliver(Friend, Me, JoinTicket(Code, Offer), 2) })
+            val took = asked.elapsedNow()
+            assertTrue(took < 3.seconds, "the send had 1 s, and this took $took")
+        } finally {
+            release.countDown()
+        }
+    }
+
+    @Test
+    fun theSiteRefusingTheMailboxAtItsOwnTimeMarksItRefusedAndALimitDoesNot() {
+        val mailbox = SiteMailbox(routes, scope, {})
+        val handshakes = { site.seen.count { it.path == "/api/mailbox/${Me.value}" } }
+        site.answer = { 429 to """{"error":"rate_limited"}""" }
+        mailbox.hold(Me)
+        until("a second handshake") { handshakes() >= 2 }
+        assertNull(mailbox.refused.value, "a rate limit is not a refusal")
+        site.answer = { 404 to """{"error":"not_found"}""" }
+        until("the refusal") { mailbox.refused.value == Me }
+    }
+
+    @Test
+    fun aRefusalWithTheClockOffCountsOnlyOnceTheRetryAtTheSitesTimeIsRefusedToo() {
+        clock = System.currentTimeMillis() / 1000 - 3_600
+        val mailbox = SiteMailbox(routes, scope, {})
+        val refusedWhenAsked = CopyOnWriteArrayList<SteamId?>()
+        site.answer = {
+            refusedWhenAsked += mailbox.refused.value
+            404 to """{"error":"not_found"}"""
+        }
+        mailbox.hold(Me)
+        until("the refusal") { mailbox.refused.value == Me }
+        assertEquals(listOf(null, null), refusedWhenAsked.take(2), "the first 404 came from the clock, so the retry asks before anything is refused")
+        assertTrue(abs(site.seen[1].time!!.toLong() - System.currentTimeMillis() / 1000) <= 5, "the retry signs at the site's time")
     }
 
     @Test

@@ -99,7 +99,7 @@ export function reduceGames(state: GamesState, event: GamesEvent, snapshot: Snap
         mode: mode.id,
         picks,
         listing: draft.listing,
-        invite: draft.invitees,
+        invite: draftInvitees(state, snapshot),
         restart: snapshot.game?.restartAhead?.reason ?? null,
       })
     }
@@ -177,6 +177,7 @@ export interface GamesView {
   listing: Listing
   listingLine: string
   friends: { friend: Friend; button: FriendButton }[]
+  blocked: { text: string; id: SteamId } | null
   offline: number
   play: PlayButton
 }
@@ -219,9 +220,20 @@ function stepLine(host: HostCard): string | null {
   return step ? [step.label, step.note].filter(Boolean).join(' · ') : null
 }
 
+/** A PC the site refused sends no invites, so nothing drafted before Play goes out. */
+function draftInvitees(state: GamesState, snapshot: Snapshot): SteamId[] {
+  return snapshot.hello?.social === 'blocked' ? [] : state.draft.invitees
+}
+
+function blockedLine(snapshot: Snapshot): GamesView['blocked'] {
+  const hello = snapshot.hello
+  if (hello?.social !== 'blocked' || !hello.supportId) return null
+  return { text: `Invites are blocked on this PC. Send support this ID to reset it: ${hello.supportId}`, id: hello.supportId }
+}
+
 function inviteHint(state: GamesState, snapshot: Snapshot): string {
   if (state.draft.invitees.length && snapshot.hello?.social === 'other-account') return 'Open Hideout with the Steam account playing Deadlock to send invites.'
-  const n = state.draft.invitees.length
+  const n = draftInvitees(state, snapshot).length
   if (n) return `${n} ${n === 1 ? 'friend gets' : 'friends get'} an invite when your game is ready.`
   return `Your PC hosts this game. ${state.draft.listing === 'public' ? 'Anyone in Servers can join.' : 'Invite friends here or share the code.'}`
 }
@@ -265,8 +277,9 @@ function playButton(state: GamesState, snapshot: Snapshot, link: LinkStatus, mod
 
 function friendButton(id: SteamId, state: GamesState, snapshot: Snapshot): FriendButton {
   const host = runningHost(snapshot)
-  if (!host) return state.draft.invitees.includes(id) ? 'invited' : 'invite'
-  if (host.deliveries[id] === 'not-reached') return host.link ? 'copy-link' : 'off'
+  const blocked = snapshot.hello?.social === 'blocked'
+  if (!host) return blocked ? 'off' : state.draft.invitees.includes(id) ? 'invited' : 'invite'
+  if (blocked || host.deliveries[id] === 'not-reached') return host.link ? 'copy-link' : 'off'
   if (host.invitees.includes(id)) return 'invited'
   if (snapshot.hello?.social === 'on') return 'invite'
   return host.link ? 'copy-link' : 'off'
@@ -346,6 +359,7 @@ export function viewGames(state: GamesState, snapshot: Snapshot, link: LinkStatu
           : 'Listed in Servers for anyone to join'
         : 'Only friends you invite, or anyone with the code',
     friends: friends.online.map((friend) => ({ friend, button: friendButton(friend.id, state, snapshot) })),
+    blocked: blockedLine(snapshot),
     offline: friends.offline,
     play: playButton(state, snapshot, link, selected),
   }

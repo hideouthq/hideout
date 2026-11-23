@@ -142,6 +142,7 @@ class InGameWireTest {
         golden("inbox.json", social.getValue(Topic.Inbox))
         golden("servers.json", social.getValue(Topic.Servers))
         golden("hello-other-account.json", frames(LiveSession(), SocialView(SocialStatus.OtherAccount, available = true)).getValue(Topic.Hello))
+        golden("hello-blocked.json", frames(LiveSession(), SocialView(SocialStatus.Blocked(checkNotNull(SteamId.parse(me.steamId))), available = true)).getValue(Topic.Hello))
 
         val idle = frames(LiveSession())
         golden("inbox-empty.json", idle.getValue(Topic.Inbox))

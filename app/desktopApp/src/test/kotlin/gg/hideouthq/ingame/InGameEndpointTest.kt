@@ -36,6 +36,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
@@ -183,6 +184,7 @@ class InGameEndpointTest {
         val mailbox = object : Mailbox {
             override fun hold(owner: SteamId?) = Unit
             override val invitations: Flow<Invitation> = emptyFlow()
+            override val refused = MutableStateFlow<SteamId?>(null)
             override suspend fun deliver(to: SteamId, from: SteamId, ticket: JoinTicket, players: Int) = Delivery.Delivered
         }
         val social = Social(games, SocialNetwork(mailbox, directory) { null }, scope).apply { start() }

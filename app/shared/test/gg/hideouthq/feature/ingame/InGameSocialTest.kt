@@ -36,16 +36,19 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -73,7 +76,10 @@ private class FakeMailbox : Mailbox {
     val held = CopyOnWriteArrayList<SteamId?>()
     val delivered = CopyOnWriteArrayList<Pair<SteamId, JoinTicket>>()
     val arriving = MutableSharedFlow<Invitation>(extraBufferCapacity = 16)
-    var answer = Delivery.Delivered
+    override val refused = MutableStateFlow<SteamId?>(null)
+
+    @Volatile
+    var answer: suspend () -> Delivery = { Delivery.Delivered }
 
     override fun hold(owner: SteamId?) {
         if (held.lastOrNull() != owner || held.isEmpty()) held += owner
@@ -83,7 +89,7 @@ private class FakeMailbox : Mailbox {
 
     override suspend fun deliver(to: SteamId, from: SteamId, ticket: JoinTicket, players: Int): Delivery {
         delivered += to to ticket
-        return answer
+        return answer()
     }
 }
 
@@ -110,7 +116,7 @@ class InGameSocialTest {
     private val games = CustomGames(platform, FakeSessionFiles(), feed, scope, hostFolders = flowOf(false)).apply { start() }
     private val mailbox = FakeMailbox()
     private val directory = FakeDirectory()
-    private val social = Social(games, SocialNetwork(mailbox, directory) { mapOf(4 to 31) }, scope, me = { Me }).apply { start() }
+    private val social = Social(games, SocialNetwork(mailbox, directory) { mapOf(4 to 31) }, scope, me = { Me }, sendLimit = 1.seconds).apply { start() }
     private val inGame = InGame(games, social, SiteOrigin.parse("https://hideouthq.gg"), scope)
 
     @AfterTest
@@ -155,7 +161,7 @@ class InGameSocialTest {
 
     @Test
     fun eachInviteeGetsOneInviteOnceTheGameHostsAndTheCardSaysWhatCameOfIt() {
-        mailbox.answer = Delivery.NotReached
+        mailbox.answer = { Delivery.NotReached }
         hostAndReachHosting(Outreach(Listing.InviteOnly, setOf(Kestrel)))
         val card = topic(Topic.Game, "the delivery on the card") { it["host"]?.jsonObject?.get("deliveries")?.jsonObject?.isNotEmpty() == true && it["host"]!!.jsonObject["deliveries"]!!.jsonObject[Kestrel.value]?.jsonPrimitive?.content != "sending" }
         assertEquals("not-reached", card["host"]!!.jsonObject["deliveries"]!!.jsonObject[Kestrel.value]!!.jsonPrimitive.content, "the card offers Copy link")
@@ -168,6 +174,33 @@ class InGameSocialTest {
         until("Nori's invite") { mailbox.delivered.size >= 2 }
         runBlocking { delay(300.milliseconds) }
         assertEquals(listOf(Kestrel, Nori), mailbox.delivered.map { it.first }, "Kestrel's invite never goes twice")
+    }
+
+    private fun deliveryTo(friend: SteamId): String =
+        topic(Topic.Game, "an answer for ${friend.value}") { it.deliveries()?.get(friend.value)?.let { delivery -> delivery != "sending" } == true }.deliveries()!!.getValue(friend.value)
+
+    private fun JsonObject.deliveries(): Map<String, String>? =
+        (this["host"] as? JsonObject)?.get("deliveries")?.jsonObject?.mapValues { it.value.jsonPrimitive.content }
+
+    @Test
+    fun aSendThatBreaksOrNeverAnswersEndsNotReached() {
+        mailbox.answer = { error("the send broke") }
+        hostAndReachHosting(Outreach(Listing.InviteOnly, setOf(Kestrel)))
+        assertEquals("not-reached", deliveryTo(Kestrel))
+        mailbox.answer = { awaitCancellation() }
+        assertEquals(CommandResult.Accepted, press(PanelCommand.Invite(setOf(Nori))))
+        assertEquals("not-reached", deliveryTo(Nori))
+    }
+
+    @Test
+    fun aMailboxTheSiteRefusesSaysInvitesAreBlockedWithOnlyThePlayersOwnId() {
+        inGame.opened()
+        topic(Topic.Hello, "social on") { it["social"]?.jsonPrimitive?.content == "on" }
+        mailbox.refused.value = Me
+        val blocked = topic(Topic.Hello, "invites blocked") { it["social"]?.jsonPrimitive?.content == "blocked" }
+        assertEquals(Me.value, blocked["supportId"]!!.jsonPrimitive.content)
+        mailbox.refused.value = Nori
+        assertEquals(JsonNull, topic(Topic.Hello, "another account's refusal is not this player's") { it["social"]?.jsonPrimitive?.content == "on" }["supportId"])
     }
 
     @Test

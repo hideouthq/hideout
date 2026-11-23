@@ -148,7 +148,7 @@ internal fun Destination(entry: HistoryEntry, state: HideoutAppState) {
             val scope = rememberCoroutineScope()
             CustomGamesRoute(
                 games, state.container.folderPicker, state.modal, { navigator.navigate(Route.CustomGameMode(it)) }, navigator::search,
-                notifyServers, onNotifyServers = { on -> scope.launch { preferences.setNotifyServers(on) } },
+                notifyServers, onNotifyServers = { on -> scope.launch { preferences.setNotifyServers(on) } }, social = state.container.inGame?.social,
             )
         }
         is Route.CustomGameMode -> state.container.customGames?.let { games ->

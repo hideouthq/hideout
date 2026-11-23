@@ -18,7 +18,7 @@ export type Listing = 'invite-only' | 'public'
 export type Action = 'stop' | 'restart' | 'play' | 'dismiss' | 'again'
 export type StepState = 'done' | 'running' | 'waiting'
 export type RestartReason = 'not-set-up' | 'game-updated' | 'menus-did-not-start'
-export type Social = 'on' | 'off' | 'other-account'
+export type Social = 'on' | 'off' | 'other-account' | 'blocked'
 export type Delivery = 'sending' | 'delivered' | 'not-reached'
 export type ServersState = 'idle' | 'loading' | 'ready' | 'unreachable' | 'unavailable'
 export type ServerStatus = 'lobby' | 'match' | 'full'
@@ -128,7 +128,8 @@ export interface ServerRow {
   status: ServerStatus
 }
 
-export type Hello = { t: 'hello'; protocol: number; social: Social }
+/** [supportId] is set only while social is blocked: the player's own SteamID64, for support to reset this PC. */
+export type Hello = { t: 'hello'; protocol: number; social: Social; supportId: SteamId | null }
 export type Catalog = { t: 'catalog'; modes: ModeCard[] }
 export type Game = { t: 'game'; host: HostCard | null; join: JoinCard | null; restartAhead: Restart | null }
 export type Inbox = { t: 'inbox'; invites: InviteCard[] }
@@ -327,7 +328,12 @@ export function decodeFrame(text: string): Frame | null {
     const o = obj(JSON.parse(text))
     switch (o.t) {
       case 'hello':
-        return { t: 'hello', protocol: num(o.protocol), social: oneOf<Social>(['on', 'off', 'other-account'])(o.social) }
+        return {
+          t: 'hello',
+          protocol: num(o.protocol),
+          social: oneOf<Social>(['on', 'off', 'other-account', 'blocked'])(o.social),
+          supportId: opt(o.supportId, (v) => str(v) as SteamId),
+        }
       case 'catalog':
         return { t: 'catalog', modes: list(o.modes, mode) }
       case 'game':

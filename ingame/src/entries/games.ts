@@ -133,7 +133,13 @@ function drawDetail(view: GamesView): void {
     )
   })
   find('HGOnline').text = `${view.friends.length} online`
-  friendRows.draw(find('HGFriends'), JSON.stringify([view.friends, view.offline]), (into) => {
+  friendRows.draw(find('HGFriends'), JSON.stringify([view.friends, view.offline, view.blocked]), (into) => {
+    const blocked = view.blocked
+    if (blocked) {
+      const row = panel(into, 'HGFriend')
+      label(row, 'HGBlockedText', blocked.text)
+      button(row, 'SecondaryButton Outline Small Gold', 'Copy', () => $.DispatchEvent('CopyStringToClipboard', blocked.id, root))
+    }
     if (!view.friends.length) label(into, 'HGFriendsEmpty', 'No friends online right now.')
     for (const { friend, button: kind } of view.friends) {
       const row = panel(into, 'HGFriend')

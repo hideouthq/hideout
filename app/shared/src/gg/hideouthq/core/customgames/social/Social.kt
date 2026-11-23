@@ -13,16 +13,20 @@ import gg.hideouthq.core.customgames.Session
 import gg.hideouthq.core.customgames.SteamId
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import java.security.SecureRandom
 import java.util.HexFormat
 import kotlin.time.Clock
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
@@ -57,6 +61,9 @@ interface Mailbox {
 
     val invitations: Flow<Invitation>
 
+    /** The owner whose mailbox the site refused this PC, until one opens for them. */
+    val refused: StateFlow<SteamId?>
+
     suspend fun deliver(to: SteamId, from: SteamId, ticket: JoinTicket, players: Int): Delivery
 }
 
@@ -75,7 +82,16 @@ fun interface RelayLatency {
 
 class SocialNetwork(val mailbox: Mailbox, val directory: Directory, val latency: RelayLatency)
 
-enum class SocialStatus { On, Off, OtherAccount }
+sealed interface SocialStatus {
+    data object On : SocialStatus
+
+    data object Off : SocialStatus
+
+    data object OtherAccount : SocialStatus
+
+    /** The site refused this PC for [self]'s mailbox. Support resets it by that id, the player's own. */
+    data class Blocked(val self: SteamId) : SocialStatus
+}
 
 /** Kept until its expiry even once closed, so a second delivery never shows again. */
 data class InvitationKey(val from: SteamId, val id: InvitationId)
@@ -95,6 +111,7 @@ data class SocialState(
     val streams: Int = 0,
     val closedAt: Instant? = null,
     val gameSelf: SteamId? = null,
+    val refused: SteamId? = null,
 )
 
 sealed interface SocialInput {
@@ -114,6 +131,8 @@ sealed interface SocialInput {
 
     data class GameSelf(val id: SteamId?) : SocialInput
 
+    data class Refused(val owner: SteamId?) : SocialInput
+
     data object Tick : SocialInput
 }
 
@@ -124,6 +143,7 @@ sealed interface SocialEffect {
 }
 
 val MailboxGrace = 30.seconds
+val SendLimit = 15.seconds
 val PingLifetime = 5.minutes
 
 /**
@@ -160,6 +180,7 @@ fun reduceSocial(state: SocialState, input: SocialInput, now: Instant, fresh: ()
     }
     is SocialInput.Streams -> state.copy(streams = input.open, closedAt = if (input.open == 0 && state.streams > 0) now else state.closedAt) to emptyList()
     is SocialInput.GameSelf -> state.copy(gameSelf = input.id) to emptyList()
+    is SocialInput.Refused -> state.copy(refused = input.owner) to emptyList()
     SocialInput.Tick -> {
         val seen = state.seen.filterValues { it > now }
         (if (seen.size == state.seen.size) state else state.copy(inbox = state.inbox.filter { it.expires > now }, seen = seen)) to emptyList()
@@ -206,6 +227,7 @@ class Social(
     private val network: SocialNetwork?,
     private val scope: CoroutineScope,
     private val me: () -> SteamId? = { games.localPlayer?.steamId?.let(SteamId::parse) },
+    private val sendLimit: Duration = SendLimit,
 ) {
     private val published = MutableStateFlow(SocialState())
     val state: StateFlow<SocialState> = published.asStateFlow()
@@ -218,6 +240,7 @@ class Social(
         scope.launch { for (input in inputs) step(input) }
         scope.launch { games.live.collect { post(SocialInput.Live(it)) } }
         network?.let { scope.launch { it.mailbox.invitations.collect { invitation -> post(SocialInput.Came(invitation)) } } }
+        network?.let { scope.launch { it.mailbox.refused.collect { owner -> post(SocialInput.Refused(owner)) } } }
         scope.launch {
             while (isActive) {
                 delay(1.seconds)
@@ -231,6 +254,7 @@ class Social(
         return when {
             network == null || me == null -> SocialStatus.Off
             state.gameSelf != null && state.gameSelf != me -> SocialStatus.OtherAccount
+            state.refused == me -> SocialStatus.Blocked(me)
             else -> SocialStatus.On
         }
     }
@@ -266,17 +290,26 @@ class Social(
 
     private fun execute(effect: SocialEffect) {
         when (effect) {
-            is SocialEffect.Deliver -> scope.launch {
-                val from = me()
-                val delivery = if (network == null || from == null) Delivery.NotReached else network.mailbox.deliver(effect.to, from, effect.ticket, effect.players)
-                post(SocialInput.Answered(effect.code, effect.to, delivery))
-            }
+            is SocialEffect.Deliver -> scope.launch { post(SocialInput.Answered(effect.code, effect.to, send(effect))) }
             is SocialEffect.ReadServers -> scope.launch {
                 val games = network?.directory?.list()
                 val ping = if (effect.measure && games != null) network.latency.measure() else null
                 post(SocialInput.ServersAnswered(games, ping))
             }
         }
+    }
+
+    /** Only the mailbox's word that it delivered counts. An error, or no answer in [sendLimit], is an invite not reached. */
+    private suspend fun send(effect: SocialEffect.Deliver): Delivery {
+        val from = me()
+        if (network == null || from == null) return Delivery.NotReached
+        val answer = try {
+            withTimeoutOrNull(sendLimit) { network.mailbox.deliver(effect.to, from, effect.ticket, effect.players) }
+        } catch (e: Exception) {
+            currentCoroutineContext().ensureActive()
+            null
+        }
+        return answer ?: Delivery.NotReached
     }
 }
 

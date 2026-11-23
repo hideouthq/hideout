@@ -338,7 +338,12 @@
       const o = obj(JSON.parse(text2));
       switch (o.t) {
         case "hello":
-          return { t: "hello", protocol: num(o.protocol), social: oneOf(["on", "off", "other-account"])(o.social) };
+          return {
+            t: "hello",
+            protocol: num(o.protocol),
+            social: oneOf(["on", "off", "other-account", "blocked"])(o.social),
+            supportId: opt(o.supportId, (v) => str(v))
+          };
         case "catalog":
           return { t: "catalog", modes: list(o.modes, mode) };
         case "game":

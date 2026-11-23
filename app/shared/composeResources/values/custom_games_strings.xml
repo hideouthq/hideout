@@ -51,6 +51,10 @@
     <string name="cg_toast_code_copied">Code copied</string>
     <string name="cg_toast_message_copied">Message copied</string>
     <string name="cg_toast_details_copied">Details copied</string>
+    <string name="cg_toast_id_copied">ID copied</string>
+    <string name="cg_invites_blocked_lead">Invites are blocked on this PC.</string>
+    <string name="cg_invites_blocked_body">Send support this ID to reset it: %1$s</string>
+    <string name="cg_copy">Copy</string>
     <string name="cg_toast_copy_failed">Couldn’t copy. Try again.</string>
     <string name="cg_toast_link_unreadable">That link has no game code in it</string>
     <string name="cg_toast_session_running">Finish your current game before joining another</string>
