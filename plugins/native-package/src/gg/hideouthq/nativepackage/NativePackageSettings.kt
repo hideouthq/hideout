@@ -19,8 +19,8 @@ interface NativePackageSettings {
     val urlScheme: String
 
     /**
-     * The untracked file a local build reads HIDEOUT_BUILD_PREVIEW_URL, HIDEOUT_BUILD_PREVIEW_MASTER and
-     * HIDEOUT_BUILD_POSTHOG_KEY from, as lines of those names, when the environment does not set them. It need not exist.
+     * The untracked file a local build reads HIDEOUT_BUILD_PREVIEW_URL, HIDEOUT_BUILD_PREVIEW_MASTER,
+     * HIDEOUT_BUILD_INVITE_MASTER and HIDEOUT_BUILD_POSTHOG_KEY from, as lines of those names, when the environment does not set them. It need not exist.
      */
     val previewFile: Path
 

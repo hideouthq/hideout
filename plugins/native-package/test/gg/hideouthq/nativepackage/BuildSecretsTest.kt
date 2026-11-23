@@ -36,6 +36,7 @@ class BuildSecretsTest {
     private val source = root / "kotlin" / "gg" / "example" / "BuildMask.kt"
     private val master = "a-master-0123456789abcdef0123456789abcdef"
     private val url = "https://previews.example.test"
+    private val invite = "an-invite-master-0123456789abcdef0123"
 
     @AfterTest
     fun cleanUp() = root.deleteRecursively()
@@ -55,20 +56,21 @@ class BuildSecretsTest {
         assertEquals(emptyList(), names())
         assertContains(source.readText(), "package gg.example\n")
         assertEquals(32, builtKey().size)
-        write(PreviewUrlVariable to url, PreviewMasterVariable to master, PostHogKeyVariable to "phc_project")
-        assertEquals(listOf("posthog-key", "preview-key", "preview-url"), names())
+        write(PreviewUrlVariable to url, PreviewMasterVariable to master, InviteMasterVariable to invite, PostHogKeyVariable to "phc_project")
+        assertEquals(listOf("invite-key", "posthog-key", "preview-key", "preview-url"), names())
         write()
         assertEquals(emptyList(), names())
     }
 
     @Test
-    fun whatTheAppUnmasksIsTheAddressTheKeyDerivedForThisVersionAndTheCaptureKey() {
-        write(PreviewUrlVariable to url, PreviewMasterVariable to master, PostHogKeyVariable to "phc_project")
+    fun whatTheAppUnmasksIsTheAddressTheKeysDerivedForThisVersionAndTheCaptureKey() {
+        write(PreviewUrlVariable to url, PreviewMasterVariable to master, InviteMasterVariable to invite, PostHogKeyVariable to "phc_project")
         assertEquals(url, unmasked("preview-url"))
         assertEquals(releaseKey(master, "preview", "0.3.0"), unmasked("preview-key"))
+        assertEquals(releaseKey(invite, "invite", "0.3.0"), unmasked("invite-key"))
         assertEquals("phc_project", unmasked("posthog-key"))
         val stored = names().map { String((secrets / it).readBytes(), Charsets.ISO_8859_1) }
-        for (plain in listOf(url, "previews.example", master, releaseKey(master, "preview", "0.3.0"), "phc_project")) {
+        for (plain in listOf(url, "previews.example", master, invite, releaseKey(master, "preview", "0.3.0"), releaseKey(invite, "invite", "0.3.0"), "phc_project")) {
             assertTrue(stored.none { plain in it }, plain)
         }
     }
@@ -80,6 +82,16 @@ class BuildSecretsTest {
         write(PreviewUrlVariable to url, PreviewMasterVariable to master, version = "0.3.1")
         assertNotEquals(first, unmasked("preview-key"))
         assertEquals(releaseKey(master, "preview", "0.3.1"), unmasked("preview-key"))
+    }
+
+    @Test
+    fun theInviteKeyNeedsNoPreviewHostAndIsBoundToTheVersion() {
+        write(InviteMasterVariable to invite)
+        assertEquals(listOf("invite-key"), names())
+        write(InviteMasterVariable to invite, version = "0.3.1")
+        assertEquals(releaseKey(invite, "invite", "0.3.1"), unmasked("invite-key"))
+        assertContains(assertFailsWith<IllegalStateException> { write(InviteMasterVariable to "short") }.message.orEmpty(), "shorter than 32")
+        assertContains(assertFailsWith<IllegalStateException> { write(InviteMasterVariable to invite, version = "1.4") }.message.orEmpty(), "like 1.4.0")
     }
 
     @Test
