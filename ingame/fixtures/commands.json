@@ -10,6 +10,10 @@
   {"k":"confirm","restart":null},
   {"k":"invite","to":["76561198000000007"]},
   {"k":"listing","listing":"invite-only"},
-  {"k":"join","invite":"9f2c"},
-  {"k":"join","server":"3c41"}
+  {"k":"join","invite":"9f2c41d07e6b4a58b3c1d2e3f4a5b6c7"},
+  {"k":"join","server":"3c41a9e07d5b2f18"},
+  {"k":"forget","invite":"9f2c41d07e6b4a58b3c1d2e3f4a5b6c7"},
+  {"k":"servers"},
+  {"k":"hello","self":"76561198000000001"},
+  {"k":"hello","self":null}
 ]

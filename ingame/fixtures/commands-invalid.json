@@ -10,8 +10,15 @@
   {"k":"act","action":"STOP"},
   {"k":"act"},
   {"k":"confirm"},
-  {"k":"join","invite":"9f2c","server":"3c41"},
+  {"k":"join","invite":"9f2c41d07e6b4a58b3c1d2e3f4a5b6c7","server":"3c41a9e07d5b2f18"},
   {"k":"join","invite":"../etc"},
-  {"k":"forget","invite":"9f2c"},
+  {"k":"join","invite":"9f2c"},
+  {"k":"join","invite":"3c41a9e07d5b2f18"},
+  {"k":"join","server":"9f2c41d07e6b4a58b3c1d2e3f4a5b6c7"},
+  {"k":"forget","invite":"9F2C41D07E6B4A58B3C1D2E3F4A5B6C7"},
+  {"k":"forget"},
+  {"k":"servers","all":true},
+  {"k":"hello","self":"12345"},
+  {"k":"hello"},
   {"action":"stop"}
 ]

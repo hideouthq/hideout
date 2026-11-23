@@ -85,7 +85,9 @@ class InGame(private val games: CustomGames, site: SiteOrigin?, scope: Coroutine
             games.confirmJoin(command.restart)
             CommandResult.Accepted
         }
-        is PanelCommand.Invite, is PanelCommand.Relist, is PanelCommand.JoinInvite, is PanelCommand.JoinServer -> CommandResult.Unavailable
+        is PanelCommand.Hello -> CommandResult.Accepted
+        is PanelCommand.Invite, is PanelCommand.Relist, is PanelCommand.JoinInvite, is PanelCommand.JoinServer, is PanelCommand.Forget, PanelCommand.Servers ->
+            CommandResult.Unavailable
     }
 
     private fun host(command: PanelCommand.Host): CommandResult {
@@ -114,7 +116,7 @@ suspend fun inGameFrames(inputs: PresentInputs): Map<Topic, String> {
     val host = shown.game?.takeIf { record?.role is Role.Host }?.let { hostCard(it, checkNotNull(record), shown.chip?.count) }
     val game = Frame.Game(host, shown.join?.let { joinCard(it) }, inputs.restartsDeadlock?.let { Restart(RestartWire.of(it), restartAheadPhrase(it, host = true).load(words)) })
     return mapOf(
-        Topic.Hello to Frame.Hello(InGameProtocol, social = false),
+        Topic.Hello to Frame.Hello(InGameProtocol, social = SocialWire.Off),
         Topic.Catalog to Frame.Catalog(catalog(inputs.modes)),
         Topic.Game to game,
     ).mapValues { (_, frame) -> InGameWire.encode(frame) }
@@ -154,6 +156,7 @@ private suspend fun hostCard(view: GameView, record: GameRecord, players: Pair<I
         players = players?.toList(),
         listing = ListingWire.of(role.outreach.listing),
         invitees = role.outreach.invitees.map { it.value }.sorted(),
+        deliveries = emptyMap(),
         actions = hostActions(body),
     )
 }

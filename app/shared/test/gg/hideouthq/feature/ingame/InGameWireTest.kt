@@ -24,6 +24,8 @@ import gg.hideouthq.core.customgames.SettingValue
 import gg.hideouthq.core.customgames.SiteOrigin
 import gg.hideouthq.core.customgames.SteamId
 import gg.hideouthq.core.customgames.Transfer
+import gg.hideouthq.core.customgames.social.InvitationId
+import gg.hideouthq.core.customgames.social.ListingId
 import gg.hideouthq.core.data.fake.FakeCustomGamesFeed
 import gg.hideouthq.feature.customgames.PresentInputs
 import kotlinx.coroutines.test.runTest
@@ -89,6 +91,34 @@ class InGameWireTest {
     }
 
     @Test
+    fun socialFramesAreTheGoldenOnes() {
+        val ready = InGameWire.encode(Frame.Game(
+            HostCard(
+                mode = "bebop-wars", phase = HostPhase.Ready, steps = emptyList(), words = Words("Waiting for a friend", "Your game is open."),
+                link = "https://hideouthq.gg/join#P95-MAN-26D", players = listOf(1, 6), listing = ListingWire.Public,
+                invitees = listOf("76561198000000007", "76561198000000008", "76561198000000009"),
+                deliveries = mapOf("76561198000000007" to DeliveryWire.Delivered, "76561198000000008" to DeliveryWire.NotReached, "76561198000000009" to DeliveryWire.Sending),
+                actions = listOf(Action.Stop),
+            ),
+            join = null, restartAhead = null,
+        ))
+        golden("game-invites.json", ready)
+        golden("hello-other-account.json", InGameWire.encode(Frame.Hello(InGameProtocol, SocialWire.OtherAccount)))
+        golden("inbox.json", InGameWire.encode(Frame.Inbox(listOf(
+            InviteCard("9f2c41d07e6b4a58b3c1d2e3f4a5b6c7", "76561198000000002", "Bebop Wars", listOf("3v3"), "https://hideouthq.gg/customgames/art/tile.png", listOf(2, 6), 1_763_900_060_000),
+            InviteCard("0b7e5d21c3a94f68a1b2c3d4e5f60718", "76561198000000003", "A friend’s mode", emptyList(), null, listOf(1, 4), 1_763_900_045_000),
+        ))))
+        golden("inbox-empty.json", InGameWire.encode(Frame.Inbox(emptyList())))
+        golden("servers.json", InGameWire.encode(Frame.Servers(ServersState.Ready, listOf(
+            ServerRow("3c41a9e07d5b2f18", "Mugi", "Bebop Wars", listOf("3v3"), "https://hideouthq.gg/customgames/art/tile.png", "fra", listOf(3, 6), 31, ServerStatus.Lobby),
+            ServerRow("a17b0c9d2e3f4051", null, "Bebop Wars", listOf("6v6"), null, "sea", listOf(12, 12), null, ServerStatus.Full),
+        ))))
+        ServersState.entries.filter { it != ServersState.Ready }.forEach { state ->
+            golden("servers-${Json.encodeToString(ServersState.serializer(), state).trim('"')}.json", InGameWire.encode(Frame.Servers(state, emptyList())))
+        }
+    }
+
+    @Test
     fun aFrameIsAsciiSoTheGameReadsItWithoutDecoding() = runTest {
         val failed = frames(LiveSession(Session.Ended(EndReason.HostFailed(null)), hostRecord)).getValue(Topic.Game)
         assertEquals("", failed.filter { it.code >= 0x80 })
@@ -110,6 +140,7 @@ class InGameWireTest {
 
     @Test
     fun goldenCommandsParseToThePressesTheyName() {
+        val invitation = checkNotNull(InvitationId.parse("9f2c41d07e6b4a58b3c1d2e3f4a5b6c7"))
         val expected = listOf(
             PanelCommand.Host(
                 bebop.id, mapOf(checkNotNull(SettingKey.parse("teams")) to checkNotNull(SettingValue.parse("3v3"))),
@@ -125,8 +156,12 @@ class InGameWireTest {
             PanelCommand.Confirm(null),
             PanelCommand.Invite(setOf(kestrel)),
             PanelCommand.Relist(Listing.InviteOnly),
-            PanelCommand.JoinInvite("9f2c"),
-            PanelCommand.JoinServer("3c41"),
+            PanelCommand.JoinInvite(invitation),
+            PanelCommand.JoinServer(checkNotNull(ListingId.parse("3c41a9e07d5b2f18"))),
+            PanelCommand.Forget(invitation),
+            PanelCommand.Servers,
+            PanelCommand.Hello(checkNotNull(SteamId.parse("76561198000000001"))),
+            PanelCommand.Hello(null),
         )
         val commands = Json.parseToJsonElement(Files.readString(fixtures.resolve("commands.json"))) as JsonArray
         assertEquals(expected, commands.map { InGameWire.parseCommand(it.toString()) })

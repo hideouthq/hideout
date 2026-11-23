@@ -7,6 +7,8 @@ import gg.hideouthq.core.customgames.RestartReason
 import gg.hideouthq.core.customgames.SettingKey
 import gg.hideouthq.core.customgames.SettingValue
 import gg.hideouthq.core.customgames.SteamId
+import gg.hideouthq.core.customgames.social.InvitationId
+import gg.hideouthq.core.customgames.social.ListingId
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -21,14 +23,14 @@ import kotlinx.serialization.json.JsonPrimitive
 /** Bumped when a frame or command changes shape. The pack's own number rides in every command, and `hello` says the app's. */
 const val InGameProtocol = 1
 
-/** A stream's frames, each replacing the last of its topic. Inbox and Servers come with invites. */
-enum class Topic { Hello, Catalog, Game }
+/** A stream's frames, each replacing the last of its topic. */
+enum class Topic { Hello, Catalog, Game, Inbox, Servers }
 
 @Serializable
 sealed interface Frame {
     @Serializable
     @SerialName("hello")
-    data class Hello(val protocol: Int, val social: Boolean) : Frame
+    data class Hello(val protocol: Int, val social: SocialWire) : Frame
 
     @Serializable
     @SerialName("catalog")
@@ -39,11 +41,27 @@ sealed interface Frame {
     @SerialName("game")
     data class Game(val host: HostCard?, val join: JoinCard?, val restartAhead: Restart?) : Frame
 
+    /** Invites to show, newest first. Each leaves at its [InviteCard.expires], or once any context joins or forgets it. */
+    @Serializable
+    @SerialName("inbox")
+    data class Inbox(val invites: List<InviteCard>) : Frame
+
+    @Serializable
+    @SerialName("servers")
+    data class Servers(val state: ServersState, val rows: List<ServerRow>) : Frame
+
     /** Sent after a quiet while, so the game can tell a quiet stream from a dead one. */
     @Serializable
     @SerialName("alive")
     data object Alive : Frame
 }
+
+/**
+ * Whether invites and Servers work. [Off] is a build without the invite key, or no Steam login the app can read.
+ * [OtherAccount] is a game signed in to another Steam account than the app reads, whose invites would go elsewhere.
+ */
+@Serializable
+enum class SocialWire { @SerialName("on") On, @SerialName("off") Off, @SerialName("other-account") OtherAccount }
 
 @Serializable
 data class ModeCard(
@@ -121,8 +139,14 @@ data class HostCard(
     val players: List<Int>?,
     val listing: ListingWire,
     val invitees: List<String>,
+    /** What each invite sent so far came to, by invitee. An invitee missing here waits for the game to be ready. */
+    val deliveries: Map<String, DeliveryWire>,
     val actions: List<Action>,
 )
+
+/** [NotReached] means no Hideout of theirs took it, so the card offers Copy link. */
+@Serializable
+enum class DeliveryWire { @SerialName("sending") Sending, @SerialName("delivered") Delivered, @SerialName("not-reached") NotReached }
 
 @Serializable
 enum class HostPhase {
@@ -169,6 +193,51 @@ enum class JoinPhase {
     @SerialName("failed") Failed,
 }
 
+/**
+ * An invite that came in. [from] is the sender's claim, which the game shows only for a Steam friend and under the
+ * friend list's own name. [mode] and [picks] read as the join dialog's do. [expires] is in epoch milliseconds.
+ */
+@Serializable
+data class InviteCard(
+    val id: String,
+    val from: String,
+    val mode: String,
+    val picks: List<String>,
+    val tile: String?,
+    /** Signed on, then the match size. */
+    val players: List<Int>,
+    val expires: Long,
+)
+
+@Serializable
+enum class ServersState {
+    /** Not read since the app started. */
+    @SerialName("idle") Idle,
+    @SerialName("loading") Loading,
+    @SerialName("ready") Ready,
+    @SerialName("unreachable") Unreachable,
+
+    /** This build can't read the directory. */
+    @SerialName("unavailable") Unavailable,
+}
+
+/** A public game. [host] is the name its offer carries. [region] is the host's relay region code and [ping] this computer's round trip to it. */
+@Serializable
+data class ServerRow(
+    val id: String,
+    val host: String?,
+    val mode: String,
+    val picks: List<String>,
+    val tile: String?,
+    val region: String,
+    val players: List<Int>,
+    val ping: Int?,
+    val status: ServerStatus,
+)
+
+@Serializable
+enum class ServerStatus { @SerialName("lobby") Lobby, @SerialName("match") Match, @SerialName("full") Full }
+
 /** What the endpoint answers a command with, as the width of a one-pixel-high PNG. */
 enum class CommandResult(val width: Int) {
     Accepted(1),
@@ -200,9 +269,18 @@ sealed interface PanelCommand {
 
     data class Relist(val listing: Listing) : PanelCommand
 
-    data class JoinInvite(val id: String) : PanelCommand
+    data class JoinInvite(val id: InvitationId) : PanelCommand
 
-    data class JoinServer(val id: String) : PanelCommand
+    data class JoinServer(val id: ListingId) : PanelCommand
+
+    /** Closes an invite's toast in every context. */
+    data class Forget(val id: InvitationId) : PanelCommand
+
+    /** The Servers tab wants a fresh read. */
+    data object Servers : PanelCommand
+
+    /** The game's own Steam account, when the UI can read it, so the app opens no mailbox for another account. */
+    data class Hello(val self: SteamId?) : PanelCommand
 }
 
 object InGameWire {
@@ -239,15 +317,16 @@ object InGameWire {
             "confirm" -> restartIn(command)?.let { PanelCommand.Confirm(it.reason) }
             "invite" -> steamIds(command["to"])?.let(PanelCommand::Invite)
             "listing" -> decode(command["listing"], ListingWire.serializer())?.let { PanelCommand.Relist(it.listing) }
-            "join" -> {
-                val invite = command.text("invite")?.takeIf(Id::matches)
-                val server = command.text("server")?.takeIf(Id::matches)
-                when {
-                    command.size != 2 -> null
-                    invite != null -> PanelCommand.JoinInvite(invite)
-                    server != null -> PanelCommand.JoinServer(server)
-                    else -> null
-                }
+            "join" -> when {
+                command.size != 2 -> null
+                "invite" in command -> command.text("invite")?.let(InvitationId::parse)?.let(PanelCommand::JoinInvite)
+                else -> command.text("server")?.let(ListingId::parse)?.let(PanelCommand::JoinServer)
+            }
+            "forget" -> command.text("invite")?.let(InvitationId::parse)?.let(PanelCommand::Forget)
+            "servers" -> PanelCommand.Servers.takeIf { command.size == 1 }
+            "hello" -> when (val self = command["self"]) {
+                JsonNull -> PanelCommand.Hello(null)
+                else -> (self as? JsonPrimitive)?.takeIf { it.isString }?.content?.let(SteamId::parse)?.let { PanelCommand.Hello(it) }
             }
             else -> null
         }
@@ -291,5 +370,4 @@ object InGameWire {
 
     private const val MaxCommand = 4096
     private const val MaxInvitees = 63
-    private val Id = Regex("[A-Za-z0-9_-]{1,64}")
 }

@@ -13,6 +13,7 @@ import gg.hideouthq.core.customgames.SettingKey
 import gg.hideouthq.core.customgames.SettingValue
 import gg.hideouthq.core.customgames.SiteOrigin
 import gg.hideouthq.core.customgames.SteamId
+import gg.hideouthq.core.customgames.social.ListingId
 import gg.hideouthq.core.data.fake.FakeCustomGamesFeed
 import gg.hideouthq.core.data.fake.FakeCustomGamesPlatform
 import gg.hideouthq.core.data.fake.FakeSessionFiles
@@ -109,7 +110,7 @@ class InGameTest {
     fun invitesListingsAndJoinsAreUnavailableUntilThisBuildCanSendThem() {
         assertEquals(CommandResult.Unavailable, inGame.run(PanelCommand.Invite(setOf(Kestrel))))
         assertEquals(CommandResult.Unavailable, inGame.run(PanelCommand.Relist(Listing.Public)))
-        assertEquals(CommandResult.Unavailable, inGame.run(PanelCommand.JoinServer("3c")))
+        assertEquals(CommandResult.Unavailable, inGame.run(PanelCommand.JoinServer(checkNotNull(ListingId.parse("3c41a9e07d5b2f18")))))
     }
 
     @Test
