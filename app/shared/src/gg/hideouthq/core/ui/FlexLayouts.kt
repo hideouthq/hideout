@@ -17,7 +17,8 @@ import kotlin.math.max
 
 /**
  * CSS `grid-template-columns: repeat(auto-fit, minmax(min, 1fr))` with the cards' gap: as many columns of at least
- * [minCellWidth] as fit, cells sharing the row equally. Columns nobody fills are dropped so the items grow into them.
+ * [minCellWidth] as fit, cells sharing the row equally. Columns nobody fills are dropped so the items grow into them,
+ * unless [keepEmptyColumns], which is `auto-fill`: a lone item keeps the width it has in a full row.
  * Rows are as tall as their tallest cell.
  */
 @Composable
@@ -26,13 +27,15 @@ fun AdaptiveGrid(
     modifier: Modifier = Modifier,
     columnGap: Dp = HideoutDimens.Card.Gap,
     rowGap: Dp = HideoutDimens.Card.Gap,
+    keepEmptyColumns: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     Layout(content, modifier) { measurables, constraints ->
         val gap = columnGap.roundToPx()
         val between = rowGap.roundToPx()
         val width = constraints.maxWidth
-        val columns = max(1, (width + gap) / (minCellWidth.roundToPx() + gap)).coerceAtMost(max(1, measurables.size))
+        val fit = max(1, (width + gap) / (minCellWidth.roundToPx() + gap))
+        val columns = if (keepEmptyColumns) fit else fit.coerceAtMost(max(1, measurables.size))
         val cell = (width - gap * (columns - 1)) / columns
         val placeables = measurables.map { it.measure(Constraints(minWidth = cell, maxWidth = cell)) }
         val rows = placeables.chunked(columns)

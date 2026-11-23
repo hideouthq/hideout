@@ -161,17 +161,17 @@ internal fun DownloadingCardGroup(
             Text(groupTitle(downloads), style = HideoutTheme.typography.labelSection, color = MaterialTheme.colorScheme.outline)
             Text(downloads.size.toString(), style = HideoutTheme.typography.labelSection, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        AutoFillGrid { columnWidth ->
-            downloads.forEach { download -> key(download.modId) { DownloadingCard(download, Modifier.width(columnWidth), actions) } }
+        AutoFillGrid {
+            downloads.forEach { download -> key(download.modId) { DownloadingCard(download, actions) } }
         }
     }
 }
 
 @Composable
-private fun DownloadingCard(download: DownloadRow, modifier: Modifier, actions: LibraryActions) {
+private fun DownloadingCard(download: DownloadRow, actions: LibraryActions) {
     val colors = HideoutTheme.colors
     val transferring = download.phase as? DownloadPhase.Transferring
-    Box(modifier.height(HideoutDimens.LibraryCard.Height).clip(HideoutShapes.Card)
+    Box(Modifier.height(HideoutDimens.LibraryCard.Height).clip(HideoutShapes.Card)
         .hideoutClickable(remember { MutableInteractionSource() }, enabled = download.hasModPage, onClick = { actions.viewPage(download.modId) })) {
         CoverArt(seed = download.modId, modifier = Modifier.fillMaxSize(), shape = HideoutShapes.Card, imageUrl = download.coverFullUrl)
         Box(

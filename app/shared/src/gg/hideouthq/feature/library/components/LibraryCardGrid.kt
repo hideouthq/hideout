@@ -7,9 +7,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -18,7 +16,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -42,7 +39,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import gg.hideouthq.core.designsystem.component.CoverArt
@@ -61,6 +57,7 @@ import gg.hideouthq.core.designsystem.theme.HideoutTheme
 import gg.hideouthq.core.designsystem.theme.HideoutWeights
 import gg.hideouthq.core.library.OrderView
 import gg.hideouthq.core.model.ModCardStyle
+import gg.hideouthq.core.ui.AdaptiveGrid
 import gg.hideouthq.core.ui.CompatChip
 import gg.hideouthq.core.ui.WindowModal
 import gg.hideouthq.feature.library.DownloadPhase
@@ -73,17 +70,16 @@ import gg.hideouthq.resources.library_switch
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
-internal fun AutoFillGrid(modifier: Modifier = Modifier, content: @Composable (columnWidth: Dp) -> Unit) {
+internal fun AutoFillGrid(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     val under = LocalModCardStyle.current == ModCardStyle.UnderImage
-    val gap = if (under) HideoutDimens.Card.UnderColumnGap else HideoutDimens.LibraryCard.Gap
-    val rowGap = if (under) HideoutDimens.Card.UnderRowGap else HideoutDimens.LibraryCard.Gap
-    BoxWithConstraints(modifier) {
-        val columns = (((maxWidth + gap) / (HideoutDimens.LibraryCard.MinColumn + gap)).toInt()).coerceAtLeast(1)
-        val columnWidth = (maxWidth - gap * (columns - 1)) / columns
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(gap), verticalArrangement = Arrangement.spacedBy(rowGap), modifier = Modifier.fillMaxWidth()) {
-            content(columnWidth)
-        }
-    }
+    AdaptiveGrid(
+        HideoutDimens.LibraryCard.MinColumn,
+        modifier,
+        columnGap = if (under) HideoutDimens.Card.UnderColumnGap else HideoutDimens.LibraryCard.Gap,
+        rowGap = if (under) HideoutDimens.Card.UnderRowGap else HideoutDimens.LibraryCard.Gap,
+        keepEmptyColumns = true,
+        content = content,
+    )
 }
 
 @Composable
@@ -98,11 +94,11 @@ internal fun LibraryCardGrid(
 ) {
     val order = rows.map { it.installId }
     val visible = rows.filter { it.visible }.map { it.installId }
-    AutoFillGrid(modifier) { columnWidth ->
+    AutoFillGrid(modifier) {
         rows.forEach { row ->
             if (!row.visible) return@forEach
             key(row.installId) {
-                LibraryCard(row, row.installId in selectedIds, Modifier.width(columnWidth), onSelect, actions, modal, view, order, visible, if (row.installId in selectedIds) selectedIds.size else 1)
+                LibraryCard(row, row.installId in selectedIds, onSelect, actions, modal, view, order, visible, if (row.installId in selectedIds) selectedIds.size else 1)
             }
         }
     }
@@ -112,7 +108,6 @@ internal fun LibraryCardGrid(
 internal fun LibraryCard(
     row: LibraryRow,
     selected: Boolean,
-    modifier: Modifier,
     onSelect: (String, SelectGesture) -> Unit,
     actions: LibraryActions,
     modal: WindowModal,
@@ -229,12 +224,12 @@ internal fun LibraryCard(
         }
     }
     if (under) {
-        Column(modifier.then(lifted).then(interact), verticalArrangement = Arrangement.spacedBy(HideoutDimens.Card.UnderTextGap)) {
+        Column(lifted.then(interact), verticalArrangement = Arrangement.spacedBy(HideoutDimens.Card.UnderTextGap)) {
             Box(Modifier.fillMaxWidth().aspectRatio(HideoutDimens.Card.UnderImageRatio).then(picture), content = art)
             caption(Modifier.padding(horizontal = HideoutDimens.Card.UnderTextInset))
         }
     } else {
-        Box(modifier.then(lifted).height(HideoutDimens.LibraryCard.Height).then(picture).then(interact)) {
+        Box(lifted.height(HideoutDimens.LibraryCard.Height).then(picture).then(interact)) {
             art()
             caption(
                 Modifier.align(Alignment.BottomStart).padding(
