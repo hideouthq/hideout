@@ -852,4 +852,22 @@ class SessionTest {
         assertEquals(EndReason.Refused(Refusal.ContentNotStaged), stopping.reason)
         assertEquals(FileHold.Held, stopping.hold)
     }
+
+    @Test
+    fun anInviteIsTakenExactlyWhereReduceStartsFindingIt() {
+        val other = checkNotNull(InviteCode.parse("Q22-RST-33E"))
+        for (session in everyState) {
+            val finds = (step(session, InviteOpened(other)).session as? Session.Finding)?.code == other
+            assertEquals(finds, session.takesInvite, "$session")
+        }
+    }
+
+    @Test
+    fun theRelayRegionTheHelperSaysWithTheCodeStaysWithTheHostedGame() {
+        val fra = RelayRegion(4, "fra")
+        val codeFirst = step(Session.HostStarting(null, null, t(4)), LinkEvent.InviteReady(code, fra)).session
+        assertEquals(fra, (step(codeFirst, server(ServerEvent.Ready("street"))).session as Session.Hosting).region)
+        val mapFirst = step(Session.HostStarting(null, "street", t(4)), LinkEvent.InviteReady(code, fra)).session
+        assertEquals(fra, (mapFirst as Session.Hosting).region)
+    }
 }

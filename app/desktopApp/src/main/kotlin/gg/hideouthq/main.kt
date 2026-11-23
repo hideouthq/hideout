@@ -36,6 +36,7 @@ import gg.hideouthq.core.network.hideoutHttpClient
 import gg.hideouthq.core.ui.LocalReducedMotion
 import gg.hideouthq.core.ui.LocalWindowChrome
 import gg.hideouthq.customgames.CustomGamesSite
+import gg.hideouthq.customgames.LinkHelperLocation
 import gg.hideouthq.customgames.DesktopCustomGames
 import gg.hideouthq.customgames.customGamesFeed
 import gg.hideouthq.customgames.registerAppImageLinks
@@ -57,6 +58,7 @@ import gg.hideouthq.deadlockstats.DesktopStatsPlatform
 import gg.hideouthq.feature.customgames.quitWarning
 import gg.hideouthq.feature.moddetail.viewer.LocalModelViewport
 import gg.hideouthq.ingame.InGameEndpoint
+import gg.hideouthq.social.SiteSocial
 import gg.hideouthq.library.DataFolderClaim
 import gg.hideouthq.library.DesktopConfigFiles
 import gg.hideouthq.library.DesktopFileDrop
@@ -239,6 +241,8 @@ private fun liveContainer(previewCache: PreviewCache?, build: DesktopBuild, user
     val machine = readMachine(about.version, updatesItself = appUpdates.method != null)
     log.write("Hideout ${about.version} started: ${machine.line}")
     val customGamesPlatform = DesktopCustomGames.forThisComputer(data, { DesktopInstall.downloadClient(desktopEngine(), userAgent, log::write) }, log::write)
+    val site = CustomGamesSite.fromProcess()
+    val social = customGamesPlatform?.let { SiteSocial.forThisBuild(site, about.version, LinkHelperLocation.fromProcess(), log::write) }
     return AppContainer.live(
         postHogProjectKey = build.postHogProjectKey,
         analyticsOs = when { System.getProperty("os.name").startsWith("Windows") -> "windows"; System.getProperty("os.name").startsWith("Linux") -> "linux"; else -> "other" },
@@ -273,7 +277,8 @@ private fun liveContainer(previewCache: PreviewCache?, build: DesktopBuild, user
         updatePackages = appUpdates.packages,
         customGamesPlatform = customGamesPlatform,
         customGamesFeed = customGamesFeed(client, data),
-        customGamesSite = CustomGamesSite.fromProcess(),
+        customGamesSite = site,
+        socialNetwork = social?.network,
     ).also { container ->
         registerAppImageLinks(log::write)
         val inGame = container.inGame?.let { inGame ->
@@ -287,6 +292,7 @@ private fun liveContainer(previewCache: PreviewCache?, build: DesktopBuild, user
                 container.statsService?.close()
                 stats.close()
                 inGame?.close()
+                social?.close()
                 container.customGames?.close()
             },
         )

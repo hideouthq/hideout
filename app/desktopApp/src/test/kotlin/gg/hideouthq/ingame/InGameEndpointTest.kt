@@ -6,6 +6,7 @@ import gg.hideouthq.core.customgames.MenusPack
 import gg.hideouthq.core.customgames.PackToken
 import gg.hideouthq.core.customgames.Session
 import gg.hideouthq.core.customgames.SiteOrigin
+import gg.hideouthq.core.customgames.social.Social
 import gg.hideouthq.core.data.fake.FakeCustomGamesFeed
 import gg.hideouthq.core.data.fake.FakeCustomGamesPlatform
 import gg.hideouthq.core.data.fake.FakeSessionFiles
@@ -47,7 +48,7 @@ class InGameEndpointTest {
     private val platform = FakeCustomGamesPlatform(chatty = false)
     private val feed = FakeCustomGamesFeed(answer = CustomGamesFetch.Fresh(FakeCustomGamesFeed.SampleModes.copy(modes = listOf(FakeCustomGamesFeed.BebopWars))))
     private val games = CustomGames(platform, FakeSessionFiles(), feed, scope, hostFolders = flowOf(false)).apply { start() }
-    private val inGame = InGame(games, SiteOrigin.parse(Site), scope)
+    private val inGame = InGame(games, Social(games, null, scope).apply { start() }, SiteOrigin.parse(Site), scope)
     private val logs = CopyOnWriteArrayList<String>()
     private val pack = MenusPack(FakeCustomGamesPlatform.SampleStamp, checkNotNull(PackToken.parse(Token)))
     private val endpoint = InGameEndpoint(inGame, { pack }, logs::add, keepalive = 300.milliseconds).also { assertTrue(it.start(0)) }

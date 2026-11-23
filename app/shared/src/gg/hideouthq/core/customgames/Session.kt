@@ -41,11 +41,13 @@ sealed interface Session {
     /** Holding the files and staging the mode, before the server reads it. */
     data class HostAdmitting(val host: PreparedHost, val port: Int, val setup: GameSetup, override val deadline: DeadlineToken) : Session
 
+    /** [region] is the relay region the helper hosts the game's link in, said with the code. */
     data class HostStarting(
         val code: InviteCode?,
         val map: String?,
         override val deadline: DeadlineToken,
         val guests: GuestPaths = GuestPaths(),
+        val region: RelayRegion? = null,
     ) : Session
 
     /**
@@ -58,6 +60,7 @@ sealed interface Session {
         val players: Map<Int, Player> = emptyMap(),
         val own: OwnGame,
         val guests: GuestPaths = GuestPaths(),
+        val region: RelayRegion? = null,
     ) : Session {
         override val deadline: DeadlineToken? get() = own.deadline
     }
@@ -279,6 +282,12 @@ sealed interface SessionEvent {
 
     data class InviteOpened(val code: InviteCode, val acceptedBefore: InviteOffer? = null) : SessionEvent
 
+    /** Friends added to the hosted game's invitees. Only the record changes; [Session] never waits on it. */
+    data class Invited(val to: Set<SteamId>) : SessionEvent
+
+    /** Whether Servers lists the hosted game, changed while it runs. Only the record changes. */
+    data class Listed(val listing: Listing) : SessionEvent
+
     /** [restartAccepted] is as for [HostRequested]. */
     data class JoinConfirmed(val restartAccepted: RestartReason? = null) : SessionEvent
 
@@ -392,6 +401,9 @@ data class Step(val session: Session, val commands: List<SessionCommand> = empty
 /** Whether a [HostRequested] starts a game now. [reduce] reads it too, so a caller that answers before posting agrees with it. */
 val Session.startsHost: Boolean get() = this == Session.Idle || this is Session.Ended
 
+/** Whether an [SessionEvent.InviteOpened] for a new code starts finding it now, leaving a link still being found or reviewed. */
+val Session.takesInvite: Boolean get() = startsHost || this is Session.Finding || this is Session.Confirming
+
 /**
  * The next state and what to do about [event]. Pure and total. An event a state doesn't expect leaves it unchanged.
  * [client] is the library's newest word on the game, since a state can start on what it says now. [token] arms any
@@ -469,7 +481,7 @@ fun reduce(session: Session, event: SessionEvent, client: GameActivity, token: D
         }
 
         is Session.HostStarting -> when (event) {
-            is LinkEvent.InviteReady -> session.arrived(event.code, session.map, client, booting)
+            is LinkEvent.InviteReady -> session.copy(region = event.region).arrived(event.code, session.map, client, booting)
             is LinkEvent.Guests -> Step(session.copy(guests = event.paths))
             is LinkEvent.Server -> when (val server = event.event) {
                 is ServerEvent.Ready -> session.arrived(session.code, server.map, client, booting)
@@ -621,7 +633,7 @@ private fun Session.HostStarting.arrived(code: InviteCode?, map: String?, client
     if (code == null || map == null) {
         Step(copy(code = code, map = map))
     } else {
-        entering(client, booting).let { (own, commands) -> Step(Session.Hosting(code, map, own = own, guests = guests), commands) }
+        entering(client, booting).let { (own, commands) -> Step(Session.Hosting(code, map, own = own, guests = guests, region = region), commands) }
     }
 
 private fun settingUp(next: Prepared, restartAccepted: RestartReason? = null) = Step(Session.SettingUp(next, restartAccepted), listOf(SetUpGame(next.renderer)))

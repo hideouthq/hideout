@@ -17,6 +17,8 @@ class LinkEventsTest {
         val offer = InviteOffer(null, ModeId("arena"), OfferContent.Feed(null), Choices.None, 4)
         val lines = listOf(
             """{"type":"invite","code":"P95MAN26D"}""" to LinkEvent.InviteReady(code),
+            """{"type":"invite","code":"P95MAN26D","region":{"id":4,"code":"fra"}}""" to LinkEvent.InviteReady(code, RelayRegion(4, "fra")),
+            """{"type":"invite","code":"P95MAN26D","region":{"id":0,"code":"FRA"}}""" to LinkEvent.InviteReady(code),
             """{"type":"offer","offer":"${offer.encoded}"}""" to LinkEvent.Offer(offer),
             """{"type":"offer","offer":"not an offer"}""" to LinkEvent.BadOffer,
             """{"type":"offer"}""" to LinkEvent.BadOffer,

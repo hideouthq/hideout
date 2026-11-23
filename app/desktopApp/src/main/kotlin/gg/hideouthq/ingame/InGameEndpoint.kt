@@ -111,7 +111,11 @@ class InGameEndpoint(
                 headers["Content-Type"] = "text/plain; charset=utf-8"
                 exchange.sendResponseHeaders(200, 0)
                 inGame.opened()
-                runBlocking { follow(exchange.responseBody) }
+                try {
+                    runBlocking { follow(exchange.responseBody) }
+                } finally {
+                    inGame.closed()
+                }
             }
             else -> exchange.sendResponseHeaders(405, -1)
         }
@@ -146,7 +150,7 @@ class InGameEndpoint(
         val result = when {
             query["p"] != InGameProtocol.toString() -> CommandResult.Outdated
             boot == null || sequence == null -> CommandResult.Invalid
-            else -> seen.answer(boot, sequence) { query["c"]?.let(InGameWire::parseCommand)?.let(inGame::run) ?: CommandResult.Invalid }
+            else -> seen.answer(boot, sequence) { query["c"]?.let(InGameWire::parseCommand)?.let { runBlocking { inGame.run(it) } } ?: CommandResult.Invalid }
         }
         val png = pixelRow(result.width)
         exchange.responseHeaders["Content-Type"] = "image/png"

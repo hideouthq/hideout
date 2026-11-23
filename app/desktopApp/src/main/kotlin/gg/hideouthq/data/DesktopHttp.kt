@@ -3,6 +3,7 @@ package gg.hideouthq.data
 import gg.hideouthq.OnWindows
 import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.engine.okhttp.OkHttp
+import okhttp3.OkHttpClient
 import java.security.KeyStore
 import java.security.cert.CertificateException
 import java.security.cert.X509Certificate
@@ -18,6 +19,9 @@ import javax.net.ssl.X509TrustManager
 fun desktopEngine(): HttpClientEngine = OkHttp.create {
     windowsTrust?.let { (context, trust) -> config { sslSocketFactory(context.socketFactory, trust) } }
 }
+
+/** The same trust for a client used without Ktor, such as for WebSockets. */
+fun desktopOkHttp(): OkHttpClient = OkHttpClient.Builder().apply { windowsTrust?.let { (context, trust) -> sslSocketFactory(context.socketFactory, trust) } }.build()
 
 private val windowsTrust: Pair<SSLContext, X509TrustManager>? by lazy {
     if (!OnWindows) return@lazy null

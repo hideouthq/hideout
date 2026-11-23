@@ -74,6 +74,8 @@ fun recordAfter(record: GameRecord?, event: SessionEvent, next: Session, context
             role = when {
                 role is Role.Guest -> role.found((next as? Session.Confirming)?.invite?.offer, context)
                 role is Role.Host && event is RuntimePrepared -> role.copy(offer = event.host.offer)
+                role is Role.Host && event is SessionEvent.Invited -> role.copy(outreach = role.outreach.copy(invitees = role.outreach.invitees + event.to))
+                role is Role.Host && event is SessionEvent.Listed -> role.copy(outreach = role.outreach.copy(listing = event.listing))
                 else -> role
             },
             me = kept.me ?: context.me,

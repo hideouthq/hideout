@@ -1,5 +1,6 @@
 package gg.hideouthq.data.preview
 
+import gg.hideouthq.data.signedMessage
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpSend
 import io.ktor.client.plugins.plugin
@@ -22,7 +23,7 @@ class PreviewKey(private val mac: Mac, baseUrl: String, val build: String) {
     val host: String = Url(baseUrl).signedHost()
 
     fun signature(method: String, host: String, path: String, time: Long): String =
-        HexFormat.of().formatHex(synchronized(mac) { mac.doFinal("$method\n$host\n$path\n$time\n$build".encodeToByteArray()) })
+        HexFormat.of().formatHex(synchronized(mac) { mac.doFinal(signedMessage(method, host, path, time, build)) })
 
     companion object {
         const val TimeHeader = "X-Hideout-Time"

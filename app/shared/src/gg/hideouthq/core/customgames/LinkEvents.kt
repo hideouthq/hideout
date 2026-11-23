@@ -9,7 +9,7 @@ import kotlinx.serialization.json.longOrNull
 
 /** The helper's stdout, parsed once at the boundary. These lines feed straight into [reduce]. */
 sealed interface LinkEvent : SessionEvent {
-    data class InviteReady(val code: InviteCode) : LinkEvent
+    data class InviteReady(val code: InviteCode, val region: RelayRegion? = null) : LinkEvent
 
     data class Offer(val offer: InviteOffer) : LinkEvent
 
@@ -82,6 +82,16 @@ sealed interface ServerEvent {
     data class Left(val slot: Int) : ServerEvent
 }
 
+/** A Tailcat relay region, as the helper names it. [code] is short and lowercase, such as `fra`. */
+data class RelayRegion(val id: Int, val code: String)
+
+private val RegionCode = Regex("[a-z0-9-]{1,16}")
+
+private fun relayRegion(json: JsonObject): RelayRegion? {
+    val id = json.int("id")?.takeIf { it in 1..999_999 } ?: return null
+    return json.text("code")?.takeIf(RegionCode::matches)?.let { RelayRegion(id, it) }
+}
+
 /** The [LinkEvent] on one line of the helper's stdout, or null for a line it cannot read or a line nothing here acts on, such as `flow-open`. Never throws. */
 fun parseLinkEvent(line: String): LinkEvent? {
     val json = try {
@@ -93,7 +103,7 @@ fun parseLinkEvent(line: String): LinkEvent? {
         null
     } ?: return null
     return when (json.text("type")) {
-        "invite" -> json.text("code")?.let(InviteCode::parse)?.let(LinkEvent::InviteReady)
+        "invite" -> json.text("code")?.let(InviteCode::parse)?.let { LinkEvent.InviteReady(it, (json["region"] as? JsonObject)?.let(::relayRegion)) }
         "offer" -> json.text("offer")?.let(InviteOffer::decode)?.let(LinkEvent::Offer) ?: LinkEvent.BadOffer
         "server" -> (json["event"] as? JsonObject)?.let(::serverEvent)?.let(LinkEvent::Server)
         "linked" -> LinkEvent.Linked

@@ -99,6 +99,8 @@ import gg.hideouthq.core.sharing.ProfileShares
 import gg.hideouthq.core.sharing.SiteProfileShares
 import gg.hideouthq.feature.discover.followPlayedHeroes
 import gg.hideouthq.feature.discover.prefetchFeaturedRenders
+import gg.hideouthq.core.customgames.social.Social
+import gg.hideouthq.core.customgames.social.SocialNetwork
 import gg.hideouthq.feature.ingame.InGame
 import gg.hideouthq.feature.stats.NoStatsSource
 import gg.hideouthq.feature.stats.StatsSource
@@ -241,6 +243,7 @@ class AppContainer(
             customGamesPlatform: CustomGamesPlatform? = null,
             customGamesFeed: CustomGamesFeedSource? = null,
             customGamesSite: SiteOrigin? = null,
+            socialNetwork: SocialNetwork? = null,
             analyticsOs: String = "unknown",
             postHogProjectKey: String? = null,
         ): AppContainer {
@@ -300,7 +303,7 @@ class AppContainer(
                 appUpdates = appUpdates,
                 customGames = customGames,
                 customGamesSite = customGamesSite,
-                inGame = customGames?.let { InGame(it, customGamesSite, scope) },
+                inGame = customGames?.let { InGame(it, Social(it, socialNetwork, scope).apply { start() }, customGamesSite, scope) },
                 profileShares = customGamesSite?.let { SiteProfileShares(client, it) } ?: ProfileShares.None,
             )
         }

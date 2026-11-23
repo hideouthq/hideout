@@ -14,6 +14,7 @@ import gg.hideouthq.core.customgames.SettingValue
 import gg.hideouthq.core.customgames.SiteOrigin
 import gg.hideouthq.core.customgames.SteamId
 import gg.hideouthq.core.customgames.social.ListingId
+import gg.hideouthq.core.customgames.social.Social
 import gg.hideouthq.core.data.fake.FakeCustomGamesFeed
 import gg.hideouthq.core.data.fake.FakeCustomGamesPlatform
 import gg.hideouthq.core.data.fake.FakeSessionFiles
@@ -21,6 +22,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
@@ -37,6 +39,7 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 private val Kestrel = checkNotNull(SteamId.parse("76561198000000007"))
@@ -47,7 +50,7 @@ class InGameTest {
     private val platform = FakeCustomGamesPlatform(chatty = false)
     private val feed = FakeCustomGamesFeed(answer = CustomGamesFetch.Fresh(FakeCustomGamesFeed.SampleModes.copy(modes = listOf(Bebop))))
     private val games = CustomGames(platform, FakeSessionFiles(), feed, scope, hostFolders = flowOf(false)).apply { start() }
-    private val inGame = InGame(games, SiteOrigin.parse("https://hideouthq.gg"), scope)
+    private val inGame = InGame(games, Social(games, null, scope).apply { start() }, SiteOrigin.parse("https://hideouthq.gg"), scope)
 
     @AfterTest
     fun end() = scope.cancel()
@@ -66,7 +69,9 @@ class InGameTest {
     }
 
     private fun hostBebop(outreach: Outreach = Outreach(Listing.Public, setOf(Kestrel)), picks: Map<SettingKey, SettingValue> = mapOf(key("teams") to value("3v3"))) =
-        inGame.run(PanelCommand.Host(Bebop.id, picks, outreach, restart = null))
+        press(PanelCommand.Host(Bebop.id, picks, outreach, restart = null))
+
+    private fun press(command: PanelCommand) = runBlocking { inGame.run(command) }
 
     private fun game(wanted: (JsonObject) -> Boolean): JsonObject =
         inGame.topics.map { topics -> topics[Topic.Game]?.let { Json.parseToJsonElement(it).jsonObject } }.awaited("that game frame") { it != null && wanted(it) }!!
@@ -100,7 +105,7 @@ class InGameTest {
     @Test
     fun aModeNoLongerListedIsGoneAndAPickTheModeDoesNotOfferIsInvalid() {
         listed()
-        assertEquals(CommandResult.Gone, inGame.run(PanelCommand.Host(ModeId("gone"), emptyMap(), Outreach.Private, null)))
+        assertEquals(CommandResult.Gone, press(PanelCommand.Host(ModeId("gone"), emptyMap(), Outreach.Private, null)))
         assertEquals(CommandResult.Invalid, hostBebop(picks = mapOf(key("teams") to value("9v9"))))
         assertEquals(CommandResult.Invalid, hostBebop(picks = mapOf(key("score") to value("5"))))
         assertEquals(Session.Idle, games.live.value.session)
@@ -108,9 +113,9 @@ class InGameTest {
 
     @Test
     fun invitesListingsAndJoinsAreUnavailableUntilThisBuildCanSendThem() {
-        assertEquals(CommandResult.Unavailable, inGame.run(PanelCommand.Invite(setOf(Kestrel))))
-        assertEquals(CommandResult.Unavailable, inGame.run(PanelCommand.Relist(Listing.Public)))
-        assertEquals(CommandResult.Unavailable, inGame.run(PanelCommand.JoinServer(checkNotNull(ListingId.parse("3c41a9e07d5b2f18")))))
+        assertEquals(CommandResult.Unavailable, press(PanelCommand.Invite(setOf(Kestrel))))
+        assertEquals(CommandResult.Unavailable, press(PanelCommand.Relist(Listing.Public)))
+        assertEquals(CommandResult.Unavailable, press(PanelCommand.JoinServer(checkNotNull(ListingId.parse("3c41a9e07d5b2f18")))))
     }
 
     @Test
@@ -124,16 +129,17 @@ class InGameTest {
         assertEquals("Getting Bebop Wars ready", starting["steps"]?.jsonArray?.first()?.jsonObject?.get("label")?.jsonPrimitive?.content)
 
         games.live.awaited("the server starting") { it.session is Session.HostStarting }
+        runBlocking { withTimeout(10.seconds) { while (platform.links.isEmpty()) delay(10.milliseconds) } }
         platform.links.last().say(LinkEvent.Stopped(LinkStop.ServerExited, "the map did not load"))
         val failed = game { it.host?.get("phase")?.jsonPrimitive?.content == "failed" }.host!!
         assertEquals("Bebop Wars couldn’t load its arena", failed["words"]?.jsonObject?.get("title")?.jsonPrimitive?.content, "the game screen's own words")
         assertEquals(listOf("again", "dismiss"), failed["actions"]?.jsonArray?.map { it.jsonPrimitive.content })
 
-        assertEquals(CommandResult.Accepted, inGame.run(PanelCommand.Act(Action.Again)))
+        assertEquals(CommandResult.Accepted, press(PanelCommand.Act(Action.Again)))
         game { it.host?.get("phase")?.jsonPrimitive?.content == "starting" }
         assertEquals(Outreach(Listing.Public, setOf(Kestrel)), assertIs<Role.Host>(games.live.value.game?.role).outreach, "Play again invites the same friends")
 
-        assertEquals(CommandResult.Accepted, inGame.run(PanelCommand.Act(Action.Stop)))
+        assertEquals(CommandResult.Accepted, press(PanelCommand.Act(Action.Stop)))
         games.live.awaited("the game stopped") { it.session is Session.Ended }
     }
 }

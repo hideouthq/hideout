@@ -1,19 +1,34 @@
 package gg.hideouthq.feature.ingame
 
 import gg.hideouthq.core.customgames.Choices
-import gg.hideouthq.core.customgames.DisplayName
 import gg.hideouthq.core.customgames.CustomGames
+import gg.hideouthq.core.customgames.DisplayName
 import gg.hideouthq.core.customgames.GameRecord
+import gg.hideouthq.core.customgames.JoinTicket
 import gg.hideouthq.core.customgames.LibraryEntry
+import gg.hideouthq.core.customgames.Listing
 import gg.hideouthq.core.customgames.Mode
 import gg.hideouthq.core.customgames.ModeList
 import gg.hideouthq.core.customgames.ModeListing
+import gg.hideouthq.core.customgames.ModeOrigin
 import gg.hideouthq.core.customgames.Role
+import gg.hideouthq.core.customgames.Session
 import gg.hideouthq.core.customgames.SettingKey
 import gg.hideouthq.core.customgames.SettingValue
 import gg.hideouthq.core.customgames.SiteOrigin
+import gg.hideouthq.core.customgames.SteamId
 import gg.hideouthq.core.customgames.library
+import gg.hideouthq.core.customgames.social.Delivery
+import gg.hideouthq.core.customgames.social.GameStatus
+import gg.hideouthq.core.customgames.social.Invitation
+import gg.hideouthq.core.customgames.social.PublicGame
+import gg.hideouthq.core.customgames.social.Resolved
+import gg.hideouthq.core.customgames.social.ServersRead
+import gg.hideouthq.core.customgames.social.Social
+import gg.hideouthq.core.customgames.social.SocialState
+import gg.hideouthq.core.customgames.social.SocialStatus
 import gg.hideouthq.core.customgames.startsHost
+import gg.hideouthq.core.customgames.takesInvite
 import gg.hideouthq.core.designsystem.component.StepStatus
 import gg.hideouthq.feature.customgames.Body
 import gg.hideouthq.feature.customgames.EndingStage
@@ -25,6 +40,7 @@ import gg.hideouthq.feature.customgames.Outcome
 import gg.hideouthq.feature.customgames.Phrase
 import gg.hideouthq.feature.customgames.PresentInputs
 import gg.hideouthq.feature.customgames.StepView
+import gg.hideouthq.feature.customgames.faceOf
 import gg.hideouthq.feature.customgames.headlineOf
 import gg.hideouthq.feature.customgames.joinBusy
 import gg.hideouthq.feature.customgames.joinHeadline
@@ -49,29 +65,37 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.ResourceEnvironment
 import org.jetbrains.compose.resources.getSystemResourceEnvironment
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * The in-game UI's one way into the app. [topics] is the newest frame of every topic, empty until the first is ready,
- * which each stream compares with what it sent. [run] is the only way a press reaches [CustomGames]: it answers what it
- * can see now, as a running session being Busy, and posts, and what the press led to shows in [topics].
+ * which each stream compares with what it sent. [run] is the only way a press reaches [CustomGames] and [Social]: it
+ * answers what it can see now, as a running session being Busy, and posts, and what the press led to shows in [topics].
  */
-class InGame(private val games: CustomGames, site: SiteOrigin?, scope: CoroutineScope) {
+class InGame(private val games: CustomGames, private val social: Social, site: SiteOrigin?, scope: CoroutineScope) {
     @OptIn(ExperimentalCoroutinesApi::class)
     val topics: StateFlow<Map<Topic, String>> =
-        combine(games.live, games.modes, games.transfer, games.restartsDeadlock) { live, modes, transfer, restarts ->
-            PresentInputs(live, restarts, transfer, modes, games.firewallMayAsk, site)
-        }.mapLatest(::inGameFrames).stateIn(scope, SharingStarted.Eagerly, emptyMap())
+        combine(games.live, games.modes, games.transfer, games.restartsDeadlock, social.state) { live, modes, transfer, restarts, state ->
+            PresentInputs(live, restarts, transfer, modes, games.firewallMayAsk, site) to SocialView(social.status(state), social.available, state)
+        }.mapLatest { (inputs, view) -> inGameFrames(inputs, view) }.stateIn(scope, SharingStarted.Eagerly, emptyMap())
+
+    private val open = AtomicInteger()
 
     init {
         scope.launch(Dispatchers.IO) { words }
     }
 
     /** A game began to listen. Reads the mode list and whether Play would restart Deadlock, as the app's page does as it opens. */
-    fun opened() = games.refreshModes()
+    fun opened() {
+        games.refreshModes()
+        social.streams(open.incrementAndGet())
+    }
 
-    fun run(command: PanelCommand): CommandResult = when (command) {
+    fun closed() = social.streams(open.decrementAndGet())
+
+    suspend fun run(command: PanelCommand): CommandResult = when (command) {
         is PanelCommand.Host -> host(command)
-        is PanelCommand.Act -> {
+        is PanelCommand.Act -> accepted {
             when (command.action) {
                 Action.Stop -> games.stop()
                 Action.Restart -> games.restartGame()
@@ -79,15 +103,40 @@ class InGame(private val games: CustomGames, site: SiteOrigin?, scope: Coroutine
                 Action.Dismiss -> games.dismissEnded()
                 Action.Again -> games.again()
             }
-            CommandResult.Accepted
         }
-        is PanelCommand.Confirm -> {
-            games.confirmJoin(command.restart)
-            CommandResult.Accepted
+        is PanelCommand.Confirm -> accepted { games.confirmJoin(command.restart) }
+        is PanelCommand.Hello -> accepted { social.gameSelf(command.self) }
+        is PanelCommand.Forget -> accepted { social.forget(command.id) }
+        is PanelCommand.Invite -> online { if (hosted() == null) CommandResult.Busy else accepted { games.invite(command.to) } }
+        is PanelCommand.Relist -> online {
+            val hosted = hosted()
+            when {
+                hosted == null -> CommandResult.Busy
+                command.listing == Listing.Public && hosted.mode.origin !is ModeOrigin.Feed -> CommandResult.Invalid
+                else -> accepted { games.list(command.listing) }
+            }
         }
-        is PanelCommand.Hello -> CommandResult.Accepted
-        is PanelCommand.Invite, is PanelCommand.Relist, is PanelCommand.JoinInvite, is PanelCommand.JoinServer, is PanelCommand.Forget, PanelCommand.Servers ->
-            CommandResult.Unavailable
+        is PanelCommand.JoinInvite -> online { join { social.take(command.id) } }
+        is PanelCommand.JoinServer -> online { join { (social.resolve(command.id) as? Resolved.Open)?.ticket } }
+        PanelCommand.Servers -> online { accepted { social.wantServers() } }
+    }
+
+    private fun hosted(): Role.Host? = games.live.value.let { live -> (live.game?.role as? Role.Host)?.takeIf { !live.session.startsHost } }
+
+    private inline fun online(press: () -> CommandResult): CommandResult = if (social.available) press() else CommandResult.Unavailable
+
+    /** Busy is checked before [ticket], which may ask the directory, and again after, since a session may have begun meanwhile. */
+    private inline fun join(ticket: () -> JoinTicket?): CommandResult {
+        if (!games.live.value.session.takesInvite) return CommandResult.Busy
+        val found = ticket() ?: return CommandResult.Gone
+        if (!games.live.value.session.takesInvite) return CommandResult.Busy
+        games.join(found)
+        return CommandResult.Accepted
+    }
+
+    private inline fun accepted(post: () -> Unit): CommandResult {
+        post()
+        return CommandResult.Accepted
     }
 
     private fun host(command: PanelCommand.Host): CommandResult {
@@ -98,6 +147,9 @@ class InGame(private val games: CustomGames, site: SiteOrigin?, scope: Coroutine
         return CommandResult.Accepted
     }
 }
+
+/** What the game shows of [Social]: whether it works, and its [state]. [available] is a build with the invite key. */
+data class SocialView(val status: SocialStatus = SocialStatus.Off, val available: Boolean = false, val state: SocialState = SocialState())
 
 /** The mode's defaults with each pick laid over, or null when a pick names no setting or option of [listing]. */
 private fun choicesOf(listing: ModeListing, picks: Map<SettingKey, SettingValue>): Choices? =
@@ -110,16 +162,60 @@ private fun choicesOf(listing: ModeListing, picks: Map<SettingKey, SettingValue>
 private val words: ResourceEnvironment by lazy { getSystemResourceEnvironment() }
 
 /** Every topic's frame for [inputs], from the same [present] the app's own screens draw, in the words they use. */
-suspend fun inGameFrames(inputs: PresentInputs): Map<Topic, String> {
+suspend fun inGameFrames(inputs: PresentInputs, social: SocialView = SocialView()): Map<Topic, String> {
     val shown = present(inputs)
     val record = inputs.live.game
-    val host = shown.game?.takeIf { record?.role is Role.Host }?.let { hostCard(it, checkNotNull(record), shown.chip?.count) }
+    val deliveries = social.state.hosted?.takeIf { it.code == (inputs.live.session as? Session.Hosting)?.code }?.deliveries.orEmpty()
+    val host = shown.game?.takeIf { record?.role is Role.Host }?.let { hostCard(it, checkNotNull(record), shown.chip?.count, deliveries) }
     val game = Frame.Game(host, shown.join?.let { joinCard(it) }, inputs.restartsDeadlock?.let { Restart(RestartWire.of(it), restartAheadPhrase(it, host = true).load(words)) })
     return mapOf(
-        Topic.Hello to Frame.Hello(InGameProtocol, social = SocialWire.Off),
+        Topic.Hello to Frame.Hello(InGameProtocol, social = socialWire(social.status)),
         Topic.Catalog to Frame.Catalog(catalog(inputs.modes)),
         Topic.Game to game,
+        Topic.Inbox to Frame.Inbox(social.state.inbox.map { inviteCard(it, inputs.modes) }),
+        Topic.Servers to servers(social, inputs.modes),
     ).mapValues { (_, frame) -> InGameWire.encode(frame) }
+}
+
+private fun socialWire(status: SocialStatus): SocialWire = when (status) {
+    SocialStatus.On -> SocialWire.On
+    SocialStatus.Off -> SocialWire.Off
+    SocialStatus.OtherAccount -> SocialWire.OtherAccount
+}
+
+private suspend fun inviteCard(invitation: Invitation, modes: ModeList): InviteCard {
+    val offer = invitation.ticket.offer
+    val face = faceOf(offer, modes)
+    return InviteCard(
+        invitation.id.value, invitation.from.value, face.namePhrase.load(words), face.picks, face.art?.tile,
+        listOf(invitation.players, offer.capacity), invitation.expires.toEpochMilliseconds(),
+    )
+}
+
+/** A game whose mode this computer's list doesn't show is left out: joining it would offer nothing to review. */
+private suspend fun servers(social: SocialView, modes: ModeList): Frame.Servers {
+    if (!social.available) return Frame.Servers(ServersState.Unavailable, emptyList())
+    val servers = social.state.servers
+    val state = when (servers.read) {
+        ServersRead.Idle -> ServersState.Idle
+        ServersRead.Loading -> ServersState.Loading
+        ServersRead.Ready -> ServersState.Ready
+        ServersRead.Unreachable -> ServersState.Unreachable
+    }
+    return Frame.Servers(state, servers.games.filter { modes.shownFor(it.offer) != null }.map { serverRow(it, modes, servers.ping) })
+}
+
+private suspend fun serverRow(game: PublicGame, modes: ModeList, ping: Map<Int, Int>): ServerRow {
+    val face = faceOf(game.offer, modes)
+    val status = when (game.status) {
+        GameStatus.Lobby -> ServerStatus.Lobby
+        GameStatus.Match -> ServerStatus.Match
+        GameStatus.Full -> ServerStatus.Full
+    }
+    return ServerRow(
+        game.id.value, game.offer.host?.value, face.namePhrase.load(words), face.picks, face.art?.tile, game.region.code,
+        listOf(game.players, game.offer.capacity), ping[game.region.id], status,
+    )
 }
 
 private fun catalog(modes: ModeList): List<ModeCard> =
@@ -144,7 +240,7 @@ private fun modeCard(mode: Mode, bytes: Long?): ModeCard {
     )
 }
 
-private suspend fun hostCard(view: GameView, record: GameRecord, players: Pair<Int, Int>?): HostCard {
+private suspend fun hostCard(view: GameView, record: GameRecord, players: Pair<Int, Int>?, deliveries: Map<SteamId, Delivery>): HostCard {
     val role = record.role as Role.Host
     val body = view.body
     return HostCard(
@@ -156,7 +252,13 @@ private suspend fun hostCard(view: GameView, record: GameRecord, players: Pair<I
         players = players?.toList(),
         listing = ListingWire.of(role.outreach.listing),
         invitees = role.outreach.invitees.map { it.value }.sorted(),
-        deliveries = emptyMap(),
+        deliveries = deliveries.entries.sortedBy { it.key.value }.associate { (to, delivery) ->
+            to.value to when (delivery) {
+                Delivery.Sending -> DeliveryWire.Sending
+                Delivery.Delivered -> DeliveryWire.Delivered
+                Delivery.NotReached -> DeliveryWire.NotReached
+            }
+        },
         actions = hostActions(body),
     )
 }

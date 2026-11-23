@@ -27,6 +27,20 @@ import gg.hideouthq.core.customgames.Transfer
 import gg.hideouthq.core.customgames.social.InvitationId
 import gg.hideouthq.core.customgames.social.ListingId
 import gg.hideouthq.core.data.fake.FakeCustomGamesFeed
+import gg.hideouthq.core.customgames.JoinTicket
+import gg.hideouthq.core.customgames.OfferContent
+import gg.hideouthq.core.customgames.RelayRegion
+import gg.hideouthq.core.customgames.social.Delivery
+import gg.hideouthq.core.customgames.social.GameStatus
+import gg.hideouthq.core.customgames.social.Hosted
+import gg.hideouthq.core.customgames.social.Invitation
+import gg.hideouthq.core.customgames.social.ListingToken
+import gg.hideouthq.core.customgames.social.PublicGame
+import gg.hideouthq.core.customgames.social.Servers
+import gg.hideouthq.core.customgames.social.ServersRead
+import gg.hideouthq.core.customgames.social.SocialState
+import gg.hideouthq.core.customgames.social.SocialStatus
+import gg.hideouthq.core.data.fake.FakeCustomGamesPlatform
 import gg.hideouthq.feature.customgames.PresentInputs
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
@@ -66,8 +80,12 @@ class InGameWireTest {
     private val hostRecord = GameRecord(Role.Host(bebop, threes, Outreach(Listing.Public, setOf(kestrel))), me)
     private val site = SiteOrigin.parse("https://hideouthq.gg")
 
-    private suspend fun frames(live: LiveSession, restarts: RestartReason? = null, transfer: Transfer? = null) =
-        inGameFrames(PresentInputs(live, restarts, transfer, modes, site = site))
+    private suspend fun frames(live: LiveSession, social: SocialView = SocialView(), restarts: RestartReason? = null, transfer: Transfer? = null) =
+        inGameFrames(PresentInputs(live, restarts, transfer, modes, site = site), social)
+
+    private fun invitation(id: String) = checkNotNull(InvitationId.parse(id))
+
+    private fun listing(id: String) = checkNotNull(ListingId.parse(id))
 
     @Test
     fun framesAreTheGoldenOnes() = runTest {
@@ -77,7 +95,7 @@ class InGameWireTest {
         golden("game-idle.json", idle.getValue(Topic.Game))
         golden("alive.json", InGameWire.encode(Frame.Alive))
 
-        val starting = frames(LiveSession(Session.HostPreparing(DeadlineToken(1)), hostRecord), RestartReason.NotSetUp, Transfer(7_700_000, 12_048_000))
+        val starting = frames(LiveSession(Session.HostPreparing(DeadlineToken(1)), hostRecord), restarts = RestartReason.NotSetUp, transfer = Transfer(7_700_000, 12_048_000))
         golden("game-starting.json", starting.getValue(Topic.Game))
 
         val hosting = Session.Hosting(code, "street", mapOf(0 to Player("nori", me.steamId)), OwnGame.In)
@@ -87,34 +105,48 @@ class InGameWireTest {
 
         val offer = InviteOffer.of(bebop, threes, LocalPlayer("76561198000000002", DisplayName.parse("Mugi")))
         val review = LiveSession(Session.Confirming(Invite(code, offer)), GameRecord(Role.Guest(code, offer, bebop.listing), me))
-        golden("game-review.json", frames(review, RestartReason.GameUpdated).getValue(Topic.Game))
+        golden("game-review.json", frames(review, restarts = RestartReason.GameUpdated).getValue(Topic.Game))
     }
 
     @Test
-    fun socialFramesAreTheGoldenOnes() {
-        val ready = InGameWire.encode(Frame.Game(
-            HostCard(
-                mode = "bebop-wars", phase = HostPhase.Ready, steps = emptyList(), words = Words("Waiting for a friend", "Your game is open."),
-                link = "https://hideouthq.gg/join#P95-MAN-26D", players = listOf(1, 6), listing = ListingWire.Public,
-                invitees = listOf("76561198000000007", "76561198000000008", "76561198000000009"),
-                deliveries = mapOf("76561198000000007" to DeliveryWire.Delivered, "76561198000000008" to DeliveryWire.NotReached, "76561198000000009" to DeliveryWire.Sending),
-                actions = listOf(Action.Stop),
+    fun socialFramesAreTheGoldenOnes() = runTest {
+        val nori = checkNotNull(SteamId.parse("76561198000000008"))
+        val wren = checkNotNull(SteamId.parse("76561198000000009"))
+        val mugi = LocalPlayer("76561198000000002", DisplayName.parse("Mugi"))
+        val offer = InviteOffer.of(bebop, threes, mugi)
+        val fra = RelayRegion(4, "fra")
+        val hosting = Session.Hosting(code, "street", mapOf(0 to Player("nori", me.steamId)), OwnGame.In, region = fra)
+        val record = GameRecord(Role.Host(bebop, threes, Outreach(Listing.Public, setOf(kestrel, nori, wren)), offer), me, startedAt = Instant.fromEpochSeconds(1_800_000_000))
+        val folder = InviteOffer(null, ModeId("arena"), OfferContent.Host(FakeCustomGamesPlatform.SampleShared), Choices.None, 4)
+        val state = SocialState(
+            inbox = listOf(
+                Invitation(invitation("9f2c41d07e6b4a58b3c1d2e3f4a5b6c7"), checkNotNull(SteamId.parse("76561198000000002")), JoinTicket(code, offer), 2, Instant.fromEpochMilliseconds(1_763_900_060_000)),
+                Invitation(invitation("0b7e5d21c3a94f68a1b2c3d4e5f60718"), checkNotNull(SteamId.parse("76561198000000003")), JoinTicket(code, folder), 1, Instant.fromEpochMilliseconds(1_763_900_045_000)),
             ),
-            join = null, restartAhead = null,
-        ))
-        golden("game-invites.json", ready)
-        golden("hello-other-account.json", InGameWire.encode(Frame.Hello(InGameProtocol, SocialWire.OtherAccount)))
-        golden("inbox.json", InGameWire.encode(Frame.Inbox(listOf(
-            InviteCard("9f2c41d07e6b4a58b3c1d2e3f4a5b6c7", "76561198000000002", "Bebop Wars", listOf("3v3"), "https://hideouthq.gg/customgames/art/tile.png", listOf(2, 6), 1_763_900_060_000),
-            InviteCard("0b7e5d21c3a94f68a1b2c3d4e5f60718", "76561198000000003", "A friend’s mode", emptyList(), null, listOf(1, 4), 1_763_900_045_000),
-        ))))
-        golden("inbox-empty.json", InGameWire.encode(Frame.Inbox(emptyList())))
-        golden("servers.json", InGameWire.encode(Frame.Servers(ServersState.Ready, listOf(
-            ServerRow("3c41a9e07d5b2f18", "Mugi", "Bebop Wars", listOf("3v3"), "https://hideouthq.gg/customgames/art/tile.png", "fra", listOf(3, 6), 31, ServerStatus.Lobby),
-            ServerRow("a17b0c9d2e3f4051", null, "Bebop Wars", listOf("6v6"), null, "sea", listOf(12, 12), null, ServerStatus.Full),
-        ))))
-        ServersState.entries.filter { it != ServersState.Ready }.forEach { state ->
-            golden("servers-${Json.encodeToString(ServersState.serializer(), state).trim('"')}.json", InGameWire.encode(Frame.Servers(state, emptyList())))
+            hosted = Hosted(code, ListingToken("0123456789abcdef0123456789abcdef"), mapOf(kestrel to Delivery.Delivered, nori to Delivery.NotReached, wren to Delivery.Sending)),
+            servers = Servers(
+                ServersRead.Ready,
+                listOf(
+                    PublicGame(listing("3c41a9e07d5b2f18"), offer, fra, 3, GameStatus.Lobby),
+                    PublicGame(listing("a17b0c9d2e3f4051"), offer.copy(host = null, capacity = 6), RelayRegion(9, "sea"), 6, GameStatus.Full),
+                    PublicGame(listing("77aa0c9d2e3f4051"), folder, fra, 1, GameStatus.Lobby),
+                ),
+                ping = mapOf(4 to 31),
+            ),
+        )
+        val on = SocialView(SocialStatus.On, available = true, state)
+        val social = inGameFrames(PresentInputs(LiveSession(hosting, record), modes = modes, site = site), on)
+        golden("hello-on.json", social.getValue(Topic.Hello))
+        golden("game-invites.json", social.getValue(Topic.Game))
+        golden("inbox.json", social.getValue(Topic.Inbox))
+        golden("servers.json", social.getValue(Topic.Servers))
+        golden("hello-other-account.json", frames(LiveSession(), SocialView(SocialStatus.OtherAccount, available = true)).getValue(Topic.Hello))
+
+        val idle = frames(LiveSession())
+        golden("inbox-empty.json", idle.getValue(Topic.Inbox))
+        golden("servers-unavailable.json", idle.getValue(Topic.Servers))
+        for ((read, name) in listOf(ServersRead.Idle to "idle", ServersRead.Loading to "loading", ServersRead.Unreachable to "unreachable")) {
+            golden("servers-$name.json", frames(LiveSession(), on.copy(state = SocialState(servers = Servers(read)))).getValue(Topic.Servers))
         }
     }
 

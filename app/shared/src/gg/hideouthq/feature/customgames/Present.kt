@@ -386,7 +386,7 @@ private fun afterCleanup(session: Session, modes: ModeList): JoinView? {
     return JoinView(null, faceOf(null, modes), null, JoinStep.AfterCleanup)
 }
 
-private fun faceOf(offer: InviteOffer?, modes: ModeList): ModeFace {
+internal fun faceOf(offer: InviteOffer?, modes: ModeList): ModeFace {
     val mode = offer?.let(modes::shownFor)
     return ModeFace(mode?.listing?.name, mode?.version, mode?.listing?.art, mode?.id?.value ?: SeedOfUnknown, offer?.choices?.labels(mode?.listing).orEmpty())
 }

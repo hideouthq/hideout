@@ -1,0 +1,48 @@
+[
+  {
+    "master": "hideout-invite-test-master-0123456789abcdef",
+    "build": "0.3.0",
+    "key": "a7f293d15229d045e3abbffcced979511cbec77edcd52bd87483138a6ce5d457",
+    "method": "POST",
+    "host": "hideouthq.gg",
+    "path": "/api/mailbox/76561198000000001/invites",
+    "time": 1763900000,
+    "body": "{\"from\":\"76561198000000002\",\"code\":\"P95MAN26D\",\"offer\":\"YmVib3Atd2Fycwo\",\"players\":2}",
+    "message": "POST\nhideouthq.gg\n/api/mailbox/76561198000000001/invites\n1763900000\n0.3.0\n34e2e05008f859c96b38e1257b224e2171f7960c7b6497ec8b4408a40eb0185d",
+    "signature": "ce72e4944655784f9fdf56dec096d50a92af8f814f179d496c883a1e79180f83",
+    "device": {
+      "seed": "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60",
+      "key": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo",
+      "signature": "cLZ2MEbf_Bpey-k-lzZhsjMIU8qBJLJqAMCKVODd22Up0WZeXUvgkQVSbDXOiddMLbPfAfcYDgG5zkodneDVAg"
+    }
+  },
+  {
+    "master": "hideout-invite-test-master-0123456789abcdef",
+    "build": "0.3.0",
+    "key": "a7f293d15229d045e3abbffcced979511cbec77edcd52bd87483138a6ce5d457",
+    "method": "GET",
+    "host": "hideouthq.gg",
+    "path": "/api/mailbox/76561198000000001",
+    "time": 1763900000,
+    "body": "",
+    "message": "GET\nhideouthq.gg\n/api/mailbox/76561198000000001\n1763900000\n0.3.0\ne3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "signature": "18907a9f87893eb513fbe72ebc7be0cd29ba52d08e3b8c3e9a2e66d883f69574",
+    "device": {
+      "seed": "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60",
+      "key": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo",
+      "signature": "8gJggU3Zmd0MNFcQxNgCGUe29VEZjFlN2yvYfCuR1GM9bkVtR5A6y8zsU7DjY4K3-VRtAPsYohVBwztkLZ9ACg"
+    }
+  },
+  {
+    "master": "hideout-invite-test-master-0123456789abcdef",
+    "build": "0.3.1",
+    "key": "e952c054714eec82006de1af7b0c5081b932cc1c979657c96e41fef12673ce3f",
+    "method": "PUT",
+    "host": "hideouthq.gg",
+    "path": "/api/games/0123456789abcdef0123456789abcdef",
+    "time": 1763900042,
+    "body": "{\"code\":\"P95MAN26D\",\"offer\":\"x\",\"players\":3,\"status\":\"lobby\",\"region\":{\"id\":4,\"code\":\"fra\",\"name\":\"Frankfurt\"},\"host\":{\"kind\":\"player\"},\"note\":\"Bébop\"}",
+    "message": "PUT\nhideouthq.gg\n/api/games/0123456789abcdef0123456789abcdef\n1763900042\n0.3.1\nb5879fdb17400d9b570f2b164beaa7f707473435208d6a3d9af21b89bccfd738",
+    "signature": "283b727a43a6cac46f777f3cca6fc8b812495829ff938d1e28a25f447d3f4e9b"
+  }
+]
