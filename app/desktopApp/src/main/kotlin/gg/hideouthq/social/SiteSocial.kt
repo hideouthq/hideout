@@ -115,14 +115,11 @@ class SiteSigner(private val mac: Mac, private val build: String, private val de
     }
 }
 
-/** The site's signed routes over [client], at [site], such as `https://hideouthq.gg`. */
 internal class SiteRoutes(private val client: OkHttpClient, private val signer: SiteSigner, site: String) {
     private val base = site.trimEnd('/').toHttpUrl()
 
-    fun url(path: String): HttpUrl = base.newBuilder().encodedPath(path).build()
-
     fun signed(method: String, path: String, body: ByteArray = ByteArray(0), extra: Headers = Headers.Builder().build()): Request {
-        val url = url(path)
+        val url = base.newBuilder().encodedPath(path).build()
         val content = if (method == "GET" || method == "DELETE" && body.isEmpty()) null else body.toRequestBody(JsonType)
         return Request.Builder().url(url).headers(extra.newBuilder().addAll(signer.headers(method, url, body)).build()).method(method, content).build()
     }
@@ -212,8 +209,10 @@ internal class SiteMailbox(private val routes: SiteRoutes, private val scope: Co
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                response?.let(routes::heard)
-                if (response != null) log("Invites: the mailbox answered ${response.code}")
+                if (response != null) {
+                    routes.heard(response)
+                    log("Invites: the mailbox answered ${response.code}")
+                }
                 ended.complete(if (opened.get()) Ended.AfterOpening else Ended.Refused)
             }
         })
@@ -278,7 +277,6 @@ internal class SiteDirectory(private val routes: SiteRoutes, scope: CoroutineSco
         this.wanted.value = wanted
     }
 
-    /** Takes the listing down before the app exits, rather than leaving it to expire. */
     suspend fun close() {
         wanted.value = null
         listed.getAndSet(null)?.let { routes.call("DELETE", "/api/games/${it.value}") }
@@ -345,14 +343,12 @@ internal fun parseInvite(text: String): Invitation? {
 private fun publicGame(row: JsonObject): PublicGame? {
     val id = row.text("id")?.let(ListingId::parse) ?: return null
     val offer = row.text("offer")?.let(InviteOffer::decode) ?: return null
-    val region = (row["region"] as? JsonObject)?.let { region ->
-        val regionId = region.int("id") ?: return null
-        RelayRegion(regionId, region.text("code") ?: return null)
-    } ?: return null
+    val region = row["region"] as? JsonObject ?: return null
+    val relay = RelayRegion(region.int("id") ?: return null, region.text("code") ?: return null)
     val players = row.int("players")?.takeIf { it >= 1 } ?: return null
     val status = GameStatus.entries.firstOrNull { it.name.lowercase() == row.text("status") } ?: return null
     if ((row["host"] as? JsonObject)?.text("kind") != "player") return null
-    return PublicGame(id, offer, region, players, status)
+    return PublicGame(id, offer, relay, players, status)
 }
 
 /** The site's invites and Servers, in a build with the invite key and a site to reach. */

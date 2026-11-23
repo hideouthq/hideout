@@ -58,9 +58,6 @@ class DeviceKey private constructor(private val key: PrivateKey, private val pub
             return DeviceKey(pair.private, public) to seed + public
         }
 
-        internal fun of(seed: ByteArray, public: ByteArray): DeviceKey =
-            DeviceKey(KeyFactory.getInstance(Algorithm).generatePrivate(EdECPrivateKeySpec(NamedParameterSpec.ED25519, seed)), public)
-
         private fun read(file: Path): DeviceKey? {
             val stored = try {
                 Files.readAllBytes(file)
@@ -68,7 +65,8 @@ class DeviceKey private constructor(private val key: PrivateKey, private val pub
                 return null
             }
             if (stored.size != Half * 2) return null
-            return of(stored.copyOfRange(0, Half), stored.copyOfRange(Half, Half * 2))
+            val seed = EdECPrivateKeySpec(NamedParameterSpec.ED25519, stored.copyOfRange(0, Half))
+            return DeviceKey(KeyFactory.getInstance(Algorithm).generatePrivate(seed), stored.copyOfRange(Half, Half * 2))
         }
 
         private fun ownerOnly(file: Path) =
