@@ -172,10 +172,9 @@ function boot(): void {
   }
 
   /** Stock classes: the overlay is InHideout in the main-menu room, and its client status is InEscapeMenu while Esc is open. */
-  function menuOpen(): boolean {
-    const room = top.FindChildTraverse('HudAndDBOverlay')
-    const status = top.FindChildTraverse('ClientStatus')
-    return Boolean(room?.BHasClass('InHideout') || status?.BHasClass('InEscapeMenu'))
+  function menu(): 'room' | 'match' | null {
+    if (top.FindChildTraverse('HudAndDBOverlay')?.BHasClass('InHideout')) return 'room'
+    return top.FindChildTraverse('ClientStatus')?.BHasClass('InEscapeMenu') ? 'match' : null
   }
 
   const strip = new Section()
@@ -185,7 +184,9 @@ function boot(): void {
     if (stopPressed && stopPressed.in !== link.snapshot.game) stopPressed = null
     const view = viewStrip(link.snapshot, link.status, stopPressed !== null)
     const into = find('HOStrip')
-    into.SetHasClass('Shown', view !== null && menuOpen())
+    const open = menu()
+    find('HOCorner').SetHasClass('MatchMenu', open === 'match')
+    into.SetHasClass('Shown', view !== null && open !== null)
     strip.draw(into, JSON.stringify(view), (into) => {
       if (view) buildStrip(into, view)
     })

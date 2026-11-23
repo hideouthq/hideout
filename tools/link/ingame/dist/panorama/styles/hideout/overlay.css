@@ -22,6 +22,13 @@
 	flow-children: down;
 }
 
+.HOCorner.MatchMenu
+{
+	horizontal-align: left;
+	margin-left: 96px;
+	margin-top: 430px;
+}
+
 .HOCorner.Away
 {
 	visibility: collapse;

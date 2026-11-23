@@ -766,10 +766,9 @@
       }
       link.send({ k: "act", action: b.action });
     }
-    function menuOpen() {
-      const room = top.FindChildTraverse("HudAndDBOverlay");
-      const status = top.FindChildTraverse("ClientStatus");
-      return Boolean(room?.BHasClass("InHideout") || status?.BHasClass("InEscapeMenu"));
+    function menu() {
+      if (top.FindChildTraverse("HudAndDBOverlay")?.BHasClass("InHideout")) return "room";
+      return top.FindChildTraverse("ClientStatus")?.BHasClass("InEscapeMenu") ? "match" : null;
     }
     const strip = new Section();
     let stopPressed = null;
@@ -777,7 +776,9 @@
       if (stopPressed && stopPressed.in !== link.snapshot.game) stopPressed = null;
       const view = viewStrip(link.snapshot, link.status, stopPressed !== null);
       const into = find("HOStrip");
-      into.SetHasClass("Shown", view !== null && menuOpen());
+      const open = menu();
+      find("HOCorner").SetHasClass("MatchMenu", open === "match");
+      into.SetHasClass("Shown", view !== null && open !== null);
       strip.draw(into, JSON.stringify(view), (into2) => {
         if (view) buildStrip(into2, view);
       });
