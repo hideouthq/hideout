@@ -6,6 +6,7 @@ interface Panel {
   text: string
   readonly steamid: string
   readonly contentwidth: number
+  readonly actualuiscale_x: number
   readonly style: Record<string, string | null>
   IsValid(): boolean
   GetParent(): Panel | null

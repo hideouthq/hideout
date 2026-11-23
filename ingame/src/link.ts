@@ -127,7 +127,7 @@ export class Link {
       }
     }
     $.RegisterEventHandler('ImageLoaded', image, () => {
-      $.Schedule(SIZE_DELAY, () => finish(resultOfWidth(image.contentwidth)))
+      $.Schedule(SIZE_DELAY, () => finish(resultOfWidth(image.contentwidth, image.actualuiscale_x)))
     })
     $.RegisterEventHandler('ImageFailedLoad', image, () => finish('unreachable'))
     $.Schedule(COMMAND_DEADLINE, () => finish('unreachable'))

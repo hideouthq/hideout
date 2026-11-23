@@ -72,8 +72,8 @@
   // src/wire.ts
   var PROTOCOL = 1;
   var RESULTS = ["accepted", "busy", "gone", "invalid", "unavailable", "outdated"];
-  function resultOfWidth(width) {
-    return RESULTS[width - 1] ?? "unreachable";
+  function resultOfWidth(width, scale = 1) {
+    return RESULTS[Math.round(width / scale) - 1] ?? "unreachable";
   }
   var EMPTY = { hello: null, catalog: null, game: null, inbox: null, servers: null };
   function withFrame(snapshot, frame) {
@@ -354,7 +354,7 @@
         }
       };
       $.RegisterEventHandler("ImageLoaded", image, () => {
-        $.Schedule(SIZE_DELAY, () => finish(resultOfWidth(image.contentwidth)));
+        $.Schedule(SIZE_DELAY, () => finish(resultOfWidth(image.contentwidth, image.actualuiscale_x)));
       });
       $.RegisterEventHandler("ImageFailedLoad", image, () => finish("unreachable"));
       $.Schedule(COMMAND_DEADLINE, () => finish("unreachable"));

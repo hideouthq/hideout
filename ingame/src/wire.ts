@@ -151,8 +151,9 @@ export type CommandResult = 'accepted' | 'busy' | 'gone' | 'invalid' | 'unavaila
 
 const RESULTS: CommandResult[] = ['accepted', 'busy', 'gone', 'invalid', 'unavailable', 'outdated']
 
-export function resultOfWidth(width: number): CommandResult {
-  return RESULTS[width - 1] ?? 'unreachable'
+/** An image's content width is in screen pixels, which is [scale] times the PNG's width when the screen isn't 1080 lines tall. */
+export function resultOfWidth(width: number, scale = 1): CommandResult {
+  return RESULTS[Math.round(width / scale) - 1] ?? 'unreachable'
 }
 
 export interface Snapshot {

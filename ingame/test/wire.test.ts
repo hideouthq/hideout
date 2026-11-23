@@ -65,6 +65,16 @@ test('result widths read as the app writes them', () => {
   assert.equal(resultOfWidth(40), 'unreachable')
 })
 
+test('result widths read the same at every UI scale', () => {
+  const results = JSON.parse(fixture('results.json')) as Record<string, number>
+  for (const scale of [1440 / 1080, 2160 / 1080, 1200 / 1080]) {
+    for (const [name, width] of Object.entries(results)) {
+      assert.equal(resultOfWidth(width * scale, scale), name, `${name} at scale ${scale.toFixed(2)}`)
+      assert.equal(resultOfWidth(Math.round(width * scale), scale), name, `${name} at scale ${scale.toFixed(2)}, whole pixels`)
+    }
+  }
+})
+
 function titlesOf(line: string, id: number, size: number): string[] {
   const colon = line.indexOf(':')
   const sequence = line.slice(1, colon)
