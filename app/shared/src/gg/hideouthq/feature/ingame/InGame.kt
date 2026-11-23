@@ -311,7 +311,7 @@ private fun hostPhase(body: Body): HostPhase = when (body) {
     is Body.Ended -> if (body.outcome is Outcome.CouldNotStart) HostPhase.Failed else HostPhase.Ended
 }
 
-private fun hostActions(body: Body): List<Action> = when (body) {
+internal fun hostActions(body: Body): List<Action> = when (body) {
     is Body.Starting, is Body.Restarting, is Body.Entering, is Body.Open, is Body.Match -> listOf(Action.Stop)
     is Body.RestartNeeded -> listOf(Action.Restart, Action.Stop)
     is Body.NotIn -> listOfNotNull(Action.Play.takeIf { notInAction(body.problem, body.canPlay) == NotInAction.Play }, Action.Stop)
@@ -361,7 +361,7 @@ private fun joinPhase(step: JoinStep): JoinPhase = when (step) {
     is JoinStep.Failed -> JoinPhase.Failed
 }
 
-private fun joinActions(step: JoinStep): List<Action> = when (step) {
+internal fun joinActions(step: JoinStep): List<Action> = when (step) {
     JoinStep.Finding, is JoinStep.Review, is JoinStep.Progress, is JoinStep.Restarting -> listOf(Action.Stop)
     JoinStep.AfterCleanup -> emptyList()
     is JoinStep.Stopping -> if (step.stage is EndingStage.Failed) listOf(Action.Stop) else emptyList()

@@ -6,6 +6,11 @@ import gg.hideouthq.core.data.fake.FakeCustomGamesFeed
 import gg.hideouthq.core.data.fake.FakeCustomGamesPlatform
 import gg.hideouthq.core.library.GameActivity
 import gg.hideouthq.core.library.GameRoot
+import gg.hideouthq.feature.customgames.PresentInputs
+import gg.hideouthq.feature.customgames.present
+import gg.hideouthq.feature.ingame.Action
+import gg.hideouthq.feature.ingame.hostActions
+import gg.hideouthq.feature.ingame.joinActions
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -181,6 +186,7 @@ class SessionWalkTest {
         val own = (s as? Session.Hosting)?.own ?: (s as? Session.Playing)?.own
         if (own is OwnGame.Sending && !w.entering && Op.Launch !in w.queue) report("sending the game in with nothing left to answer", w)
         checkRecord(w)
+        checkCards(w)
     }
 
     private fun checkRecord(w: World) {
@@ -211,6 +217,32 @@ class SessionWalkTest {
         if (beforeAnyGame && record?.started == true) report("started before the game could run", w)
         if (s is Session.Ended && record != null && record.endedAt == null) report("ended with no time", w)
         if (!ending && record?.endedAt != null) report("an end time on a game still going", w)
+    }
+
+    private val cardsChecked = HashSet<Triple<Session, GameRecord?, GameActivity>>()
+
+    /** What [CustomGames] posts for a card's action, as the in-game panel's press reaches it. */
+    private fun eventOf(action: Action, w: World): SessionEvent? = when (action) {
+        Action.Stop -> StopRequested
+        Action.Restart -> RestartConfirmed
+        Action.Play -> PlayRequested
+        Action.Dismiss -> Dismissed
+        Action.Again -> when (val role = w.record?.role) {
+            is Role.Host -> HostRequested(role.mode, role.choices, outreach = role.outreach)
+            is Role.Guest -> InviteOpened(role.code, acceptedBefore = role.offer)
+            null -> null
+        }.takeIf { w.session is Session.Ended }
+    }
+
+    private fun checkCards(w: World) {
+        if (!cardsChecked.add(Triple(w.session, w.record, w.client))) return
+        val shown = present(PresentInputs(LiveSession(w.session, w.record)))
+        val host = shown.game?.body?.takeIf { w.record?.role is Role.Host }?.let(::hostActions).orEmpty()
+        val join = shown.join?.let { joinActions(it.step) }.orEmpty()
+        for (action in host + join) {
+            val event = eventOf(action, w)
+            if (event == null || reduce(w.session, event, w.client, t1) == Step(w.session)) report("a card offers $action, which ${w.session::class.simpleName} ignores", w)
+        }
     }
 
     @Test
