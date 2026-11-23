@@ -40,8 +40,9 @@ sealed interface SearchOrderRead {
     /**
      * [entries] are the `Game` entries Deadlock reads up to and including the base game's, earliest first. [aheadOfMenus]
      * are the paths of those it reads before Hideout's menus, none while Hideout's block names no custom games paths.
+     * [behindMenus] are those it reads after them and before the base game, leaving out the custom games paths.
      */
-    data class Read(val entries: List<SearchEntry>, val aheadOfMenus: List<String>) : SearchOrderRead
+    data class Read(val entries: List<SearchEntry>, val aheadOfMenus: List<String>, val behindMenus: List<String>) : SearchOrderRead
 
     data class Problem(val problem: GameInfoProblem) : SearchOrderRead
 }
@@ -180,7 +181,8 @@ object GameInfoPatch {
             val games = view.leaves.filter { it.isGame }.let { games -> games.take(games.indexOfFirst { it === view.base } + 1) }
             val entries = games.map { leaf -> SearchEntry(leaf.value.value, view.blocks.any { leaf.start in it }) }
             val menus = entries.indexOfFirst { it.hideouts && it.path.normalizedPath() == CustomGamesPaths.first() }
-            SearchOrderRead.Read(entries, entries.take(menus.coerceAtLeast(0)).map { it.path })
+            val behind = if (menus < 0) emptyList() else entries.subList(menus + 1, entries.size - 1).filterNot { it.hideouts && it.path.normalizedPath() in CustomGamesPaths }
+            SearchOrderRead.Read(entries, entries.take(menus.coerceAtLeast(0)).map { it.path }, behind.map { it.path })
         }
     }
 

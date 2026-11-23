@@ -189,9 +189,11 @@ class GameInfoPatchTest {
             "Game entries only, up to the base game",
         )
         assertEquals(listOf("citadel/modlock_dev/741294efb7c63a17"), order.aheadOfMenus)
+        assertEquals(listOf("citadel/addons"), order.behindMenus, "what the game would load without Hideout's menus, short of its own files")
         assertEquals(emptyList(), assertIs<SearchOrderRead.Read>(GameInfoPatch.searchOrder(with(valve, both))).aheadOfMenus)
         val noMenus = assertIs<SearchOrderRead.Read>(GameInfoPatch.searchOrder(modlockMounted(with(valve, mods).text(), "\t\t\t// Hideout start")))
         assertEquals(emptyList(), noMenus.aheadOfMenus, "with no menus nothing is ahead of them")
+        assertEquals(emptyList(), noMenus.behindMenus)
         assertEquals(SearchOrderRead.Problem(GameInfoProblem.NoBaseGameEntry), GameInfoPatch.searchOrder(searchPaths("\t\t\tGame core\n")))
     }
 

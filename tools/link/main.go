@@ -175,15 +175,20 @@ func parseMenusArgs(args []string) (MenusConfig, error) {
 	ingamePort := fs.Uint("ingame-port", 29701, "the local TCP port of Hideout's in-game endpoint")
 	out := fs.String("out", "", "the file to write the pack to")
 	rendererOnly := fs.Bool("renderer-only", false, "build only the renderer, with none of the in-game UI")
+	var layers []string
+	fs.Func("layer", "a pack the game reads after the menus and before its own, in the order it reads them (repeatable)", func(path string) error {
+		layers = append(layers, path)
+		return nil
+	})
 	if err := fs.Parse(args); err != nil {
 		return MenusConfig{}, err
 	}
 	if *game == "" || *renderer == "" || !validPage(*page) || *screenPort == 0 || *screenPort > 65535 || *ingamePort == 0 || *ingamePort > 65535 || *out == "" {
-		err := errors.New("usage: hideout-link menus --game DIR --renderer DIR --page URL --screen-port P [--ingame-port P] [--renderer-only] --out FILE")
+		err := errors.New("usage: hideout-link menus --game DIR --renderer DIR --page URL --screen-port P [--ingame-port P] [--renderer-only] [--layer FILE]... --out FILE")
 		fmt.Fprintln(os.Stderr, err)
 		return MenusConfig{}, err
 	}
-	return MenusConfig{Game: *game, Renderer: *renderer, PageURL: *page, ScreenPort: uint16(*screenPort), IngamePort: uint16(*ingamePort), Out: *out, Ingame: ingameSources(), RendererOnly: *rendererOnly}, nil
+	return MenusConfig{Game: *game, Renderer: *renderer, PageURL: *page, ScreenPort: uint16(*screenPort), IngamePort: uint16(*ingamePort), Out: *out, Ingame: ingameSources(), RendererOnly: *rendererOnly, Layers: layers}, nil
 }
 
 func parseStageArgs(args []string) (StageConfig, error) {

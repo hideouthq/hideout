@@ -262,7 +262,7 @@ class DesktopCustomGames internal constructor(
         val have = gamesFolder.pack(game)?.stamp
         val built = renderer?.takeIf { rebuild }?.let(::ifFetched) ?: return@withContext have
         val rendererOnly = MenusStamp(built.hex, pageUrl, MenusScreenPort, SteamInf.revision(game)?.source)
-        val want = rendererOnly.copy(inGame = InGameStamp(InGamePort, helperDigest))
+        val want = rendererOnly.copy(inGame = InGameStamp(InGamePort, helperDigest, gamesFolder.sourcesOf(game, have?.inGame?.layouts?.keys.orEmpty())))
         if (have == want) return@withContext have
         if (want != unbuildable) {
             gamesFolder.buildMenus(game, store.folderOf(built), want)?.let { return@withContext it.stamp }

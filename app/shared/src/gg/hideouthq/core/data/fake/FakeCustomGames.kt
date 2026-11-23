@@ -315,7 +315,7 @@ class FakeCustomGamesPlatform(
         const val SamplePort = 27_015
         val SampleContent = ModeContent(listOf("content"))
         val SampleRenderer = Sha256.parse("e".repeat(64))
-        val SampleStamp = MenusStamp("e".repeat(64), "https://hideouthq.gg/bridge/", MenusScreenPort, 1, InGameStamp(InGamePort, "a".repeat(64)))
+        val SampleStamp = MenusStamp("e".repeat(64), "https://hideouthq.gg/bridge/", MenusScreenPort, 1, InGameStamp(InGamePort, "a".repeat(64), emptyMap()))
         val SampleSetup = GameSetup(SampleStamp.screen, SampleStamp.page)
         val SampleOwned = SessionOwned(appIdFile = true)
         val SamplePlayedAt: Instant = Instant.fromEpochSeconds(1_800_000_000)

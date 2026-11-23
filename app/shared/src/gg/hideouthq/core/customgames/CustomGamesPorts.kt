@@ -82,8 +82,8 @@ interface CustomGamesPlatform {
     suspend fun clearEndedDevSession(game: GameRoot)
 
     /**
-     * The first search path [game]'s `gameinfo.gi` mounts ahead of Hideout's menus with a pack that holds a menus file,
-     * as [isMenusFile] says, or null when none does. Reads only the packs' directory trees.
+     * The first search path [game]'s `gameinfo.gi` mounts ahead of Hideout's menus with a pack that holds a file the
+     * menus pack holds, or null when none does. Reads only the packs' directory trees.
      */
     suspend fun menusBlockedBy(game: GameRoot): String?
 

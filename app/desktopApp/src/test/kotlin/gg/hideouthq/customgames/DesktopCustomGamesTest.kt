@@ -7,6 +7,7 @@ import gg.hideouthq.core.customgames.CustomGamesPlatform
 import gg.hideouthq.core.customgames.DesktopOs
 import gg.hideouthq.core.customgames.InGamePort
 import gg.hideouthq.core.customgames.InGameStamp
+import gg.hideouthq.core.customgames.LayoutSource
 import gg.hideouthq.core.customgames.SetupAnswer
 import gg.hideouthq.core.customgames.setupOf
 import gg.hideouthq.core.customgames.InviteCode
@@ -91,6 +92,7 @@ import org.junit.Assume.assumeTrue
 import java.nio.file.Files
 import java.nio.file.Path
 import java.security.MessageDigest
+import java.util.zip.CRC32
 import java.util.zip.ZipFile
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.TimeUnit
@@ -544,11 +546,11 @@ class DesktopCustomGamesTest {
         assertEquals(FolderRead.NotAMode, runBlocking { games.readFolder(root.resolve("bebop").pathString) })
     }
 
-    private fun writesPack(token: String? = Token) = """
+    private fun writesPack(token: String? = Token, shadows: List<String> = emptyList()) = """
         out=""; last=""
         for a in "${'$'}@"; do [ "${'$'}last" = "--out" ] && out="${'$'}a"; last="${'$'}a"; done
         echo pack > "${'$'}out"
-        ${token?.let { "echo '{\"type\":\"built\",\"token\":\"$it\"}'" }.orEmpty()}
+        ${token?.let { "echo '{\"type\":\"built\",\"token\":\"$it\",\"shadows\":${Json.encodeToString(shadows)}}'" }.orEmpty()}
         echo '{"type":"stopped","reason":"done"}'
     """.trimIndent()
 
@@ -561,7 +563,7 @@ class DesktopCustomGamesTest {
         val renderer = rendererHere('c')
         val games = games(writesPack())
         assertNull(runBlocking { games.menus(game, renderer, rebuild = false) }, "no pack, and no build asked for")
-        val stamp = MenusStamp(renderer.hex, "https://menus.example/bridge/", MenusScreenPort, null, InGameStamp(InGamePort, helperDigest))
+        val stamp = MenusStamp(renderer.hex, "https://menus.example/bridge/", MenusScreenPort, null, InGameStamp(InGamePort, helperDigest, emptyMap()))
         assertEquals(stamp, runBlocking { games.menus(game, renderer, rebuild = true) })
         val asked = record.readLines().filterNot { it.startsWith("env ") }
         assertEquals(
@@ -636,8 +638,48 @@ class DesktopCustomGamesTest {
         assertNull(runBlocking { games.menusPack(game) }?.token, "the old pack has no in-game part to admit")
 
         val rebuilt = runBlocking { games.menus(game, renderer, rebuild = true) }
-        assertEquals(MenusStamp(renderer.hex, "https://menus.example/bridge/", MenusScreenPort, null, InGameStamp(InGamePort, helperDigest)), rebuilt, "a closed Deadlock gets the in-game part")
+        assertEquals(MenusStamp(renderer.hex, "https://menus.example/bridge/", MenusScreenPort, null, InGameStamp(InGamePort, helperDigest, emptyMap())), rebuilt, "a closed Deadlock gets the in-game part")
         assertEquals(checkNotNull(PackToken.parse(Token)), runBlocking { games.menusPack(game) }?.token)
+    }
+
+    private val citadel: Path get() = Path.of(game.path, "game", "citadel")
+
+    private fun packIn(folder: String, name: String, vararg files: Pair<String, String>) {
+        Files.createDirectories(citadel.resolve(folder))
+        Files.write(citadel.resolve(folder).resolve(name), SyntheticModels.vpk(files.map { (path, text) -> SyntheticModels.VpkFile(path, text.encodeToByteArray()) }).first)
+    }
+
+    private fun searchPaths(vararg lines: String) =
+        Files.writeString(Files.createDirectories(citadel).resolve("gameinfo.gi"), "GameInfo\n{\n\tFileSystem\n\t{\n\t\tSearchPaths\n\t\t{\n${lines.joinToString("") { "\t\t\t$it\n" }}\t\t}\n\t}\n}\n")
+
+    private val hideoutLines = arrayOf("// Hideout start", "Game citadel/hideout_games/menus", "Game citadel/hideout_games/mode", "Game citadel/addons", "Mod citadel", "Write citadel", "// Hideout end")
+
+    @Test
+    fun theInGameCopiesStartFromThePlayersModAndFollowItsChanges() {
+        val overlay = "panorama/layout/citadel_hud_and_db_overlay.vxml_c"
+        val popup = "panorama/layout/popups/citadel_popup_custom_match.vxml_c"
+        val renderer = rendererHere('c')
+        searchPaths(*hideoutLines, "Game citadel")
+        packIn("addons", "pak01_dir.vpk", "materials/ui/hud.vtex_c" to "tweak")
+        packIn("addons", "pak02_dir.vpk", overlay to "first")
+        packIn("addons", "pak03_dir.vpk", overlay to "second")
+        packIn("addons", "631628_pak04_dir.vpk", popup to "not mounted")
+        packIn("hideout_games/mode", "pak01_dir.vpk", popup to "a mode's")
+        val games = games(writesPack(shadows = listOf(overlay, popup)))
+        fun crc(text: String) = CRC32().apply { update(text.encodeToByteArray()) }.value
+
+        val built = assertNotNull(runBlocking { games.menus(game, renderer, rebuild = true) }?.inGame)
+        assertEquals(mapOf(overlay to LayoutSource("citadel/addons/pak02_dir.vpk", crc("first")), popup to null), built.layouts, "the first pack that holds each, else the game's own")
+        assertEquals((1..3).map { citadel.resolve("addons/pak0${it}_dir.vpk").pathString }, record.readLines().zipWithNext().filter { it.first == "--layer" }.map { it.second }, "every pack behind the menus, in the order the game reads them")
+
+        Files.delete(record)
+        runBlocking { games.menus(game, renderer, rebuild = true) }
+        assertFalse(record.exists(), "unchanged mods build nothing")
+
+        packIn("addons", "pak02_dir.vpk", overlay to "first, updated")
+        assertEquals(crc("first, updated"), runBlocking { games.menus(game, renderer, rebuild = true) }?.inGame?.layouts?.get(overlay)?.crc, "a changed mod is followed")
+        Files.delete(citadel.resolve("addons/pak02_dir.vpk"))
+        assertEquals(LayoutSource("citadel/addons/pak03_dir.vpk", crc("second")), runBlocking { games.menus(game, renderer, rebuild = true) }?.inGame?.layouts?.get(overlay), "and so is one taken out")
     }
 
     @Test
@@ -661,18 +703,13 @@ class DesktopCustomGamesTest {
 
     @Test
     fun aFolderMountedAheadOfTheMenusWithAPackHoldingMenusFilesIsNamedAndNoOtherIs() {
-        val citadel = Path.of(game.path, "game", "citadel")
-        fun pack(folder: String, vararg files: String) {
-            Files.createDirectories(citadel.resolve(folder))
-            Files.write(citadel.resolve(folder).resolve("pak01_dir.vpk"), SyntheticModels.vpk(files.map { SyntheticModels.VpkFile(it, "x".encodeToByteArray()) }).first)
-        }
-        fun searchPaths(vararg lines: String) =
-            Files.writeString(citadel.resolve("gameinfo.gi"), "GameInfo\n{\n\tFileSystem\n\t{\n\t\tSearchPaths\n\t\t{\n${lines.joinToString("") { "\t\t\t$it\n" }}\t\t}\n\t}\n}\n")
-        val hideouts = arrayOf("// Hideout start", "Game citadel/hideout_games/menus", "Game citadel/hideout_games/mode", "Game citadel/addons", "Mod citadel", "Write citadel", "// Hideout end")
+        fun pack(folder: String, vararg files: String) = packIn(folder, "pak01_dir.vpk", *files.map { it to "x" }.toTypedArray())
+        val hideouts = hideoutLines
         pack("modlock_dev/31bb65da30bd1ed1", "panorama/scripts/modlock/boot.vjs_c", "panorama/layout/latest_news.vxml_c", "panorama/layout/modlock/ui.vxml_c")
         pack("news_only", "panorama/layout/latest_news.vxml_c")
         pack("tweaks", "materials/ui/hud.vtex_c", "panorama/layout/hud.vxml_c")
-        pack("hideout_games/menus", "panorama/layout/latest_news.vxml_c", "panorama/scripts/modlock/boot.vjs_c")
+        pack("hud", "panorama/layout/citadel_hud_and_db_overlay.vxml_c")
+        pack("hideout_games/menus", "panorama/layout/latest_news.vxml_c", "panorama/scripts/modlock/boot.vjs_c", "panorama/layout/citadel_hud_and_db_overlay.vxml_c")
         val games = games()
         fun blockedBy() = runBlocking { games.menusBlockedBy(game) }
 
@@ -685,6 +722,8 @@ class DesktopCustomGamesTest {
         assertEquals("citadel/news_only", blockedBy(), "the news layout alone takes the menus' place")
         searchPaths("Game \"citadel\\news_only\"", *hideouts, "Game citadel")
         assertEquals("citadel\\news_only", blockedBy(), "as written, with Windows' separator")
+        searchPaths("Game citadel/hud", *hideouts, "Game citadel")
+        assertEquals("citadel/hud", blockedBy(), "a layout the menus hold their own copy of")
         searchPaths("Game citadel/tweaks", *hideouts, "Game citadel/news_only", "Game citadel")
         assertNull(blockedBy(), "a pack without menus files, and one read after the menus")
         searchPaths("Game citadel/modlock_dev/31bb65da30bd1ed1", "Game citadel")

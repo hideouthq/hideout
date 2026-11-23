@@ -20,9 +20,17 @@ const val InGamePort = 29701
 @Serializable
 data class MenusStamp(val renderer: String, val page: String, val screen: Int, val revision: Long?, val inGame: InGameStamp? = null)
 
-/** [helper] is the digest of the `hideout-link` that built the pack, since that embeds the in-game UI. */
+/**
+ * [helper] is the digest of the `hideout-link` that built the pack, since that embeds the in-game UI. [layouts] are the
+ * game's layouts the pack holds its own copies of, each with the player's pack it was copied from, null for the game's
+ * own, whose changes [MenusStamp.revision] follows.
+ */
 @Serializable
-data class InGameStamp(val endpoint: Int, val helper: String)
+data class InGameStamp(val endpoint: Int, val helper: String, val layouts: Map<String, LayoutSource?>)
+
+/** A pack under `game/`, [pack] as `citadel/addons/pak02_dir.vpk`, and the CRC-32 its tree records for the layout. */
+@Serializable
+data class LayoutSource(val pack: String, val crc: Long)
 
 /** [token] is null exactly when the pack has no in-game part, so nothing in the game can ask for one. */
 data class MenusPack(val stamp: MenusStamp, val token: PackToken?)
@@ -57,13 +65,6 @@ sealed interface SetupAnswer {
 
     data class Failed(val problem: Refusal) : SetupAnswer
 }
-
-/**
- * Whether [resource], a path as a VPK's tree lists it, is one of the files Hideout's menus pack holds: the news layout it
- * starts from, or Modlock's layouts and scripts. A pack Deadlock reads first that holds one takes the menus' place.
- */
-fun isMenusFile(resource: String): Boolean =
-    resource == "panorama/layout/latest_news.vxml_c" || resource.startsWith("panorama/scripts/modlock/") || resource.startsWith("panorama/layout/modlock/")
 
 /**
  * What a mode needs from this computer's Deadlock. A running Deadlock read `gameinfo.gi` and its pack as it started, and

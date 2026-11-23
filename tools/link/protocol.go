@@ -22,6 +22,8 @@ type Region struct {
 
 type Built struct {
 	Token string `json:"token,omitempty"`
+	// Shadows are the game's layouts the pack holds its own copies of, compiled names.
+	Shadows []string `json:"shadows,omitempty"`
 }
 
 type Regions struct {

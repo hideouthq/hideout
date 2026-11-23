@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -265,5 +266,47 @@ func TestAGameUpdateTheOverlayCannotFollowLeavesOnlyTheRenderer(t *testing.T) {
 		if name != "panorama/layout/latest_news.vxml_c" && !strings.HasPrefix(name, "panorama/scripts/modlock/") && !strings.HasPrefix(name, "panorama/layout/modlock/") {
 			t.Errorf("the renderer-only pack holds %s", name)
 		}
+	}
+}
+
+func TestAShadowStartsFromTheLayoutThatWouldLoadWithoutHideout(t *testing.T) {
+	const overlaySource = "panorama/layout/citadel_hud_and_db_overlay.xml"
+	stock := stockLayouts(t)
+	modded := func(panel string) string {
+		layout := bytes.Replace(stock[overlaySource].Data, []byte("<CitadelTooltipManager"), []byte(`<Panel id="`+panel+`" />`+"\n\t\t<CitadelTooltipManager"), 1)
+		compiled, err := s2panorama.CompileTree("mod", fstest.MapFS{overlaySource: {Data: layout}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		path := filepath.Join(t.TempDir(), "pak01_dir.vpk")
+		file, err := os.Create(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer file.Close()
+		if err := vpk.Write(file, compiled); err != nil {
+			t.Fatal(err)
+		}
+		return path
+	}
+	first, second := modded("FirstMod"), modded("SecondMod")
+	out := filepath.Join(t.TempDir(), "menus.part")
+	said, code := runVerb(t, "menus", "--game", writeStockGame(t, stock), "--renderer", writeRenderer(t), "--page", "https://menus.example/bridge/", "--screen-port", "29700", "--layer", first, "--layer", second, "--out", out)
+	if code != 0 || said[0].Type != "built" {
+		t.Fatalf("exit %d, said %v", code, said)
+	}
+	files := readPack(t, out)
+	overlay := decompiled(t, files, overlayLayout)
+	if !strings.Contains(overlay, "FirstMod") || strings.Contains(overlay, "SecondMod") || !strings.Contains(overlay, "scripts/hideout/boot.vjs") {
+		t.Errorf("the overlay is not the first mod's with Hideout's scripts:\n%s", overlay)
+	}
+	if popup := decompiled(t, files, popupLayout); !strings.Contains(popup, "PartyCodeEntry") {
+		t.Errorf("a layout no mod holds is not the game's own:\n%s", popup)
+	}
+	var built struct {
+		Shadows []string `json:"shadows"`
+	}
+	if err := json.Unmarshal([]byte(said[0].Raw), &built); err != nil || !slices.Equal(built.Shadows, []string{overlayLayout, popupLayout}) {
+		t.Errorf("built names the layouts it holds copies of as %v, want the overlay and popup: %s", built.Shadows, said[0].Raw)
 	}
 }

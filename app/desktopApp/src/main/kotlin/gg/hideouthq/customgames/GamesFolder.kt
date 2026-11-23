@@ -4,10 +4,11 @@ import gg.hideouthq.core.customgames.MenusPack
 import gg.hideouthq.core.customgames.MenusStamp
 import gg.hideouthq.core.customgames.PackToken
 import gg.hideouthq.core.customgames.StageResult
-import gg.hideouthq.core.customgames.isMenusFile
+import gg.hideouthq.core.customgames.LayoutSource
 import gg.hideouthq.core.library.GameInfoPatch
 import gg.hideouthq.core.library.GameInfoSegments
 import gg.hideouthq.core.library.GameRoot
+import gg.hideouthq.core.library.PakNumbers
 import gg.hideouthq.core.library.ResourceIndex
 import gg.hideouthq.core.library.SearchOrderRead
 import gg.hideouthq.core.library.VpkFormat
@@ -32,6 +33,7 @@ import java.nio.file.StandardCopyOption
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
+import kotlin.io.path.invariantSeparatorsPathString
 import kotlin.io.path.name
 import kotlin.io.path.pathString
 import kotlin.time.Duration
@@ -52,12 +54,15 @@ internal class GamesFolder(private val helper: Path, private val workFolder: Pat
         return MenusPack(if (token == null) stamp.copy(inGame = null) else stamp, token)
     }
 
+    /** The pack is built from [want] but for [InGameStamp.layouts], which come from the layouts the helper copied. */
     suspend fun buildMenus(game: GameRoot, renderer: Path, want: MenusStamp): MenusPack? = locked(game, { null }) { root ->
         Files.newDirectoryStream(root, "$PartPrefix*").use { leftovers -> leftovers.forEach(Files::deleteIfExists) }
         val part = root.resolve(PartPrefix + UUID.randomUUID())
+        val layers = layersOf(game)
+        val inGame = want.inGame?.let { listOf("--ingame-port", it.endpoint.toString()) + layers.flatMap { layer -> listOf("--layer", layer.pathString) } }
         val ran = run(
             listOf("menus", "--game", game.path, "--renderer", renderer.pathString, "--page", want.page, "--screen-port", want.screen.toString()) +
-                (want.inGame?.let { listOf("--ingame-port", it.endpoint.toString()) } ?: listOf("--renderer-only")) + listOf("--out", part.pathString),
+                (inGame ?: listOf("--renderer-only")) + listOf("--out", part.pathString),
         )
         val token = ran.token
         if (!ran.done || (want.inGame != null && token == null)) {
@@ -65,13 +70,30 @@ internal class GamesFolder(private val helper: Path, private val workFolder: Pat
             Files.deleteIfExists(part)
             return@locked null
         }
+        val built = want.copy(inGame = want.inGame?.copy(layouts = sourcesOf(game, layers, ran.shadows)))
         Files.createDirectories(root.resolve(MenusFolder))
         Files.move(part, root.resolve(MenusFolder).resolve(PackFile), StandardCopyOption.REPLACE_EXISTING)
         val stamp = root.resolve("$StampFile.part")
-        val written = Json.encodeToJsonElement(MenusStamp.serializer(), want).jsonObject
+        val written = Json.encodeToJsonElement(MenusStamp.serializer(), built).jsonObject
         Files.writeString(stamp, (if (token == null) written else JsonObject(written + (TokenKey to JsonPrimitive(token.hex)))).toString())
         Files.move(stamp, root.resolve(StampFile), StandardCopyOption.REPLACE_EXISTING)
-        MenusPack(want, token)
+        MenusPack(built, token)
+    }
+
+    /** Where Deadlock would load each of [layouts] from without Hideout's menus. */
+    fun sourcesOf(game: GameRoot, layouts: Collection<String>): Map<String, LayoutSource?> = sourcesOf(game, layersOf(game), layouts)
+
+    private fun sourcesOf(game: GameRoot, layers: List<Path>, layouts: Collection<String>): Map<String, LayoutSource?> {
+        val trees = layers.map { it to filesIn(it) }
+        val under = Path.of(game.path, "game")
+        return layouts.associateWith { layout ->
+            trees.firstNotNullOfOrNull { (pack, files) -> files[layout]?.let { LayoutSource(under.relativize(pack).invariantSeparatorsPathString, it) } }
+        }
+    }
+
+    /** The packs Deadlock reads after Hideout's menus and before its own, in the order it reads them. */
+    private fun layersOf(game: GameRoot): List<Path> = searchOrderOf(game)?.behindMenus.orEmpty().flatMap { path ->
+        packsIn(game, path).mapNotNull { pack -> PakNumbers.mounted(pack.name)?.let { it.value to pack } }.sortedBy { it.first }.map { it.second }
     }
 
     suspend fun removeMenus(game: GameRoot): Boolean = locked(game, { false }) { root ->
@@ -97,13 +119,18 @@ internal class GamesFolder(private val helper: Path, private val workFolder: Pat
 
     /** What the engine reads of each folder is its loose files and its `pak*_dir.vpk` packs; only the packs' trees are read here. */
     fun menusBlockedBy(game: GameRoot): String? {
+        val own = filesIn(rootOf(game).resolve(MenusFolder).resolve(PackFile)).keys
+        if (own.isEmpty()) return null
+        return searchOrderOf(game)?.aheadOfMenus.orEmpty().firstOrNull { path -> packsIn(game, path).any { pack -> filesIn(pack).keys.any(own::contains) } }
+    }
+
+    private fun searchOrderOf(game: GameRoot): SearchOrderRead.Read? {
         val info = try {
             Files.readAllBytes(GameInfoSegments.fold(Path.of(game.path), Path::resolve))
         } catch (e: IOException) {
             return null
         }
-        val ahead = (GameInfoPatch.searchOrder(info) as? SearchOrderRead.Read)?.aheadOfMenus.orEmpty()
-        return ahead.firstOrNull { path -> packsIn(game, path).any(::holdsMenusFiles) }
+        return GameInfoPatch.searchOrder(info) as? SearchOrderRead.Read
     }
 
     private fun packsIn(game: GameRoot, path: String): List<Path> = try {
@@ -114,11 +141,11 @@ internal class GamesFolder(private val helper: Path, private val workFolder: Pat
         emptyList()
     }
 
-    private fun holdsMenusFiles(pack: Path): Boolean = try {
+    private fun filesIn(pack: Path): Map<String, Long> = try {
         val size = Files.size(pack)
-        (VpkFormat.resources(headOf(pack, size), size) as? ResourceIndex.Ready)?.files?.keys?.any(::isMenusFile) == true
+        (VpkFormat.resources(headOf(pack, size), size) as? ResourceIndex.Ready)?.files.orEmpty()
     } catch (e: IOException) {
-        false
+        emptyMap()
     }
 
     fun remove(game: GameRoot): Boolean {
@@ -172,17 +199,19 @@ internal class GamesFolder(private val helper: Path, private val workFolder: Pat
         val stopped = said.lastOrNull { it.text("type") == "stopped" }
         val held = said.firstOrNull { it.text("type") == "staged" }?.get("held") as? JsonArray
         val dev = said.firstOrNull { it.text("type") == "dev-session" }?.get("live") as? JsonPrimitive
+        val built = said.firstOrNull { it.text("type") == "built" }
         return Ran(
             done = exited && process.exitValue() == 0,
             held = held.orEmpty().mapNotNull { (it as? JsonPrimitive)?.content },
             message = if (exited) stopped?.text("message") else "it ran past its limit",
             devSession = dev?.booleanOrNull,
-            token = said.firstOrNull { it.text("type") == "built" }?.text("token")?.let(PackToken::parse),
+            token = built?.text("token")?.let(PackToken::parse),
+            shadows = (built?.get("shadows") as? JsonArray).orEmpty().mapNotNull { (it as? JsonPrimitive)?.takeIf { it.isString }?.content },
         )
     }
 
     /** [devSession] is whether a Modlock development session's block was live, null when there was none. */
-    private class Ran(val done: Boolean, val held: List<String>, val message: String?, val devSession: Boolean? = null, val token: PackToken? = null)
+    private class Ran(val done: Boolean, val held: List<String>, val message: String?, val devSession: Boolean? = null, val token: PackToken? = null, val shadows: List<String> = emptyList())
 
     private fun rootOf(game: GameRoot): Path = Path.of(game.path, "game", GameInfoPatch.CustomGamesFolder)
 

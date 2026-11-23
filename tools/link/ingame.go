@@ -58,7 +58,7 @@ type IngameConfig struct {
 }
 
 // ingameFiles ships nothing raw, since a raw include crashes the game when its layout opens.
-func ingameFiles(stock *vpk.Archive, sources fs.FS, cfg IngameConfig) (fstest.MapFS, error) {
+func ingameFiles(stock *vpk.Archive, layers []*vpk.Archive, sources fs.FS, cfg IngameConfig) (fstest.MapFS, error) {
 	own := fstest.MapFS{}
 	if err := fs.WalkDir(sources, ".", func(name string, entry fs.DirEntry, err error) error {
 		if err != nil || !entry.Type().IsRegular() {
@@ -80,7 +80,7 @@ func ingameFiles(stock *vpk.Archive, sources fs.FS, cfg IngameConfig) (fstest.Ma
 	generated := fstest.MapFS{configScript: {Data: []byte("var HideoutConfig = " + string(config) + ";\n"), Mode: 0o644}}
 	for _, s := range shadows {
 		compiled, _ := s2panorama.Compiled(s.layout)
-		data, err := stock.ReadFile(compiled)
+		data, err := firstHolding(compiled, layers, stock).ReadFile(compiled)
 		if err != nil {
 			return nil, fmt.Errorf("read the game's %s: %w", compiled, err)
 		}
@@ -98,6 +98,15 @@ func ingameFiles(stock *vpk.Archive, sources fs.FS, cfg IngameConfig) (fstest.Ma
 		return nil, err
 	}
 	return s2panorama.CompileTree("hideout", withStockTextures{tree, stock})
+}
+
+func firstHolding(name string, layers []*vpk.Archive, stock *vpk.Archive) *vpk.Archive {
+	for _, layer := range layers {
+		if _, ok := layer.Size(name); ok {
+			return layer
+		}
+	}
+	return stock
 }
 
 func withScripts(layout string, srcs ...string) (string, error) {
