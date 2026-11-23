@@ -42,8 +42,8 @@ class SocialTest {
     private var tokens = 0
     private val fresh = { ListingToken("%032x".format(++tokens)) }
 
-    private fun record(invitees: Set<SteamId> = setOf(Kestrel), listing: Listing = Listing.InviteOnly, offer: InviteOffer? = Offer) =
-        GameRecord(Role.Host(Bebop, Choices.None, Outreach(listing, invitees), offer), LocalPlayer(Me.value, null))
+    private fun record(invitees: Set<SteamId> = setOf(Kestrel), listing: Listing = Listing.InviteOnly) =
+        GameRecord(Role.Host(Bebop, Choices.None, Outreach(listing, invitees), Offer), LocalPlayer(Me.value, null))
 
     private fun hosting(code: InviteCode = Code) = Session.Hosting(code, "street", own = OwnGame.In, region = Fra)
 

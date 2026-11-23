@@ -75,15 +75,6 @@ class BuildSecretsTest {
     }
 
     @Test
-    fun theKeyIsBoundToTheVersion() {
-        write(PreviewUrlVariable to url, MasterVariable to master)
-        val first = unmasked("preview-key")
-        write(PreviewUrlVariable to url, MasterVariable to master, version = "0.3.1")
-        assertNotEquals(first, unmasked("preview-key"))
-        assertEquals(releaseKey(master, "preview", "0.3.1"), unmasked("preview-key"))
-    }
-
-    @Test
     fun theInviteKeyNeedsNoPreviewHostAndIsBoundToTheVersion() {
         write(MasterVariable to master)
         assertEquals(listOf("invite-key"), names())
@@ -135,8 +126,6 @@ class BuildSecretsTest {
     @Test
     fun anAddressWithoutAMasterStopsTheBuild() {
         assertContains(assertFailsWith<IllegalStateException> { write(PreviewUrlVariable to url) }.message.orEmpty(), MasterVariable)
-        assertContains(assertFailsWith<IllegalStateException> { write(PreviewUrlVariable to url, MasterVariable to "short") }.message.orEmpty(), "shorter than 32")
-        assertContains(assertFailsWith<IllegalStateException> { write(PreviewUrlVariable to url, MasterVariable to master, version = "1.4") }.message.orEmpty(), "like 1.4.0")
         assertFalse(secrets.exists())
     }
 

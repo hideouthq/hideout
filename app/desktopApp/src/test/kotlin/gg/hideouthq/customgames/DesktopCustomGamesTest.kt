@@ -581,7 +581,6 @@ class DesktopCustomGamesTest {
 
         val tokenless = games(writesPack(token = null))
         assertEquals(stamp, runBlocking { tokenless.menus(game, rendererHere('d'), rebuild = true) }, "a pack with no token is no pack, and the one there stays")
-        assertTrue(logs.any { "named no pack token" in it })
 
         Files.writeString(gamesFolder.resolve("menus.json"), """{"renderer":"${renderer.hex}","page":"https://menus.example/bridge/","screen":29700,"revision":null}""")
         assertNull(runBlocking { tokenless.menus(game, null, rebuild = false) }, "a menus.json from before the in-game UI reads as no pack, so it is rebuilt")

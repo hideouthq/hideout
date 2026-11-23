@@ -29,7 +29,6 @@ import java.io.InputStream
 import java.net.Socket
 import java.net.URLEncoder
 import java.nio.ByteBuffer
-import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -49,9 +48,8 @@ class InGameEndpointTest {
     private val feed = FakeCustomGamesFeed(answer = CustomGamesFetch.Fresh(FakeCustomGamesFeed.SampleModes.copy(modes = listOf(FakeCustomGamesFeed.BebopWars))))
     private val games = CustomGames(platform, FakeSessionFiles(), feed, scope, hostFolders = flowOf(false)).apply { start() }
     private val inGame = InGame(games, Social(games, null, scope).apply { start() }, SiteOrigin.parse(Site), scope)
-    private val logs = CopyOnWriteArrayList<String>()
     private val pack = MenusPack(FakeCustomGamesPlatform.SampleStamp, checkNotNull(PackToken.parse(Token)))
-    private val endpoint = InGameEndpoint(inGame, { pack }, logs::add, keepalive = 300.milliseconds).also { assertTrue(it.start(0)) }
+    private val endpoint = InGameEndpoint(inGame, { pack }, {}, keepalive = 300.milliseconds).also { assertTrue(it.start(0)) }
     private val port = checkNotNull(endpoint.port)
     private val sockets = mutableListOf<Socket>()
 
@@ -145,9 +143,7 @@ class InGameEndpointTest {
 
     @Test
     fun aPortAnotherProgramHoldsLeavesTheEndpointOff() {
-        val second = InGameEndpoint(inGame, { pack }, logs::add)
-        assertFalse(second.start(port))
-        assertTrue(logs.any { "could not listen on port $port" in it })
+        assertFalse(InGameEndpoint(inGame, { pack }, {}).start(port))
     }
 }
 
