@@ -33,6 +33,7 @@ import gg.hideouthq.core.designsystem.interaction.hideoutClickable
 import gg.hideouthq.core.designsystem.theme.HideoutDimens
 import gg.hideouthq.core.designsystem.theme.HideoutShapes
 import gg.hideouthq.core.designsystem.theme.HideoutTheme
+import gg.hideouthq.core.ui.EndAlignedFlow
 import gg.hideouthq.core.ui.ModLabels
 import gg.hideouthq.resources.Res
 import gg.hideouthq.resources.library_title
@@ -68,12 +69,14 @@ internal fun LibraryHeader(
                 bottom = HideoutDimens.Library.HeaderBottomPadding,
             ),
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(HideoutDimens.Library.ToolbarGap), verticalAlignment = Alignment.CenterVertically) {
+        EndAlignedFlow(Modifier.fillMaxWidth(), gap = HideoutDimens.Library.ToolbarGap, lineGap = HideoutDimens.Library.ToolbarGap) {
             Text(
                 text = stringResource(Res.string.library_title),
                 style = HideoutTheme.typography.headlinePage,
                 color = scheme.onSurface,
-                modifier = Modifier.weight(1f).semantics { heading() },
+                maxLines = 1,
+                softWrap = false,
+                modifier = Modifier.semantics { heading() },
             )
             trailing?.invoke()
         }
