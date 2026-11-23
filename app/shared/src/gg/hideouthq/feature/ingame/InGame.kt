@@ -3,7 +3,6 @@ package gg.hideouthq.feature.ingame
 import gg.hideouthq.core.customgames.Choices
 import gg.hideouthq.core.customgames.CustomGames
 import gg.hideouthq.core.customgames.DisplayName
-import gg.hideouthq.core.customgames.GameRecord
 import gg.hideouthq.core.customgames.JoinTicket
 import gg.hideouthq.core.customgames.LibraryEntry
 import gg.hideouthq.core.customgames.Listing
@@ -148,7 +147,7 @@ class InGame(private val games: CustomGames, private val social: Social, site: S
     }
 }
 
-/** What the game shows of [Social]: whether it works, and its [state]. [available] is a build with the invite key. */
+/** [available] is a build with the invite key. */
 data class SocialView(val status: SocialStatus = SocialStatus.Off, val available: Boolean = false, val state: SocialState = SocialState())
 
 /** The mode's defaults with each pick laid over, or null when a pick names no setting or option of [listing]. */
@@ -164,9 +163,9 @@ private val words: ResourceEnvironment by lazy { getSystemResourceEnvironment() 
 /** Every topic's frame for [inputs], from the same [present] the app's own screens draw, in the words they use. */
 suspend fun inGameFrames(inputs: PresentInputs, social: SocialView = SocialView()): Map<Topic, String> {
     val shown = present(inputs)
-    val record = inputs.live.game
+    val role = inputs.live.game?.role as? Role.Host
     val deliveries = social.state.hosted?.takeIf { it.code == (inputs.live.session as? Session.Hosting)?.code }?.deliveries.orEmpty()
-    val host = shown.game?.takeIf { record?.role is Role.Host }?.let { hostCard(it, checkNotNull(record), shown.chip?.count, deliveries) }
+    val host = if (role == null) null else shown.game?.let { hostCard(it, role, shown.chip?.count, deliveries) }
     val game = Frame.Game(host, shown.join?.let { joinCard(it) }, inputs.restartsDeadlock?.let { Restart(RestartWire.of(it), restartAheadPhrase(it, host = true).load(words)) })
     return mapOf(
         Topic.Hello to Frame.Hello(InGameProtocol, social = socialWire(social.status)),
@@ -240,8 +239,7 @@ private fun modeCard(mode: Mode, bytes: Long?): ModeCard {
     )
 }
 
-private suspend fun hostCard(view: GameView, record: GameRecord, players: Pair<Int, Int>?, deliveries: Map<SteamId, Delivery>): HostCard {
-    val role = record.role as Role.Host
+private suspend fun hostCard(view: GameView, role: Role.Host, players: Pair<Int, Int>?, deliveries: Map<SteamId, Delivery>): HostCard {
     val body = view.body
     return HostCard(
         mode = role.mode.id.value,

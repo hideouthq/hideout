@@ -324,10 +324,7 @@ object InGameWire {
             }
             "forget" -> command.text("invite")?.let(InvitationId::parse)?.let(PanelCommand::Forget)
             "servers" -> PanelCommand.Servers.takeIf { command.size == 1 }
-            "hello" -> when (val self = command["self"]) {
-                JsonNull -> PanelCommand.Hello(null)
-                else -> (self as? JsonPrimitive)?.takeIf { it.isString }?.content?.let(SteamId::parse)?.let { PanelCommand.Hello(it) }
-            }
+            "hello" -> if (command["self"] == JsonNull) PanelCommand.Hello(null) else command.text("self")?.let(SteamId::parse)?.let(PanelCommand::Hello)
             else -> null
         }
     }
@@ -335,7 +332,7 @@ object InGameWire {
     private fun host(command: JsonObject): PanelCommand.Host? {
         val mode = command.text("mode")?.let(ModeId::parse) ?: return null
         val picks = (command["picks"] as? JsonObject ?: return null).entries.associate { (key, value) ->
-            (SettingKey.parse(key) ?: return null) to ((value as? JsonPrimitive)?.takeIf { it.isString }?.content?.let(SettingValue::parse) ?: return null)
+            (SettingKey.parse(key) ?: return null) to (value.string()?.let(SettingValue::parse) ?: return null)
         }
         val listing = decode(command["listing"], ListingWire.serializer())?.listing ?: return null
         val invite = steamIds(command["invite"]) ?: return null
@@ -355,7 +352,7 @@ object InGameWire {
     private fun steamIds(element: JsonElement?): Set<SteamId>? {
         val array = element as? JsonArray ?: return null
         if (array.size > MaxInvitees) return null
-        return array.map { (it as? JsonPrimitive)?.takeIf { p -> p.isString }?.content?.let(SteamId::parse) ?: return null }.toSet()
+        return array.map { it.string()?.let(SteamId::parse) ?: return null }.toSet()
     }
 
     private fun <T> decode(element: JsonElement?, serializer: KSerializer<T>): T? = try {
@@ -366,7 +363,9 @@ object InGameWire {
         null
     }
 
-    private fun JsonObject.text(key: String): String? = (this[key] as? JsonPrimitive)?.takeIf { it.isString }?.content
+    private fun JsonObject.text(key: String): String? = this[key].string()
+
+    private fun JsonElement?.string(): String? = (this as? JsonPrimitive)?.takeIf { it.isString }?.content
 
     private const val MaxCommand = 4096
     private const val MaxInvitees = 63

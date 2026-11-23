@@ -369,9 +369,6 @@ fun restartWhyPhrase(why: RestartReason): Phrase {
     return Phrase.Joined(listOf(phrase(reason), phrase(Res.string.cg_restart_queue)))
 }
 
-@Composable
-internal fun restartWhy(why: RestartReason): String = restartWhyPhrase(why).text()
-
 /** What Host or Join will do to the running Deadlock first, said before the press. */
 fun restartAheadPhrase(why: RestartReason, host: Boolean): Phrase {
     val reason = when (why) {

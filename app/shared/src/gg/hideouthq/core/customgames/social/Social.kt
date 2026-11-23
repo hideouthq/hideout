@@ -229,8 +229,6 @@ class Social(
     private val network: SocialNetwork?,
     private val scope: CoroutineScope,
     private val me: () -> SteamId? = { games.localPlayer?.steamId?.let(SteamId::parse) },
-    private val clock: Clock = Clock.System,
-    private val newToken: () -> ListingToken = ::drawToken,
 ) {
     private val published = MutableStateFlow(SocialState())
     val state: StateFlow<SocialState> = published.asStateFlow()
@@ -284,8 +282,8 @@ class Social(
     }
 
     private fun step(input: SocialInput) {
-        val now = clock.now()
-        val (next, effects) = reduceSocial(published.value, input, now, newToken)
+        val now = Clock.System.now()
+        val (next, effects) = reduceSocial(published.value, input, now, ::drawToken)
         published.value = next
         network?.mailbox?.hold(mailboxOwner(next, now, me()))
         network?.directory?.keep(listingWanted(next, games.live.value))
