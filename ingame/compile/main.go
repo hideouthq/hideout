@@ -1,4 +1,4 @@
-// Command build writes the in-game UI into tools/link/ingame/dist, where hideout-link embeds it.
+// Command compile writes the in-game UI into tools/link/ingame/dist, where hideout-link embeds it.
 //
 // Run it from ingame/ with `go run ./compile`. Each entry under src/entries becomes one plain script, because Panorama
 // loads scripts without modules, and the layouts and sheets under src/layout and src/styles are copied as they are.

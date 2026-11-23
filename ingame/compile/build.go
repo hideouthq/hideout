@@ -6,7 +6,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/evanw/esbuild/pkg/api"
@@ -33,11 +32,8 @@ func Build(dir string) (map[string][]byte, error) {
 			LogLevel:      api.LogLevelSilent,
 		})
 		if len(result.Errors) > 0 {
-			var lines []string
-			for _, message := range api.FormatMessages(result.Errors, api.FormatMessagesOptions{Kind: api.ErrorMessage}) {
-				lines = append(lines, message)
-			}
-			return nil, fmt.Errorf("bundle %s:\n%s", entry, strings.Join(lines, ""))
+			messages := api.FormatMessages(result.Errors, api.FormatMessagesOptions{Kind: api.ErrorMessage})
+			return nil, fmt.Errorf("bundle %s:\n%s", entry, strings.Join(messages, ""))
 		}
 		files["panorama/scripts/hideout/"+entry+".js"] = result.OutputFiles[0].Contents
 	}
@@ -97,13 +93,4 @@ func Read(out string) (map[string][]byte, error) {
 		return files, nil
 	}
 	return files, err
-}
-
-func names(files map[string][]byte) []string {
-	out := make([]string, 0, len(files))
-	for name := range files {
-		out = append(out, name)
-	}
-	sort.Strings(out)
-	return out
 }

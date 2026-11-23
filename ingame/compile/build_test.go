@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"maps"
 	"path/filepath"
 	"slices"
 	"testing"
@@ -16,8 +17,8 @@ func TestDistMatchesSources(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Equal(names(got), names(want)) {
-		t.Fatalf("dist holds %v, the sources build %v. Run `go run ./compile` in ingame/", names(got), names(want))
+	if gotNames, wantNames := slices.Sorted(maps.Keys(got)), slices.Sorted(maps.Keys(want)); !slices.Equal(gotNames, wantNames) {
+		t.Fatalf("dist holds %v, the sources build %v. Run `go run ./compile` in ingame/", gotNames, wantNames)
 	}
 	for name, data := range want {
 		if !bytes.Equal(got[name], data) {
