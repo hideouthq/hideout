@@ -18,7 +18,6 @@ import java.util.concurrent.atomic.AtomicLong
 import javax.crypto.Mac
 import kotlin.math.abs
 
-/** Signs requests to the preview host as release [build], with [mac] under the key the build derived for that release. */
 class PreviewKey(private val mac: Mac, baseUrl: String, val build: String) {
     val host: String = Url(baseUrl).signedHost()
 

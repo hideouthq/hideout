@@ -50,7 +50,7 @@ data class GameRecord(
 }
 
 sealed interface Role {
-    /** [offer] is the one the helper serves, from when the runtime is prepared, so whatever tells friends of the game sends that and not a re-derivation. */
+    /** [offer] is the one the helper serves, set once the runtime is prepared. Invites and listings send it rather than derive another. */
     data class Host(val mode: Mode, val choices: Choices, val outreach: Outreach = Outreach.Private, val offer: InviteOffer? = null) : Role
 
     data class Guest(val code: InviteCode, val offer: InviteOffer?, val listing: ModeListing?) : Role

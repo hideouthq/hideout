@@ -1,6 +1,5 @@
 package gg.hideouthq.core.customgames.social
 
-/** The mailbox's id for one invite it delivered, 32 hex digits. */
 @JvmInline
 value class InvitationId private constructor(val value: String) {
     companion object {
@@ -10,7 +9,7 @@ value class InvitationId private constructor(val value: String) {
     }
 }
 
-/** The directory's public name for a listing: the first 16 hex digits of SHA-256 of the listing's token, so no reader can change it. */
+/** The first 16 hex digits of SHA-256 of the listing's token: public, yet no reader can change the listing with it. */
 @JvmInline
 value class ListingId private constructor(val value: String) {
     companion object {

@@ -54,10 +54,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.time.Instant
 
-/**
- * The wire is pinned by golden files in hideout/ingame/fixtures, which the Panorama side's tests read too. A change to a
- * frame or a command shows here first: rerun with HIDEOUT_WRITE_FIXTURES=1 to rewrite them, and read the diff.
- */
+/** The Panorama side's tests read the same golden files. HIDEOUT_WRITE_FIXTURES=1 rewrites them; read the diff. */
 class InGameWireTest {
     private val fixtures: Path = Path.of(System.getProperty("user.dir")).resolve("../../ingame/fixtures").normalize()
     private val writing = System.getenv("HIDEOUT_WRITE_FIXTURES") == "1"

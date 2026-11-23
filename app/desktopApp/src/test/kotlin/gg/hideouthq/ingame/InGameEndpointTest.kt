@@ -147,7 +147,6 @@ class InGameEndpointTest {
     }
 }
 
-/** One line of the stream, unpacked from `~<sequence>:<packed>` to the frame's JSON. */
 private fun InputStream.frame(): JsonObject {
     val line = String(utf8Line(), Charsets.UTF_8)
     check(line.startsWith("~")) { "not a packed line: $line" }
@@ -167,7 +166,6 @@ private fun InputStream.utf8Line(): ByteArray {
 
 private fun InputStream.line(): String = String(utf8Line(), Charsets.ISO_8859_1).removeSuffix("\r")
 
-/** HTTP/1.1 chunked transfer coding, read as it arrives. */
 private class Dechunked(private val input: InputStream) : InputStream() {
     private var left = 0
 

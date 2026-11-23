@@ -72,11 +72,6 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
-/**
- * Signs requests to the site's invite and directory routes as release [build]: `X-Hideout-Sig` with [mac], under the key
- * the build derived for its release, and `X-Hideout-Device-Sig` with [device], both over [signedMessage] with the body.
- * A clock off by more than the site's window learns the site's time from the `Date` it answers with.
- */
 class SiteSigner(private val mac: Mac, private val build: String, private val device: DeviceKey, private val now: () -> Long = { System.currentTimeMillis() / 1000 }) {
     private val offset = AtomicLong()
 
@@ -92,7 +87,7 @@ class SiteSigner(private val mac: Mac, private val build: String, private val de
             .build()
     }
 
-    /** Whether [response]'s `Date` put the site's clock further from ours than it allows, which the next signature now uses. */
+    /** The site refuses a time outside its window, so a clock that far off takes the site's time from its `Date`. */
     fun heard(response: Response): Boolean {
         val served = response.header("Date")?.let(::epochSeconds) ?: return false
         val time = now() + offset.get()
@@ -124,7 +119,6 @@ internal class SiteRoutes(private val client: OkHttpClient, private val signer: 
         return Request.Builder().url(url).headers(extra.newBuilder().addAll(signer.headers(method, url, body)).build()).method(method, content).build()
     }
 
-    /** Status and body, retried once when the site's clock showed ours was off; null when the site couldn't be reached. */
     suspend fun call(method: String, path: String, body: ByteArray = ByteArray(0)): Pair<Int, String>? = runInterruptible(Dispatchers.IO) {
         try {
             var skewed = false
@@ -149,10 +143,8 @@ internal class SiteRoutes(private val client: OkHttpClient, private val signer: 
 }
 
 /**
- * One WebSocket to the held owner's mailbox. Sends `ping` every 30 s, which the site answers `pong` without waking its
- * object, and drops a socket that has said nothing for 75 s, as the site does. Reconnects with backoff from 1 s to a
- * minute, and waits the longest after another app took the mailbox, so two never take turns. Each invite is parsed
- * here, and anything malformed is dropped.
+ * The site answers `ping` with `pong` without waking its object, and drops a socket silent for 75 s, as [Silent] does
+ * here. A [Replaced] close means another app took the mailbox, so this waits the longest, and the two never take turns.
  */
 internal class SiteMailbox(private val routes: SiteRoutes, private val scope: CoroutineScope, private val log: (String) -> Unit, private val clock: Clock = Clock.System) : Mailbox {
     private val incoming = MutableSharedFlow<Invitation>(extraBufferCapacity = 64)
@@ -249,10 +241,7 @@ internal class SiteMailbox(private val routes: SiteRoutes, private val scope: Co
     }
 }
 
-/**
- * GET /api/games and /api/games/<id>, and PUT or DELETE /api/games/<token>, refreshing a kept listing every 30 s so it
- * outlives the site's 90 s expiry only while this app keeps it.
- */
+/** The site expires a listing after 90 s, so a kept one is put again every [refresh] and lapses once this app stops. */
 internal class SiteDirectory(private val routes: SiteRoutes, scope: CoroutineScope, private val refresh: Duration = 30.seconds) : Directory {
     private val wanted = MutableStateFlow<ListingWanted?>(null)
     private val listed = AtomicReference<ListingToken?>(null)
@@ -327,7 +316,6 @@ private fun JsonObject.text(key: String): String? = (this[key] as? JsonPrimitive
 
 private fun JsonObject.int(key: String): Int? = (this[key] as? JsonPrimitive)?.takeIf { !it.isString }?.intOrNull
 
-/** A mailbox message, `{"type":"invite","invite":{"id","from","code","offer","players","expires"}}`, or null. */
 internal fun parseInvite(text: String): Invitation? {
     val message = objectOf(text)?.takeIf { it.text("type") == "invite" } ?: return null
     val invite = message["invite"] as? JsonObject ?: return null
@@ -351,9 +339,7 @@ private fun publicGame(row: JsonObject): PublicGame? {
     return PublicGame(id, offer, relay, players, status)
 }
 
-/** The site's invites and Servers, in a build with the invite key and a site to reach. */
 internal class SiteSocial private constructor(val network: SocialNetwork, private val directory: SiteDirectory) {
-    /** Takes a listed game down as the app exits, rather than leaving it to expire. */
     fun close() {
         runBlocking { withTimeoutOrNull(CloseLimit) { directory.close() } }
     }

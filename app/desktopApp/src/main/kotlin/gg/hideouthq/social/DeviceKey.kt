@@ -16,14 +16,12 @@ import java.security.spec.NamedParameterSpec
 import java.util.Base64
 
 /**
- * This install's Ed25519 key. The site binds a Steam id's mailbox to the first device that opens it, so the key must
- * outlive updates: it lives in the config folder, which the Windows installer leaves alone, unlike the data folder.
+ * The site binds a Steam id's mailbox to the first device key that opens it, so the key must outlive updates: it lives
+ * in the config folder, which the Windows installer leaves alone, unlike the data folder.
  */
 class DeviceKey private constructor(private val key: PrivateKey, private val public: ByteArray) {
-    /** The raw public key, unpadded base64url, as `X-Hideout-Device` carries it. */
     val header: String = encoder.encodeToString(public)
 
-    /** The signature over [message], unpadded base64url, as `X-Hideout-Device-Sig` carries it. */
     fun sign(message: ByteArray): String = encoder.encodeToString(Signature.getInstance(Algorithm).run {
         initSign(key)
         update(message)
@@ -35,7 +33,6 @@ class DeviceKey private constructor(private val key: PrivateKey, private val pub
         private const val Half = 32
         private val encoder = Base64.getUrlEncoder().withoutPadding()
 
-        /** The key kept in [file], made the first time. The file holds the seed, then the public key, readable by this user alone. */
         fun load(file: Path): DeviceKey {
             read(file)?.let { return it }
             val (key, stored) = generate(SecureRandom())
@@ -50,7 +47,6 @@ class DeviceKey private constructor(private val key: PrivateKey, private val pub
             return key
         }
 
-        /** A new key from [random], and the bytes [load] keeps it as. */
         internal fun generate(random: SecureRandom): Pair<DeviceKey, ByteArray> {
             val pair = KeyPairGenerator.getInstance(Algorithm).apply { initialize(NamedParameterSpec.ED25519, random) }.generateKeyPair()
             val seed = (pair.private as EdECPrivateKey).bytes.orElseThrow()

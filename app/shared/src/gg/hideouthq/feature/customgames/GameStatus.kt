@@ -113,7 +113,6 @@ private fun ColumnScope.StatusContent(body: Body, view: GameView, games: CustomG
     }
 }
 
-/** What the game screen's status card says for [body], and what the in-game card says in its place. Null shows no heading. */
 data class Headline(val icon: ImageVector, val tone: Tone, val title: Phrase, val body: Phrase, val busy: Boolean = false)
 
 fun headlineOf(body: Body, view: GameView): Headline? {
@@ -369,7 +368,6 @@ fun restartWhyPhrase(why: RestartReason): Phrase {
     return Phrase.Joined(listOf(phrase(reason), phrase(Res.string.cg_restart_queue)))
 }
 
-/** What Host or Join will do to the running Deadlock first, said before the press. */
 fun restartAheadPhrase(why: RestartReason, host: Boolean): Phrase {
     val reason = when (why) {
         RestartReason.NotSetUp -> Res.string.cg_restarts_not_set_up

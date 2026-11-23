@@ -20,10 +20,9 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
-/** Bumped when a frame or command changes shape. The pack's own number rides in every command, and `hello` says the app's. */
+/** Bump when a frame or command changes shape. */
 const val InGameProtocol = 1
 
-/** A stream's frames, each replacing the last of its topic. */
 enum class Topic { Hello, Catalog, Game, Inbox, Servers }
 
 @Serializable
@@ -36,12 +35,10 @@ sealed interface Frame {
     @SerialName("catalog")
     data class Catalog(val modes: List<ModeCard>) : Frame
 
-    /** [restartAhead] is what Play would do to the running Deadlock first, echoed back in `host`. */
     @Serializable
     @SerialName("game")
     data class Game(val host: HostCard?, val join: JoinCard?, val restartAhead: Restart?) : Frame
 
-    /** Invites to show, newest first. Each leaves at its [InviteCard.expires], or once any context joins or forgets it. */
     @Serializable
     @SerialName("inbox")
     data class Inbox(val invites: List<InviteCard>) : Frame
@@ -50,16 +47,11 @@ sealed interface Frame {
     @SerialName("servers")
     data class Servers(val state: ServersState, val rows: List<ServerRow>) : Frame
 
-    /** Sent after a quiet while, so the game can tell a quiet stream from a dead one. */
     @Serializable
     @SerialName("alive")
     data object Alive : Frame
 }
 
-/**
- * Whether invites and Servers work. [Off] is a build without the invite key, or no Steam login the app can read.
- * [OtherAccount] is a game signed in to another Steam account than the app reads, whose invites would go elsewhere.
- */
 @Serializable
 enum class SocialWire { @SerialName("on") On, @SerialName("off") Off, @SerialName("other-account") OtherAccount }
 
@@ -72,7 +64,6 @@ data class ModeCard(
     val players: List<Int>,
     val minutes: List<Int>?,
     val by: List<String>,
-    /** What hosting it downloads first, or null when it is on this computer. */
     val bytes: Long?,
     val art: ModeArtCard,
     val settings: List<SettingCard>,
@@ -111,7 +102,6 @@ data class StepCard(val label: String, val status: StepState, val note: String?,
 @Serializable
 enum class StepState { @SerialName("done") Done, @SerialName("running") Running, @SerialName("waiting") Waiting }
 
-/** A card's buttons, each the `act` command of the same name. */
 @Serializable
 enum class Action { @SerialName("stop") Stop, @SerialName("restart") Restart, @SerialName("play") Play, @SerialName("dismiss") Dismiss, @SerialName("again") Again }
 
@@ -126,25 +116,20 @@ enum class ListingWire(val listing: Listing) {
     }
 }
 
-/** The game this computer hosts, from the app's own game screen. */
 @Serializable
 data class HostCard(
     val mode: String,
     val phase: HostPhase,
     val steps: List<StepCard>,
     val words: Words?,
-    /** The join link, while friends can use it. */
     val link: String?,
-    /** Signed on, then the match size, while the game runs. */
     val players: List<Int>?,
     val listing: ListingWire,
     val invitees: List<String>,
-    /** What each invite sent so far came to, by invitee. An invitee missing here waits for the game to be ready. */
     val deliveries: Map<String, DeliveryWire>,
     val actions: List<Action>,
 )
 
-/** [NotReached] means no Hideout of theirs took it, so the card offers Copy link. */
 @Serializable
 enum class DeliveryWire { @SerialName("sending") Sending, @SerialName("delivered") Delivered, @SerialName("not-reached") NotReached }
 
@@ -161,10 +146,6 @@ enum class HostPhase {
     @SerialName("ended") Ended,
 }
 
-/**
- * A join on this computer that has not reached the match, from the app's join dialog. In [JoinPhase.Review] the card
- * offers Join, which is the `confirm` command carrying [restart].
- */
 @Serializable
 data class JoinCard(
     val title: String,
@@ -174,7 +155,6 @@ data class JoinCard(
     val phase: JoinPhase,
     val steps: List<StepCard>,
     val words: Words?,
-    /** The line beside a spinner, while the dialog shows one. */
     val busy: String?,
     val restart: Restart?,
     val actions: List<Action>,
@@ -193,10 +173,6 @@ enum class JoinPhase {
     @SerialName("failed") Failed,
 }
 
-/**
- * An invite that came in. [from] is the sender's claim, which the game shows only for a Steam friend and under the
- * friend list's own name. [mode] and [picks] read as the join dialog's do. [expires] is in epoch milliseconds.
- */
 @Serializable
 data class InviteCard(
     val id: String,
@@ -204,24 +180,20 @@ data class InviteCard(
     val mode: String,
     val picks: List<String>,
     val tile: String?,
-    /** Signed on, then the match size. */
     val players: List<Int>,
     val expires: Long,
 )
 
 @Serializable
 enum class ServersState {
-    /** Not read since the app started. */
     @SerialName("idle") Idle,
     @SerialName("loading") Loading,
     @SerialName("ready") Ready,
     @SerialName("unreachable") Unreachable,
 
-    /** This build can't read the directory. */
     @SerialName("unavailable") Unavailable,
 }
 
-/** A public game. [host] is the name its offer carries. [region] is the host's relay region code and [ping] this computer's round trip to it. */
 @Serializable
 data class ServerRow(
     val id: String,
@@ -238,31 +210,25 @@ data class ServerRow(
 @Serializable
 enum class ServerStatus { @SerialName("lobby") Lobby, @SerialName("match") Match, @SerialName("full") Full }
 
-/** What the endpoint answers a command with, as the width of a one-pixel-high PNG. */
+/** Answered as the width of a one-pixel-high PNG. */
 enum class CommandResult(val width: Int) {
     Accepted(1),
 
-    /** A session runs that this can't start beside. */
     Busy(2),
 
-    /** The mode, invite or server is no longer there. */
     Gone(3),
     Invalid(4),
 
-    /** Invites and Servers aren't in this build yet. */
     Unavailable(5),
 
-    /** The pack speaks another protocol, and only a restart of Deadlock loads the one the app built. */
     Outdated(6),
 }
 
-/** A press in the game, after [parseCommand]. Nothing past the parse sees the wire's strings. */
 sealed interface PanelCommand {
     data class Host(val mode: ModeId, val picks: Map<SettingKey, SettingValue>, val outreach: Outreach, val restart: RestartReason?) : PanelCommand
 
     data class Act(val action: Action) : PanelCommand
 
-    /** Join after a review, with the restart the card said. */
     data class Confirm(val restart: RestartReason?) : PanelCommand
 
     data class Invite(val to: Set<SteamId>) : PanelCommand
@@ -273,23 +239,19 @@ sealed interface PanelCommand {
 
     data class JoinServer(val id: ListingId) : PanelCommand
 
-    /** Closes an invite's toast in every context. */
     data class Forget(val id: InvitationId) : PanelCommand
 
-    /** The Servers tab wants a fresh read. */
     data object Servers : PanelCommand
 
-    /** The game's own Steam account, when the UI can read it, so the app opens no mailbox for another account. */
     data class Hello(val self: SteamId?) : PanelCommand
 }
 
 object InGameWire {
     private val json = Json { classDiscriminator = "t" }
 
-    /** ASCII only, with `\u` escapes, so the game can read a frame's bytes without decoding UTF-8. */
     fun encode(frame: Frame): String = json.encodeToString(Frame.serializer(), frame).asciiOnly()
 
-    /** One line of the bridge page's stream, `~<sequence>:<packed>`, packed as Modlock's `panorama.AppendPackedLine` packs. */
+    /** Packs as Modlock's `panorama.AppendPackedLine` does. */
     fun line(sequence: Long, frame: String): ByteArray = buildString {
         append('~').append(sequence).append(':')
         for (byte in frame.encodeToByteArray()) {
@@ -303,7 +265,6 @@ object InGameWire {
         for (c in this@asciiOnly) if (c.code < 0x80) append(c) else append("\\u").append(c.code.toString(16).padStart(4, '0'))
     }
 
-    /** The `c=` query, JSON. Null for anything malformed, too long, or of an unknown kind. */
     fun parseCommand(text: String): PanelCommand? {
         if (text.length > MaxCommand) return null
         val command = try {
@@ -340,7 +301,7 @@ object InGameWire {
         return PanelCommand.Host(mode, picks, Outreach(listing, invite), restart.reason)
     }
 
-    /** Present, and null or a known reason, as a press echoes what it was shown. */
+    /** A press echoes the restart it was shown, so `restart` must be present, even as null. */
     private class Echo(val reason: RestartReason?)
 
     private fun restartIn(command: JsonObject): Echo? = when (val restart = command["restart"]) {

@@ -180,7 +180,6 @@ private fun StoppingLine(stage: EndingStage, failed: Boolean) {
     }
 }
 
-/** The join dialog's heading at [step], which the in-game join card says too. */
 fun joinHeadline(step: JoinStep, view: JoinView): Headline? = when (step) {
     is JoinStep.Stopping -> step.problem?.let { problemHeadline(it, view) }
     is JoinStep.Failed -> problemHeadline(step.problem, view)
@@ -190,7 +189,6 @@ fun joinHeadline(step: JoinStep, view: JoinView): Headline? = when (step) {
     JoinStep.Finding, is JoinStep.Review, JoinStep.AfterCleanup, is JoinStep.Progress -> null
 }
 
-/** The line beside the join dialog's spinner at [step], which the in-game join card says too. */
 fun joinBusy(step: JoinStep): Phrase? = when (step) {
     JoinStep.Finding -> phrase(Res.string.cg_join_finding)
     JoinStep.AfterCleanup -> phrase(Res.string.cg_join_cleanup)

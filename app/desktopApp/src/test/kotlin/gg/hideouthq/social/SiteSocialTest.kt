@@ -45,7 +45,6 @@ private val Offer = InviteOffer.of(FakeCustomGamesFeed.BebopWars, Choices.None, 
 private val Me = checkNotNull(SteamId.parse("76561198000000001"))
 private val Friend = checkNotNull(SteamId.parse("76561198000000002"))
 
-/** A stand-in for the site that answers what each test sets and records every request with its signature headers. */
 private class FakeSite {
     class Seen(val method: String, val path: String, val body: String, val time: String?, val build: String?, val device: String?)
 

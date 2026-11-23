@@ -27,15 +27,13 @@ internal const val MasterVariable = "HIDEOUT_BUILD_MASTER"
 internal const val PostHogKeyVariable = "HIDEOUT_BUILD_POSTHOG_KEY"
 
 /**
- * The values a build ships, each masked into the resource `<id>/secrets/<name>` under one random key. The key goes into
- * `fun bytes()` of the generated `BuildMask` object in the id's package, so it is compiled code and not a file beside the
- * data. A build keeps its key while the values stay the same, so a build that changes nothing compiles nothing.
+ * The mask key goes into the generated `BuildMask` as compiled code, not a file beside the masked values. A build keeps
+ * its key while the values stay the same, so a build that changes nothing compiles nothing.
  */
 @TaskAction(executionAvoidance = ExecutionAvoidance.Disabled)
 fun writeBuildSecrets(id: String, version: String, @Input localFile: Path, @Output sourceDir: Path, @Output resourceDir: Path, @Output stateDir: Path) =
     writeBuildSecretsFiles(id, version, localFile, BuildSecretsOutput(sourceDir, resourceDir, stateDir), System::getenv)
 
-/** Where the generated `BuildMask` source, the masked resources and the key a later build reuses go. */
 internal class BuildSecretsOutput(val sourceDir: Path, val resourceDir: Path, val stateDir: Path) {
     fun secrets(id: String): Path = resourceDir / (id.replace('.', '/') + "/secrets")
 
@@ -64,10 +62,7 @@ internal fun writeBuildSecretsFiles(
     output.source(id).update(maskSource(id.substringBeforeLast('.'), key).encodeToByteArray())
 }
 
-/**
- * What a build masks, by the name the app reads it under. Preview, invite and directory requests are signed with keys
- * derived from one master for this version and their purpose, so a key taken from one release is only that release's.
- */
+/** Signing keys are derived from one master per release and purpose, so a key taken from one release is only that release's. */
 internal fun buildSecrets(version: String, value: (String) -> String?): Map<String, String> {
     val url = value(PreviewUrlVariable)
     val master = value(MasterVariable)
@@ -90,11 +85,11 @@ internal fun buildSecrets(version: String, value: (String) -> String?): Map<Stri
     }
 }
 
-/** The hex HMAC-SHA256, under [master], of [purpose], a newline and [version]: the key the service derives alike for this release. */
+/** The Workers derive the same key for this release. */
 internal fun releaseKey(master: String, purpose: String, version: String): String =
     HexFormat.of().formatHex(hmac(master.encodeToByteArray()).doFinal("$purpose\n$version".encodeToByteArray()))
 
-/** [value] XORed with HMAC-SHA256 blocks, under [key], of [name], a newline and the block's number. It unmasks itself. */
+/** Its own inverse. The app's `BuildSecrets.unmask` must match it. */
 internal fun mask(key: ByteArray, name: String, value: ByteArray): ByteArray {
     val mac = hmac(key)
     val blocks = List((value.size + 31) / 32) { block -> mac.doFinal("$name\n".encodeToByteArray() + ByteBuffer.allocate(4).putInt(block).array()) }

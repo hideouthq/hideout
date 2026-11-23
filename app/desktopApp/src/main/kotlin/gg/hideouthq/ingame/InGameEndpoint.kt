@@ -32,20 +32,12 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 /**
- * The loopback server the in-game UI talks to, for as long as Hideout runs. Two routes, each with its own proof of origin,
- * and both refuse a Host that isn't loopback, which keeps DNS rebinding out.
- *
- * `GET /panorama/stream` is read by the bridge page in the game's HTML panel, admitted as Modlock's relay admits it: the
- * Origin is the running pack's site and the User-Agent is the game's. It writes every topic, then each topic that
- * changed, and `alive` after a quiet [keepalive].
- *
- * `GET /c?p=&t=&b=&n=&c=` is an Image panel's request, which carries no Origin, so it carries the pack's token instead,
- * and a wrong one is 404. The answer is a PNG as wide as [CommandResult.width]. A repeat of a boot's sequence number gets
- * its first answer and runs nothing, so a retried image can't host twice.
+ * Every route refuses a Host that isn't loopback, which keeps DNS rebinding out. The stream admits the pack's Origin
+ * and the game's User-Agent, as Modlock's relay does. A Panorama Image panel sends no Origin, so `/c` takes the pack's
+ * token instead, and a repeated sequence number gets its first answer again, so a retried image can't host twice.
  */
 class InGameEndpoint(
     private val inGame: InGame,
-    /** The pack of the game Hideout manages, read for each request: it changes only while Deadlock is closed. */
     private val pack: suspend () -> MenusPack?,
     private val log: (String) -> Unit,
     private val keepalive: Duration = Keepalive,
@@ -55,7 +47,6 @@ class InGameEndpoint(
 
     val port: Int? get() = server?.address?.port
 
-    /** False when another program holds [port]; the game then shows Hideout as closed. */
     fun start(port: Int = InGamePort): Boolean {
         val bound = try {
             HttpServer.create(InetSocketAddress(InetAddress.getLoopbackAddress(), port), 0)
@@ -167,7 +158,7 @@ class InGameEndpoint(
     }
 }
 
-/** Whether a Host header names loopback with a port, as Modlock's `session.Loopback` reads it. */
+/** Mirrors Modlock's `session.Loopback`. */
 internal fun loopback(host: String?): Boolean {
     if (host == null || host.substringAfterLast(':', missingDelimiterValue = "").toIntOrNull() == null) return false
     val name = host.substringBeforeLast(':')
@@ -187,11 +178,9 @@ private fun queryOf(raw: String?): Map<String, String> = try {
     emptyMap()
 }
 
-/** The answer per boot id to its newest sequence number. Keeps the newest boots, since a game makes one per script context. */
 internal class Seen(private val boots: Int = 16) {
     private val last = LinkedHashMap<String, Pair<Long, CommandResult>>()
 
-    /** [run]'s answer for a new number, the first answer again for a repeat, and Invalid for one older than the newest. */
     @Synchronized
     fun answer(boot: String, sequence: Long, run: () -> CommandResult): CommandResult {
         last[boot]?.let { (newest, answer) -> if (sequence == newest) return answer else if (sequence < newest) return CommandResult.Invalid }
@@ -203,7 +192,6 @@ internal class Seen(private val boots: Int = 16) {
     }
 }
 
-/** A [width] by 1 transparent PNG. */
 internal fun pixelRow(width: Int): ByteArray {
     val pixels = ByteArrayOutputStream().also { out -> DeflaterOutputStream(out).use { it.write(ByteArray(1 + width * 4)) } }.toByteArray()
     val header = ByteArrayOutputStream().also { out -> DataOutputStream(out).run { writeInt(width); writeInt(1); write(byteArrayOf(8, 6, 0, 0, 0)) } }.toByteArray()

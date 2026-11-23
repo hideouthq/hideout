@@ -13,7 +13,6 @@ import java.io.IOException
 import java.nio.file.Path
 import kotlin.time.Duration.Companion.seconds
 
-/** Runs `hideout-link regions`, which measures this computer's round trip to every relay region as Tailcat does. */
 internal class HelperRelayLatency(private val helper: Path) : RelayLatency {
     override suspend fun measure(): Map<Int, Int>? = withTimeoutOrNull(Limit) {
         runInterruptible(Dispatchers.IO) {
@@ -36,7 +35,6 @@ internal class HelperRelayLatency(private val helper: Path) : RelayLatency {
     }
 }
 
-/** The measured regions on a `{"type":"regions","regions":[{"id","code","ms"}]}` line, by id. A region without `ms` didn't answer. */
 internal fun regionsIn(line: String): Map<Int, Int>? {
     val event = try {
         Json.parseToJsonElement(line) as? JsonObject

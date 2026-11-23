@@ -41,7 +41,6 @@ sealed interface Session {
     /** Holding the files and staging the mode, before the server reads it. */
     data class HostAdmitting(val host: PreparedHost, val port: Int, val setup: GameSetup, override val deadline: DeadlineToken) : Session
 
-    /** [region] is the relay region the helper hosts the game's link in, said with the code. */
     data class HostStarting(
         val code: InviteCode?,
         val map: String?,
@@ -282,10 +281,8 @@ sealed interface SessionEvent {
 
     data class InviteOpened(val code: InviteCode, val acceptedBefore: InviteOffer? = null) : SessionEvent
 
-    /** Friends added to the hosted game's invitees. Only the record changes; [Session] never waits on it. */
     data class Invited(val to: Set<SteamId>) : SessionEvent
 
-    /** Whether Servers lists the hosted game, changed while it runs. Only the record changes. */
     data class Listed(val listing: Listing) : SessionEvent
 
     /** [restartAccepted] is as for [HostRequested]. */
@@ -398,10 +395,8 @@ sealed interface SessionCommand {
 
 data class Step(val session: Session, val commands: List<SessionCommand> = emptyList())
 
-/** Whether a [HostRequested] starts a game now. [reduce] reads it too, so a caller that answers before posting agrees with it. */
 val Session.startsHost: Boolean get() = this == Session.Idle || this is Session.Ended
 
-/** Whether an [SessionEvent.InviteOpened] for a new code starts finding it now, leaving a link still being found or reviewed. */
 val Session.takesInvite: Boolean get() = startsHost || this is Session.Finding || this is Session.Confirming
 
 /**

@@ -116,7 +116,6 @@ class FakeLinkProcess(override val identity: ProcessIdentity? = ProcessIdentity(
     }
 }
 
-/** A game folder that takes whatever a session asks of it, with Deadlock [activity]. */
 class FakeSessionFiles(activity: GameActivity = GameActivity.Closed, private val root: GameRoot = GameRoot("/games/Deadlock")) : SessionFiles {
     override val clientActivity = MutableStateFlow(activity)
     private var lines: GamesLines = GamesLines.Off

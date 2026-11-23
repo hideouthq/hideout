@@ -5,16 +5,12 @@ import java.nio.ByteBuffer
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 
-/**
- * The values the build masked into resources under the key it compiled into [BuildMask], by name. A dev build has none.
- * The native-package plugin's buildSecrets.kt writes them.
- */
 internal object BuildSecrets {
     fun resource(name: String) = "/${AppId.replace('.', '/')}/secrets/$name"
 
     fun text(name: String): String? = read(name)?.let { bytes -> bytes.decodeToString().also { bytes.fill(0) } }
 
-    /** An HMAC-SHA256 [Mac] under the value named [name], so the value never becomes a String. */
+    /** Keeps the secret out of a String, which can't be zeroed. */
     fun mac(name: String): Mac? = read(name)?.let { bytes ->
         try {
             hmac(bytes)

@@ -2,18 +2,13 @@ package gg.hideouthq.core.customgames
 
 enum class Listing { InviteOnly, Public }
 
-/**
- * What a host wants beyond the mode and its picks: whether Servers lists the game, and which Steam friends get an
- * invite once it is ready. It is part of what the game is for, so it rides in [Role.Host] beside the choices, Play
- * again keeps it, and only [CustomGames] writes it.
- */
+/** Rides in [Role.Host] beside the choices so Play again keeps it. Only [CustomGames] writes it. */
 data class Outreach(val listing: Listing, val invitees: Set<SteamId>) {
     companion object {
         val Private = Outreach(Listing.InviteOnly, emptySet())
     }
 }
 
-/** A Steam account as its SteamID64, parsed wherever one enters. */
 @JvmInline
 value class SteamId private constructor(val value: String) {
     override fun toString() = "SteamId(redacted)"

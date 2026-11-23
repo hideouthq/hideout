@@ -173,7 +173,6 @@ class AppContainer(
     val customGames: CustomGames? = null,
     /** Where a host's invite links point; null where no site is set, and a host then hands out the code alone. */
     val customGamesSite: SiteOrigin? = null,
-    /** What the in-game UI reads and presses, with [customGames]. */
     val inGame: InGame? = null,
     /** The same site's short codes for shared profiles. */
     val profileShares: ProfileShares = ProfileShares.None,

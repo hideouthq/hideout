@@ -20,7 +20,6 @@ fun desktopEngine(): HttpClientEngine = OkHttp.create {
     windowsTrust?.let { (context, trust) -> config { sslSocketFactory(context.socketFactory, trust) } }
 }
 
-/** The same trust for a client used without Ktor, such as for WebSockets. */
 fun desktopOkHttp(): OkHttpClient = OkHttpClient.Builder().apply { windowsTrust?.let { (context, trust) -> sslSocketFactory(context.socketFactory, trust) } }.build()
 
 private val windowsTrust: Pair<SSLContext, X509TrustManager>? by lazy {

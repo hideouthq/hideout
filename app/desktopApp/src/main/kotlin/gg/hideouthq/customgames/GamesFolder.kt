@@ -52,7 +52,6 @@ internal class GamesFolder(private val helper: Path, private val workFolder: Pat
         return PackToken.parse(read.token)?.let { MenusPack(read.stamp, it) }
     }
 
-    /** The pack built for [want], or null when the helper failed or named no token, which keeps the pack that was there. */
     suspend fun buildMenus(game: GameRoot, renderer: Path, want: MenusStamp): MenusPack? = locked(game, { null }) { root ->
         Files.newDirectoryStream(root, "$PartPrefix*").use { leftovers -> leftovers.forEach(Files::deleteIfExists) }
         val part = root.resolve(PartPrefix + UUID.randomUUID())
@@ -174,10 +173,9 @@ internal class GamesFolder(private val helper: Path, private val workFolder: Pat
         )
     }
 
-    /** [devSession] is whether a Modlock development session's block was live, null when there was none. [token] is a menus build's. */
+    /** [devSession] is whether a Modlock development session's block was live, null when there was none. */
     private class Ran(val done: Boolean, val held: List<String>, val message: String?, val devSession: Boolean? = null, val token: PackToken? = null)
 
-    /** `menus.json`. A file from before the token reads as no pack. */
     @Serializable
     private class MenusFile(val stamp: MenusStamp, val token: String)
 

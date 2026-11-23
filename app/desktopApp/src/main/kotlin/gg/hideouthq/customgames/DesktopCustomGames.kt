@@ -264,7 +264,6 @@ class DesktopCustomGames internal constructor(
         if (have == want) have else gamesFolder.buildMenus(game, store.folderOf(built), want)?.stamp ?: have
     }
 
-    /** The pack [game] has now, whose token the in-game endpoint checks. */
     suspend fun menusPack(game: GameRoot): MenusPack? = withContext(Dispatchers.IO) { gamesFolder.pack(game) }
 
     private val helperDigest: String by lazy { sha256().also { digest -> FileChannel.open(helper).use { it.digestRest(digest) } }.digest().toHexString() }

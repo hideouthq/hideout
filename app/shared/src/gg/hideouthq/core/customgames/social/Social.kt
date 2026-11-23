@@ -27,65 +27,56 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
-/** An invite that came in. [from] is the sender's claim, which the game shows only for a Steam friend. */
+/** [from] is the sender's claim, which the game shows only for a Steam friend. */
 data class Invitation(val id: InvitationId, val from: SteamId, val ticket: JoinTicket, val players: Int, val expires: Instant)
 
 enum class GameStatus { Lobby, Match, Full }
 
-/** A listed game. Its code is not here: [Directory.resolve] answers it at the press, and only while the game has room. */
+/** Carries no code: [Directory.resolve] answers it at the press, and only while the game has room. */
 data class PublicGame(val id: ListingId, val offer: InviteOffer, val region: RelayRegion, val players: Int, val status: GameStatus)
 
-/** What an invite to one friend came to. [NotReached] covers no Hideout of theirs listening and a mailbox that failed, both of which leave Copy link. */
 enum class Delivery { Sending, Delivered, NotReached }
 
-/** 32 hex digits drawn per hosted code. Only its holder can refresh or remove the listing. */
+/** Only its holder can refresh or remove the listing. */
 @JvmInline
 value class ListingToken(val value: String) {
     override fun toString() = "ListingToken(redacted)"
 }
 
-/** What this computer's hosted game wants in the directory. [Directory.keep] holds it there until this changes. */
 data class ListingWanted(val token: ListingToken, val ticket: JoinTicket, val region: RelayRegion, val players: Int, val status: GameStatus)
 
 sealed interface Resolved {
     data class Open(val ticket: JoinTicket) : Resolved
 
-    /** Closed, full, or the directory couldn't say. */
     data object Gone : Resolved
 }
 
 interface Mailbox {
-    /** Keeps [owner]'s mailbox open, reconnecting with backoff, until called with another; null closes it. */
     fun hold(owner: SteamId?)
 
-    /** Invites as they arrive on the open mailbox, already parsed. */
     val invitations: Flow<Invitation>
 
     suspend fun deliver(to: SteamId, from: SteamId, ticket: JoinTicket, players: Int): Delivery
 }
 
 interface Directory {
-    /** Null when the directory can't be read. */
     suspend fun list(): List<PublicGame>?
 
     suspend fun resolve(id: ListingId): Resolved
 
-    /** Puts [wanted] and refreshes it until the next call; a new token or null removes the old listing. */
+    /** Refreshes [wanted] until the next call. A new token or null removes the old listing. */
     fun keep(wanted: ListingWanted?)
 }
 
-/** This computer's round trip to each relay region, by region id, or null when it couldn't measure. */
 fun interface RelayLatency {
     suspend fun measure(): Map<Int, Int>?
 }
 
-/** The network a build with the invite key reaches. */
 class SocialNetwork(val mailbox: Mailbox, val directory: Directory, val latency: RelayLatency)
 
-/** Where invites and Servers stand for the game: [Off] without a key or a Steam login, [OtherAccount] when the game's account isn't the app's. */
 enum class SocialStatus { On, Off, OtherAccount }
 
-/** An invite's identity, kept until its expiry even once closed, so a second delivery of it never shows again. */
+/** Kept until its expiry even once closed, so a second delivery never shows again. */
 data class InvitationKey(val from: SteamId, val id: InvitationId)
 
 data class Hosted(val code: InviteCode, val token: ListingToken, val deliveries: Map<SteamId, Delivery> = emptyMap())
@@ -94,12 +85,7 @@ enum class ServersRead { Idle, Loading, Ready, Unreachable }
 
 data class Servers(val read: ServersRead = ServersRead.Idle, val games: List<PublicGame> = emptyList(), val ping: Map<Int, Int> = emptyMap(), val pingAt: Instant? = null)
 
-/**
- * What the in-game surfaces need beyond the session. [inbox] is what shows, newest first, and [seen] every invite that
- * came, until its expiry. [hosted] follows the session while it hosts with a code, so a new game starts with no
- * deliveries. [streams] counts open in-game streams and [closedAt] is when the last one closed. [gameSelf] is the
- * game's own Steam account, when its UI said it.
- */
+/** [hosted] follows the hosted code, so a new game starts with no deliveries. */
 data class SocialState(
     val inbox: List<Invitation> = emptyList(),
     val seen: Map<InvitationKey, Instant> = emptyMap(),
@@ -115,7 +101,6 @@ sealed interface SocialInput {
 
     data class Came(val invitation: Invitation) : SocialInput
 
-    /** Joined or dismissed in some context. */
     data class Closed(val id: InvitationId) : SocialInput
 
     data class Answered(val code: InviteCode, val to: SteamId, val delivery: Delivery) : SocialInput
@@ -141,9 +126,8 @@ val MailboxGrace = 30.seconds
 val PingLifetime = 5.minutes
 
 /**
- * Pure and total. Deliveries converge: on every [SocialInput.Live] each invitee of the hosted game with no delivery yet
- * gets one, so a friend invited during the start goes out with the rest once the code arrives, and a repeated Live sends
- * nothing twice. [fresh] draws a listing token, used only when a new hosted code appears.
+ * Deliveries converge on every [SocialInput.Live]: a friend invited during the start goes out with the rest once the
+ * code arrives, and a repeated Live sends nothing twice.
  */
 fun reduceSocial(state: SocialState, input: SocialInput, now: Instant, fresh: () -> ListingToken): Pair<SocialState, List<SocialEffect>> = when (input) {
     is SocialInput.Live -> deliveries(state, input.live, fresh)
@@ -194,7 +178,6 @@ private fun deliveries(state: SocialState, live: LiveSession, fresh: () -> Listi
     return state.copy(hosted = next) to owed.map { SocialEffect.Deliver(hosting.code, it, ticket, players) }
 }
 
-/** Pure. The listing the directory should hold now: set only while the session hosts a public feed game with a code. */
 fun listingWanted(state: SocialState, live: LiveSession): ListingWanted? {
     val hosting = live.session as? Session.Hosting ?: return null
     val record = live.game ?: return null
@@ -212,18 +195,11 @@ fun listingWanted(state: SocialState, live: LiveSession): ListingWanted? {
     return ListingWanted(hosted.token, JoinTicket(hosting.code, offer), region, players, status)
 }
 
-/** Pure. Whose mailbox should be open: [me]'s while a game of theirs listens, or did within [MailboxGrace]. */
 fun mailboxOwner(state: SocialState, now: Instant, me: SteamId?): SteamId? {
     val listening = state.streams > 0 || state.closedAt?.let { now - it < MailboxGrace } == true
     return me?.takeIf { listening && (state.gameSelf == null || state.gameSelf == it) }
 }
 
-/**
- * One coroutine reads [SocialInput]s, runs [reduceSocial], publishes [state] and runs the effects, as [CustomGames]
- * does. It writes nothing [CustomGames] owns: invitees and the listing choice live in the hosted game's record, and this
- * only acts on them. [network] is null in a build with no invite key, where nothing is sent and every invite is
- * [Delivery.NotReached], so the host gets Copy link.
- */
 class Social(
     private val games: CustomGames,
     private val network: SocialNetwork?,
@@ -258,14 +234,12 @@ class Social(
         }
     }
 
-    /** The in-game endpoint's open stream count, as it changes. */
     fun streams(open: Int) = post(SocialInput.Streams(open))
 
     fun gameSelf(id: SteamId?) = post(SocialInput.GameSelf(id))
 
     fun wantServers() = post(SocialInput.ServersWanted)
 
-    /** The ticket of an invite still showing, which then closes everywhere. Null once it expired or another context took it. */
     fun take(id: InvitationId): JoinTicket? {
         val ticket = published.value.inbox.firstOrNull { it.id == id }?.ticket ?: return null
         post(SocialInput.Closed(id))
@@ -274,7 +248,6 @@ class Social(
 
     fun forget(id: InvitationId) = post(SocialInput.Closed(id))
 
-    /** Asks the directory for a listed game's code at the press, so a closed or full game is [Resolved.Gone] then. */
     suspend fun resolve(id: ListingId): Resolved = network?.directory?.resolve(id) ?: Resolved.Gone
 
     private fun post(input: SocialInput) {

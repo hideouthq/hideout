@@ -66,11 +66,6 @@ import org.jetbrains.compose.resources.ResourceEnvironment
 import org.jetbrains.compose.resources.getSystemResourceEnvironment
 import java.util.concurrent.atomic.AtomicInteger
 
-/**
- * The in-game UI's one way into the app. [topics] is the newest frame of every topic, empty until the first is ready,
- * which each stream compares with what it sent. [run] is the only way a press reaches [CustomGames] and [Social]: it
- * answers what it can see now, as a running session being Busy, and posts, and what the press led to shows in [topics].
- */
 class InGame(private val games: CustomGames, private val social: Social, site: SiteOrigin?, scope: CoroutineScope) {
     @OptIn(ExperimentalCoroutinesApi::class)
     val topics: StateFlow<Map<Topic, String>> =
@@ -84,7 +79,6 @@ class InGame(private val games: CustomGames, private val social: Social, site: S
         scope.launch(Dispatchers.IO) { words }
     }
 
-    /** A game began to listen. Reads the mode list and whether Play would restart Deadlock, as the app's page does as it opens. */
     fun opened() {
         games.refreshModes()
         social.streams(open.incrementAndGet())
@@ -124,7 +118,7 @@ class InGame(private val games: CustomGames, private val social: Social, site: S
 
     private inline fun online(press: () -> CommandResult): CommandResult = if (social.available) press() else CommandResult.Unavailable
 
-    /** Busy is checked before [ticket], which may ask the directory, and again after, since a session may have begun meanwhile. */
+    /** Checks Busy again after [ticket], which may ask the directory, since a session may have begun meanwhile. */
     private inline fun join(ticket: () -> JoinTicket?): CommandResult {
         if (!games.live.value.session.takesInvite) return CommandResult.Busy
         val found = ticket() ?: return CommandResult.Gone
@@ -147,20 +141,17 @@ class InGame(private val games: CustomGames, private val social: Social, site: S
     }
 }
 
-/** [available] is a build with the invite key. */
 data class SocialView(val status: SocialStatus = SocialStatus.Off, val available: Boolean = false, val state: SocialState = SocialState())
 
-/** The mode's defaults with each pick laid over, or null when a pick names no setting or option of [listing]. */
 private fun choicesOf(listing: ModeListing, picks: Map<SettingKey, SettingValue>): Choices? =
     picks.entries.fold(Choices.defaultsOf(listing)) { choices, (key, value) ->
         val setting = listing.settings.firstOrNull { it.key == key }?.takeIf { setting -> setting.options.any { it.value == value } } ?: return null
         choices.with(setting, value)
     }
 
-/** Read once: reading it asks the desktop for its theme over D-Bus, which no string depends on and which takes 25 s where nothing answers. */
+/** Read once: it asks the desktop for its theme over D-Bus, which no string needs and which takes 25 s where nothing answers. */
 private val words: ResourceEnvironment by lazy { getSystemResourceEnvironment() }
 
-/** Every topic's frame for [inputs], from the same [present] the app's own screens draw, in the words they use. */
 suspend fun inGameFrames(inputs: PresentInputs, social: SocialView = SocialView()): Map<Topic, String> {
     val shown = present(inputs)
     val role = inputs.live.game?.role as? Role.Host
@@ -272,7 +263,6 @@ private fun hostPhase(body: Body): HostPhase = when (body) {
     is Body.Ended -> if (body.outcome is Outcome.CouldNotStart) HostPhase.Failed else HostPhase.Ended
 }
 
-/** The game screen's buttons for a host, those a press in the game can make. */
 private fun hostActions(body: Body): List<Action> = when (body) {
     is Body.Starting, is Body.Restarting, is Body.Entering, is Body.Open, is Body.Match -> listOf(Action.Stop)
     is Body.RestartNeeded -> listOf(Action.Restart, Action.Stop)
@@ -312,7 +302,6 @@ private fun joinPhase(step: JoinStep): JoinPhase = when (step) {
     is JoinStep.Failed -> JoinPhase.Failed
 }
 
-/** The join dialog's buttons, but Join itself, which is `confirm`. */
 private fun joinActions(step: JoinStep): List<Action> = when (step) {
     JoinStep.Finding, is JoinStep.Review, is JoinStep.Progress, is JoinStep.Restarting -> listOf(Action.Stop)
     JoinStep.AfterCleanup -> emptyList()

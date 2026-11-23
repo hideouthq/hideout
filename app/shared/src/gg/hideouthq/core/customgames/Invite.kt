@@ -128,5 +128,4 @@ class InviteCode private constructor(val value: String) {
 
 data class Invite(val code: InviteCode, val offer: InviteOffer)
 
-/** A known game to join, from an invite or a listing: its code and the offer it was shown with. */
 data class JoinTicket(val code: InviteCode, val offer: InviteOffer)

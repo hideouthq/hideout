@@ -82,7 +82,6 @@ sealed interface ServerEvent {
     data class Left(val slot: Int) : ServerEvent
 }
 
-/** A Tailcat relay region, as the helper names it. [code] is short and lowercase, such as `fra`. */
 data class RelayRegion(val id: Int, val code: String)
 
 private val RegionCode = Regex("[a-z0-9-]{1,16}")

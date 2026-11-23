@@ -292,7 +292,6 @@ private fun StepRow(step: StepView, mode: Phrase, host: DisplayName?) {
     }
 }
 
-/** A step's line, the same for a host's start and a guest's join. [mode] names the mode the first step gets. */
 fun stepPhrase(name: StepName, mode: Phrase, host: DisplayName?): Phrase = when (name) {
     StepName.GetMode -> phrase(if (host != null) Res.string.cg_step_get_mode_guest else Res.string.cg_step_get_mode, mode)
     StepName.StartServer -> phrase(Res.string.cg_step_start_server)
