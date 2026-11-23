@@ -15,23 +15,21 @@ import java.time.format.DateTimeFormatter
 import java.util.HexFormat
 import java.util.concurrent.atomic.AtomicLong
 import javax.crypto.Mac
-import javax.crypto.spec.SecretKeySpec
 import kotlin.math.abs
 
-class PreviewKey(secret: String, baseUrl: String) {
-    private val key = SecretKeySpec(secret.encodeToByteArray(), Algorithm)
-
+/** Signs requests to the preview host as release [build], with [mac] under the key the build derived for that release. */
+class PreviewKey(private val mac: Mac, baseUrl: String, val build: String) {
     val host: String = Url(baseUrl).signedHost()
 
     fun signature(method: String, host: String, path: String, time: Long): String =
-        HexFormat.of().formatHex(Mac.getInstance(Algorithm).apply { init(key) }.doFinal("$method\n$host\n$path\n$time".encodeToByteArray()))
+        HexFormat.of().formatHex(synchronized(mac) { mac.doFinal("$method\n$host\n$path\n$time\n$build".encodeToByteArray()) })
 
     companion object {
         const val TimeHeader = "X-Hideout-Time"
         const val SignatureHeader = "X-Hideout-Sig"
+        const val BuildHeader = "X-Hideout-Build"
 
         const val WindowSeconds = 300L
-        private const val Algorithm = "HmacSHA256"
     }
 }
 
@@ -59,6 +57,7 @@ internal fun HttpClient.signPreviewRequests(key: PreviewKey, now: () -> Long = {
 
 private fun sign(request: HttpRequestBuilder, key: PreviewKey, url: Url, time: Long) {
     request.headers[PreviewKey.TimeHeader] = time.toString()
+    request.headers[PreviewKey.BuildHeader] = key.build
     request.headers[PreviewKey.SignatureHeader] = key.signature(request.method.value, key.host, url.encodedPath.ifEmpty { "/" }, time)
 }
 

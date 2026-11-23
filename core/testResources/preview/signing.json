@@ -1,5 +1,5 @@
 {
-  "comment": "Preview request signatures. Each signer takes the host from url; host is what it must arrive at. The Worker's, the app's and the Python tools' tests all read this file.",
+  "comment": "Preview request signatures: the hex HMAC-SHA256, under key, of method, host, path and time joined by newlines. Each signer takes the host from url; host is what it must arrive at. A release signs as in builds instead: its key is the hex HMAC-SHA256, under master, of \"preview\", a newline and build, and build follows time in what it signs and goes in X-Hideout-Build. The Worker's, the app's, the build plugin's and the Python tools' tests all read this file.",
   "window": 300,
   "vectors": [
     {
@@ -28,6 +28,41 @@
       "path": "/v1/bundles/7fcfac9ff3fe9ce4937a8e2d635a8dad/manifest.json",
       "time": 1700000000,
       "signature": "49b8b8c6614e6103dbeb7ed592050fcf61755ad8511532c679788fb2b9094533"
+    }
+  ],
+  "builds": [
+    {
+      "master": "fixture-master-0123456789abcdef01234",
+      "build": "0.3.0",
+      "key": "0f17d65dcd89ff60177490a8e26a2cc37e63769b90ac9a2a96ebc28f2459c91d",
+      "method": "GET",
+      "url": "https://previews.example.test/v1/index.json",
+      "host": "previews.example.test",
+      "path": "/v1/index.json",
+      "time": 1800000000,
+      "signature": "b47f1770b809b9e0a088f3e1d9494a8f92ce8977bd75a98759f1bb18a2ea5464"
+    },
+    {
+      "master": "fixture-master-0123456789abcdef01234",
+      "build": "1.12.0",
+      "key": "2f983e70c300ebebbda9f542184ae1fb48e4e53a274e19c997566eeb0038e25c",
+      "method": "HEAD",
+      "url": "https://Previews.Example.Test:443/v1/bundles/7fcfac9ff3fe9ce4937a8e2d635a8dad/model.glb.zst",
+      "host": "previews.example.test",
+      "path": "/v1/bundles/7fcfac9ff3fe9ce4937a8e2d635a8dad/model.glb.zst",
+      "time": 1800000300,
+      "signature": "75049a9aeb8a13dbcc8d6a4feacd5485f8ebaea2ff1bbef24860c7ff0c3e3e60"
+    },
+    {
+      "master": "fixture-master-0123456789abcdef01234",
+      "build": "0.3.0",
+      "key": "0f17d65dcd89ff60177490a8e26a2cc37e63769b90ac9a2a96ebc28f2459c91d",
+      "method": "GET",
+      "url": "http://127.0.0.1:8787/v1/bundles/7fcfac9ff3fe9ce4937a8e2d635a8dad/manifest.json",
+      "host": "127.0.0.1:8787",
+      "path": "/v1/bundles/7fcfac9ff3fe9ce4937a8e2d635a8dad/manifest.json",
+      "time": 1700000000,
+      "signature": "7ce72156e108d0e3cbfbf17afeb348ce518fe2ed4e110025dc8d55069b2dfffa"
     }
   ]
 }

@@ -9,3 +9,13 @@ apply:
 
 pluginInfo:
   settingsClass: gg.hideouthq.nativepackage.NativePackageSettings
+
+test-dependencies:
+  - $libs.kotlinx.serializationJson
+
+settings:
+  jvm:
+    test:
+      systemProperties:
+        # Tests run in the module directory.
+        preview.signing: ../../core/testResources/preview/signing.json

@@ -32,16 +32,23 @@ import java.nio.file.Path
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
+import javax.crypto.Mac
+import javax.crypto.spec.SecretKeySpec
 import kotlin.io.path.ExperimentalPathApi
 import kotlin.io.path.copyToRecursively
 import kotlin.math.abs
 
-internal fun testPreviewKey(baseUrl: String) = PreviewKey("test-preview-key-0123456789abcdef", baseUrl)
+internal const val TestBuild = "0.3.0"
+
+internal fun previewKey(secret: String, baseUrl: String, build: String = TestBuild) =
+    PreviewKey(Mac.getInstance("HmacSHA256").apply { init(SecretKeySpec(secret.encodeToByteArray(), "HmacSHA256")) }, baseUrl, build)
+
+internal fun testPreviewKey(baseUrl: String) = previewKey("test-preview-key-0123456789abcdef", baseUrl)
 
 internal fun signedForTests(method: String, target: String, header: (String) -> String?): Boolean {
     val time = header(PreviewKey.TimeHeader)?.toLongOrNull() ?: return false
     val host = header(HttpHeaders.Host)?.lowercase() ?: return false
-    return abs(time - System.currentTimeMillis() / 1000) <= PreviewKey.WindowSeconds &&
+    return abs(time - System.currentTimeMillis() / 1000) <= PreviewKey.WindowSeconds && header(PreviewKey.BuildHeader) == TestBuild &&
         header(PreviewKey.SignatureHeader) == testPreviewKey("http://$host").signature(method, host, target, time)
 }
 

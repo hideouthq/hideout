@@ -142,7 +142,7 @@
       "glob": "gg/hideouthq/Hideout/app.properties"
     },
     {
-      "glob": "gg/hideouthq/Hideout/preview.bin"
+      "glob": "gg/hideouthq/Hideout/secrets/*"
     },
     {
       "bundle": "com.sun.accessibility.internal.resources.accessibility"

@@ -1,5 +1,7 @@
 package gg.hideouthq.data.preview
 
+import gg.hideouthq.BuildMask
+import gg.hideouthq.data.BuildSecrets
 import org.junit.Assume.assumeTrue
 import java.io.File
 import java.nio.file.Files
@@ -49,24 +51,32 @@ class PreviewHostTest {
     @Test
     fun theAppUnmasksWhatThePluginStores() {
         val stored = HexFormat.of().parseHex(
-            "33681c7e7dbbae392f000d7afd302fe99720869cbb5c0c34febf3adb90e42adcfbeb2e90eadd69d40110fc33589711decb912c3c18725bd5722e329197fcbfc48baa8ad412271f",
+            "0c8de5ff7f34cab65c721b5463a7ecbb05626cc4c011a28c663668fdc20db3ae8ae94f5b57657a3df082c2854d907635b387d5ed658b3988",
         )
-        assertEquals("https://previews.example.test" to "known-key", PreviewHost.unmask(stored))
+        assertEquals("https://previews.example.test:8443/a-path-past-one-block", BuildSecrets.unmask(ByteArray(32) { it.toByte() }, "preview-url", stored).decodeToString())
     }
 
     @Test
-    fun theBuiltAddressAndKeyAreNotReadableInTheBuildsOutput() {
-        val stored = PreviewHost::class.java.getResourceAsStream(PreviewHost.Resource)?.use { it.readBytes() }
-        assumeTrue("this build has no preview host", stored != null)
+    fun aBuildWithoutTheValuesHasNoBuiltHost() {
+        assumeTrue("this build has a preview host", PreviewHost::class.java.getResource(BuildSecrets.resource("preview-key")) == null)
+        assertNull(PreviewHost.built)
+    }
+
+    @Test
+    fun theBuiltValuesAndTheirMaskAreNotReadableInTheBuildsOutput() {
+        val mask = BuildMask.bytes()
+        val plain = listOf("preview-url", "preview-key", "posthog-key").mapNotNull { name ->
+            PreviewHost::class.java.getResourceAsStream(BuildSecrets.resource(name))?.use { BuildSecrets.unmask(mask, name, it.readBytes()).decodeToString() }
+        }
+        assumeTrue("this build has no secrets", plain.isNotEmpty())
         val checkout = File(System.getProperty("user.dir")).resolve("../..").canonicalFile
-        val plain = PreviewHost.unmask(stored!!).toList()
         val outputs = System.getProperty("java.class.path").split(File.pathSeparator).map { File(it).canonicalFile }.filter { it.startsWith(checkout) && it.exists() }
         assertTrue(outputs.isNotEmpty(), "no build output of $checkout on the classpath")
         var files = 0
         fun check(name: String, bytes: ByteArray) {
             files++
             val text = String(bytes, Charsets.ISO_8859_1)
-            for (value in plain) assertTrue(value !in text, "$name holds the preview host's address or key")
+            for (value in plain + String(mask, Charsets.ISO_8859_1)) assertTrue(value !in text, "$name holds a built value or the mask")
         }
         for (output in outputs) {
             if (output.isDirectory) {
