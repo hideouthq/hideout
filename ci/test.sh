@@ -60,6 +60,13 @@ python_tests() {
         python3 -B -m unittest discover -s "$1" -p 'test_*.py'
 }
 
+ingame_tests() {
+    packaging/linux/container.sh sh -c 'cd ingame && go test -count=1 ./compile' &&
+    podman run --rm --network=none --userns=keep-id --user "$(id -u):$(id -g)" -v "$repo:$repo" -w "$repo/ingame" \
+        docker.io/library/node@sha256:116b800c3754b440ee0aa3ed2f20f5bf3d99a554bfd9adeea09ea8017f6e85f5 \
+        node --test 'test/*.test.ts'
+}
+
 packaging/linux/container.sh true
 
 pids=
@@ -69,6 +76,8 @@ key=$(inputs tools/link packaging/linux/Containerfile packaging/linux/container.
 part link packaging/linux/container.sh tools/link/test.sh & pids="$pids link:$!"
 key=$(inputs tools/release release-notes app/desktopApp/module.yaml)
 part release python_tests tools/release & pids="$pids release:$!"
+key=$(inputs ingame tools/link/ingame/dist packaging/linux/Containerfile packaging/linux/container.sh)
+part ingame ingame_tests & pids="$pids ingame:$!"
 
 failed=no
 for entry in $pids; do
