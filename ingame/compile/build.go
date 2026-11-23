@@ -11,7 +11,7 @@ import (
 	"github.com/evanw/esbuild/pkg/api"
 )
 
-var entries = []string{"boot", "popup", "games"}
+var entries = []string{"boot", "popup", "games", "escmenu"}
 
 func Build(dir string) (map[string][]byte, error) {
 	files := map[string][]byte{}

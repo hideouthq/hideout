@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
+import { viewEscEntry } from '../src/escmenu.ts'
 import { type Friends, friendsOf } from '../src/friends.ts'
 import { type GamesEvent, type GamesState, initialGames, reduceGames, viewGames, viewServers } from '../src/games.ts'
 import { viewJoining } from '../src/joining.ts'
@@ -254,4 +255,22 @@ test('no strip without a running hosted game, or once Hideout is gone', () => {
   assert.equal(viewStrip(snapshotOf('catalog.json', 'game-failed.json'), 'online', false, true), null)
   assert.equal(viewStrip(snapshotOf('catalog.json', 'game-review.json'), 'online', false, true), null, 'a guest joining has the joining dialog')
   assert.equal(viewStrip(snapshotOf('catalog.json', 'game-ready.json'), 'offline', false, true), null)
+})
+
+test('Deadlock’s Esc menu offers the host Stop and a guest Leave, in the match and while joining', () => {
+  assert.deepEqual(viewEscEntry(snapshotOf('game-ready.json'), 'online', false), { label: 'STOP HIDEOUT GAME', busy: false })
+  assert.deepEqual(viewEscEntry(snapshotOf('game-guest.json'), 'online', false), { label: 'LEAVE HIDEOUT GAME', busy: false })
+  assert.equal(viewEscEntry(snapshotOf('game-review.json'), 'online', false)?.label, 'LEAVE HIDEOUT GAME')
+})
+
+test('a pressed Esc menu entry stays greyed until the game frame changes', () => {
+  assert.equal(viewEscEntry(snapshotOf('game-ready.json'), 'online', true)?.busy, true)
+})
+
+test('no Esc menu entry while the session takes no stop, or once Hideout is gone', () => {
+  assert.equal(viewEscEntry(snapshotOf('game-idle.json'), 'online', false), null)
+  assert.equal(viewEscEntry(snapshotOf('game-ending.json'), 'online', false), null)
+  assert.equal(viewEscEntry(snapshotOf('game-failed.json'), 'online', false), null)
+  assert.equal(viewEscEntry(snapshotOf('game-ready.json'), 'offline', false), null)
+  assert.equal(viewEscEntry(snapshotOf('game-guest.json'), 'outdated', false), null)
 })

@@ -45,7 +45,12 @@ var shadows = []shadow{
 	},
 }
 
+// newsScripts run in the news layout the renderer already shadows, which lives in the
+// HUD: the Esc menu is the HUD's, and the overlay's script can't reach it.
+var newsScripts = []string{"file://{resources}/scripts/hideout/config.js", "file://{resources}/scripts/hideout/escmenu.js"}
+
 const (
+	newsLayout   = "panorama/layout/latest_news.xml"
 	configScript = "panorama/scripts/hideout/config.js"
 	// scriptsAnchor is where the includes go: every stock layout lists its styles before any scripts.
 	scriptsAnchor = "</styles>"
@@ -98,6 +103,32 @@ func ingameFiles(stock *vpk.Archive, layers []*vpk.Archive, sources fs.FS, cfg I
 		return nil, err
 	}
 	return s2panorama.CompileTree("hideout", withStockTextures{tree, stock})
+}
+
+// withNewsScripts adds newsScripts after the renderer's own script in its news layout.
+func withNewsScripts(renderer fstest.MapFS) error {
+	compiled, _ := s2panorama.Compiled(newsLayout)
+	file, ok := renderer[compiled]
+	if !ok {
+		return fmt.Errorf("the renderer has no %s", compiled)
+	}
+	layout, err := s2panorama.Decompile(file.Data)
+	if err != nil {
+		return fmt.Errorf("read the renderer's %s: %w", compiled, err)
+	}
+	if n := strings.Count(layout, "</scripts>"); n != 1 {
+		return fmt.Errorf("want one </scripts> in the renderer's %s to add Hideout's scripts before, found %d", compiled, n)
+	}
+	var includes strings.Builder
+	for _, src := range newsScripts {
+		includes.WriteString("\t\t<include src=\"" + src + "\" />\n")
+	}
+	data, err := s2panorama.Compile("hideout", newsLayout, []byte(strings.Replace(layout, "</scripts>", includes.String()+"\t</scripts>", 1)))
+	if err != nil {
+		return err
+	}
+	renderer[compiled] = &fstest.MapFile{Data: data, Mode: 0o644}
+	return nil
 }
 
 func firstHolding(name string, layers []*vpk.Archive, stock *vpk.Archive) *vpk.Archive {

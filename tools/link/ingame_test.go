@@ -24,6 +24,7 @@ import (
 const (
 	overlayLayout = "panorama/layout/citadel_hud_and_db_overlay.vxml_c"
 	popupLayout   = "panorama/layout/popups/citadel_popup_custom_match.vxml_c"
+	newsCompiled  = "panorama/layout/latest_news.vxml_c"
 )
 
 func stockLayouts(t testing.TB) fstest.MapFS {
@@ -129,6 +130,7 @@ func TestShadowsAddHideoutsScriptsToTheInstalledLayouts(t *testing.T) {
 	for name, want := range map[string][]string{
 		overlayLayout: {"scripts/hideout/config.vjs", "scripts/hideout/boot.vjs", `<ToastManager id="ToastManager"`},
 		popupLayout:   {"scripts/hideout/config.vjs", "scripts/hideout/popup.vjs", `<TextEntry id="PartyCodeEntry"`},
+		newsCompiled:  {"scripts/modlock/boot.vjs", "scripts/hideout/config.vjs", "scripts/hideout/escmenu.vjs", `<Panel id="StockNews"`},
 	} {
 		layout := decompiled(t, files, name)
 		for _, part := range want {
@@ -136,6 +138,10 @@ func TestShadowsAddHideoutsScriptsToTheInstalledLayouts(t *testing.T) {
 				t.Errorf("%s holds %q %d times, want once:\n%s", name, part, strings.Count(layout, part), layout)
 			}
 		}
+	}
+	news := decompiled(t, files, newsCompiled)
+	if boot, config, entry := strings.Index(news, "modlock/boot.vjs"), strings.Index(news, "hideout/config.vjs"), strings.Index(news, "hideout/escmenu.vjs"); boot > config || config > entry {
+		t.Errorf("the news layout runs the renderer, Hideout's config and the Esc menu entry out of order:\n%s", news)
 	}
 }
 
@@ -262,8 +268,11 @@ func TestAGameUpdateTheOverlayCannotFollowLeavesOnlyTheRenderer(t *testing.T) {
 	if strings.Contains(said[0].Raw, "token") {
 		t.Errorf("a pack with no in-game part names a token: %s", said[0].Raw)
 	}
+	if news := decompiled(t, files, newsCompiled); strings.Contains(news, "hideout/") {
+		t.Errorf("the renderer-only news layout includes Hideout's scripts:\n%s", news)
+	}
 	for name := range files {
-		if name != "panorama/layout/latest_news.vxml_c" && !strings.HasPrefix(name, "panorama/scripts/modlock/") && !strings.HasPrefix(name, "panorama/layout/modlock/") {
+		if name != newsCompiled && !strings.HasPrefix(name, "panorama/scripts/modlock/") && !strings.HasPrefix(name, "panorama/layout/modlock/") {
 			t.Errorf("the renderer-only pack holds %s", name)
 		}
 	}

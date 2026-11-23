@@ -1,5 +1,5 @@
-// The hosting strip lets the host stop their game from any menu, the in-match Esc menu included, where the games popup
-// can't open.
+// The hosting strip shows the host their game in the main-menu room and stops it from the room's own screens. The Esc
+// menu, in the room and in a match, has its own entry for that (escmenu.ts).
 
 import type { LinkStatus } from './link.ts'
 import type { HostCard, Snapshot } from './wire.ts'

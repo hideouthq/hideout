@@ -76,6 +76,9 @@ func writeMenus(cfg MenusConfig) (Built, error) {
 		if err != nil {
 			return Built{}, err
 		}
+		if err := withNewsScripts(renderer); err != nil {
+			return Built{}, err
+		}
 		if files, err = merged(renderer, ingame); err != nil {
 			return Built{}, err
 		}
@@ -98,8 +101,9 @@ func writeMenus(cfg MenusConfig) (Built, error) {
 // rendererFiles shadows the stock news layout, read from this player's install so
 // it follows game updates and no Valve text ships in our packages. The game loads
 // that layout once, at start, inside the HUD, and keeps it for the whole process.
-// Modlock's session builds the same files; ours differ only in the page the boot
-// script names, which carries the port the helper serves the screen on.
+// Modlock's session builds the same files; ours differ in the page the boot script
+// names, which carries the port the helper serves the screen on, and, with the
+// in-game UI, in withNewsScripts.
 func rendererFiles(cfg MenusConfig) (fstest.MapFS, error) {
 	script, err := os.ReadFile(filepath.Join(cfg.Renderer, rendererFile))
 	if err != nil {

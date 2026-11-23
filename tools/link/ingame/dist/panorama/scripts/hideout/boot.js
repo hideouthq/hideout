@@ -787,9 +787,11 @@
     }
     function screen() {
       const status = top.FindChildTraverse("ClientStatus");
+      const escape2 = status?.BHasClass("InEscapeMenu") ?? false;
       return {
         room: top.FindChildTraverse("HudAndDBOverlay")?.BHasClass("InHideout") ?? false,
-        pointer: status !== null && (status.BHasClass("InEscapeMenu") || status.BHasClass("InDashboard"))
+        pointer: escape2 || (status?.BHasClass("InDashboard") ?? false),
+        escape: escape2
       };
     }
     const strip = new Section();
@@ -798,8 +800,7 @@
       if (stopPressed && stopPressed.in !== link.snapshot.game) stopPressed = null;
       const view = viewStrip(link.snapshot, link.status, stopPressed !== null, where.pointer);
       const into = find("HOStrip");
-      find("HOCorner").SetHasClass("MatchMenu", !where.room && where.pointer);
-      into.SetHasClass("Shown", view !== null && (where.room || where.pointer));
+      into.SetHasClass("Shown", view !== null && where.room && !where.escape);
       strip.draw(into, JSON.stringify(view), (into2) => {
         if (view) buildStrip(into2, view);
       });

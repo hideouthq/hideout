@@ -179,23 +179,25 @@ function boot(): void {
    * Stock classes: the overlay is InHideout in the main-menu room. Its client status is InEscapeMenu while Esc is open and
    * InDashboard while a room screen such as Play is, the only times the game gives the player a mouse pointer.
    */
-  function screen(): { room: boolean; pointer: boolean } {
+  function screen(): { room: boolean; pointer: boolean; escape: boolean } {
     const status = top.FindChildTraverse('ClientStatus')
+    const escape = status?.BHasClass('InEscapeMenu') ?? false
     return {
       room: top.FindChildTraverse('HudAndDBOverlay')?.BHasClass('InHideout') ?? false,
-      pointer: status !== null && (status.BHasClass('InEscapeMenu') || status.BHasClass('InDashboard')),
+      pointer: escape || (status?.BHasClass('InDashboard') ?? false),
+      escape,
     }
   }
 
   const strip = new Section()
   let stopPressed: { in: Game | null } | null = null
 
-  function drawStrip(where: { room: boolean; pointer: boolean }): void {
+  /** The Esc menu, in the room and in a match, has its own Stop entry from the HUD's script, so the strip stays out of it. */
+  function drawStrip(where: { room: boolean; pointer: boolean; escape: boolean }): void {
     if (stopPressed && stopPressed.in !== link.snapshot.game) stopPressed = null
     const view = viewStrip(link.snapshot, link.status, stopPressed !== null, where.pointer)
     const into = find('HOStrip')
-    find('HOCorner').SetHasClass('MatchMenu', !where.room && where.pointer)
-    into.SetHasClass('Shown', view !== null && (where.room || where.pointer))
+    into.SetHasClass('Shown', view !== null && where.room && !where.escape)
     strip.draw(into, JSON.stringify(view), (into) => {
       if (view) buildStrip(into, view)
     })
