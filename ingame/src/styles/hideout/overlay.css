@@ -342,11 +342,6 @@
 	border: 2px solid #EFE6D638;
 }
 
-.HOStep.Failed .HOStepIcon
-{
-	background-color: #F08A7E;
-}
-
 .HOStepIcon .HSpinner
 {
 	width: 26px;
@@ -363,13 +358,6 @@
 	background-image: url("s2r://panorama/images/control_icons/check_png.vtex");
 	background-size: contain;
 	wash-color: #13261B;
-}
-
-.HOStepIcon .HOCross
-{
-	background-color: #2B1210;
-	width: 14px;
-	height: 3px;
 }
 
 .HOStepText
@@ -394,11 +382,6 @@
 .HOStep.Done .HOStepLabel
 {
 	color: #CFE9D8;
-}
-
-.HOStep.Failed .HOStepLabel
-{
-	color: #F6B2AA;
 }
 
 .HOStepNote
