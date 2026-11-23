@@ -9,8 +9,9 @@ import gg.hideouthq.core.library.GameRoot
 import gg.hideouthq.feature.customgames.PresentInputs
 import gg.hideouthq.feature.customgames.present
 import gg.hideouthq.feature.ingame.Action
-import gg.hideouthq.feature.ingame.hostActions
+import gg.hideouthq.feature.ingame.gameActions
 import gg.hideouthq.feature.ingame.joinActions
+import gg.hideouthq.feature.ingame.sessionOf
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -237,9 +238,10 @@ class SessionWalkTest {
     private fun checkCards(w: World) {
         if (!cardsChecked.add(Triple(w.session, w.record, w.client))) return
         val shown = present(PresentInputs(LiveSession(w.session, w.record)))
-        val host = shown.game?.body?.takeIf { w.record?.role is Role.Host }?.let(::hostActions).orEmpty()
+        val host = shown.game?.body?.takeIf { w.record?.role is Role.Host }?.let(::gameActions).orEmpty()
         val join = shown.join?.let { joinActions(it.step) }.orEmpty()
-        for (action in host + join) {
+        val session = sessionOf(shown)?.second.takeIf { w.record != null }.orEmpty()
+        for (action in host + join + session) {
             val event = eventOf(action, w)
             if (event == null || reduce(w.session, event, w.client, t1) == Step(w.session)) report("a card offers $action, which ${w.session::class.simpleName} ignores", w)
         }

@@ -6,6 +6,8 @@ import gg.hideouthq.core.customgames.DisplayName
 import gg.hideouthq.core.customgames.EndReason
 import gg.hideouthq.core.customgames.FileHold
 import gg.hideouthq.core.customgames.GameRecord
+import gg.hideouthq.core.customgames.GuestLink
+import gg.hideouthq.core.customgames.LinkPath
 import gg.hideouthq.core.customgames.Invite
 import gg.hideouthq.core.customgames.InviteCode
 import gg.hideouthq.core.customgames.InviteOffer
@@ -107,6 +109,9 @@ class InGameWireTest {
         val offer = InviteOffer.of(bebop, threes, LocalPlayer("76561198000000002", DisplayName.parse("Mugi")))
         val review = LiveSession(Session.Confirming(Invite(code, offer)), GameRecord(Role.Guest(code, offer, bebop.listing), me))
         golden("game-review.json", frames(review, restarts = RestartReason.GameUpdated).getValue(Topic.Game))
+
+        val guest = GameRecord(Role.Guest(code, offer, bebop.listing), me, startedAt = Instant.fromEpochSeconds(1_800_000_000))
+        golden("game-guest.json", frames(LiveSession(Session.Playing(GuestLink(LinkPath.Relay), OwnGame.In), guest)).getValue(Topic.Game))
     }
 
     @Test

@@ -90,6 +90,13 @@ export interface HostCard {
   actions: Action[]
 }
 
+/** Who the player is in the running session and what it accepts now, for the native Esc menu entry. */
+export interface SessionCard {
+  role: 'host' | 'guest'
+  mode: string
+  actions: Action[]
+}
+
 export type JoinPhase = 'finding' | 'review' | 'cleanup' | 'progress' | 'stopping' | 'restart' | 'restarting' | 'notin' | 'failed'
 
 export interface JoinCard {
@@ -131,7 +138,7 @@ export interface ServerRow {
 /** [supportId] is set only while social is blocked: the player's own SteamID64, for support to reset this PC. */
 export type Hello = { t: 'hello'; protocol: number; social: Social; supportId: SteamId | null }
 export type Catalog = { t: 'catalog'; modes: ModeCard[] }
-export type Game = { t: 'game'; host: HostCard | null; join: JoinCard | null; restartAhead: Restart | null }
+export type Game = { t: 'game'; host: HostCard | null; join: JoinCard | null; session: SessionCard | null; restartAhead: Restart | null }
 export type Inbox = { t: 'inbox'; invites: InviteCard[] }
 export type Servers = { t: 'servers'; state: ServersState; rows: ServerRow[] }
 export type Frame = Hello | Catalog | Game | Inbox | Servers | { t: 'alive' }
@@ -303,6 +310,11 @@ function join(v: Json): JoinCard {
   }
 }
 
+function session(v: Json): SessionCard {
+  const o = obj(v)
+  return { role: oneOf<SessionCard['role']>(['host', 'guest'])(o.role), mode: str(o.mode), actions: list(o.actions, action) }
+}
+
 function invite(v: Json): InviteCard {
   const o = obj(v)
   return { id: str(o.id), from: str(o.from) as SteamId, mode: str(o.mode), picks: list(o.picks, str), tile: opt(o.tile, str), players: pair(o.players), expires: num(o.expires) }
@@ -337,7 +349,7 @@ export function decodeFrame(text: string): Frame | null {
       case 'catalog':
         return { t: 'catalog', modes: list(o.modes, mode) }
       case 'game':
-        return { t: 'game', host: opt(o.host, host), join: opt(o.join, join), restartAhead: opt(o.restartAhead, restart) }
+        return { t: 'game', host: opt(o.host, host), join: opt(o.join, join), session: opt(o.session, session), restartAhead: opt(o.restartAhead, restart) }
       case 'inbox':
         return { t: 'inbox', invites: list(o.invites, invite) }
       case 'servers':

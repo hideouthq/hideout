@@ -38,7 +38,7 @@ sealed interface Frame {
 
     @Serializable
     @SerialName("game")
-    data class Game(val host: HostCard?, val join: JoinCard?, val restartAhead: Restart?) : Frame
+    data class Game(val host: HostCard?, val join: JoinCard?, val session: SessionCard?, val restartAhead: Restart?) : Frame
 
     @Serializable
     @SerialName("inbox")
@@ -160,6 +160,13 @@ data class JoinCard(
     val restart: Restart?,
     val actions: List<Action>,
 )
+
+/** Who the player is in the running session and what it accepts now, for the native Esc menu entry. */
+@Serializable
+data class SessionCard(val role: SessionRole, val mode: String, val actions: List<Action>)
+
+@Serializable
+enum class SessionRole { @SerialName("host") Host, @SerialName("guest") Guest }
 
 @Serializable
 enum class JoinPhase {

@@ -87,7 +87,7 @@ test('before Play a friend toggles between Invite and Invited, and the hint coun
 
 test('a restart ahead is said before Play and echoed in host', () => {
   const snapshot = snapshotOf('catalog.json', 'game-review.json')
-  const restartless = withFrame(snapshot, { t: 'game', host: null, join: null, restartAhead: snapshot.game!.restartAhead })
+  const restartless = withFrame(snapshot, { t: 'game', host: null, join: null, session: null, restartAhead: snapshot.game!.restartAhead })
   const { effects, view } = run(restartless, { kind: 'play' })
   assert.equal(effects[0]?.kind === 'send' && effects[0].command.k === 'host' && effects[0].command.restart, 'game-updated')
   assert.equal(run(restartless).view.play.hint, snapshot.game!.restartAhead!.text)

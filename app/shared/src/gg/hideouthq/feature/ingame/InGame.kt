@@ -33,10 +33,12 @@ import gg.hideouthq.feature.customgames.EndingStage
 import gg.hideouthq.feature.customgames.GameView
 import gg.hideouthq.feature.customgames.JoinStep
 import gg.hideouthq.feature.customgames.JoinView
+import gg.hideouthq.feature.customgames.ModeFace
 import gg.hideouthq.feature.customgames.NotInAction
 import gg.hideouthq.feature.customgames.Outcome
 import gg.hideouthq.feature.customgames.Phrase
 import gg.hideouthq.feature.customgames.Problem
+import gg.hideouthq.feature.customgames.Present
 import gg.hideouthq.feature.customgames.PresentInputs
 import gg.hideouthq.feature.customgames.StepView
 import gg.hideouthq.feature.customgames.faceOf
@@ -201,11 +203,12 @@ private val words: ResourceEnvironment by lazy { getSystemResourceEnvironment() 
 /** A [serverJoin] is the newest press, so its card shows over the session's. */
 suspend fun inGameFrames(inputs: PresentInputs, social: SocialView = SocialView(), serverJoin: ServerJoin? = null): Map<Topic, String> {
     val shown = present(inputs)
-    val role = inputs.live.game?.role as? Role.Host
+    val role = inputs.live.game?.role
     val deliveries = social.state.hosted?.takeIf { it.code == (inputs.live.session as? Session.Hosting)?.code }?.deliveries.orEmpty()
-    val host = if (role == null) null else shown.game?.let { hostCard(it, role, shown.chip?.count, deliveries) }
+    val host = if (role !is Role.Host) null else shown.game?.let { hostCard(it, role, shown.chip?.count, deliveries) }
     val join = serverJoin?.let { joinView(it, inputs.modes) } ?: shown.join
-    val game = Frame.Game(host, join?.let { joinCard(it) }, inputs.restartsDeadlock?.let { Restart(RestartWire.of(it), restartAheadPhrase(it, host = true).load(words)) })
+    val restartAhead = inputs.restartsDeadlock?.let { Restart(RestartWire.of(it), restartAheadPhrase(it, host = true).load(words)) }
+    val game = Frame.Game(host, join?.let { joinCard(it) }, sessionCard(shown, role), restartAhead)
     return mapOf(
         Topic.Hello to Frame.Hello(InGameProtocol, social = socialWire(social.status), supportId = (social.status as? SocialStatus.Blocked)?.self?.value),
         Topic.Catalog to Frame.Catalog(catalog(inputs.modes)),
@@ -297,7 +300,7 @@ private suspend fun hostCard(view: GameView, role: Role.Host, players: Pair<Int,
                 Delivery.NotReached -> DeliveryWire.NotReached
             }
         },
-        actions = hostActions(body),
+        actions = gameActions(body),
     )
 }
 
@@ -312,7 +315,7 @@ private fun hostPhase(body: Body): HostPhase = when (body) {
     is Body.Ended -> if (body.outcome is Outcome.CouldNotStart) HostPhase.Failed else HostPhase.Ended
 }
 
-internal fun hostActions(body: Body): List<Action> = when (body) {
+internal fun gameActions(body: Body): List<Action> = when (body) {
     is Body.Starting, is Body.Restarting, is Body.Entering, is Body.Open, is Body.Match -> listOf(Action.Stop)
     is Body.RestartNeeded -> listOf(Action.Restart, Action.Stop)
     is Body.NotIn -> listOfNotNull(Action.Play.takeIf { notInAction(body.problem, body.canPlay) == NotInAction.Play }, Action.Stop)
@@ -321,6 +324,20 @@ internal fun hostActions(body: Body): List<Action> = when (body) {
         is Outcome.CouldNotStart -> listOfNotNull(Action.Again.takeIf { tryAgainHelps(outcome.problem) }, Action.Dismiss)
         else -> listOf(Action.Again, Action.Dismiss)
     }
+}
+
+/** A guest's session follows the join dialog until the game starts, then the game screen, as a host's always does. */
+internal fun sessionOf(shown: Present): Pair<ModeFace, List<Action>>? =
+    shown.join?.let { it.face to joinActions(it.step) } ?: shown.game?.let { it.face to gameActions(it.body) }
+
+private suspend fun sessionCard(shown: Present, role: Role?): SessionCard? {
+    val wire = when (role) {
+        is Role.Host -> SessionRole.Host
+        is Role.Guest -> SessionRole.Guest
+        null -> return null
+    }
+    val (face, actions) = sessionOf(shown) ?: return null
+    return SessionCard(wire, face.namePhrase.load(words), actions)
 }
 
 private fun joinView(join: ServerJoin, modes: ModeList): JoinView {

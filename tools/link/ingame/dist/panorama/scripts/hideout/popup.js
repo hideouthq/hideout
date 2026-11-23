@@ -201,6 +201,10 @@
       actions: list(o.actions, action)
     };
   }
+  function session(v) {
+    const o = obj(v);
+    return { role: oneOf(["host", "guest"])(o.role), mode: str(o.mode), actions: list(o.actions, action) };
+  }
   function invite(v) {
     const o = obj(v);
     return { id: str(o.id), from: str(o.from), mode: str(o.mode), picks: list(o.picks, str), tile: opt(o.tile, str), players: pair(o.players), expires: num(o.expires) };
@@ -233,7 +237,7 @@
         case "catalog":
           return { t: "catalog", modes: list(o.modes, mode) };
         case "game":
-          return { t: "game", host: opt(o.host, host), join: opt(o.join, join), restartAhead: opt(o.restartAhead, restart) };
+          return { t: "game", host: opt(o.host, host), join: opt(o.join, join), session: opt(o.session, session), restartAhead: opt(o.restartAhead, restart) };
         case "inbox":
           return { t: "inbox", invites: list(o.invites, invite) };
         case "servers":
