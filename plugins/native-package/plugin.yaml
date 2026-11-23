@@ -5,11 +5,14 @@ tasks:
       version: ${pluginSettings.version}
       outputDir: ${taskOutputDir}
 
-  previewHost:
-    action: !gg.hideouthq.nativepackage.writePreviewHost
+  buildSecrets:
+    action: !gg.hideouthq.nativepackage.writeBuildSecrets
       id: ${pluginSettings.id}
+      version: ${pluginSettings.version}
       localFile: ${pluginSettings.previewFile}
-      outputDir: ${taskOutputDir}
+      sourceDir: ${taskOutputDir}/kotlin
+      resourceDir: ${taskOutputDir}/resources
+      stateDir: ${taskOutputDir}/state
 
   appImageTools:
     action: !gg.hideouthq.nativepackage.downloadAppImageTools
@@ -32,9 +35,12 @@ tasks:
       outputDir: ${taskOutputDir}
 
 generated:
+  sources:
+    - directory: ${tasks.buildSecrets.action.sourceDir}
+      language: kotlin
   resources:
     - directory: ${tasks.appProperties.action.outputDir}
-    - directory: ${tasks.previewHost.action.outputDir}
+    - directory: ${tasks.buildSecrets.action.resourceDir}
 
 commands:
   - name: nativeImage

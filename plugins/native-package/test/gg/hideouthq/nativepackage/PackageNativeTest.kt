@@ -141,35 +141,9 @@ class PackageNativeTest {
 
     @Test
     fun theGeneratedVersionResourceSitsInTheIdsFolder() {
-        writeAppPropertiesFile("gg.example.App", "2.3.4", root / "generated") { null }
+        writeAppPropertiesFile("gg.example.App", "2.3.4", root / "generated")
 
         assertEquals("version=2.3.4\n", (root / "generated" / "gg" / "example" / "App" / "app.properties").readText())
-    }
-
-    @Test
-    fun changingBuildConfigurationRemovesOrReplacesTheCaptureKey() {
-        val generated = root / "generated"
-        val file = generated / "gg/example/App/app.properties"
-        fun write(key: String?) = writeAppPropertiesFile("gg.example.App", "2.3.4", generated) { key }
-
-        write("phc_first")
-        assertEquals("version=2.3.4\nposthog.projectKey=phc_first\n", file.readText())
-        write(null)
-        assertEquals("version=2.3.4\n", file.readText())
-        write("phc_second")
-        assertEquals("version=2.3.4\nposthog.projectKey=phc_second\n", file.readText())
-        write("  ")
-        assertEquals("version=2.3.4\n", file.readText())
-    }
-
-    @Test
-    fun invalidCaptureKeysFailWithoutIncludingTheirValue() {
-        for (key in listOf("phx_personal", "phc_project\nversion=other", "phc_")) {
-            val failure = assertFailsWith<IllegalStateException> {
-                writeAppPropertiesFile("gg.example.App", "2.3.4", root / "generated") { key }
-            }
-            assertEquals("$PostHogKeyVariable must be a PostHog project capture key", failure.message)
-        }
     }
 
     @Test

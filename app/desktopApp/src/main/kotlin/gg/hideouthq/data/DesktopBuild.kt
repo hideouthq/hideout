@@ -9,7 +9,7 @@ class DesktopBuild private constructor(val about: AppAbout, val postHogProjectKe
 
         fun read(): DesktopBuild {
             val properties = DesktopBuild::class.java.getResourceAsStream(Resource)!!.use { Properties().apply { load(it) } }
-            return DesktopBuild(AppAbout(properties.getProperty("version")), properties.getProperty("posthog.projectKey"))
+            return DesktopBuild(AppAbout(properties.getProperty("version")), BuildSecrets.text("posthog-key"))
         }
     }
 }

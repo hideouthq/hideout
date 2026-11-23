@@ -27,28 +27,31 @@ import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
 class PreviewSigningTest {
     private val signing = Json.parseToJsonElement(
         File(checkNotNull(System.getProperty("preview.signing")) { "Run with ./kotlin test, which sets preview.signing from module.yaml" }).readText(),
     ).jsonObject
-    private val vectors = signing.getValue("vectors").jsonArray.map { it.jsonObject }
+    private val vectors = signing.getValue("builds").jsonArray.map { it.jsonObject }
     private val built = "https://previews.example.test"
-    private val key = PreviewKey("a-key-0123456789abcdef0123456789abcdef", built)
+    private val key = previewKey("a-key-0123456789abcdef0123456789abcdef", built)
 
     @Test
-    fun theClientSignsTheSharedVectors() = runBlocking {
+    fun theClientSignsTheSharedReleaseVectorsWithItsBuild() = runBlocking {
         assertEquals(signing.getValue("window").jsonPrimitive.int.toLong(), PreviewKey.WindowSeconds)
         for (v in vectors) {
             val text = { name: String -> v.getValue(name).jsonPrimitive.content }
             val seen = mutableListOf<HttpRequestData>()
             val client = HttpClient(MockEngine { request -> seen += request; respond("") })
-            val vectorKey = PreviewKey(text("key"), text("url"))
+            val vectorKey = previewKey(text("key"), text("url"), text("build"))
             assertEquals(text("host"), vectorKey.host)
+            assertNotEquals(text("signature"), previewKey(text("key"), text("url"), "9.9.9").signature(text("method"), text("host"), text("path"), v.getValue("time").jsonPrimitive.long))
             client.signPreviewRequests(vectorKey) { v.getValue("time").jsonPrimitive.long }
             client.request(text("url")) { method = HttpMethod(text("method")) }
             assertEquals(text("time"), seen.single().headers[PreviewKey.TimeHeader])
+            assertEquals(text("build"), seen.single().headers[PreviewKey.BuildHeader])
             assertEquals(text("signature"), seen.single().headers[PreviewKey.SignatureHeader], text("url"))
         }
     }
@@ -87,7 +90,7 @@ class PreviewSigningTest {
     @Test
     fun aDateThatDoesNotGetTheRequestServedIsNotKept() = runBlocking {
         val seen = mutableListOf<Long>()
-        val client = HttpClient(host(1_800_003_600, seen, accepted = PreviewKey("another-key-0123456789abcdef0123456789", built)))
+        val client = HttpClient(host(1_800_003_600, seen, accepted = previewKey("another-key-0123456789abcdef0123456789", built)))
         client.signPreviewRequests(key) { 1_800_000_000 }
         repeat(2) { assertEquals(HttpStatusCode.NotFound, client.get("$built/v1/index.json").status) }
         assertEquals(listOf(1_800_000_000L, 1_800_003_600L, 1_800_000_000L, 1_800_003_600L), seen)
@@ -96,7 +99,7 @@ class PreviewSigningTest {
     @Test
     fun aRefusalFromAHostWhoseClockAgreesIsNotAskedAgain() = runBlocking {
         val seen = mutableListOf<Long>()
-        val client = HttpClient(host(1_800_000_100, seen, accepted = PreviewKey("another-key-0123456789abcdef0123456789", built)))
+        val client = HttpClient(host(1_800_000_100, seen, accepted = previewKey("another-key-0123456789abcdef0123456789", built)))
         client.signPreviewRequests(key) { 1_800_000_000 }
         assertEquals(HttpStatusCode.NotFound, client.get("$built/v1/missing.json").status)
         assertEquals(listOf(1_800_000_000L), seen)

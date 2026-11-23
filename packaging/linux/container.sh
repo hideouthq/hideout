@@ -12,6 +12,6 @@ limit="--memory=12g --memory-swap=12g"
 [ -z "${CI:-}" ] || limit=
 exec podman run --rm $limit --userns=keep-id --user "$(id -u):$(id -g)" -e HOME="$HOME" -w "$repo" \
     -e GOMODCACHE="$HOME/.cache/JetBrains/go/mod" -e GOCACHE="$HOME/.cache/JetBrains/go/build" \
-    -e HIDEOUT_BUILD_PREVIEW_URL -e HIDEOUT_BUILD_PREVIEW_KEY -e HIDEOUT_BUILD_POSTHOG_KEY \
+    -e HIDEOUT_BUILD_PREVIEW_URL -e HIDEOUT_BUILD_PREVIEW_MASTER -e HIDEOUT_BUILD_POSTHOG_KEY \
     -v "$repo:$repo" -v "$common:$common:ro" -v "$HOME/.cache/JetBrains:$HOME/.cache/JetBrains" \
     "$image" "$@"

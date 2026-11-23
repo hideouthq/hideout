@@ -88,7 +88,7 @@ The checked-in `kotlin` wrapper downloads the Kotlin toolchain and the JDK, so t
 Three features need more than the wrapper:
 
 - **Usage statistics** need `HIDEOUT_BUILD_POSTHOG_KEY` at build time. Without it, the app has no analytics service, disclosure, or settings switch. Maintainers store the capture key in Bitwarden and run builds through `with-secrets`. Release jobs require the matching GitHub Actions secret. The key remains readable in compiled builds.
-- **3D previews** need the preview host's address and key at build time. They come from `HIDEOUT_BUILD_PREVIEW_URL` and `HIDEOUT_BUILD_PREVIEW_KEY`, or from lines with those names in an untracked `preview-build.properties` at the root. A build without them has no previews. Tests and sample data need neither.
+- **3D previews** need the preview host's address and master key at build time. They come from `HIDEOUT_BUILD_PREVIEW_URL` and `HIDEOUT_BUILD_PREVIEW_MASTER`, or from lines with those names in an untracked `preview-build.properties` at the root. The build ships only a key derived from the master for its version, masked under a key generated for that build. A build without them has no previews. Tests and sample data need neither.
 - **Custom games** need the `hideout-link` helper. Build it with `go -C tools/link build -o "$PWD/build/hideout-link" .` and set `HIDEOUT_CUSTOMGAMES_HELPER` to that path. Without the helper, custom games don't appear.
 
 <details>
