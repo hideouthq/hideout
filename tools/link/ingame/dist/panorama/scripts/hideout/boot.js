@@ -94,9 +94,9 @@
     const mode2 = modes.find((m) => m.name === name);
     return mode2 ? mode2.art.backdrop ?? mode2.art.card ?? mode2.art.tile : null;
   }
-  function viewJoining(snapshot, putAway) {
+  function viewJoining(snapshot, putAway, status) {
     const card = snapshot.game?.join;
-    if (!card || card.phase === putAway) return null;
+    if (!card || card.phase === putAway || status === "offline") return null;
     const words2 = card.words;
     const failed = card.phase === "failed";
     const buttons = card.actions.map((action2) => ({ kind: "act", action: action2, ...LABELS[action2] }));
@@ -698,7 +698,7 @@
     const box = new Section();
     const acts = new Section();
     function drawJoining() {
-      const view = viewJoining(link.snapshot, putAway);
+      const view = viewJoining(link.snapshot, putAway, link.status);
       const layer = find("HOJoining");
       layer.SetHasClass("Shown", view !== null);
       if (!view) return false;

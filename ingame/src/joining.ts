@@ -1,3 +1,4 @@
+import type { LinkStatus } from './link.ts'
 import type { Action, JoinCard, ModeCard, RestartReason, Snapshot, Step } from './wire.ts'
 
 export type JoiningButton =
@@ -28,9 +29,10 @@ function artFor(name: string, modes: ModeCard[]): string | null {
   return mode ? (mode.art.backdrop ?? mode.art.card ?? mode.art.tile) : null
 }
 
-export function viewJoining(snapshot: Snapshot, putAway: JoinCard['phase'] | null): JoiningView | null {
+/** Offline, the snapshot's join is stale and every button needs the app, so the layer would trap the player. */
+export function viewJoining(snapshot: Snapshot, putAway: JoinCard['phase'] | null, status: LinkStatus): JoiningView | null {
   const card = snapshot.game?.join
-  if (!card || card.phase === putAway) return null
+  if (!card || card.phase === putAway || status === 'offline') return null
   const words = card.words
   const failed = card.phase === 'failed'
   const buttons: JoiningButton[] = card.actions.map((action) => ({ kind: 'act', action, ...LABELS[action] }))

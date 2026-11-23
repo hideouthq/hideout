@@ -162,7 +162,7 @@ test('a not-reached invite of the hosted game shows a Copy link toast', () => {
 })
 
 test('the joining dialog is the join card: review shows the restart and Join echoes it', () => {
-  const view = viewJoining(snapshotOf('game-review.json'), null)!
+  const view = viewJoining(snapshotOf('game-review.json'), null, 'online')!
   assert.equal(view.title, 'Join Mugi’s game')
   assert.equal(view.line, '3v3 · 6 players')
   assert.equal(view.box?.tone, 'note')
@@ -170,6 +170,11 @@ test('the joining dialog is the join card: review shows the restart and Join ech
     { kind: 'act', action: 'stop', label: 'Cancel', primary: false },
     { kind: 'confirm', restart: 'game-updated', label: 'Join', primary: true },
   ])
-  assert.equal(viewJoining(snapshotOf('game-review.json'), 'review'), null)
-  assert.equal(viewJoining(snapshotOf('game-idle.json'), null), null)
+  assert.equal(viewJoining(snapshotOf('game-review.json'), 'review', 'online'), null)
+  assert.equal(viewJoining(snapshotOf('game-idle.json'), null, 'online'), null)
+})
+
+test('the joining dialog leaves once Hideout is gone, since nothing there works without it', () => {
+  assert.equal(viewJoining(snapshotOf('game-review.json'), null, 'offline'), null)
+  assert.notEqual(viewJoining(snapshotOf('game-review.json'), null, 'online'), null, 'and comes back with it')
 })

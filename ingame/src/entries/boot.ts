@@ -121,7 +121,7 @@ function boot(): void {
   const acts = new Section()
 
   function drawJoining(): boolean {
-    const view = viewJoining(link.snapshot, putAway)
+    const view = viewJoining(link.snapshot, putAway, link.status)
     const layer = find('HOJoining')
     layer.SetHasClass('Shown', view !== null)
     if (!view) return false
