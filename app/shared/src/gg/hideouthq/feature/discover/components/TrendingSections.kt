@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import gg.hideouthq.core.data.InstallStatus
 import gg.hideouthq.core.designsystem.component.CardScrim
@@ -27,6 +28,7 @@ import gg.hideouthq.core.ui.AdaptiveGrid
 import gg.hideouthq.core.ui.FlexItem
 import gg.hideouthq.core.ui.FlexWrapRow
 import gg.hideouthq.core.ui.ModLabels
+import gg.hideouthq.core.ui.gridColumns
 import gg.hideouthq.core.ui.catalog.CardTransition.card
 import gg.hideouthq.core.ui.catalog.CardTransition.cover
 import gg.hideouthq.core.ui.catalog.CardTransition.decoration
@@ -85,7 +87,7 @@ internal fun TrendingCards(
     Section(title, keyword, icon, accent, modifier, trailing = { LinkButton(stringResource(Res.string.discover_see_all), onSeeAll) }) {
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val gaps = LocalModCardStyle.current.gaps
-            val columns = ((maxWidth + gaps.column) / (HideoutDimens.Card.MinColumnDiscover + gaps.column)).toInt().coerceAtLeast(1)
+            val columns = LocalDensity.current.gridColumns(constraints.maxWidth, HideoutDimens.Card.MinColumnDiscover, gaps.column)
             AdaptiveGrid(HideoutDimens.Card.MinColumnDiscover, columnGap = gaps.column, rowGap = gaps.row) {
                 if (items.isEmpty() && filling) CardsSkeleton(maxOf(4, columns), height)
                 items.take(maxOf(4, columns)).forEachIndexed { index, item ->
@@ -129,7 +131,7 @@ internal fun HudAndSounds(
         ) {
             BoxWithConstraints(Modifier.fillMaxWidth()) {
                 val gaps = LocalModCardStyle.current.gaps
-                val columns = ((maxWidth + gaps.column) / (HideoutDimens.Card.MinColumnHud + gaps.column)).toInt().coerceIn(2, 4)
+                val columns = LocalDensity.current.gridColumns(constraints.maxWidth, HideoutDimens.Card.MinColumnHud, gaps.column).coerceIn(2, 4)
                 AdaptiveGrid(HideoutDimens.Card.MinColumnHud, columnGap = gaps.column, rowGap = gaps.row) {
                     if (hud.isEmpty() && filling) CardsSkeleton(columns, HideoutDimens.Card.HeightHud)
                     hud.take(columns).forEach { item -> HudCard(item, onOpen) }

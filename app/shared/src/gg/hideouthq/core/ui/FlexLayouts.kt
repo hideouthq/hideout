@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import gg.hideouthq.core.designsystem.theme.HideoutDimens
@@ -34,7 +35,7 @@ fun AdaptiveGrid(
         val gap = columnGap.roundToPx()
         val between = rowGap.roundToPx()
         val width = constraints.maxWidth
-        val fit = max(1, (width + gap) / (minCellWidth.roundToPx() + gap))
+        val fit = gridColumns(width, minCellWidth, columnGap)
         val columns = if (keepEmptyColumns) fit else fit.coerceAtMost(max(1, measurables.size))
         val cell = (width - gap * (columns - 1)) / columns
         val placeables = measurables.map { it.measure(Constraints(minWidth = cell, maxWidth = cell)) }
@@ -49,6 +50,12 @@ fun AdaptiveGrid(
             }
         }
     }
+}
+
+/** How many columns of at least [minCellWidth], [gap] apart, fit in [width] pixels: the count [AdaptiveGrid] lays out. */
+fun Density.gridColumns(width: Int, minCellWidth: Dp, gap: Dp): Int {
+    val gapPx = gap.roundToPx()
+    return max(1, (width + gapPx) / (minCellWidth.roundToPx() + gapPx))
 }
 
 /** One item of a [FlexWrapRow]: its flex-basis and how much of the spare width it takes. */

@@ -25,6 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import gg.hideouthq.core.designsystem.component.ButtonVariant
 import gg.hideouthq.core.designsystem.component.EmptyState
 import gg.hideouthq.core.designsystem.component.HideoutButton
@@ -38,6 +39,7 @@ import gg.hideouthq.core.designsystem.theme.HideoutMotion
 import gg.hideouthq.core.designsystem.theme.HideoutShapes
 import gg.hideouthq.core.designsystem.theme.HideoutTheme
 import gg.hideouthq.core.ui.catalog.CatalogItem
+import gg.hideouthq.core.ui.gridColumns
 import gg.hideouthq.core.ui.transition.staggeredEnter
 import gg.hideouthq.resources.Res
 import gg.hideouthq.resources.browse_clear_filters
@@ -77,10 +79,11 @@ internal fun BrowseGrid(
     BoxWithConstraints(modifier) {
         val gap = HideoutDimens.Card.Gap
         val gaps = LocalModCardStyle.current.gaps
-        val inner = maxWidth - HideoutDimens.MainPane.ContentPadding * 2
-        val columns = ((inner + gaps.column) / (HideoutDimens.Card.MinColumnBrowse + gaps.column)).toInt().coerceAtLeast(1)
+        val density = LocalDensity.current
+        val inner = constraints.maxWidth - with(density) { HideoutDimens.MainPane.ContentPadding.roundToPx() } * 2
+        val columns = density.gridColumns(inner, HideoutDimens.Card.MinColumnBrowse, gaps.column)
         LazyVerticalGrid(
-            columns = GridCells.Adaptive(HideoutDimens.Card.MinColumnBrowse),
+            columns = GridCells.Fixed(columns),
             state = state,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
