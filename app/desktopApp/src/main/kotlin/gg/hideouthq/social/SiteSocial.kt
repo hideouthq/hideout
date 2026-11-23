@@ -119,14 +119,17 @@ internal class SiteRoutes(private val client: OkHttpClient, private val signer: 
         return Request.Builder().url(url).headers(extra.newBuilder().addAll(signer.headers(method, url, body)).build()).method(method, content).build()
     }
 
-    suspend fun call(method: String, path: String, body: ByteArray = ByteArray(0)): Pair<Int, String>? = runInterruptible(Dispatchers.IO) {
+    /** A [limit] covers the whole exchange, a retry at the site's time included. */
+    suspend fun call(method: String, path: String, body: ByteArray = ByteArray(0), limit: Duration? = null): Pair<Int, String>? = runInterruptible(Dispatchers.IO) {
+        val deadline = limit?.let { System.nanoTime() + it.inWholeNanoseconds }
+        fun send() = client.newCall(signed(method, path, body)).apply { deadline?.let { timeout().deadlineNanoTime(it) } }.execute()
         try {
             var skewed = false
-            val first = client.newCall(signed(method, path, body)).execute().use { response ->
+            val first = send().use { response ->
                 skewed = signer.heard(response)
                 response.code to response.body.string()
             }
-            if (first.first == NotFound && skewed) client.newCall(signed(method, path, body)).execute().use { it.code to it.body.string() } else first
+            if (first.first == NotFound && skewed) send().use { it.code to it.body.string() } else first
         } catch (e: IOException) {
             null
         }
@@ -279,7 +282,7 @@ internal class SiteDirectory(private val routes: SiteRoutes, scope: CoroutineSco
     }
 
     override suspend fun resolve(id: ListingId): Resolved {
-        val (status, text) = routes.call("GET", "/api/games/${id.value}") ?: return Resolved.Gone
+        val (status, text) = routes.call("GET", "/api/games/${id.value}", limit = ResolveLimit) ?: return Resolved.Gone
         val row = objectOf(text)?.takeIf { status == Ok } ?: return Resolved.Gone
         val code = row.text("code")?.let(InviteCode::parse) ?: return Resolved.Gone
         val offer = row.text("offer")?.let(InviteOffer::decode) ?: return Resolved.Gone
@@ -301,6 +304,9 @@ internal class SiteDirectory(private val routes: SiteRoutes, scope: CoroutineSco
     private companion object {
         const val Ok = 200
         const val NoContent = 204
+
+        /** A join from the game waits on this, and the game's panel gives up on a press after 8 s. */
+        val ResolveLimit = 5.seconds
     }
 }
 

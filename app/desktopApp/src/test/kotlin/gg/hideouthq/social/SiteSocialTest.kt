@@ -30,6 +30,8 @@ import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.security.SecureRandom
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 import kotlin.math.abs
@@ -37,8 +39,10 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TimeSource
 
 private val Code = checkNotNull(InviteCode.parse("P95-MAN-26D"))
 private val Offer = InviteOffer.of(FakeCustomGamesFeed.BebopWars, Choices.None, LocalPlayer("76561198000000002", null))
@@ -143,6 +147,23 @@ class SiteSocialTest {
         assertEquals(Resolved.Gone, directory.resolve(id))
         site.close()
         assertEquals(Resolved.Gone, directory.resolve(id), "unreachable")
+    }
+
+    @Test
+    fun aSlowSiteGivesUpOnAListedGameBeforeTheGamesPanelDoes() = runBlocking {
+        val release = CountDownLatch(1)
+        site.answer = {
+            release.await(30, TimeUnit.SECONDS)
+            410 to ""
+        }
+        try {
+            val asked = TimeSource.Monotonic.markNow()
+            assertEquals(Resolved.Gone, SiteDirectory(routes, scope).resolve(checkNotNull(ListingId.parse("3c41a9e07d5b2f18"))))
+            val took = asked.elapsedNow()
+            assertTrue(took < 6.seconds, "the panel waits 8 s for an answer, and this took $took")
+        } finally {
+            release.countDown()
+        }
     }
 
     @Test

@@ -24,6 +24,8 @@ import java.net.URI
 import java.net.URISyntaxException
 import java.net.URLDecoder
 import java.security.MessageDigest
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ExecutionException
 import java.util.concurrent.Executors
 import java.util.zip.CRC32
 import java.util.zip.DeflaterOutputStream
@@ -178,17 +180,32 @@ private fun queryOf(raw: String?): Map<String, String> = try {
     emptyMap()
 }
 
+/** Holds each boot's newest press while it runs too, so a retry waits for that answer and other boots don't wait at all. */
 internal class Seen(private val boots: Int = 16) {
-    private val last = LinkedHashMap<String, Pair<Long, CommandResult>>()
+    private val last = LinkedHashMap<String, Pair<Long, CompletableFuture<CommandResult>>>()
 
-    @Synchronized
     fun answer(boot: String, sequence: Long, run: () -> CommandResult): CommandResult {
-        last[boot]?.let { (newest, answer) -> if (sequence == newest) return answer else if (sequence < newest) return CommandResult.Invalid }
-        val answer = run()
-        last.remove(boot)
-        last[boot] = sequence to answer
-        while (last.size > boots) last.remove(last.keys.first())
-        return answer
+        val pending = CompletableFuture<CommandResult>()
+        val answer = synchronized(this) {
+            last[boot]?.let { (newest, answer) -> if (sequence == newest) return@synchronized answer else if (sequence < newest) return CommandResult.Invalid }
+            last.remove(boot)
+            last[boot] = sequence to pending
+            while (last.size > boots) last.remove(last.keys.first())
+            pending
+        }
+        if (answer === pending) {
+            try {
+                pending.complete(run())
+            } catch (e: Throwable) {
+                synchronized(this) { if (last[boot]?.second === pending) last.remove(boot) }
+                pending.completeExceptionally(e)
+            }
+        }
+        return try {
+            answer.get()
+        } catch (e: ExecutionException) {
+            throw e.cause ?: e
+        }
     }
 }
 

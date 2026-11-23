@@ -1,21 +1,40 @@
 package gg.hideouthq.ingame
 
+import gg.hideouthq.core.customgames.Choices
 import gg.hideouthq.core.customgames.CustomGames
 import gg.hideouthq.core.customgames.CustomGamesFetch
+import gg.hideouthq.core.customgames.InviteCode
+import gg.hideouthq.core.customgames.InviteOffer
+import gg.hideouthq.core.customgames.JoinTicket
+import gg.hideouthq.core.customgames.LocalPlayer
 import gg.hideouthq.core.customgames.MenusPack
 import gg.hideouthq.core.customgames.PackToken
 import gg.hideouthq.core.customgames.Session
 import gg.hideouthq.core.customgames.SiteOrigin
+import gg.hideouthq.core.customgames.SteamId
+import gg.hideouthq.core.customgames.social.Delivery
+import gg.hideouthq.core.customgames.social.Directory
+import gg.hideouthq.core.customgames.social.Invitation
+import gg.hideouthq.core.customgames.social.ListingId
+import gg.hideouthq.core.customgames.social.ListingWanted
+import gg.hideouthq.core.customgames.social.Mailbox
+import gg.hideouthq.core.customgames.social.PublicGame
+import gg.hideouthq.core.customgames.social.Resolved
 import gg.hideouthq.core.customgames.social.Social
+import gg.hideouthq.core.customgames.social.SocialNetwork
 import gg.hideouthq.core.data.fake.FakeCustomGamesFeed
 import gg.hideouthq.core.data.fake.FakeCustomGamesPlatform
 import gg.hideouthq.core.data.fake.FakeSessionFiles
 import gg.hideouthq.feature.ingame.InGame
 import gg.hideouthq.feature.ingame.Topic
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
@@ -29,6 +48,7 @@ import java.io.InputStream
 import java.net.Socket
 import java.net.URLEncoder
 import java.nio.ByteBuffer
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -40,6 +60,7 @@ import kotlin.time.Duration.Companion.seconds
 private const val Token = "0123456789abcdef0123456789abcdef"
 private const val Site = "https://hideouthq.gg"
 private const val GameAgent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Valve Source2 HTML/1.0"
+private val Ticket = JoinTicket(checkNotNull(InviteCode.parse("P95-MAN-26D")), InviteOffer.of(FakeCustomGamesFeed.BebopWars, Choices.None, LocalPlayer("76561198000000007", null)))
 private const val Host = """{"k":"host","mode":"bebop-wars","picks":{},"listing":"invite-only","invite":[],"restart":null}"""
 
 class InGameEndpointTest {
@@ -139,6 +160,51 @@ class InGameEndpointTest {
         assertEquals(4, press(4, "{not json"))
         assertEquals(5, press(5, """{"k":"invite","to":["76561198000000007"]}"""))
         assertEquals(404, ask("/elsewhere").status)
+    }
+
+    @Test
+    fun aJoinWaitingOnTheDirectoryHoldsNoOtherPanelsPress() {
+        listed()
+        val asked = CompletableDeferred<Unit>()
+        val answer = CompletableDeferred<Resolved>()
+        val resolves = AtomicInteger()
+        val directory = object : Directory {
+            override suspend fun list(): List<PublicGame> = emptyList()
+            override suspend fun resolve(id: ListingId): Resolved {
+                resolves.incrementAndGet()
+                asked.complete(Unit)
+                return answer.await()
+            }
+            override fun keep(wanted: ListingWanted?) = Unit
+        }
+        val mailbox = object : Mailbox {
+            override fun hold(owner: SteamId?) = Unit
+            override val invitations: Flow<Invitation> = emptyFlow()
+            override suspend fun deliver(to: SteamId, from: SteamId, ticket: JoinTicket, players: Int) = Delivery.Delivered
+        }
+        val social = Social(games, SocialNetwork(mailbox, directory) { null }, scope).apply { start() }
+        InGameEndpoint(InGame(games, social, SiteOrigin.parse(Site), scope), { pack }, {}).use { other ->
+            assertTrue(other.start(0))
+            val join = """{"k":"join","server":"3c41a9e07d5b2f18"}"""
+            val joined = pressFrom("games", join, other)
+            runBlocking { withTimeout(10.seconds) { asked.await() } }
+            assertEquals(1, runBlocking { withTimeout(2.seconds) { pressFrom("overlay", """{"k":"forget","invite":"9f2c41d07e6b4a58b3c1d2e3f4a5b6c7"}""", other).await() } }, "another panel's press answers while the join waits")
+            val retried = pressFrom("games", join, other)
+            answer.complete(Resolved.Open(Ticket))
+            assertEquals(1, runBlocking { withTimeout(10.seconds) { joined.await() } }, "the join is accepted once the directory answers")
+            assertEquals(1, runBlocking { withTimeout(10.seconds) { retried.await() } }, "a retried image gets the same answer")
+            assertEquals(1, resolves.get(), "and asks the directory once")
+        }
+    }
+
+    private fun pressFrom(boot: String, c: String, to: InGameEndpoint) = scope.async(Dispatchers.IO) {
+        val port = checkNotNull(to.port)
+        val socket = Socket("127.0.0.1", port).also { sockets += it }
+        val query = "p=1&t=$Token&b=$boot&n=1&c=${URLEncoder.encode(c, Charsets.UTF_8)}"
+        socket.getOutputStream().write("GET /c?$query HTTP/1.1\r\nHost: 127.0.0.1:$port\r\nConnection: close\r\n\r\n".encodeToByteArray())
+        val input = socket.getInputStream()
+        generateSequence { input.line().takeIf { it.isNotEmpty() } }.count()
+        ByteBuffer.wrap(input.readAllBytes(), 16, 4).int
     }
 
     @Test
