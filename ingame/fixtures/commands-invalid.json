@@ -1,0 +1,17 @@
+[
+  {"k":"host","mode":"Bebop Wars","picks":{},"listing":"public","invite":[],"restart":null},
+  {"k":"host","mode":"bebop-wars","picks":{"Teams":"3v3"},"listing":"public","invite":[],"restart":null},
+  {"k":"host","mode":"bebop-wars","picks":{"teams":3},"listing":"public","invite":[],"restart":null},
+  {"k":"host","mode":"bebop-wars","picks":{},"listing":"friends","invite":[],"restart":null},
+  {"k":"host","mode":"bebop-wars","picks":{},"listing":"public","invite":["12345"],"restart":null},
+  {"k":"host","mode":"bebop-wars","picks":{},"listing":"public","invite":[]},
+  {"k":"host","mode":"bebop-wars","picks":{},"listing":"public","invite":[],"restart":"because"},
+  {"k":"act","action":"confirm"},
+  {"k":"act","action":"STOP"},
+  {"k":"act"},
+  {"k":"confirm"},
+  {"k":"join","invite":"9f2c","server":"3c41"},
+  {"k":"join","invite":"../etc"},
+  {"k":"forget","invite":"9f2c"},
+  {"action":"stop"}
+]

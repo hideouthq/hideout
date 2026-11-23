@@ -56,6 +56,7 @@ import gg.hideouthq.data.preview.PreviewPictureFetcher
 import gg.hideouthq.deadlockstats.DesktopStatsPlatform
 import gg.hideouthq.feature.customgames.quitWarning
 import gg.hideouthq.feature.moddetail.viewer.LocalModelViewport
+import gg.hideouthq.ingame.InGameEndpoint
 import gg.hideouthq.library.DataFolderClaim
 import gg.hideouthq.library.DesktopConfigFiles
 import gg.hideouthq.library.DesktopFileDrop
@@ -237,6 +238,7 @@ private fun liveContainer(previewCache: PreviewCache?, build: DesktopBuild, user
     val appUpdates = desktopAppUpdates(client) { DesktopInstall.downloadClient(desktopEngine(), userAgent, log::write) }
     val machine = readMachine(about.version, updatesItself = appUpdates.method != null)
     log.write("Hideout ${about.version} started: ${machine.line}")
+    val customGamesPlatform = DesktopCustomGames.forThisComputer(data, { DesktopInstall.downloadClient(desktopEngine(), userAgent, log::write) }, log::write)
     return AppContainer.live(
         postHogProjectKey = build.postHogProjectKey,
         analyticsOs = when { System.getProperty("os.name").startsWith("Windows") -> "windows"; System.getProperty("os.name").startsWith("Linux") -> "linux"; else -> "other" },
@@ -269,16 +271,22 @@ private fun liveContainer(previewCache: PreviewCache?, build: DesktopBuild, user
         appUpdateMethod = appUpdates.method,
         releaseFeed = appUpdates.feed,
         updatePackages = appUpdates.packages,
-        customGamesPlatform = DesktopCustomGames.forThisComputer(data, { DesktopInstall.downloadClient(desktopEngine(), userAgent, log::write) }, log::write),
+        customGamesPlatform = customGamesPlatform,
         customGamesFeed = customGamesFeed(client, data),
         customGamesSite = CustomGamesSite.fromProcess(),
     ).also { container ->
         registerAppImageLinks(log::write)
+        val inGame = container.inGame?.let { inGame ->
+            customGamesPlatform?.let { platform ->
+                InGameEndpoint(inGame, { container.modLibrary.customGamesRoot()?.let { platform.menusPack(it) } }, log::write).also { it.start() }
+            }
+        }
         Runtime.getRuntime().addShutdownHook(
             Thread {
                 container.analytics?.close()
                 container.statsService?.close()
                 stats.close()
+                inGame?.close()
                 container.customGames?.close()
             },
         )

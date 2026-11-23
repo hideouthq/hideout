@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import gg.hideouthq.core.customgames.CustomGames
+import gg.hideouthq.core.customgames.DisplayName
 import gg.hideouthq.core.customgames.EntryProblem
 import gg.hideouthq.core.customgames.RestartReason
 import gg.hideouthq.core.designsystem.component.ButtonSize
@@ -45,7 +46,6 @@ import gg.hideouthq.core.designsystem.icon.HideoutIcons
 import gg.hideouthq.core.designsystem.theme.HideoutTheme
 import gg.hideouthq.core.designsystem.theme.HideoutWeights
 import gg.hideouthq.resources.*
-import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -78,173 +78,158 @@ private fun ColumnScope.StatusContent(body: Body, view: GameView, games: CustomG
     val hostName = (view.host as? HostedBy.Friend)?.name
     val steam = LocalUriHandler.current
     val openSteam = { steam.openUri(SteamUri) }
+    headlineOf(body, view)?.let { Heading(it.icon, it.tone, it.title.text(), it.body.text(), it.busy) }
     when (body) {
         is Body.Starting -> {
-            Heading(HideoutIcons.Gamepad, Tone.Starting, stringResource(Res.string.cg_starting_title), stringResource(Res.string.cg_starting_body))
-            StepList(body.steps, view.face.name(), hostName)
+            StepList(body.steps, view.face.namePhrase, hostName)
             if (body.firewallHint) HintBox(HideoutIcons.Info, stringResource(Res.string.cg_firewall_hint))
         }
-        is Body.RestartNeeded -> {
-            Heading(HideoutIcons.Refresh, Tone.Warn, stringResource(Res.string.cg_restart_title), restartWhy(body.why))
-            Buttons {
-                Primary(stringResource(Res.string.cg_restart_button), games::restartGame, HideoutIcons.Refresh)
-                Tonal(stringResource(Res.string.cg_cancel), games::stop)
-            }
+        is Body.RestartNeeded -> Buttons {
+            Primary(stringResource(Res.string.cg_restart_button), games::restartGame, HideoutIcons.Refresh)
+            Tonal(stringResource(Res.string.cg_cancel), games::stop)
         }
-        is Body.Restarting -> if (body.closeFailed) {
-            Heading(HideoutIcons.Monitor, Tone.Warn, stringResource(Res.string.cg_restart_close_title), stringResource(Res.string.cg_restart_close_body))
-        } else {
-            Heading(HideoutIcons.Refresh, Tone.Warn, stringResource(Res.string.cg_restarting_title), stringResource(Res.string.cg_restarting_body), busy = true)
-        }
+        is Body.Restarting -> Unit
         is Body.Open -> {
-            val waiting = body.friends == 0
-            Heading(
-                HideoutIcons.Users, Tone.Ready,
-                stringResource(if (waiting) Res.string.cg_ready_title else Res.string.cg_room_title),
-                stringResource(if (waiting) Res.string.cg_ready_body else Res.string.cg_room_body),
-            )
             HideoutDivider()
             OkLine(stringResource(Res.string.cg_ready_ok))
         }
-        is Body.Match -> {
-            if (body.sections.isEmpty()) {
-                Heading(
-                    HideoutIcons.Users, Tone.Match,
-                    stringResource(if (host) Res.string.cg_match_title else Res.string.cg_match_guest_title),
-                    stringResource(if (host) Res.string.cg_match_body else Res.string.cg_match_guest_body),
-                )
+        is Body.Match -> body.sections.forEach { Section(it) }
+        is Body.Entering -> Unit
+        is Body.NotIn -> Buttons {
+            when (notInAction(body.problem, body.canPlay)) {
+                NotInAction.Play -> Primary(stringResource(Res.string.cg_play), games::play, HideoutIcons.Play)
+                NotInAction.OpenSteam -> Primary(stringResource(Res.string.cg_open_steam), openSteam, HideoutIcons.OpenExternal)
+                null -> Unit
             }
-            body.sections.forEach { Section(it) }
+            if (host) EndGame(onEnd) else Tonal(stringResource(Res.string.cg_leave_game), games::stop)
         }
-        is Body.Entering -> if (body.joining) {
-            Heading(HideoutIcons.Gamepad, Tone.Starting, stringResource(Res.string.cg_joining_title), stringResource(Res.string.cg_joining_body), busy = true)
-        } else {
-            Heading(HideoutIcons.Gamepad, Tone.Starting, stringResource(Res.string.cg_sending_title), stringResource(Res.string.cg_sending_body), busy = true)
-        }
-        is Body.NotIn -> {
-            val words = notInCopy(body.problem, body.canPlay, host)
-            Heading(words.icon, Tone.Warn, words.title, words.body)
-            Buttons {
-                when (notInAction(body.problem, body.canPlay)) {
-                    NotInAction.Play -> Primary(stringResource(Res.string.cg_play), games::play, HideoutIcons.Play)
-                    NotInAction.OpenSteam -> Primary(stringResource(Res.string.cg_open_steam), openSteam, HideoutIcons.OpenExternal)
-                    null -> Unit
-                }
-                if (host) EndGame(onEnd) else Tonal(stringResource(Res.string.cg_leave_game), games::stop)
-            }
-        }
-        is Body.Ending -> Ending(body, copy, games)
-        is Body.Ended -> Ended(body, view, games, onBack)
-    }
-}
-
-@Composable
-private fun Ending(body: Body.Ending, copy: CopyAction, games: CustomGames) {
-    val title = when (body.of) {
-        EndingOf.YourGame -> Res.string.cg_ending_host_title
-        EndingOf.YourGameStopped -> Res.string.cg_ending_stopped_title
-        EndingOf.YouLeft -> Res.string.cg_ending_guest_title
-        EndingOf.FriendsGame -> Res.string.cg_ending_over_title
-        EndingOf.LastGame -> Res.string.cg_ending_last_title
-    }
-    val host = body.of == EndingOf.YourGame || body.of == EndingOf.YourGameStopped
-    when (val stage = body.stage) {
-        EndingStage.Stopping -> Heading(
-            HideoutIcons.Stop, Tone.Starting, stringResource(title),
-            stringResource(if (host) Res.string.cg_ending_stopping_host else Res.string.cg_ending_stopping_guest), busy = true,
-        )
-        EndingStage.PuttingFilesBack -> Heading(HideoutIcons.Stop, Tone.Starting, stringResource(title), stringResource(Res.string.cg_ending_files), busy = true)
-        is EndingStage.Failed -> {
-            Heading(HideoutIcons.Warning, Tone.Fail, stringResource(title), stringResource(Res.string.cg_ending_failed))
+        is Body.Ending -> (body.stage as? EndingStage.Failed)?.let { failed ->
             Buttons {
                 Primary(stringResource(Res.string.cg_try_again), games::stop, HideoutIcons.Refresh)
-                CopyDetails(stage.details, copy)
+                CopyDetails(failed.details, copy)
             }
         }
+        is Body.Ended -> EndedButtons(body, host, games, onBack)
+    }
+}
+
+/** What the game screen's status card says for [body], and what the in-game card says in its place. Null shows no heading. */
+data class Headline(val icon: ImageVector, val tone: Tone, val title: Phrase, val body: Phrase, val busy: Boolean = false)
+
+fun headlineOf(body: Body, view: GameView): Headline? {
+    val host = view.host == HostedBy.ThisPc
+    val hostName = (view.host as? HostedBy.Friend)?.name
+    return when (body) {
+        is Body.Starting -> Headline(HideoutIcons.Gamepad, Tone.Starting, phrase(Res.string.cg_starting_title), phrase(Res.string.cg_starting_body))
+        is Body.RestartNeeded -> Headline(HideoutIcons.Refresh, Tone.Warn, phrase(Res.string.cg_restart_title), restartWhyPhrase(body.why))
+        is Body.Restarting -> if (body.closeFailed) {
+            Headline(HideoutIcons.Monitor, Tone.Warn, phrase(Res.string.cg_restart_close_title), phrase(Res.string.cg_restart_close_body))
+        } else {
+            Headline(HideoutIcons.Refresh, Tone.Warn, phrase(Res.string.cg_restarting_title), phrase(Res.string.cg_restarting_body), busy = true)
+        }
+        is Body.Open -> {
+            val waiting = body.friends == 0
+            Headline(
+                HideoutIcons.Users, Tone.Ready,
+                phrase(if (waiting) Res.string.cg_ready_title else Res.string.cg_room_title),
+                phrase(if (waiting) Res.string.cg_ready_body else Res.string.cg_room_body),
+            )
+        }
+        is Body.Match -> if (body.sections.isEmpty()) {
+            Headline(
+                HideoutIcons.Users, Tone.Match,
+                phrase(if (host) Res.string.cg_match_title else Res.string.cg_match_guest_title),
+                phrase(if (host) Res.string.cg_match_body else Res.string.cg_match_guest_body),
+            )
+        } else {
+            null
+        }
+        is Body.Entering -> if (body.joining) {
+            Headline(HideoutIcons.Gamepad, Tone.Starting, phrase(Res.string.cg_joining_title), phrase(Res.string.cg_joining_body), busy = true)
+        } else {
+            Headline(HideoutIcons.Gamepad, Tone.Starting, phrase(Res.string.cg_sending_title), phrase(Res.string.cg_sending_body), busy = true)
+        }
+        is Body.NotIn -> notInHeadline(body.problem, body.canPlay, host)
+        is Body.Ending -> endingHeadline(body)
+        is Body.Ended -> endedHeadline(body.outcome, host, hostName, view.face)
+    }
+}
+
+private fun endingHeadline(body: Body.Ending): Headline {
+    val title = phrase(
+        when (body.of) {
+            EndingOf.YourGame -> Res.string.cg_ending_host_title
+            EndingOf.YourGameStopped -> Res.string.cg_ending_stopped_title
+            EndingOf.YouLeft -> Res.string.cg_ending_guest_title
+            EndingOf.FriendsGame -> Res.string.cg_ending_over_title
+            EndingOf.LastGame -> Res.string.cg_ending_last_title
+        },
+    )
+    val host = body.of == EndingOf.YourGame || body.of == EndingOf.YourGameStopped
+    return when (body.stage) {
+        EndingStage.Stopping -> Headline(HideoutIcons.Stop, Tone.Starting, title, phrase(if (host) Res.string.cg_ending_stopping_host else Res.string.cg_ending_stopping_guest), busy = true)
+        EndingStage.PuttingFilesBack -> Headline(HideoutIcons.Stop, Tone.Starting, title, phrase(Res.string.cg_ending_files), busy = true)
+        is EndingStage.Failed -> Headline(HideoutIcons.Warning, Tone.Fail, title, phrase(Res.string.cg_ending_failed))
+    }
+}
+
+private fun endedHeadline(outcome: Outcome, host: Boolean, hostName: DisplayName?, face: ModeFace): Headline = when (outcome) {
+    is Outcome.YouEnded -> {
+        val at = outcome.at
+        val lasted = outcome.lasted
+        val ended = if (at != null && lasted != null) {
+            val minutes = lasted.inWholeMinutes.toInt().coerceAtLeast(1)
+            Phrase.Count(Res.plurals.cg_ended_you_after, minutes, listOf(clockTime(at), minutes))
+        } else {
+            phrase(Res.string.cg_ended_you)
+        }
+        val sentBack = when (outcome.sentBack.size) {
+            0 -> null
+            1 -> phrase(Res.string.cg_ended_sent_back, outcome.sentBack.single())
+            else -> phrase(Res.string.cg_ended_sent_back_many)
+        }
+        Headline(HideoutIcons.Stop, Tone.Ended, phrase(Res.string.cg_ended_title), Phrase.Joined(listOfNotNull(ended, sentBack)))
+    }
+    Outcome.GameStopped -> Headline(HideoutIcons.Warning, Tone.Fail, phrase(Res.string.cg_ended_stopped_title), phrase(Res.string.cg_ended_stopped_body))
+    Outcome.DeadlockUpdated -> Headline(
+        HideoutIcons.SwapVersions, Tone.Warn, phrase(Res.string.cg_ended_updated_title),
+        phrase(if (host) Res.string.cg_ended_updated_body else Res.string.cg_ended_updated_guest_body),
+    )
+    Outcome.FriendEnded -> Headline(HideoutIcons.Stop, Tone.Ended, namedPhrase(hostName, Res.string.cg_friend_ended_title, Res.string.cg_friend_ended_title_friend), phrase(Res.string.cg_ended_friend_body))
+    Outcome.FriendsGameStopped -> Headline(
+        HideoutIcons.Warning, Tone.Fail, namedPhrase(hostName, Res.string.cg_ended_friend_stopped_title, Res.string.cg_ended_friend_stopped_title_friend),
+        phrase(Res.string.cg_ended_friend_stopped_body),
+    )
+    Outcome.ConnectionLost -> Headline(HideoutIcons.WifiOff, Tone.Ended, namedPhrase(hostName, Res.string.cg_ended_lost_title, Res.string.cg_ended_lost_title_friend), phrase(Res.string.cg_ended_over_body))
+    Outcome.UnknownEnd -> Headline(HideoutIcons.Stop, Tone.Ended, phrase(Res.string.cg_ended_over_title), phrase(Res.string.cg_ended_over_body))
+    Outcome.YouLeft -> Headline(HideoutIcons.Stop, Tone.Ended, phrase(Res.string.cg_ended_left_title), phrase(Res.string.cg_ended_left_body))
+    Outcome.DeadlockClosed -> Headline(HideoutIcons.Monitor, Tone.Ended, phrase(Res.string.cg_ended_closed_title), phrase(Res.string.cg_ended_closed_body))
+    is Outcome.CouldNotStart -> problemWords(outcome.problem, host = true, hostName = null, mode = face.namePhrase).let { (title, body) ->
+        Headline(problemIcon(outcome.problem), Tone.Fail, title, body)
     }
 }
 
 @Composable
-private fun Ended(body: Body.Ended, view: GameView, games: CustomGames, onBack: () -> Unit) {
-    val host = view.host == HostedBy.ThisPc
-    val hostName = (view.host as? HostedBy.Friend)?.name
+private fun EndedButtons(body: Body.Ended, host: Boolean, games: CustomGames, onBack: () -> Unit) {
     val back: @Composable () -> Unit = { Tonal(stringResource(Res.string.cg_back_to_library), onBack) }
     val hostAgain: @Composable () -> Unit = { Primary(stringResource(Res.string.cg_host_again), games::again, HideoutIcons.Refresh) }
     val joinAgain: @Composable () -> Unit = { Primary(stringResource(Res.string.cg_join_again), games::again, HideoutIcons.Refresh) }
     when (val outcome = body.outcome) {
-        is Outcome.YouEnded -> {
-            val at = outcome.at
-            val lasted = outcome.lasted
-            val ended = if (at != null && lasted != null) {
-                val minutes = lasted.inWholeMinutes.toInt().coerceAtLeast(1)
-                pluralStringResource(Res.plurals.cg_ended_you_after, minutes, clockTime(at), minutes)
-            } else {
-                stringResource(Res.string.cg_ended_you)
-            }
-            val sentBack = when (outcome.sentBack.size) {
-                0 -> null
-                1 -> stringResource(Res.string.cg_ended_sent_back, outcome.sentBack.single())
-                else -> stringResource(Res.string.cg_ended_sent_back_many)
-            }
-            Heading(HideoutIcons.Stop, Tone.Ended, stringResource(Res.string.cg_ended_title), listOfNotNull(ended, sentBack).joinToString(" "))
-            Buttons {
-                hostAgain()
-                back()
-            }
+        is Outcome.YouEnded -> Buttons {
+            hostAgain()
+            back()
         }
-        Outcome.GameStopped -> {
-            Heading(HideoutIcons.Warning, Tone.Fail, stringResource(Res.string.cg_ended_stopped_title), stringResource(Res.string.cg_ended_stopped_body))
-            Buttons { hostAgain() }
+        Outcome.GameStopped -> Buttons { hostAgain() }
+        Outcome.DeadlockUpdated -> Buttons {
+            if (host) hostAgain()
+            back()
         }
-        Outcome.DeadlockUpdated -> {
-            Heading(
-                HideoutIcons.SwapVersions, Tone.Warn, stringResource(Res.string.cg_ended_updated_title),
-                stringResource(if (host) Res.string.cg_ended_updated_body else Res.string.cg_ended_updated_guest_body),
-            )
-            Buttons {
-                if (host) hostAgain()
-                back()
-            }
+        Outcome.FriendEnded, Outcome.FriendsGameStopped, Outcome.YouLeft -> Buttons { back() }
+        Outcome.ConnectionLost, Outcome.UnknownEnd, Outcome.DeadlockClosed -> Buttons {
+            joinAgain()
+            back()
         }
-        Outcome.FriendEnded -> {
-            Heading(HideoutIcons.Stop, Tone.Ended, named(hostName, Res.string.cg_friend_ended_title, Res.string.cg_friend_ended_title_friend), stringResource(Res.string.cg_ended_friend_body))
-            Buttons { back() }
-        }
-        Outcome.FriendsGameStopped -> {
-            Heading(HideoutIcons.Warning, Tone.Fail, named(hostName, Res.string.cg_ended_friend_stopped_title, Res.string.cg_ended_friend_stopped_title_friend), stringResource(Res.string.cg_ended_friend_stopped_body))
-            Buttons { back() }
-        }
-        Outcome.ConnectionLost -> {
-            Heading(HideoutIcons.WifiOff, Tone.Ended, named(hostName, Res.string.cg_ended_lost_title, Res.string.cg_ended_lost_title_friend), stringResource(Res.string.cg_ended_over_body))
-            Buttons {
-                joinAgain()
-                back()
-            }
-        }
-        Outcome.UnknownEnd -> {
-            Heading(HideoutIcons.Stop, Tone.Ended, stringResource(Res.string.cg_ended_over_title), stringResource(Res.string.cg_ended_over_body))
-            Buttons {
-                joinAgain()
-                back()
-            }
-        }
-        Outcome.YouLeft -> {
-            Heading(HideoutIcons.Stop, Tone.Ended, stringResource(Res.string.cg_ended_left_title), stringResource(Res.string.cg_ended_left_body))
-            Buttons { back() }
-        }
-        Outcome.DeadlockClosed -> {
-            Heading(HideoutIcons.Monitor, Tone.Ended, stringResource(Res.string.cg_ended_closed_title), stringResource(Res.string.cg_ended_closed_body))
-            Buttons {
-                joinAgain()
-                back()
-            }
-        }
-        is Outcome.CouldNotStart -> {
-            val problem = outcome.problem
-            val words = problemCopy(problem, host = true, hostName = null, mode = view.face.name())
-            Heading(problemIcon(problem), Tone.Fail, words.title, words.body)
-            if (tryAgainHelps(problem)) Buttons { Primary(stringResource(Res.string.cg_try_again), games::again, HideoutIcons.Refresh) }
-        }
+        is Outcome.CouldNotStart -> if (tryAgainHelps(outcome.problem)) Buttons { Primary(stringResource(Res.string.cg_try_again), games::again, HideoutIcons.Refresh) }
     }
 }
 
@@ -375,31 +360,33 @@ private fun clockTime(at: Instant): String =
 
 internal const val SteamUri = "steam://open/main"
 
-@Composable
-internal fun restartWhy(why: RestartReason): String {
+fun restartWhyPhrase(why: RestartReason): Phrase {
     val reason = when (why) {
         RestartReason.NotSetUp -> Res.string.cg_restart_not_set_up
         RestartReason.GameUpdated -> Res.string.cg_restart_game_updated
         RestartReason.MenusDidNotStart -> Res.string.cg_restart_menus
     }
-    return stringResource(reason) + " " + stringResource(Res.string.cg_restart_queue)
+    return Phrase.Joined(listOf(phrase(reason), phrase(Res.string.cg_restart_queue)))
 }
 
 @Composable
-internal fun restartAhead(why: RestartReason, host: Boolean): String {
+internal fun restartWhy(why: RestartReason): String = restartWhyPhrase(why).text()
+
+/** What Host or Join will do to the running Deadlock first, said before the press. */
+fun restartAheadPhrase(why: RestartReason, host: Boolean): Phrase {
     val reason = when (why) {
         RestartReason.NotSetUp -> Res.string.cg_restarts_not_set_up
         RestartReason.GameUpdated -> Res.string.cg_restarts_game_updated
         RestartReason.MenusDidNotStart -> Res.string.cg_restarts_menus
     }
-    return stringResource(if (host) Res.string.cg_host_restarts else Res.string.cg_join_restarts) + " " + stringResource(reason) + " " + stringResource(Res.string.cg_restart_queue)
+    return Phrase.Joined(listOf(phrase(if (host) Res.string.cg_host_restarts else Res.string.cg_join_restarts), phrase(reason), phrase(Res.string.cg_restart_queue)))
 }
 
-internal data class NotInCopy(val icon: ImageVector, val title: String, val body: String)
-
 @Composable
-internal fun notInCopy(problem: EntryProblem?, canPlay: Boolean, host: Boolean): NotInCopy {
-    if (!canPlay) return NotInCopy(HideoutIcons.WifiOff, stringResource(Res.string.cg_dropped_silent_title), stringResource(Res.string.cg_dropped_silent_body))
+internal fun restartAhead(why: RestartReason, host: Boolean): String = restartAheadPhrase(why, host).text()
+
+fun notInHeadline(problem: EntryProblem?, canPlay: Boolean, host: Boolean): Headline {
+    if (!canPlay) return Headline(HideoutIcons.WifiOff, Tone.Warn, phrase(Res.string.cg_dropped_silent_title), phrase(Res.string.cg_dropped_silent_body))
     val (icon, title, body) = when (problem) {
         null -> Triple(HideoutIcons.Monitor, Res.string.cg_not_in_title, if (host) Res.string.cg_not_in_body else Res.string.cg_not_in_guest_body)
         EntryProblem.Dropped -> Triple(HideoutIcons.WifiOff, Res.string.cg_dropped_title, Res.string.cg_dropped_body)
@@ -409,12 +396,12 @@ internal fun notInCopy(problem: EntryProblem?, canPlay: Boolean, host: Boolean):
         EntryProblem.GameUpdatePending -> Triple(HideoutIcons.SwapVersions, Res.string.cg_steam_update_title, Res.string.cg_steam_update_body)
         EntryProblem.DidNotJoin -> Triple(HideoutIcons.Monitor, Res.string.cg_did_not_join_title, Res.string.cg_did_not_join_body)
     }
-    return NotInCopy(icon, stringResource(title), stringResource(body))
+    return Headline(icon, Tone.Warn, phrase(title), phrase(body))
 }
 
-internal enum class NotInAction { Play, OpenSteam }
+enum class NotInAction { Play, OpenSteam }
 
-internal fun notInAction(problem: EntryProblem?, canPlay: Boolean): NotInAction? = when {
+fun notInAction(problem: EntryProblem?, canPlay: Boolean): NotInAction? = when {
     !canPlay || problem == EntryProblem.MenusDidNotStart -> null
     problem == EntryProblem.GameUpdatePending -> NotInAction.OpenSteam
     else -> NotInAction.Play

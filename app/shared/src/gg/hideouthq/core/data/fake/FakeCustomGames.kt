@@ -14,6 +14,7 @@ import gg.hideouthq.core.customgames.GameRevision
 import gg.hideouthq.core.customgames.GameSetup
 import gg.hideouthq.core.customgames.GameTraffic
 import gg.hideouthq.core.customgames.HowToPlay
+import gg.hideouthq.core.customgames.InGamePort
 import gg.hideouthq.core.customgames.InstalledMode
 import gg.hideouthq.core.customgames.InviteCode
 import gg.hideouthq.core.customgames.InviteOffer
@@ -46,6 +47,7 @@ import gg.hideouthq.core.customgames.SectionKind
 import gg.hideouthq.core.customgames.SectionState
 import gg.hideouthq.core.customgames.ServerEvent
 import gg.hideouthq.core.customgames.SessionEvent
+import gg.hideouthq.core.customgames.SessionFiles
 import gg.hideouthq.core.customgames.SessionJournal
 import gg.hideouthq.core.customgames.SessionOwned
 import gg.hideouthq.core.customgames.SettingKey
@@ -57,10 +59,15 @@ import gg.hideouthq.core.customgames.StageResult
 import gg.hideouthq.core.customgames.StepIcon
 import gg.hideouthq.core.customgames.Transfer
 import gg.hideouthq.core.customgames.download
+import gg.hideouthq.core.library.GameActivity
 import gg.hideouthq.core.library.GameRoot
+import gg.hideouthq.core.library.GamesLines
+import gg.hideouthq.core.library.LibraryProblem
+import gg.hideouthq.core.library.SessionAdmission
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import java.time.LocalDate
 import kotlin.time.Duration
@@ -107,6 +114,31 @@ class FakeLinkProcess(override val identity: ProcessIdentity? = ProcessIdentity(
         kills++
         say(LinkEvent.Stopped(LinkStop.Signal))
     }
+}
+
+/** A game folder that takes whatever a session asks of it, with Deadlock [activity]. */
+class FakeSessionFiles(activity: GameActivity = GameActivity.Closed, private val root: GameRoot = GameRoot("/games/Deadlock")) : SessionFiles {
+    override val clientActivity = MutableStateFlow(activity)
+    private var lines: GamesLines = GamesLines.Off
+
+    override suspend fun game(): GameRoot = root
+
+    override suspend fun gamesLines(): GamesLines = lines
+
+    override suspend fun useCustomGames(on: Boolean): LibraryProblem? {
+        lines = if (on) GamesLines.Mounted else GamesLines.Off
+        return null
+    }
+
+    override suspend fun admit(): SessionAdmission = SessionAdmission.Held(root)
+
+    override suspend fun launchClient(): LibraryProblem? = null
+
+    override suspend fun closeClient() = Unit
+
+    override suspend fun resume(game: GameRoot) = Unit
+
+    override suspend fun release(): LibraryProblem? = null
 }
 
 class FakeCustomGamesPlatform(
@@ -283,7 +315,7 @@ class FakeCustomGamesPlatform(
         const val SamplePort = 27_015
         val SampleContent = ModeContent(listOf("content"))
         val SampleRenderer = Sha256.parse("e".repeat(64))
-        val SampleStamp = MenusStamp("e".repeat(64), "https://hideouthq.gg/bridge/", MenusScreenPort, 1)
+        val SampleStamp = MenusStamp("e".repeat(64), "https://hideouthq.gg/bridge/", MenusScreenPort, 1, InGamePort, "a".repeat(64))
         val SampleSetup = GameSetup(SampleStamp.screen, SampleStamp.page)
         val SampleOwned = SessionOwned(appIdFile = true)
         val SamplePlayedAt: Instant = Instant.fromEpochSeconds(1_800_000_000)

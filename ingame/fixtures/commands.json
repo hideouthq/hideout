@@ -1,0 +1,15 @@
+[
+  {"k":"host","mode":"bebop-wars","picks":{"teams":"3v3"},"listing":"public","invite":["76561198000000007"],"restart":"not-set-up"},
+  {"k":"host","mode":"bebop-wars","picks":{},"listing":"invite-only","invite":[],"restart":null},
+  {"k":"act","action":"stop"},
+  {"k":"act","action":"restart"},
+  {"k":"act","action":"play"},
+  {"k":"act","action":"dismiss"},
+  {"k":"act","action":"again"},
+  {"k":"confirm","restart":"game-updated"},
+  {"k":"confirm","restart":null},
+  {"k":"invite","to":["76561198000000007"]},
+  {"k":"listing","listing":"invite-only"},
+  {"k":"join","invite":"9f2c"},
+  {"k":"join","server":"3c41"}
+]

@@ -216,7 +216,7 @@ class CustomGames(
     }
 
     /** [restartAccepted] is the [restartsDeadlock] the player was shown as they pressed, so the session restarts Deadlock for it without asking again. */
-    fun host(mode: Mode, choices: Choices, restartAccepted: RestartReason?) = post(HostRequested(mode, choices, restartAccepted))
+    fun host(mode: Mode, choices: Choices, restartAccepted: RestartReason?, outreach: Outreach = Outreach.Private) = post(HostRequested(mode, choices, restartAccepted, outreach))
 
     fun openInvite(pasted: String): Boolean {
         val code = InviteCode.parse(pasted) ?: return false
@@ -375,7 +375,7 @@ class CustomGames(
     private suspend fun again(live: LiveSession) {
         if (live.session !is Session.Ended) return
         when (val role = live.game?.role) {
-            is Role.Host -> advance(HostRequested(role.mode, role.choices))
+            is Role.Host -> advance(HostRequested(role.mode, role.choices, outreach = role.outreach))
             is Role.Guest -> advance(InviteOpened(role.code, acceptedBefore = role.offer))
             null -> Unit
         }
@@ -413,7 +413,7 @@ class CustomGames(
         }
     }
 
-    private fun noSession(): Boolean = publishedLive.value.session.let { it == Session.Idle || it is Session.Ended }
+    private fun noSession(): Boolean = publishedLive.value.session.startsHost
 
     private suspend fun <T> outsideSession(change: suspend () -> T): T? = storeChanges.withLock { if (noSession()) change() else null }
 

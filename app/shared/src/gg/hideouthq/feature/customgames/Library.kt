@@ -16,6 +16,7 @@ import gg.hideouthq.core.customgames.SettingValue
 import gg.hideouthq.core.customgames.Transfer
 import gg.hideouthq.core.customgames.capacity
 import gg.hideouthq.core.customgames.library
+import gg.hideouthq.core.customgames.startsHost
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
@@ -98,7 +99,7 @@ enum class HostBlock { CleaningUp, GameRunning }
 
 fun hostBlock(session: Session): HostBlock? = when {
     session == Session.Recovering -> HostBlock.CleaningUp
-    session != Session.Idle && session !is Session.Ended -> HostBlock.GameRunning
+    !session.startsHost -> HostBlock.GameRunning
     else -> null
 }
 

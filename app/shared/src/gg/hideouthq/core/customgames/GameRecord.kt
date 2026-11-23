@@ -1,6 +1,7 @@
 package gg.hideouthq.core.customgames
 
 import gg.hideouthq.core.customgames.SessionEvent.HostRequested
+import gg.hideouthq.core.customgames.SessionEvent.RuntimePrepared
 import kotlin.time.Instant
 
 /** One snapshot per event: where the session is, and the game it is for, so a screen never pairs a stage with another moment's record. */
@@ -49,7 +50,8 @@ data class GameRecord(
 }
 
 sealed interface Role {
-    data class Host(val mode: Mode, val choices: Choices) : Role
+    /** [offer] is the one the helper serves, from when the runtime is prepared, so whatever tells friends of the game sends that and not a re-derivation. */
+    data class Host(val mode: Mode, val choices: Choices, val outreach: Outreach = Outreach.Private, val offer: InviteOffer? = null) : Role
 
     data class Guest(val code: InviteCode, val offer: InviteOffer?, val listing: ModeListing?) : Role
 }
@@ -62,14 +64,18 @@ class RecordContext(val me: LocalPlayer?, val listingOf: (InviteOffer) -> ModeLi
  */
 fun recordAfter(record: GameRecord?, event: SessionEvent, next: Session, context: RecordContext): GameRecord? = when {
     next == Session.Idle || next == Session.Recovering -> null
-    event is HostRequested && next is Session.HostPreparing -> GameRecord(Role.Host(event.mode, event.choices), context.me)
+    event is HostRequested && next is Session.HostPreparing -> GameRecord(Role.Host(event.mode, event.choices, event.outreach), context.me)
     next is Session.Finding && !(record?.endedAt == null && (record?.role as? Role.Guest)?.code == next.code) ->
         GameRecord(Role.Guest(next.code, next.acceptedBefore, next.acceptedBefore?.let(context.listingOf)), context.me)
     else -> record?.let { kept ->
         val role = kept.role
         val signedOn = (next as? Session.Hosting)?.players
         kept.copy(
-            role = if (role is Role.Guest) role.found((next as? Session.Confirming)?.invite?.offer, context) else role,
+            role = when {
+                role is Role.Guest -> role.found((next as? Session.Confirming)?.invite?.offer, context)
+                role is Role.Host && event is RuntimePrepared -> role.copy(offer = event.host.offer)
+                else -> role
+            },
             me = kept.me ?: context.me,
             startedAt = kept.startedAt ?: context.now.takeIf { next is Session.Hosting || (next is Session.Playing && next.own == OwnGame.In) },
             reported = if (event is LinkEvent.Reported) kept.reported + event.states.associateBy { it.kind } else kept.reported,

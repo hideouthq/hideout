@@ -99,6 +99,7 @@ import gg.hideouthq.core.sharing.ProfileShares
 import gg.hideouthq.core.sharing.SiteProfileShares
 import gg.hideouthq.feature.discover.followPlayedHeroes
 import gg.hideouthq.feature.discover.prefetchFeaturedRenders
+import gg.hideouthq.feature.ingame.InGame
 import gg.hideouthq.feature.stats.NoStatsSource
 import gg.hideouthq.feature.stats.StatsSource
 import gg.hideouthq.feature.stats.data.LiveStatsSource
@@ -170,6 +171,8 @@ class AppContainer(
     val customGames: CustomGames? = null,
     /** Where a host's invite links point; null where no site is set, and a host then hands out the code alone. */
     val customGamesSite: SiteOrigin? = null,
+    /** What the in-game UI reads and presses, with [customGames]. */
+    val inGame: InGame? = null,
     /** The same site's short codes for shared profiles. */
     val profileShares: ProfileShares = ProfileShares.None,
     /** Profile links on their way to the import, from the menu or the system. */
@@ -297,6 +300,7 @@ class AppContainer(
                 appUpdates = appUpdates,
                 customGames = customGames,
                 customGamesSite = customGamesSite,
+                inGame = customGames?.let { InGame(it, customGamesSite, scope) },
                 profileShares = customGamesSite?.let { SiteProfileShares(client, it) } ?: ProfileShares.None,
             )
         }

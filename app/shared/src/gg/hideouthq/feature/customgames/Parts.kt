@@ -222,11 +222,10 @@ fun middleTruncate(text: String, keep: Int = 10): String =
     if (text.length <= keep * 2 + 1) text else text.take(keep) + "…" + text.takeLast(keep)
 
 @Composable
-fun ModeFace.name(): String = title ?: stringResource(Res.string.cg_unknown_mode)
+fun ModeFace.name(): String = namePhrase.text()
 
 @Composable
-fun named(name: DisplayName?, named: StringResource, unnamed: StringResource): String =
-    name?.let { stringResource(named, it.value) } ?: stringResource(unnamed)
+fun named(name: DisplayName?, named: StringResource, unnamed: StringResource): String = namedPhrase(name, named, unnamed).text()
 
 @Composable
 fun CgCard(modifier: Modifier = Modifier, padding: Dp = 20.dp, radius: Dp = 24.dp, gap: Dp = 14.dp, content: @Composable ColumnScope.() -> Unit) {
@@ -269,27 +268,20 @@ fun HintBox(icon: ImageVector, text: AnnotatedString) {
 fun HintBox(icon: ImageVector, text: String) = HintBox(icon, AnnotatedString(text))
 
 @Composable
-fun StepList(steps: List<StepView>, mode: String, host: DisplayName?) {
+fun StepList(steps: List<StepView>, mode: Phrase, host: DisplayName?) {
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         steps.forEach { step -> key(step.name) { StepRow(step, mode, host) } }
     }
 }
 
 @Composable
-private fun StepRow(step: StepView, mode: String, host: DisplayName?) {
+private fun StepRow(step: StepView, mode: Phrase, host: DisplayName?) {
     val scheme = MaterialTheme.colorScheme
     val motion = HideoutTheme.motion
     val type = HideoutTheme.typography
     val waiting = step.status == StepStatus.Waiting
     val title by animateColorAsState(if (waiting) scheme.outline else scheme.onSurface, motion.effectsDefault(), label = "stepTitle")
-    val guest = step.name == StepName.GetMode && host != null
-    val text = when (step.name) {
-        StepName.GetMode -> stringResource(if (guest) Res.string.cg_step_get_mode_guest else Res.string.cg_step_get_mode, mode)
-        StepName.StartServer -> stringResource(Res.string.cg_step_start_server)
-        StepName.OpenToFriends -> stringResource(Res.string.cg_step_open_to_friends)
-        StepName.Connect -> named(host, Res.string.cg_step_connect, Res.string.cg_step_connect_friend)
-        StepName.SendGameIn -> stringResource(Res.string.cg_step_send_game_in)
-    }
+    val text = stepPhrase(step.name, mode, host).text()
     Row(Modifier.fillMaxWidth().heightIn(min = 46.dp), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
         StatusCircle(step.status)
         Column(Modifier.weight(1f).animateContentSize(motion.spatialDefault())) {
@@ -300,17 +292,28 @@ private fun StepRow(step: StepView, mode: String, host: DisplayName?) {
     }
 }
 
+/** A step's line, the same for a host's start and a guest's join. [mode] names the mode the first step gets. */
+fun stepPhrase(name: StepName, mode: Phrase, host: DisplayName?): Phrase = when (name) {
+    StepName.GetMode -> phrase(if (host != null) Res.string.cg_step_get_mode_guest else Res.string.cg_step_get_mode, mode)
+    StepName.StartServer -> phrase(Res.string.cg_step_start_server)
+    StepName.OpenToFriends -> phrase(Res.string.cg_step_open_to_friends)
+    StepName.Connect -> namedPhrase(host, Res.string.cg_step_connect, Res.string.cg_step_connect_friend)
+    StepName.SendGameIn -> phrase(Res.string.cg_step_send_game_in)
+}
+
+fun notePhrase(note: StepNote): Phrase = when (note) {
+    is StepNote.Downloading -> phrase(Res.string.cg_bytes_of, megabytes(note.transfer.done), megabytes(note.transfer.total))
+    is StepNote.Installed -> phrase(Res.string.cg_note_installed, note.version)
+    StepNote.SettingUpFiles -> phrase(Res.string.cg_note_setting_up)
+    StepNote.Direct -> phrase(Res.string.cg_note_direct)
+    StepNote.BackupRoute -> phrase(Res.string.cg_note_backup_route)
+    StepNote.OpeningDeadlock -> phrase(Res.string.cg_note_opening_deadlock)
+    StepNote.JoiningGame -> phrase(Res.string.cg_note_joining)
+}
+
 @Composable
 private fun StepNoteLine(note: StepNote) {
-    val text = when (note) {
-        is StepNote.Downloading -> stringResource(Res.string.cg_bytes_of, megabytes(note.transfer.done), megabytes(note.transfer.total))
-        is StepNote.Installed -> stringResource(Res.string.cg_note_installed, note.version)
-        StepNote.SettingUpFiles -> stringResource(Res.string.cg_note_setting_up)
-        StepNote.Direct -> stringResource(Res.string.cg_note_direct)
-        StepNote.BackupRoute -> stringResource(Res.string.cg_note_backup_route)
-        StepNote.OpeningDeadlock -> stringResource(Res.string.cg_note_opening_deadlock)
-        StepNote.JoiningGame -> stringResource(Res.string.cg_note_joining)
-    }
+    val text = notePhrase(note).text()
     Text(text, style = HideoutTheme.typography.caption.copy(fontSize = 12.5.sp), color = MaterialTheme.colorScheme.outline)
 }
 
@@ -566,11 +569,8 @@ fun BoxScope.CgToastHost(toasts: CgToasts) {
 private const val ToastMillis = 4_000L
 private val ToastDrop = 8.dp
 
-data class ProblemCopy(val title: String, val body: String)
-
 /** The one copy table for a game that never started, for a host on the game screen and a guest joining alike. */
-@Composable
-fun problemCopy(problem: Problem, host: Boolean, hostName: DisplayName?, mode: String): ProblemCopy {
+fun problemWords(problem: Problem, host: Boolean, hostName: DisplayName?, mode: Phrase): Pair<Phrase, Phrase> {
     val (title, body) = when (problem) {
         Problem.DeadlockNotInstalled -> Res.string.cg_problem_not_installed_title to Res.string.cg_problem_not_installed_body
         Problem.SteamUnsupported -> Res.string.cg_problem_steam_unsupported_title to Res.string.cg_problem_steam_unsupported_body
@@ -595,12 +595,12 @@ fun problemCopy(problem: Problem, host: Boolean, hostName: DisplayName?, mode: S
         Problem.ArenaFailed -> Res.string.cg_problem_arena_title to if (host) Res.string.cg_problem_arena_body else Res.string.cg_problem_arena_guest_body
         Problem.Unexpected -> Res.string.cg_problem_unexpected_title to Res.string.cg_problem_unexpected_body
     }
-    val titleText = when (problem) {
-        Problem.ContentNotStaged, Problem.ArenaFailed -> stringResource(title, mode)
-        Problem.CouldNotReach, Problem.FriendEnded -> hostName?.let { stringResource(title, it.value) } ?: stringResource(title)
-        else -> stringResource(title)
+    val titled = when (problem) {
+        Problem.ContentNotStaged, Problem.ArenaFailed -> phrase(title, mode)
+        Problem.CouldNotReach, Problem.FriendEnded -> hostName?.let { phrase(title, it.value) } ?: phrase(title)
+        else -> phrase(title)
     }
-    return ProblemCopy(titleText, stringResource(body))
+    return titled to phrase(body)
 }
 
 fun tryAgainHelps(problem: Problem): Boolean = when (problem) {

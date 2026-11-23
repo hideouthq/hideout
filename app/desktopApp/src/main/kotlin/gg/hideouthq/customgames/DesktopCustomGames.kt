@@ -11,12 +11,14 @@ import gg.hideouthq.core.customgames.FetchProblem
 import gg.hideouthq.core.customgames.FolderRead
 import gg.hideouthq.core.customgames.GameRevision
 import gg.hideouthq.core.customgames.GameSetup
+import gg.hideouthq.core.customgames.InGamePort
 import gg.hideouthq.core.customgames.InstalledMode
 import gg.hideouthq.core.customgames.InviteCode
 import gg.hideouthq.core.customgames.InviteOffer
 import gg.hideouthq.core.customgames.JournalEntry
 import gg.hideouthq.core.customgames.LinkProcess
 import gg.hideouthq.core.customgames.LocalPlayer
+import gg.hideouthq.core.customgames.MenusPack
 import gg.hideouthq.core.customgames.MenusScreenPort
 import gg.hideouthq.core.customgames.MenusStamp
 import gg.hideouthq.core.customgames.Mode
@@ -52,6 +54,7 @@ import gg.hideouthq.library.SteamInstall
 import gg.hideouthq.library.SteamLoginIdentities
 import gg.hideouthq.library.WindowsRegistry
 import gg.hideouthq.library.deleteTree
+import gg.hideouthq.library.digestRest
 import gg.hideouthq.library.readSmallText
 import gg.hideouthq.library.retryingBusy
 import gg.hideouthq.library.sha256
@@ -66,6 +69,7 @@ import java.io.IOException
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.nio.channels.DatagramChannel
+import java.nio.channels.FileChannel
 import java.nio.file.Files
 import java.nio.file.InvalidPathException
 import java.nio.file.Path
@@ -254,11 +258,16 @@ class DesktopCustomGames internal constructor(
     }
 
     override suspend fun menus(game: GameRoot, renderer: Sha256?, rebuild: Boolean): MenusStamp? = withContext(Dispatchers.IO) {
-        val have = gamesFolder.stamp(game)
+        val have = gamesFolder.pack(game)?.stamp
         val built = renderer?.takeIf { rebuild }?.let(::ifFetched) ?: return@withContext have
-        val want = MenusStamp(built.hex, pageUrl, MenusScreenPort, SteamInf.revision(game)?.source)
-        if (have == want || !gamesFolder.buildMenus(game, store.folderOf(built), want)) have else want
+        val want = MenusStamp(built.hex, pageUrl, MenusScreenPort, SteamInf.revision(game)?.source, InGamePort, helperDigest)
+        if (have == want) have else gamesFolder.buildMenus(game, store.folderOf(built), want)?.stamp ?: have
     }
+
+    /** The pack [game] has now, whose token the in-game endpoint checks. */
+    suspend fun menusPack(game: GameRoot): MenusPack? = withContext(Dispatchers.IO) { gamesFolder.pack(game) }
+
+    private val helperDigest: String by lazy { sha256().also { digest -> FileChannel.open(helper).use { it.digestRest(digest) } }.digest().toHexString() }
 
     override suspend fun clearEndedDevSession(game: GameRoot) = withContext(Dispatchers.IO) { gamesFolder.clearEndedDevSession(game) }
 

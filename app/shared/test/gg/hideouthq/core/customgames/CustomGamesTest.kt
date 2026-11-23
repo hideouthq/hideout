@@ -1820,11 +1820,13 @@ class CustomGamesTest {
         games.stop()
         settle()
         assertIs<Session.Ended>(session)
-        assertEquals(GameRecord(Role.Host(FakeCustomGamesFeed.SampleMode, choices), FakeCustomGamesPlatform.SamplePlayer, endedAt = games.live.value.game?.endedAt), games.live.value.game)
+        val served = InviteOffer.of(FakeCustomGamesFeed.SampleMode, choices, FakeCustomGamesPlatform.SamplePlayer)
+        val record = GameRecord(Role.Host(FakeCustomGamesFeed.SampleMode, choices, offer = served), FakeCustomGamesPlatform.SamplePlayer, endedAt = games.live.value.game?.endedAt)
+        assertEquals(record, games.live.value.game, "the record keeps the offer the helper served")
         games.again()
         settle()
         assertIs<Session.HostStarting>(session)
-        val request = FakeCustomGamesFeed.SampleMode to InviteOffer.of(FakeCustomGamesFeed.SampleMode, choices, FakeCustomGamesPlatform.SamplePlayer)
+        val request = FakeCustomGamesFeed.SampleMode to served
         assertEquals(listOf(request, request), platform.hostRequests)
     }
 

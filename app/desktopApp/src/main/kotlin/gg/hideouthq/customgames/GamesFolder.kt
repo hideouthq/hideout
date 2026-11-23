@@ -1,6 +1,8 @@
 package gg.hideouthq.customgames
 
+import gg.hideouthq.core.customgames.MenusPack
 import gg.hideouthq.core.customgames.MenusStamp
+import gg.hideouthq.core.customgames.PackToken
 import gg.hideouthq.core.customgames.StageResult
 import gg.hideouthq.core.customgames.isMenusFile
 import gg.hideouthq.core.library.GameInfoPatch
@@ -15,6 +17,7 @@ import gg.hideouthq.library.headOf
 import gg.hideouthq.library.readSmallText
 import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -34,35 +37,40 @@ import kotlin.io.path.pathString
 import kotlin.time.Duration
 
 internal class GamesFolder(private val helper: Path, private val workFolder: Path, private val log: (String) -> Unit, private val runLimit: Duration) {
-    fun stamp(game: GameRoot): MenusStamp? {
+    fun pack(game: GameRoot): MenusPack? {
         val root = rootOf(game)
         if (!Files.isRegularFile(root.resolve(MenusFolder).resolve(PackFile))) return null
-        return readSmallText(root.resolve(StampFile))?.let { text ->
+        val read = readSmallText(root.resolve(StampFile))?.let { text ->
             try {
-                Json.decodeFromString(MenusStamp.serializer(), text)
+                Json.decodeFromString(MenusFile.serializer(), text)
             } catch (e: SerializationException) {
                 null
             } catch (e: IllegalArgumentException) {
                 null
             }
-        }
+        } ?: return null
+        return PackToken.parse(read.token)?.let { MenusPack(read.stamp, it) }
     }
 
-    suspend fun buildMenus(game: GameRoot, renderer: Path, want: MenusStamp): Boolean = locked(game, { false }) { root ->
+    /** The pack built for [want], or null when the helper failed or named no token, which keeps the pack that was there. */
+    suspend fun buildMenus(game: GameRoot, renderer: Path, want: MenusStamp): MenusPack? = locked(game, { null }) { root ->
         Files.newDirectoryStream(root, "$PartPrefix*").use { leftovers -> leftovers.forEach(Files::deleteIfExists) }
         val part = root.resolve(PartPrefix + UUID.randomUUID())
-        val ran = run(listOf("menus", "--game", game.path, "--renderer", renderer.pathString, "--page", want.page, "--screen-port", want.screen.toString(), "--out", part.pathString))
-        if (!ran.done) {
-            log("Custom games: the menus were not built: ${ran.message}")
+        val ran = run(
+            listOf("menus", "--game", game.path, "--renderer", renderer.pathString, "--page", want.page, "--screen-port", want.screen.toString(), "--ingame-port", want.endpoint.toString(), "--out", part.pathString),
+        )
+        val token = ran.token
+        if (!ran.done || token == null) {
+            log("Custom games: the menus were not built: ${if (ran.done) "the helper named no pack token" else ran.message}")
             Files.deleteIfExists(part)
-            return@locked false
+            return@locked null
         }
         Files.createDirectories(root.resolve(MenusFolder))
         Files.move(part, root.resolve(MenusFolder).resolve(PackFile), StandardCopyOption.REPLACE_EXISTING)
         val stamp = root.resolve("$StampFile.part")
-        Files.writeString(stamp, Json.encodeToString(MenusStamp.serializer(), want))
+        Files.writeString(stamp, Json.encodeToString(MenusFile.serializer(), MenusFile(want, token.hex)))
         Files.move(stamp, root.resolve(StampFile), StandardCopyOption.REPLACE_EXISTING)
-        true
+        MenusPack(want, token)
     }
 
     suspend fun stage(game: GameRoot, content: List<String>): StageResult = locked(game, StageResult::Failed) { root ->
@@ -162,11 +170,16 @@ internal class GamesFolder(private val helper: Path, private val workFolder: Pat
             held = held.orEmpty().mapNotNull { (it as? JsonPrimitive)?.content },
             message = if (exited) stopped?.text("message") else "it ran past its limit",
             devSession = dev?.booleanOrNull,
+            token = said.firstOrNull { it.text("type") == "built" }?.text("token")?.let(PackToken::parse),
         )
     }
 
-    /** [devSession] is whether a Modlock development session's block was live, null when there was none. */
-    private class Ran(val done: Boolean, val held: List<String>, val message: String?, val devSession: Boolean? = null)
+    /** [devSession] is whether a Modlock development session's block was live, null when there was none. [token] is a menus build's. */
+    private class Ran(val done: Boolean, val held: List<String>, val message: String?, val devSession: Boolean? = null, val token: PackToken? = null)
+
+    /** `menus.json`. A file from before the token reads as no pack. */
+    @Serializable
+    private class MenusFile(val stamp: MenusStamp, val token: String)
 
     private fun rootOf(game: GameRoot): Path = Path.of(game.path, "game", GameInfoPatch.CustomGamesFolder)
 

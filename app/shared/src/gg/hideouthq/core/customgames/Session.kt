@@ -275,7 +275,7 @@ value class DeadlineToken(val value: Long)
 
 sealed interface SessionEvent {
     /** [restartAccepted] is the restart of the running Deadlock the player was told of as they pressed, if any. */
-    data class HostRequested(val mode: Mode, val choices: Choices, val restartAccepted: RestartReason? = null) : SessionEvent
+    data class HostRequested(val mode: Mode, val choices: Choices, val restartAccepted: RestartReason? = null, val outreach: Outreach = Outreach.Private) : SessionEvent
 
     data class InviteOpened(val code: InviteCode, val acceptedBefore: InviteOffer? = null) : SessionEvent
 
@@ -389,6 +389,9 @@ sealed interface SessionCommand {
 
 data class Step(val session: Session, val commands: List<SessionCommand> = emptyList())
 
+/** Whether a [HostRequested] starts a game now. [reduce] reads it too, so a caller that answers before posting agrees with it. */
+val Session.startsHost: Boolean get() = this == Session.Idle || this is Session.Ended
+
 /**
  * The next state and what to do about [event]. Pure and total. An event a state doesn't expect leaves it unchanged.
  * [client] is the library's newest word on the game, since a state can start on what it says now. [token] arms any
@@ -398,12 +401,15 @@ data class Step(val session: Session, val commands: List<SessionCommand> = empty
  */
 fun reduce(session: Session, event: SessionEvent, client: GameActivity, token: DeadlineToken, booting: Boolean = false): Step {
     if (event is DeadlineElapsed && event.token != session.deadline) return Step(session)
+    if (event is HostRequested) {
+        if (!session.startsHost) return Step(session)
+        return Step(
+            Session.HostPreparing(token, event.restartAccepted),
+            listOf(Arm(Deadline.HostPreparing, token), PrepareRuntime(event.mode, event.choices)),
+        )
+    }
     return when (session) {
         Session.Idle -> when (event) {
-            is HostRequested -> Step(
-                Session.HostPreparing(token, event.restartAccepted),
-                listOf(Arm(Deadline.HostPreparing, token), PrepareRuntime(event.mode, event.choices)),
-            )
             is InviteOpened -> finding(event, token)
             CrashFound -> Step(Session.Recovering)
             else -> Step(session)
@@ -578,7 +584,6 @@ fun reduce(session: Session, event: SessionEvent, client: GameActivity, token: D
 
         is Session.Ended -> when (event) {
             Dismissed -> Step(Session.Idle)
-            is HostRequested -> reduce(Session.Idle, event, client, token)
             is InviteOpened -> finding(event, token)
             else -> Step(session)
         }

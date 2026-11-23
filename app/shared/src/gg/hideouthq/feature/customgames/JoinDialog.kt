@@ -91,27 +91,17 @@ private fun Step(step: JoinStep, view: JoinView, games: CustomGames, close: () -
     val cancel = stringResource(Res.string.cg_cancel)
     Column {
         Column(Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 14.dp, bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+            joinHeadline(step, view)?.let { Head(it.icon, it.tone, it.title.text(), it.body.text()) }
+            joinBusy(step)?.let { BusyLine(it.text()) }
             when (step) {
-                JoinStep.Finding -> BusyLine(stringResource(Res.string.cg_join_finding))
                 is JoinStep.Review -> {
                     InfoRow(view, step.download)
                     step.restarts?.let { HintBox(HideoutIcons.Refresh, restartAhead(it, host = false)) }
                     HintBox(HideoutIcons.Play, named(view.host, Res.string.cg_join_hint, Res.string.cg_join_hint_friend))
                 }
-                JoinStep.AfterCleanup -> BusyLine(stringResource(Res.string.cg_join_cleanup))
-                is JoinStep.Progress -> StepList(step.steps, view.face.name(), view.host)
-                is JoinStep.Stopping -> {
-                    step.problem?.let { ErrorHead(it, view) } ?: BusyLine(stringResource(Res.string.cg_join_cancelling))
-                    StoppingLine(step.stage, failed = step.problem != null)
-                }
-                is JoinStep.Failed -> ErrorHead(step.problem, view)
-                is JoinStep.RestartNeeded -> Head(HideoutIcons.Refresh, Tone.Warn, stringResource(Res.string.cg_restart_title), restartWhy(step.why))
-                is JoinStep.Restarting -> if (step.closeFailed) {
-                    Head(HideoutIcons.Monitor, Tone.Warn, stringResource(Res.string.cg_restart_close_title), stringResource(Res.string.cg_restart_close_body))
-                } else {
-                    BusyLine(stringResource(Res.string.cg_restarting_title))
-                }
-                is JoinStep.NotIn -> notInCopy(step.problem, step.canPlay, host = false).let { Head(it.icon, Tone.Warn, it.title, it.body) }
+                is JoinStep.Progress -> StepList(step.steps, view.face.namePhrase, view.host)
+                is JoinStep.Stopping -> StoppingLine(step.stage, failed = step.problem != null)
+                JoinStep.Finding, JoinStep.AfterCleanup, is JoinStep.Failed, is JoinStep.RestartNeeded, is JoinStep.Restarting, is JoinStep.NotIn -> Unit
             }
         }
         Row(Modifier.fillMaxWidth().padding(start = 24.dp, end = 20.dp, top = 14.dp, bottom = 18.dp), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically) {
@@ -190,11 +180,27 @@ private fun StoppingLine(stage: EndingStage, failed: Boolean) {
     }
 }
 
-@Composable
-private fun ErrorHead(problem: Problem, view: JoinView) {
-    val words = problemCopy(problem, host = false, hostName = view.host, mode = view.face.name())
-    Head(problemIcon(problem), Tone.Fail, words.title, words.body)
+/** The join dialog's heading at [step], which the in-game join card says too. */
+fun joinHeadline(step: JoinStep, view: JoinView): Headline? = when (step) {
+    is JoinStep.Stopping -> step.problem?.let { problemHeadline(it, view) }
+    is JoinStep.Failed -> problemHeadline(step.problem, view)
+    is JoinStep.RestartNeeded -> Headline(HideoutIcons.Refresh, Tone.Warn, phrase(Res.string.cg_restart_title), restartWhyPhrase(step.why))
+    is JoinStep.Restarting -> if (step.closeFailed) Headline(HideoutIcons.Monitor, Tone.Warn, phrase(Res.string.cg_restart_close_title), phrase(Res.string.cg_restart_close_body)) else null
+    is JoinStep.NotIn -> notInHeadline(step.problem, step.canPlay, host = false)
+    JoinStep.Finding, is JoinStep.Review, JoinStep.AfterCleanup, is JoinStep.Progress -> null
 }
+
+/** The line beside the join dialog's spinner at [step], which the in-game join card says too. */
+fun joinBusy(step: JoinStep): Phrase? = when (step) {
+    JoinStep.Finding -> phrase(Res.string.cg_join_finding)
+    JoinStep.AfterCleanup -> phrase(Res.string.cg_join_cleanup)
+    is JoinStep.Stopping -> if (step.problem == null) phrase(Res.string.cg_join_cancelling) else null
+    is JoinStep.Restarting -> if (step.closeFailed) null else phrase(Res.string.cg_restarting_title)
+    is JoinStep.Review, is JoinStep.Progress, is JoinStep.Failed, is JoinStep.RestartNeeded, is JoinStep.NotIn -> null
+}
+
+private fun problemHeadline(problem: Problem, view: JoinView): Headline =
+    problemWords(problem, host = false, hostName = view.host, mode = view.face.namePhrase).let { (title, body) -> Headline(problemIcon(problem), Tone.Fail, title, body) }
 
 @Composable
 private fun Head(icon: ImageVector, tone: Tone, title: String, body: String) {

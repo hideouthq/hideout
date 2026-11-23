@@ -5,6 +5,7 @@ import gg.hideouthq.core.customgames.CustomGames
 import gg.hideouthq.core.customgames.CustomGamesFeed
 import gg.hideouthq.core.customgames.CustomGamesPlatform
 import gg.hideouthq.core.customgames.DesktopOs
+import gg.hideouthq.core.customgames.InGamePort
 import gg.hideouthq.core.customgames.InviteCode
 import gg.hideouthq.core.customgames.JournalEntry
 import gg.hideouthq.core.customgames.LinkEvent
@@ -27,7 +28,9 @@ import gg.hideouthq.core.customgames.DisplayName
 import gg.hideouthq.core.customgames.PreparedHost
 import gg.hideouthq.core.customgames.GameSetup
 import gg.hideouthq.core.customgames.MenusScreenPort
+import gg.hideouthq.core.customgames.MenusPack
 import gg.hideouthq.core.customgames.MenusStamp
+import gg.hideouthq.core.customgames.PackToken
 import gg.hideouthq.core.customgames.ModeContent
 import gg.hideouthq.core.customgames.StageResult
 import gg.hideouthq.core.customgames.PreflightProblem
@@ -107,6 +110,7 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 private val NoRegistry = Registry { _, _, _ -> null }
+private const val Token = "0123456789abcdef0123456789abcdef"
 
 class DesktopCustomGamesTest {
     private val root: Path = Files.createTempDirectory("hideout-desktop-games")
@@ -537,25 +541,32 @@ class DesktopCustomGamesTest {
         assertEquals(FolderRead.NotAMode, runBlocking { games.readFolder(root.resolve("bebop").pathString) })
     }
 
-    private val writesPack = """
+    private fun writesPack(token: String? = Token) = """
         out=""; last=""
         for a in "${'$'}@"; do [ "${'$'}last" = "--out" ] && out="${'$'}a"; last="${'$'}a"; done
         echo pack > "${'$'}out"
+        ${token?.let { "echo '{\"type\":\"built\",\"token\":\"$it\"}'" }.orEmpty()}
         echo '{"type":"stopped","reason":"done"}'
     """.trimIndent()
+
+    private val helperDigest: String get() = MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(root.resolve("hideout-link"))).toHexString()
 
     private fun rendererHere(digit: Char) = checkNotNull(Sha256.parse("$digit".repeat(64))).also { Files.createDirectories(runtimeFolder.resolve(it.hex)) }
 
     @Test
     fun menusAreBuiltOnceForTheRendererSiteAndGameAndAFailedRebuildKeepsThePack() {
         val renderer = rendererHere('c')
-        val games = games(writesPack)
+        val games = games(writesPack())
         assertNull(runBlocking { games.menus(game, renderer, rebuild = false) }, "no pack, and no build asked for")
-        val stamp = MenusStamp(renderer.hex, "https://menus.example/bridge/", MenusScreenPort, null)
+        val stamp = MenusStamp(renderer.hex, "https://menus.example/bridge/", MenusScreenPort, null, InGamePort, helperDigest)
         assertEquals(stamp, runBlocking { games.menus(game, renderer, rebuild = true) })
         val asked = record.readLines().filterNot { it.startsWith("env ") }
-        assertEquals(listOf("menus", "--game", game.path, "--renderer", runtimeFolder.resolve(renderer.hex).pathString, "--page", "https://menus.example/bridge/", "--screen-port", "29700", "--out"), asked.dropLast(1))
+        assertEquals(
+            listOf("menus", "--game", game.path, "--renderer", runtimeFolder.resolve(renderer.hex).pathString, "--page", "https://menus.example/bridge/", "--screen-port", "29700", "--ingame-port", "29701", "--out"),
+            asked.dropLast(1),
+        )
         assertEquals("pack\n", gamesFolder.resolve("menus/pak01_dir.vpk").readText())
+        assertEquals(MenusPack(stamp, checkNotNull(PackToken.parse(Token))), runBlocking { games.menusPack(game) }, "the token the helper printed is the pack's")
         assertEquals(setOf("hideout.lock", "menus", "menus.json"), Files.list(gamesFolder).use { files -> files.map { it.fileName.toString() }.toList().toSet() }, "no part file is left")
 
         Files.delete(record)
@@ -567,6 +578,13 @@ class DesktopCustomGamesTest {
         assertEquals("pack\n", gamesFolder.resolve("menus/pak01_dir.vpk").readText())
         assertTrue(logs.any { "no news layout" in it })
         assertEquals(stamp, runBlocking { failing.menus(game, checkNotNull(Sha256.parse("e".repeat(64))), rebuild = true) }, "a renderer never fetched builds nothing")
+
+        val tokenless = games(writesPack(token = null))
+        assertEquals(stamp, runBlocking { tokenless.menus(game, rendererHere('d'), rebuild = true) }, "a pack with no token is no pack, and the one there stays")
+        assertTrue(logs.any { "named no pack token" in it })
+
+        Files.writeString(gamesFolder.resolve("menus.json"), """{"renderer":"${renderer.hex}","page":"https://menus.example/bridge/","screen":29700,"revision":null}""")
+        assertNull(runBlocking { tokenless.menus(game, null, rebuild = false) }, "a menus.json from before the in-game UI reads as no pack, so it is rebuilt")
     }
 
     @Test

@@ -1,0 +1,219 @@
+package gg.hideouthq.ingame
+
+import com.sun.net.httpserver.HttpExchange
+import com.sun.net.httpserver.HttpServer
+import gg.hideouthq.core.customgames.InGamePort
+import gg.hideouthq.core.customgames.MenusPack
+import gg.hideouthq.feature.ingame.CommandResult
+import gg.hideouthq.feature.ingame.Frame
+import gg.hideouthq.feature.ingame.InGame
+import gg.hideouthq.feature.ingame.InGameProtocol
+import gg.hideouthq.feature.ingame.InGameWire
+import gg.hideouthq.feature.ingame.Topic
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
+import java.io.ByteArrayOutputStream
+import java.io.DataOutputStream
+import java.io.IOException
+import java.io.OutputStream
+import java.net.InetAddress
+import java.net.InetSocketAddress
+import java.net.URI
+import java.net.URISyntaxException
+import java.net.URLDecoder
+import java.security.MessageDigest
+import java.util.concurrent.Executors
+import java.util.zip.CRC32
+import java.util.zip.DeflaterOutputStream
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
+
+/**
+ * The loopback server the in-game UI talks to, for as long as Hideout runs. Two routes, each with its own proof of origin,
+ * and both refuse a Host that isn't loopback, which keeps DNS rebinding out.
+ *
+ * `GET /panorama/stream` is read by the bridge page in the game's HTML panel, admitted as Modlock's relay admits it: the
+ * Origin is the running pack's site and the User-Agent is the game's. It writes every topic, then each topic that
+ * changed, and `alive` after a quiet [keepalive].
+ *
+ * `GET /c?p=&t=&b=&n=&c=` is an Image panel's request, which carries no Origin, so it carries the pack's token instead,
+ * and a wrong one is 404. The answer is a PNG as wide as [CommandResult.width]. A repeat of a boot's sequence number gets
+ * its first answer and runs nothing, so a retried image can't host twice.
+ */
+class InGameEndpoint(
+    private val inGame: InGame,
+    /** The pack of the game Hideout manages, read for each request: it changes only while Deadlock is closed. */
+    private val pack: suspend () -> MenusPack?,
+    private val log: (String) -> Unit,
+    private val keepalive: Duration = Keepalive,
+) : AutoCloseable {
+    private var server: HttpServer? = null
+    private val seen = Seen()
+
+    /** The port it listens on, once started. */
+    val port: Int? get() = server?.address?.port
+
+    /** False when another program holds [port]; the game then shows Hideout as closed. */
+    fun start(port: Int = InGamePort): Boolean {
+        val bound = try {
+            HttpServer.create(InetSocketAddress(InetAddress.getLoopbackAddress(), port), 0)
+        } catch (e: IOException) {
+            log("In-game: could not listen on port $port: ${e::class.simpleName}")
+            return false
+        }
+        // An open stream holds its thread, and a command must not wait behind it.
+        bound.executor = Executors.newVirtualThreadPerTaskExecutor()
+        bound.createContext("/") { exchange ->
+            try {
+                handle(exchange)
+            } catch (e: IOException) {
+            } finally {
+                exchange.close()
+            }
+        }
+        bound.start()
+        server = bound
+        return true
+    }
+
+    override fun close() {
+        server?.stop(0)
+        server = null
+    }
+
+    private fun handle(exchange: HttpExchange) {
+        when {
+            !loopback(exchange.requestHeaders.getFirst("Host")) -> exchange.sendResponseHeaders(403, -1)
+            exchange.requestURI.path == "/panorama/stream" -> stream(exchange)
+            exchange.requestURI.path == "/c" && exchange.requestMethod == "GET" -> command(exchange)
+            else -> exchange.sendResponseHeaders(404, -1)
+        }
+    }
+
+    private fun stream(exchange: HttpExchange) {
+        val site = runBlocking { pack() }?.let { originOf(it.stamp.page) }
+        val agent = exchange.requestHeaders.getFirst("User-Agent").orEmpty()
+        if (site == null || exchange.requestHeaders.getFirst("Origin") != site || RelayAgent !in agent) return exchange.sendResponseHeaders(403, -1)
+        val headers = exchange.responseHeaders
+        headers["Access-Control-Allow-Origin"] = site
+        headers["Access-Control-Allow-Private-Network"] = "true"
+        headers["Vary"] = "Origin"
+        when (exchange.requestMethod) {
+            "OPTIONS" -> {
+                headers["Access-Control-Allow-Methods"] = "GET"
+                exchange.sendResponseHeaders(204, -1)
+            }
+            "GET" -> {
+                headers["Cache-Control"] = "no-store"
+                headers["Content-Type"] = "text/plain; charset=utf-8"
+                exchange.sendResponseHeaders(200, 0)
+                inGame.opened()
+                runBlocking { follow(exchange.responseBody) }
+            }
+            else -> exchange.sendResponseHeaders(405, -1)
+        }
+    }
+
+    private suspend fun follow(body: OutputStream) {
+        var sent = emptyMap<Topic, String>()
+        var sequence = 0L
+        fun write(frame: String) {
+            body.write(InGameWire.line(++sequence, frame))
+            body.flush()
+        }
+        while (true) {
+            val next = withTimeoutOrNull(keepalive) { inGame.topics.first { it.isNotEmpty() && it != sent } }
+            if (next == null) {
+                write(InGameWire.encode(Frame.Alive))
+                continue
+            }
+            Topic.entries.forEach { topic -> next[topic]?.takeIf { it != sent[topic] }?.let(::write) }
+            sent = next
+            delay(FrameGap)
+        }
+    }
+
+    private fun command(exchange: HttpExchange) {
+        val query = queryOf(exchange.requestURI.rawQuery)
+        val token = runBlocking { pack() }?.token?.hex
+        val given = query["t"]
+        if (token == null || given == null || !MessageDigest.isEqual(token.encodeToByteArray(), given.encodeToByteArray())) return exchange.sendResponseHeaders(404, -1)
+        val boot = query["b"]?.takeIf(BootShape::matches)
+        val sequence = query["n"]?.toLongOrNull()?.takeIf { it >= 0 }
+        val result = when {
+            query["p"] != InGameProtocol.toString() -> CommandResult.Outdated
+            boot == null || sequence == null -> CommandResult.Invalid
+            else -> seen.answer(boot, sequence) { query["c"]?.let(InGameWire::parseCommand)?.let(inGame::run) ?: CommandResult.Invalid }
+        }
+        val png = pixelRow(result.width)
+        exchange.responseHeaders["Content-Type"] = "image/png"
+        exchange.responseHeaders["Cache-Control"] = "no-store"
+        exchange.sendResponseHeaders(200, png.size.toLong())
+        exchange.responseBody.write(png)
+    }
+
+    private companion object {
+        /** Modlock's `session.RelayAgent`: the game's HTML panels say it, and an ordinary browser doesn't. */
+        const val RelayAgent = "Source2 HTML"
+        val Keepalive = 10.seconds
+        val FrameGap = 50.milliseconds
+        val BootShape = Regex("[A-Za-z0-9]{1,32}")
+    }
+}
+
+/** Whether a Host header names loopback with a port, as Modlock's `session.Loopback` reads it. */
+internal fun loopback(host: String?): Boolean {
+    if (host == null || host.substringAfterLast(':', missingDelimiterValue = "").toIntOrNull() == null) return false
+    val name = host.substringBeforeLast(':')
+    return name == "127.0.0.1" || name.equals("localhost", ignoreCase = true)
+}
+
+private fun originOf(page: String): String? = try {
+    URI(page).let { uri -> uri.rawAuthority?.let { "${uri.scheme}://$it" } }
+} catch (e: URISyntaxException) {
+    null
+}
+
+private fun queryOf(raw: String?): Map<String, String> = try {
+    raw.orEmpty().split('&').filter { '=' in it }.map { it.substringBefore('=') to URLDecoder.decode(it.substringAfter('='), Charsets.UTF_8) }
+        .distinctBy { it.first }.toMap()
+} catch (e: IllegalArgumentException) {
+    emptyMap()
+}
+
+/** The answer per boot id to its newest sequence number. Keeps the newest boots, since a game makes one per script context. */
+internal class Seen(private val boots: Int = 16) {
+    private val last = LinkedHashMap<String, Pair<Long, CommandResult>>()
+
+    /** [run]'s answer for a new number, the first answer again for a repeat, and Invalid for one older than the newest. */
+    @Synchronized
+    fun answer(boot: String, sequence: Long, run: () -> CommandResult): CommandResult {
+        last[boot]?.let { (newest, answer) -> if (sequence == newest) return answer else if (sequence < newest) return CommandResult.Invalid }
+        val answer = run()
+        last.remove(boot)
+        last[boot] = sequence to answer
+        while (last.size > boots) last.remove(last.keys.first())
+        return answer
+    }
+}
+
+/** A [width] by 1 transparent PNG. */
+internal fun pixelRow(width: Int): ByteArray {
+    val pixels = ByteArrayOutputStream().also { out -> DeflaterOutputStream(out).use { it.write(ByteArray(1 + width * 4)) } }.toByteArray()
+    val header = ByteArrayOutputStream().also { out -> DataOutputStream(out).run { writeInt(width); writeInt(1); write(byteArrayOf(8, 6, 0, 0, 0)) } }.toByteArray()
+    val png = ByteArrayOutputStream()
+    png.write(byteArrayOf(0x89.toByte(), 'P'.code.toByte(), 'N'.code.toByte(), 'G'.code.toByte(), 0x0d, 0x0a, 0x1a, 0x0a))
+    DataOutputStream(png).run {
+        for ((type, data) in listOf("IHDR" to header, "IDAT" to pixels, "IEND" to ByteArray(0))) {
+            val name = type.encodeToByteArray()
+            writeInt(data.size)
+            write(name)
+            write(data)
+            writeInt(CRC32().apply { update(name); update(data) }.value.toInt())
+        }
+    }
+    return png.toByteArray()
+}

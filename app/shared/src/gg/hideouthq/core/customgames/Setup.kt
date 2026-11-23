@@ -11,9 +11,34 @@ const val MenusScreenPort = 29700
 /** What the helper serves to the Deadlock that will play: the screen port and bridge page its pack was built for. */
 data class GameSetup(val screen: Int, val page: String)
 
-/** The pack in `menus/`, as `menus.json` records it. Two stamps are equal exactly when the pack needs no rebuild. */
+/** The loopback port the app serves the in-game UI on. Fixed, and recorded in each pack's stamp. */
+const val InGamePort = 29701
+
+/**
+ * The pack in `menus/`, as `menus.json` records it. Two stamps are equal exactly when the pack needs no rebuild.
+ * [helper] is the SHA-256 of the `hideout-link` that built it, which embeds the in-game UI, so a new UI rebuilds the pack.
+ * A `menus.json` from before [endpoint] and [helper] reads as no stamp, and the next close of Deadlock rebuilds.
+ */
 @Serializable
-data class MenusStamp(val renderer: String, val page: String, val screen: Int, val revision: Long?)
+data class MenusStamp(val renderer: String, val page: String, val screen: Int, val revision: Long?, val endpoint: Int, val helper: String)
+
+/** What `menus.json` holds: the stamp, and the token the helper baked into this pack. */
+data class MenusPack(val stamp: MenusStamp, val token: PackToken)
+
+/**
+ * 32 lowercase hex characters, drawn by the helper for each pack. An image request from the game carries no Origin, so
+ * the in-game endpoint takes one only with the running pack's token, which a web page on the desktop can't know.
+ */
+@JvmInline
+value class PackToken private constructor(val hex: String) {
+    override fun toString() = "PackToken(redacted)"
+
+    companion object {
+        private val Shape = Regex("[0-9a-f]{32}")
+
+        fun parse(text: String): PackToken? = if (Shape.matches(text)) PackToken(text) else null
+    }
+}
 
 /** Why the Deadlock that runs now can't take a mode, which only a restart fixes. */
 enum class RestartReason {
