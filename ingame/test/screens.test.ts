@@ -4,6 +4,7 @@ import { test } from 'node:test'
 import { type Friends, friendsOf } from '../src/friends.ts'
 import { type GamesEvent, type GamesState, initialGames, reduceGames, viewGames, viewServers } from '../src/games.ts'
 import { viewJoining } from '../src/joining.ts'
+import { viewStrip } from '../src/strip.ts'
 import { wantedToasts } from '../src/toasts.ts'
 import { EMPTY, type Frame, type Snapshot, type SteamId, decodeFrame, withFrame } from '../src/wire.ts'
 
@@ -204,4 +205,32 @@ test('the joining dialog is the join card: review shows the restart and Join ech
 test('the joining dialog leaves once Hideout is gone, since nothing there works without it', () => {
   assert.equal(viewJoining(snapshotOf('game-review.json'), null, 'offline'), null)
   assert.notEqual(viewJoining(snapshotOf('game-review.json'), null, 'online'), null, 'and comes back with it')
+})
+
+test('the hosting strip names the hosted game and its players, with Stop', () => {
+  assert.deepEqual(viewStrip(snapshotOf('catalog.json', 'game-ready.json'), 'online', false), {
+    kind: 'hosting',
+    art: null,
+    mode: 'Bebop Wars',
+    players: '1 of 6',
+    button: 'stop',
+  })
+})
+
+test('a starting or ending game shows the host card’s words, and Stop only while the card offers it', () => {
+  const starting = viewStrip(snapshotOf('catalog.json', 'game-starting.json'), 'online', false)
+  assert.deepEqual(starting, { kind: 'status', art: null, mode: 'Bebop Wars', words: 'Starting your game', button: 'stop' })
+  const ending = viewStrip(snapshotOf('catalog.json', 'game-ending.json'), 'online', false)
+  assert.deepEqual(ending, { kind: 'status', art: null, mode: 'Bebop Wars', words: 'Ending your game', button: 'spinner' })
+})
+
+test('a pressed Stop spins until the game frame changes', () => {
+  assert.equal(viewStrip(snapshotOf('catalog.json', 'game-ready.json'), 'online', true)?.button, 'spinner')
+})
+
+test('no strip without a running hosted game, or once Hideout is gone', () => {
+  assert.equal(viewStrip(snapshotOf('catalog.json', 'game-idle.json'), 'online', false), null)
+  assert.equal(viewStrip(snapshotOf('catalog.json', 'game-failed.json'), 'online', false), null)
+  assert.equal(viewStrip(snapshotOf('catalog.json', 'game-review.json'), 'online', false), null, 'a guest joining has the joining dialog')
+  assert.equal(viewStrip(snapshotOf('catalog.json', 'game-ready.json'), 'offline', false), null)
 })

@@ -475,6 +475,21 @@
     }
   };
 
+  // src/strip.ts
+  var HIDDEN = ["failed", "ended"];
+  function viewStrip(snapshot, status, pressed) {
+    const host2 = snapshot.game?.host;
+    if (!host2 || HIDDEN.includes(host2.phase) || status === "offline" || status === "outdated") return null;
+    const mode2 = snapshot.catalog?.modes.find((m) => m.id === host2.mode);
+    const art2 = mode2 ? mode2.art.tile ?? mode2.art.card : null;
+    const name = mode2?.name ?? "your game";
+    const button2 = host2.actions.includes("stop") && !pressed ? "stop" : "spinner";
+    if (host2.phase === "ready") {
+      return { kind: "hosting", art: art2, mode: name, players: host2.players ? `${host2.players[0]} of ${host2.players[1]}` : null, button: button2 };
+    }
+    return { kind: "status", art: art2, mode: name, words: host2.words?.title ?? "", button: button2 };
+  }
+
   // src/toasts.ts
   function wantedToasts(snapshot, friends, now, arrived, hidden) {
     const views = [];
@@ -751,6 +766,43 @@
       }
       link.send({ k: "act", action: b.action });
     }
+    function menuOpen() {
+      const room = top.FindChildTraverse("HudAndDBOverlay");
+      const status = top.FindChildTraverse("ClientStatus");
+      return Boolean(room?.BHasClass("InHideout") || status?.BHasClass("InEscapeMenu"));
+    }
+    const strip = new Section();
+    let stopPressed = null;
+    function drawStrip() {
+      if (stopPressed && stopPressed.in !== link.snapshot.game) stopPressed = null;
+      const view = viewStrip(link.snapshot, link.status, stopPressed !== null);
+      const into = find("HOStrip");
+      into.SetHasClass("Shown", view !== null && menuOpen());
+      strip.draw(into, JSON.stringify(view), (into2) => {
+        if (view) buildStrip(into2, view);
+      });
+    }
+    function buildStrip(into, view) {
+      const card = panel(into, "HOToast Slim HOStripCard");
+      paper(card, 580, 70, 23);
+      panel(card, "Grain", "Panel", { hittest: "false" });
+      const row = panel(card, "HOToastRow");
+      art(panel(row, "HOToastArt"), "HOToastPic", view.art);
+      if (view.kind === "hosting") line(row, [["Hosting", false], [view.mode, true], ...view.players ? [[`\xB7 ${view.players}`, false]] : []]);
+      else line(row, [[view.mode, true], [`\xB7 ${view.words}`, false]]);
+      const spins = view.button === "spinner";
+      const stop = button(row, `SecondaryButton Outline Small Gold HOStop${spins ? " Busy" : ""}`, spins ? "" : "Stop", spins ? null : stopGame);
+      if (spins) spinner(stop);
+    }
+    function stopGame() {
+      stopPressed = { in: link.snapshot.game };
+      link.send({ k: "act", action: "stop" }, (result) => {
+        if (result === "accepted") return;
+        stopPressed = null;
+        draw();
+      });
+      draw();
+    }
     function draw() {
       var _a;
       const now = Date.now();
@@ -758,8 +810,9 @@
       if (link.snapshot.game?.join?.phase !== putAway) putAway = null;
       const joining = drawJoining();
       const games = top.FindChildTraverse("HideoutGames");
-      find("HOToasts").SetHasClass("Away", joining || games !== null && games.visible);
+      find("HOCorner").SetHasClass("Away", joining || games !== null && games.visible);
       drawToasts(wantedToasts(link.snapshot, friends.current, now, arrived, hidden));
+      drawStrip();
     }
     function tick() {
       if (!host2.IsValid()) return;

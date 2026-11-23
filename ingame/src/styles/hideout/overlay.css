@@ -12,7 +12,7 @@
 	opacity: 0.01;
 }
 
-.HOToasts
+.HOCorner
 {
 	width: 580px;
 	height: fit-children;
@@ -22,9 +22,49 @@
 	flow-children: down;
 }
 
-.HOToasts.Away
+.HOCorner.Away
 {
 	visibility: collapse;
+}
+
+.HOToasts
+{
+	width: 100%;
+	height: fit-children;
+	flow-children: down;
+}
+
+.HOStrip
+{
+	width: 100%;
+	height: fit-children;
+	visibility: collapse;
+}
+
+.HOStrip.Shown
+{
+	visibility: visible;
+}
+
+.HOToast.Slim.HOStripCard
+{
+	opacity: 1;
+}
+
+.HOStop
+{
+	width: 96px;
+	flow-children: none;
+}
+
+.HOStop Label, .HOStop .HSpinner
+{
+	horizontal-align: center;
+}
+
+.HOStop.Busy:disabled
+{
+	opacity: 1;
 }
 
 .HOToast

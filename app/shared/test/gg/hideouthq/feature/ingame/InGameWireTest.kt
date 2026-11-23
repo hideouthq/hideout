@@ -4,6 +4,7 @@ import gg.hideouthq.core.customgames.Choices
 import gg.hideouthq.core.customgames.DeadlineToken
 import gg.hideouthq.core.customgames.DisplayName
 import gg.hideouthq.core.customgames.EndReason
+import gg.hideouthq.core.customgames.FileHold
 import gg.hideouthq.core.customgames.GameRecord
 import gg.hideouthq.core.customgames.Invite
 import gg.hideouthq.core.customgames.InviteCode
@@ -97,6 +98,9 @@ class InGameWireTest {
 
         val hosting = Session.Hosting(code, "street", mapOf(0 to Player("nori", me.steamId)), OwnGame.In)
         golden("game-ready.json", frames(LiveSession(hosting, hostRecord.copy(startedAt = Instant.fromEpochSeconds(1_800_000_000)))).getValue(Topic.Game))
+
+        val stopping = Session.Stopping(EndReason.PlayerStopped, FileHold.Held, DeadlineToken(2))
+        golden("game-ending.json", frames(LiveSession(stopping, hostRecord.copy(startedAt = Instant.fromEpochSeconds(1_800_000_000)))).getValue(Topic.Game))
 
         golden("game-failed.json", frames(LiveSession(Session.Ended(EndReason.HostFailed("the map did not load")), hostRecord)).getValue(Topic.Game))
 

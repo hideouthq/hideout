@@ -4,9 +4,10 @@
 import { FriendWatch } from '../friends.ts'
 import { type JoiningButton, viewJoining } from '../joining.ts'
 import { Link } from '../link.ts'
+import { type StripView, viewStrip } from '../strip.ts'
 import { type ToastView, wantedToasts } from '../toasts.ts'
 import { Section, art, button, label, mark, panel, paper, spinner, tear } from '../ui.ts'
-import type { Config, JoinCard, Step } from '../wire.ts'
+import type { Config, Game, JoinCard, Step } from '../wire.ts'
 
 declare const HideoutConfig: Config
 
@@ -170,14 +171,58 @@ function boot(): void {
     link.send({ k: 'act', action: b.action })
   }
 
+  /** Stock classes: the overlay is InHideout in the main-menu room, and its client status is InEscapeMenu while Esc is open. */
+  function menuOpen(): boolean {
+    const room = top.FindChildTraverse('HudAndDBOverlay')
+    const status = top.FindChildTraverse('ClientStatus')
+    return Boolean(room?.BHasClass('InHideout') || status?.BHasClass('InEscapeMenu'))
+  }
+
+  const strip = new Section()
+  let stopPressed: { in: Game | null } | null = null
+
+  function drawStrip(): void {
+    if (stopPressed && stopPressed.in !== link.snapshot.game) stopPressed = null
+    const view = viewStrip(link.snapshot, link.status, stopPressed !== null)
+    const into = find('HOStrip')
+    into.SetHasClass('Shown', view !== null && menuOpen())
+    strip.draw(into, JSON.stringify(view), (into) => {
+      if (view) buildStrip(into, view)
+    })
+  }
+
+  function buildStrip(into: Panel, view: StripView): void {
+    const card = panel(into, 'HOToast Slim HOStripCard')
+    paper(card, 580, 70, 23)
+    panel(card, 'Grain', 'Panel', { hittest: 'false' })
+    const row = panel(card, 'HOToastRow')
+    art(panel(row, 'HOToastArt'), 'HOToastPic', view.art)
+    if (view.kind === 'hosting') line(row, [['Hosting', false], [view.mode, true], ...(view.players ? ([[`· ${view.players}`, false]] as [string, boolean][]) : [])])
+    else line(row, [[view.mode, true], [`· ${view.words}`, false]])
+    const spins = view.button === 'spinner'
+    const stop = button(row, `SecondaryButton Outline Small Gold HOStop${spins ? ' Busy' : ''}`, spins ? '' : 'Stop', spins ? null : stopGame)
+    if (spins) spinner(stop)
+  }
+
+  function stopGame(): void {
+    stopPressed = { in: link.snapshot.game }
+    link.send({ k: 'act', action: 'stop' }, (result) => {
+      if (result === 'accepted') return
+      stopPressed = null
+      draw()
+    })
+    draw()
+  }
+
   function draw(): void {
     const now = Date.now()
     for (const invite of link.snapshot.inbox?.invites ?? []) arrived[invite.id] ??= now
     if (link.snapshot.game?.join?.phase !== putAway) putAway = null
     const joining = drawJoining()
     const games = top.FindChildTraverse('HideoutGames')
-    find('HOToasts').SetHasClass('Away', joining || (games !== null && games.visible))
+    find('HOCorner').SetHasClass('Away', joining || (games !== null && games.visible))
     drawToasts(wantedToasts(link.snapshot, friends.current, now, arrived, hidden))
+    drawStrip()
   }
 
   // The countdown bars move on their own clock.

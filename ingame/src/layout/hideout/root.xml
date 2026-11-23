@@ -10,7 +10,10 @@
 		<Panel class="HOHiddenParts" hittest="false" hittestchildren="false">
 			<CitadelFriendMenu id="HOFriendMenu" />
 		</Panel>
-		<Panel id="HOToasts" class="HOToasts" hittest="false" />
+		<Panel id="HOCorner" class="HOCorner" hittest="false">
+			<Panel id="HOToasts" class="HOToasts" hittest="false" />
+			<Panel id="HOStrip" class="HOStrip" hittest="false" />
+		</Panel>
 		<Panel id="HOJoining" class="HOJoining">
 			<Panel class="HOScrim" />
 			<Panel id="HODialog" class="HODialog">
