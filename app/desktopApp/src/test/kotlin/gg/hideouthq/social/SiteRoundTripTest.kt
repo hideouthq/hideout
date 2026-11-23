@@ -39,7 +39,7 @@ import kotlin.time.Duration.Companion.seconds
 
 /**
  * The app's signing against the real Worker. Runs only with HIDEOUT_SITE_ROUND_TRIP set to where a local `wrangler dev`
- * of hideout-site's worker listens, such as 127.0.0.1:8787, and HIDEOUT_SITE_ROUND_TRIP_MASTER to the INVITE_MASTER it
+ * of hideout-site's worker listens, such as 127.0.0.1:8787, and HIDEOUT_SITE_ROUND_TRIP_MASTER to the BUILD_MASTER it
  * was started with. Wrangler hands the Worker each request at its route's host, so the app signs `hideouthq.gg` as it
  * does in a release, and only the connection goes to the local address.
  */

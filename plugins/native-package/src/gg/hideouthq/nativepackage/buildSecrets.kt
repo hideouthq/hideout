@@ -23,8 +23,7 @@ import kotlin.io.path.readBytes
 import kotlin.io.path.writeBytes
 
 internal const val PreviewUrlVariable = "HIDEOUT_BUILD_PREVIEW_URL"
-internal const val PreviewMasterVariable = "HIDEOUT_BUILD_PREVIEW_MASTER"
-internal const val InviteMasterVariable = "HIDEOUT_BUILD_INVITE_MASTER"
+internal const val MasterVariable = "HIDEOUT_BUILD_MASTER"
 internal const val PostHogKeyVariable = "HIDEOUT_BUILD_POSTHOG_KEY"
 
 /**
@@ -67,26 +66,26 @@ internal fun writeBuildSecretsFiles(
 
 /**
  * What a build masks, by the name the app reads it under. Preview, invite and directory requests are signed with keys
- * derived from their masters for this version, so a key taken from one release is only that release's.
+ * derived from one master for this version and their purpose, so a key taken from one release is only that release's.
  */
 internal fun buildSecrets(version: String, value: (String) -> String?): Map<String, String> {
     val url = value(PreviewUrlVariable)
-    val master = value(PreviewMasterVariable)
-    val invite = value(InviteMasterVariable)
+    val master = value(MasterVariable)
     val postHog = value(PostHogKeyVariable)
-    check((url == null) == (master == null)) {
-        "Set both $PreviewUrlVariable and $PreviewMasterVariable, in the environment or in the preview file, or neither: a build with one has no working previews"
+    check(url == null || master != null) {
+        "Set $MasterVariable with $PreviewUrlVariable, in the environment or in the preview file: a build without it has no working previews"
     }
-    check(master == null || master.length >= ShortestKey) { "$PreviewMasterVariable is shorter than $ShortestKey characters, which the preview Worker refuses" }
-    check(invite == null || invite.length >= ShortestKey) { "$InviteMasterVariable is shorter than $ShortestKey characters, which the site Worker refuses" }
-    check((master == null && invite == null) || version.matches(Version)) { "The Workers take only versions like 1.4.0, not $version" }
+    check(master == null || master.length >= ShortestKey) { "$MasterVariable is shorter than $ShortestKey characters, which the Workers refuse" }
+    check(master == null || version.matches(Version)) { "The Workers take only versions like 1.4.0, not $version" }
     check(postHog == null || postHog.matches(Regex("phc_[A-Za-z0-9]+"))) { "$PostHogKeyVariable must be a PostHog project capture key" }
     return buildMap {
-        if (url != null && master != null) {
-            put("preview-url", url)
-            put("preview-key", releaseKey(master, "preview", version))
+        if (master != null) {
+            if (url != null) {
+                put("preview-url", url)
+                put("preview-key", releaseKey(master, "preview", version))
+            }
+            put("invite-key", releaseKey(master, "invite", version))
         }
-        if (invite != null) put("invite-key", releaseKey(invite, "invite", version))
         if (postHog != null) put("posthog-key", postHog)
     }
 }

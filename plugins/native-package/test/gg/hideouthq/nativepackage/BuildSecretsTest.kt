@@ -36,7 +36,6 @@ class BuildSecretsTest {
     private val source = root / "kotlin" / "gg" / "example" / "BuildMask.kt"
     private val master = "a-master-0123456789abcdef0123456789abcdef"
     private val url = "https://previews.example.test"
-    private val invite = "an-invite-master-0123456789abcdef0123"
 
     @AfterTest
     fun cleanUp() = root.deleteRecursively()
@@ -56,7 +55,7 @@ class BuildSecretsTest {
         assertEquals(emptyList(), names())
         assertContains(source.readText(), "package gg.example\n")
         assertEquals(32, builtKey().size)
-        write(PreviewUrlVariable to url, PreviewMasterVariable to master, InviteMasterVariable to invite, PostHogKeyVariable to "phc_project")
+        write(PreviewUrlVariable to url, MasterVariable to master, PostHogKeyVariable to "phc_project")
         assertEquals(listOf("invite-key", "posthog-key", "preview-key", "preview-url"), names())
         write()
         assertEquals(emptyList(), names())
@@ -64,34 +63,40 @@ class BuildSecretsTest {
 
     @Test
     fun whatTheAppUnmasksIsTheAddressTheKeysDerivedForThisVersionAndTheCaptureKey() {
-        write(PreviewUrlVariable to url, PreviewMasterVariable to master, InviteMasterVariable to invite, PostHogKeyVariable to "phc_project")
+        write(PreviewUrlVariable to url, MasterVariable to master, PostHogKeyVariable to "phc_project")
         assertEquals(url, unmasked("preview-url"))
         assertEquals(releaseKey(master, "preview", "0.3.0"), unmasked("preview-key"))
-        assertEquals(releaseKey(invite, "invite", "0.3.0"), unmasked("invite-key"))
+        assertEquals(releaseKey(master, "invite", "0.3.0"), unmasked("invite-key"))
         assertEquals("phc_project", unmasked("posthog-key"))
         val stored = names().map { String((secrets / it).readBytes(), Charsets.ISO_8859_1) }
-        for (plain in listOf(url, "previews.example", master, invite, releaseKey(master, "preview", "0.3.0"), releaseKey(invite, "invite", "0.3.0"), "phc_project")) {
+        for (plain in listOf(url, "previews.example", master, releaseKey(master, "preview", "0.3.0"), releaseKey(master, "invite", "0.3.0"), "phc_project")) {
             assertTrue(stored.none { plain in it }, plain)
         }
     }
 
     @Test
     fun theKeyIsBoundToTheVersion() {
-        write(PreviewUrlVariable to url, PreviewMasterVariable to master)
+        write(PreviewUrlVariable to url, MasterVariable to master)
         val first = unmasked("preview-key")
-        write(PreviewUrlVariable to url, PreviewMasterVariable to master, version = "0.3.1")
+        write(PreviewUrlVariable to url, MasterVariable to master, version = "0.3.1")
         assertNotEquals(first, unmasked("preview-key"))
         assertEquals(releaseKey(master, "preview", "0.3.1"), unmasked("preview-key"))
     }
 
     @Test
     fun theInviteKeyNeedsNoPreviewHostAndIsBoundToTheVersion() {
-        write(InviteMasterVariable to invite)
+        write(MasterVariable to master)
         assertEquals(listOf("invite-key"), names())
-        write(InviteMasterVariable to invite, version = "0.3.1")
-        assertEquals(releaseKey(invite, "invite", "0.3.1"), unmasked("invite-key"))
-        assertContains(assertFailsWith<IllegalStateException> { write(InviteMasterVariable to "short") }.message.orEmpty(), "shorter than 32")
-        assertContains(assertFailsWith<IllegalStateException> { write(InviteMasterVariable to invite, version = "1.4") }.message.orEmpty(), "like 1.4.0")
+        write(MasterVariable to master, version = "0.3.1")
+        assertEquals(releaseKey(master, "invite", "0.3.1"), unmasked("invite-key"))
+        assertContains(assertFailsWith<IllegalStateException> { write(MasterVariable to "short") }.message.orEmpty(), "shorter than 32")
+        assertContains(assertFailsWith<IllegalStateException> { write(MasterVariable to master, version = "1.4") }.message.orEmpty(), "like 1.4.0")
+    }
+
+    @Test
+    fun oneMasterDerivesADifferentKeyForEachPurpose() {
+        write(PreviewUrlVariable to url, MasterVariable to master)
+        assertNotEquals(unmasked("preview-key"), unmasked("invite-key"))
     }
 
     @Test
@@ -107,19 +112,19 @@ class BuildSecretsTest {
 
     @Test
     fun anUnchangedBuildKeepsItsMaskAndAChangedOneGetsANewOne() {
-        write(PreviewUrlVariable to url, PreviewMasterVariable to master)
+        write(PreviewUrlVariable to url, MasterVariable to master)
         val key = builtKey()
         val written = source.getLastModifiedTime()
-        write(PreviewUrlVariable to url, PreviewMasterVariable to master)
+        write(PreviewUrlVariable to url, MasterVariable to master)
         assertContentEquals(key, builtKey())
         assertEquals(written, source.getLastModifiedTime())
-        write(PreviewUrlVariable to url, PreviewMasterVariable to master, version = "0.4.0")
+        write(PreviewUrlVariable to url, MasterVariable to master, version = "0.4.0")
         assertFalse(key.contentEquals(builtKey()))
     }
 
     @Test
     fun theEnvironmentComesBeforeTheLocalFile() {
-        localFile.writeText("$PreviewUrlVariable=https://file.example.test\n$PreviewMasterVariable=file-master-0123456789abcdef0123456789\n")
+        localFile.writeText("$PreviewUrlVariable=https://file.example.test\n$MasterVariable=file-master-0123456789abcdef0123456789\n")
         write()
         assertEquals("https://file.example.test", unmasked("preview-url"))
         write(PreviewUrlVariable to " https://environment.example.test ")
@@ -128,12 +133,10 @@ class BuildSecretsTest {
     }
 
     @Test
-    fun anAddressWithoutAMasterOrTheOtherWayRoundStopsTheBuild() {
-        for (environment in listOf(arrayOf(PreviewUrlVariable to url), arrayOf(PreviewMasterVariable to master))) {
-            assertContains(assertFailsWith<IllegalStateException> { write(*environment) }.message.orEmpty(), "or neither")
-        }
-        assertContains(assertFailsWith<IllegalStateException> { write(PreviewUrlVariable to url, PreviewMasterVariable to "short") }.message.orEmpty(), "shorter than 32")
-        assertContains(assertFailsWith<IllegalStateException> { write(PreviewUrlVariable to url, PreviewMasterVariable to master, version = "1.4") }.message.orEmpty(), "like 1.4.0")
+    fun anAddressWithoutAMasterStopsTheBuild() {
+        assertContains(assertFailsWith<IllegalStateException> { write(PreviewUrlVariable to url) }.message.orEmpty(), MasterVariable)
+        assertContains(assertFailsWith<IllegalStateException> { write(PreviewUrlVariable to url, MasterVariable to "short") }.message.orEmpty(), "shorter than 32")
+        assertContains(assertFailsWith<IllegalStateException> { write(PreviewUrlVariable to url, MasterVariable to master, version = "1.4") }.message.orEmpty(), "like 1.4.0")
         assertFalse(secrets.exists())
     }
 

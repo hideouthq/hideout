@@ -30,13 +30,11 @@ jobs:
       - name: Build the packages
         env:
           HIDEOUT_BUILD_PREVIEW_URL: ${{ secrets.HIDEOUT_BUILD_PREVIEW_URL }}
-          HIDEOUT_BUILD_PREVIEW_MASTER: ${{ secrets.HIDEOUT_BUILD_PREVIEW_MASTER }}
-          HIDEOUT_BUILD_INVITE_MASTER: ${{ secrets.HIDEOUT_BUILD_INVITE_MASTER }}
+          HIDEOUT_BUILD_MASTER: ${{ secrets.HIDEOUT_BUILD_MASTER }}
           HIDEOUT_BUILD_POSTHOG_KEY: ${{ secrets.HIDEOUT_BUILD_POSTHOG_KEY }}
         run: |
           : "${HIDEOUT_BUILD_PREVIEW_URL:?the repository has no HIDEOUT_BUILD_PREVIEW_URL secret}"
-          : "${HIDEOUT_BUILD_PREVIEW_MASTER:?the repository has no HIDEOUT_BUILD_PREVIEW_MASTER secret}"
-          : "${HIDEOUT_BUILD_INVITE_MASTER:?the repository has no HIDEOUT_BUILD_INVITE_MASTER secret}"
+          : "${HIDEOUT_BUILD_MASTER:?the repository has no HIDEOUT_BUILD_MASTER secret}"
           : "${HIDEOUT_BUILD_POSTHOG_KEY:?the repository has no HIDEOUT_BUILD_POSTHOG_KEY secret}"
           packaging/linux/build.sh
       - if: ${{ !cancelled() }}
@@ -111,12 +109,11 @@ jobs:
       - name: Build the EXE and MSI
         env:
           HIDEOUT_BUILD_PREVIEW_URL: ${{ secrets.HIDEOUT_BUILD_PREVIEW_URL }}
-          HIDEOUT_BUILD_PREVIEW_MASTER: ${{ secrets.HIDEOUT_BUILD_PREVIEW_MASTER }}
-          HIDEOUT_BUILD_INVITE_MASTER: ${{ secrets.HIDEOUT_BUILD_INVITE_MASTER }}
+          HIDEOUT_BUILD_MASTER: ${{ secrets.HIDEOUT_BUILD_MASTER }}
           HIDEOUT_BUILD_POSTHOG_KEY: ${{ secrets.HIDEOUT_BUILD_POSTHOG_KEY }}
         run: |
-          if (-not $env:HIDEOUT_BUILD_PREVIEW_URL -or -not $env:HIDEOUT_BUILD_PREVIEW_MASTER) { throw 'the repository has no HIDEOUT_BUILD_PREVIEW_URL or HIDEOUT_BUILD_PREVIEW_MASTER secret' }
-          if (-not $env:HIDEOUT_BUILD_INVITE_MASTER) { throw 'the repository has no HIDEOUT_BUILD_INVITE_MASTER secret' }
+          if (-not $env:HIDEOUT_BUILD_PREVIEW_URL) { throw 'the repository has no HIDEOUT_BUILD_PREVIEW_URL secret' }
+          if (-not $env:HIDEOUT_BUILD_MASTER) { throw 'the repository has no HIDEOUT_BUILD_MASTER secret' }
           if (-not $env:HIDEOUT_BUILD_POSTHOG_KEY) { throw 'the repository has no HIDEOUT_BUILD_POSTHOG_KEY secret' }
           ./kotlin.bat do nativePackages -m desktopApp
       - name: Check EXE installation and MSI updates
