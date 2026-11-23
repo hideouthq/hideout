@@ -15,7 +15,6 @@ type Invite struct {
 	Region Region `json:"region"`
 }
 
-// Region is a Tailcat relay region.
 type Region struct {
 	ID   int    `json:"id"`
 	Code string `json:"code"`
