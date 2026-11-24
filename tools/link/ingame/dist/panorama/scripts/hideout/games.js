@@ -569,7 +569,14 @@
   }
   function session(v) {
     const o = obj(v);
-    return { role: oneOf(["host", "guest"])(o.role), mode: str(o.mode), actions: list(o.actions, action) };
+    return {
+      role: oneOf(["host", "guest"])(o.role),
+      mode: str(o.mode),
+      phase: oneOf(["starting", "in", "notin", "ending", "over"])(o.phase),
+      hostId: opt(o.hostId, (i) => str(i)),
+      hostName: opt(o.hostName, str),
+      actions: list(o.actions, action)
+    };
   }
   function invite(v) {
     const o = obj(v);

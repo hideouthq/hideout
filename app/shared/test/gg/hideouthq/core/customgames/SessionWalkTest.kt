@@ -9,6 +9,7 @@ import gg.hideouthq.core.library.GameRoot
 import gg.hideouthq.feature.customgames.PresentInputs
 import gg.hideouthq.feature.customgames.present
 import gg.hideouthq.feature.ingame.Action
+import gg.hideouthq.feature.ingame.SessionPhase
 import gg.hideouthq.feature.ingame.gameActions
 import gg.hideouthq.feature.ingame.joinActions
 import gg.hideouthq.feature.ingame.sessionOf
@@ -240,7 +241,12 @@ class SessionWalkTest {
         val shown = present(PresentInputs(LiveSession(w.session, w.record)))
         val host = shown.game?.body?.takeIf { w.record?.role is Role.Host }?.let(::gameActions).orEmpty()
         val join = shown.join?.let { joinActions(it.step) }.orEmpty()
-        val session = sessionOf(shown)?.second.takeIf { w.record != null }.orEmpty()
+        val summary = sessionOf(shown).takeIf { w.record != null }
+        val session = summary?.actions.orEmpty()
+        val own = (w.session as? Session.Hosting)?.own ?: (w.session as? Session.Playing)?.own
+        if (summary != null && (summary.phase == SessionPhase.NotIn) != (own is OwnGame.Out)) report("a summary that says ${summary.phase} while the player's game is $own", w)
+        if (summary?.phase == SessionPhase.NotIn && Action.Stop !in session) report("out of a running game with no way to end it", w)
+        if (Action.Play in session && summary?.phase != SessionPhase.NotIn) report("Play offered outside NotIn", w)
         for (action in host + join + session) {
             val event = eventOf(action, w)
             if (event == null || reduce(w.session, event, w.client, t1) == Step(w.session)) report("a card offers $action, which ${w.session::class.simpleName} ignores", w)

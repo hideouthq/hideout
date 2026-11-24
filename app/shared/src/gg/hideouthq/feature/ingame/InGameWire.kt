@@ -167,9 +167,22 @@ data class JoinCard(
     val actions: List<Action>,
 )
 
-/** Who the player is in the running session and what it accepts now, for the native Esc menu entry. */
+/**
+ * Who the player is in the running session, where they stand in it and what it accepts now, for the strip, the panel and
+ * the native Esc menu. [hostId] and [hostName] are a guest's host, as on [JoinCard].
+ */
 @Serializable
-data class SessionCard(val role: SessionRole, val mode: String, val actions: List<Action>)
+data class SessionCard(val role: SessionRole, val mode: String, val phase: SessionPhase, val hostId: String?, val hostName: String?, val actions: List<Action>)
+
+/** [NotIn] is a running game the player's Deadlock has left, which Play sends it back into. */
+@Serializable
+enum class SessionPhase {
+    @SerialName("starting") Starting,
+    @SerialName("in") In,
+    @SerialName("notin") NotIn,
+    @SerialName("ending") Ending,
+    @SerialName("over") Over,
+}
 
 @Serializable
 enum class SessionRole { @SerialName("host") Host, @SerialName("guest") Guest }

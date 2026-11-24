@@ -92,10 +92,16 @@ export interface HostCard {
   actions: Action[]
 }
 
-/** Who the player is in the running session and what it accepts now, for the native Esc menu entry. */
+/** 'notin' is a running game the player's Deadlock has left, which Play sends it back into. */
+export type SessionPhase = 'starting' | 'in' | 'notin' | 'ending' | 'over'
+
+/** Who the player is in the running session, where they stand in it and what it accepts now. The host is a guest's. */
 export interface SessionCard {
   role: 'host' | 'guest'
   mode: string
+  phase: SessionPhase
+  hostId: SteamId | null
+  hostName: string | null
   actions: Action[]
 }
 
@@ -319,7 +325,14 @@ function join(v: Json): JoinCard {
 
 function session(v: Json): SessionCard {
   const o = obj(v)
-  return { role: oneOf<SessionCard['role']>(['host', 'guest'])(o.role), mode: str(o.mode), actions: list(o.actions, action) }
+  return {
+    role: oneOf<SessionCard['role']>(['host', 'guest'])(o.role),
+    mode: str(o.mode),
+    phase: oneOf<SessionPhase>(['starting', 'in', 'notin', 'ending', 'over'])(o.phase),
+    hostId: opt(o.hostId, (i) => str(i) as SteamId),
+    hostName: opt(o.hostName, str),
+    actions: list(o.actions, action),
+  }
 }
 
 function invite(v: Json): InviteCard {

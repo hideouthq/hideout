@@ -118,6 +118,9 @@ class InGameWireTest {
 
         val guest = GameRecord(Role.Guest(code, offer, bebop.listing), me, startedAt = Instant.fromEpochSeconds(1_800_000_000))
         golden("game-guest.json", frames(LiveSession(Session.Playing(GuestLink(LinkPath.Relay), OwnGame.In), guest)).getValue(Topic.Game))
+        golden("game-guest-notin.json", frames(LiveSession(Session.Playing(GuestLink(LinkPath.Relay), OwnGame.Out()), guest), invitedBy = InvitedBy(code, mugi)).getValue(Topic.Game))
+        val away = Session.Hosting(code, "street", mapOf(0 to Player("nori", me.steamId), 1 to Player("kestrel", kestrel.value)), OwnGame.Out())
+        golden("game-notin.json", frames(LiveSession(away, hostRecord.copy(startedAt = Instant.fromEpochSeconds(1_800_000_000)))).getValue(Topic.Game))
     }
 
     @Test
