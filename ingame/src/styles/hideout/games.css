@@ -144,7 +144,10 @@
 .HGList
 {
 	width: 100%;
+	height: fit-children;
+	max-height: 605px;
 	flow-children: down;
+	overflow: squish scroll;
 }
 
 .HGRow
