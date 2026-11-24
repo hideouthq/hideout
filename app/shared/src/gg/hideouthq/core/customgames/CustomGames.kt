@@ -228,8 +228,13 @@ class CustomGames(
         }
         scope.launch {
             settingOn.collect {
+                val turnedOff = menusWanted && !it
                 menusWanted = it
                 if (it) readyMenus()
+                if (turnedOff) {
+                    lastRemovalEndsTheUse()
+                    upkeepGame()
+                }
             }
         }
     }

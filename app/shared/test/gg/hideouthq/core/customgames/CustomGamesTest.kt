@@ -2347,6 +2347,20 @@ class CustomGamesTest {
     }
 
     @Test
+    fun turningCustomGamesOffWithNothingInstalledTakesTheMenusOut() = scenario {
+        platform.menusStamp = null
+        val on = MutableStateFlow(true)
+        val run = Run(this, FakeCustomGamesFeed(), settingOn = on)
+        run.games.start()
+        run.settle()
+        assertEquals(GamesLines.Mounted, files.lines)
+
+        on.value = false
+        run.settle()
+        assertEquals(GamesLines.Off, files.lines, "off, Deadlock is left as it was before")
+    }
+
+    @Test
     fun withDeadlockRunningTheAppSaysTheMenusFollowItsRestart() = scenario {
         platform.menusStamp = null
         files.clientActivity.value = GameActivity.Running
