@@ -2,6 +2,77 @@
   "schema": 1,
   "versions": [
     {
+      "version": "0.3.0",
+      "date": "2026-11-24",
+      "kind": "feature",
+      "highlights": [
+        {
+          "title": "Hideout games inside Deadlock",
+          "text": "Hideout games show up in Custom Match in Deadlock's Play menu. Pick one, invite friends and host it without leaving the game.",
+          "image": "0.3.0-games@2x.webp"
+        },
+        {
+          "title": "Friends' invites in game",
+          "text": "When a friend invites you, it pops up in Deadlock. Press Esc, then Join.",
+          "image": "0.3.0-invites@2x.webp"
+        }
+      ],
+      "new": [
+        {
+          "area": "Game",
+          "text": "Stop or Leave a Hideout game from Deadlock's Esc menu. If you leave a game that's still running, Rejoin puts you back in."
+        },
+        {
+          "area": "Game",
+          "text": "When you join a game, Deadlock shows each step until you're in, and says why if joining fails."
+        },
+        {
+          "area": "Settings",
+          "text": "Hideout asks once before it adds its games to Deadlock. You can turn them off any time in Settings."
+        }
+      ],
+      "improved": [
+        {
+          "area": "Install",
+          "text": "Installs are faster, most of all with many mods, because a new mod no longer renames the files of the mods after it."
+        },
+        {
+          "area": "Library",
+          "text": "Moving, removing and repairing mods finish sooner, because Hideout reads each mod file fewer times."
+        },
+        {
+          "area": "Game",
+          "text": "Hideout does less work when it looks for a running Deadlock and when it checks your mods against the game."
+        },
+        {
+          "area": "Library",
+          "text": "In a narrow window, Library's buttons move under the title instead of squeezing it."
+        },
+        {
+          "area": "Setup",
+          "text": "The import preview shows each mod's cover."
+        },
+        {
+          "area": "Setup",
+          "text": "Mods in your game folder that the other manager doesn't list still come along. The import preview shows them under Already in your game."
+        },
+        {
+          "area": "Profiles",
+          "text": "Grimoire profiles come over with all their mods, and empty Deadlock Mod Manager profiles come over too."
+        }
+      ],
+      "fixed": [
+        {
+          "area": "Game",
+          "text": "Windows no longer stops your game to ask about Hideout's game server. It asks before Deadlock starts, and either answer works."
+        },
+        {
+          "area": "Setup",
+          "text": "Import no longer offers Grimoire on a computer that doesn't have it."
+        }
+      ]
+    },
+    {
       "version": "0.2.0",
       "date": "2026-11-21",
       "kind": "feature",
