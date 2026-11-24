@@ -55,6 +55,16 @@ test('a friend’s status reads as Deadlock’s menus say it, and says when they
   assert.deepEqual(seen(playing('Playing: Haze 12:34')), ['In a match · 12 min', true])
   assert.deepEqual(seen(playing('Playing: Haze 1:02:09')), ['In a match · 62 min', true])
   assert.deepEqual(seen(playing('Playing: Haze 7 min')), ['In a match · 7 min', true])
+  assert.deepEqual(seen(playing('Lobby: Bebop (8 min)')), ['In a match · 8 min', true])
+  assert.deepEqual(seen(playing('Bots: Haze (3 min)')), ['In a match · 3 min', true])
+  assert.deepEqual(seen(playing('Ranked: Haze (21 min)')), ['In a match · 21 min', true])
+  assert.deepEqual(seen(playing('Street Brawl: Haze')), ['In a match', true])
+  assert.deepEqual(seen(playing('Sandbox: Haze (2 min)')), ['In a match · 2 min', true])
+  assert.deepEqual(seen(playing('Testing Haze in Sandbox Mode')), ['In a match', true])
+  assert.deepEqual(seen(playing('Ignoring Lash In The Hideout')), ['In the hideout', false])
+  assert.deepEqual(seen(playing('Wishing the Hideout Was The Cube')), ['In the hideout', false])
+  assert.deepEqual(seen(playing('In a Party Hideout')), ['In a party', false])
+  assert.deepEqual(seen(playing('Online')), ['Online', false])
   assert.deepEqual(seen(playing('In the lobby')), ['In the lobby', false])
   assert.deepEqual(seen(playing('')), ['Online', false])
   const online = friendsOf([
@@ -81,6 +91,15 @@ test('a friend in a match gets a disabled In match, and pressing it does nothing
   const notReached = '76561198000000008' as SteamId
   const unreached = friendsOf([{ steamid: notReached, name: 'Nori', status: 'Picking Hero', presence: 'playing', currentUser: false }])
   assert.equal(runWith(unreached, hosting, { kind: 'friend', id: notReached }).effects.length, 0, 'not Copy link either')
+
+  const custom = friendsOf([
+    { steamid: KESTREL, name: 'Kestrel', status: 'Lobby: Bebop (8 min)', presence: 'playing', currentUser: false },
+    { steamid: MUGI, name: 'Mugi', status: 'Relaxing In The Hideout', presence: 'playing', currentUser: false },
+  ])
+  assert.deepEqual(runWith(custom, snapshotOf('catalog.json', 'game-idle.json')).view.friends.map((f) => [f.friend.status, f.button]), [
+    ['In a match · 8 min', 'in-match'],
+    ['In the hideout', 'invite'],
+  ])
 
   const invited = runWith(list, snapshotOf('catalog.json', 'game-starting.json'))
   assert.equal(invited.view.friends[0]?.button, 'invited', 'an invited friend stays Invited')

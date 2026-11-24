@@ -35,12 +35,19 @@ export interface RawFriend {
   currentUser: boolean
 }
 
-// Deadlock's Steam rich presence is "Main Menu", "Picking Hero", "Finding Match" or "Playing: %hero% %net_worth%".
+// Deadlock's Steam rich presence, as its citadel_gc strings give it: "Main Menu", "Finding Match", a match as its mode
+// then the hero and clock ("Lobby: Haze (8 min)" for a custom match), "Testing Haze in Sandbox Mode", and in the hub one
+// of many lines ending "In The Hideout". "Picking Hero" and "Playing:" are older builds' words.
+const MATCH_MODES = ['Deadlock', 'Ranked', 'Hero Labs', 'Lobby', 'Bots', 'Tutorial', 'Sandbox', 'Placement Match', 'Street Brawl', 'Playing']
 const IN_DEADLOCK: { raw: RegExp; text: string; inMatch: boolean }[] = [
   { raw: /^Main Menu/i, text: 'In the main menu', inMatch: false },
   { raw: /^Finding Match/i, text: 'Finding a match', inMatch: false },
   { raw: /^Picking Hero/i, text: 'In a match', inMatch: true },
-  { raw: /^Playing:/i, text: 'In a match', inMatch: true },
+  { raw: new RegExp(`^(${MATCH_MODES.join('|')}):`, 'i'), text: 'In a match', inMatch: true },
+  { raw: /^Testing .* in Sandbox Mode/i, text: 'In a match', inMatch: true },
+  { raw: /^In a Party Hideout/i, text: 'In a party', inMatch: false },
+  { raw: /Hideout/i, text: 'In the hideout', inMatch: false },
+  { raw: /^Online$/i, text: 'Online', inMatch: false },
 ]
 
 function matchMinutes(raw: string): number | null {

@@ -11,11 +11,16 @@
     { id: "FriendsOnline", presence: "online" },
     { id: "FriendsOffline", presence: "offline" }
   ];
+  var MATCH_MODES = ["Deadlock", "Ranked", "Hero Labs", "Lobby", "Bots", "Tutorial", "Sandbox", "Placement Match", "Street Brawl", "Playing"];
   var IN_DEADLOCK = [
     { raw: /^Main Menu/i, text: "In the main menu", inMatch: false },
     { raw: /^Finding Match/i, text: "Finding a match", inMatch: false },
     { raw: /^Picking Hero/i, text: "In a match", inMatch: true },
-    { raw: /^Playing:/i, text: "In a match", inMatch: true }
+    { raw: new RegExp(`^(${MATCH_MODES.join("|")}):`, "i"), text: "In a match", inMatch: true },
+    { raw: /^Testing .* in Sandbox Mode/i, text: "In a match", inMatch: true },
+    { raw: /^In a Party Hideout/i, text: "In a party", inMatch: false },
+    { raw: /Hideout/i, text: "In the hideout", inMatch: false },
+    { raw: /^Online$/i, text: "Online", inMatch: false }
   ];
   function matchMinutes(raw) {
     const clock = raw.match(/(?:(\d+):)?(\d+):(\d\d)/);
