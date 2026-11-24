@@ -126,15 +126,20 @@ function boot(): void {
   const acts = new Section()
 
   function drawJoining(): boolean {
-    const view = viewJoining(link.snapshot, putAway, link.status)
+    const view = viewJoining(link.snapshot, putAway, link.status, friends.current)
     const layer = find('HOJoining')
     layer.SetHasClass('Shown', view !== null)
     if (!view) return false
-    banner.draw(find('HOJoinBanner'), JSON.stringify([view.art, view.card.mode]), (into) => {
+    banner.draw(find('HOJoinBanner'), JSON.stringify([view.art, view.card.mode, view.host]), (into) => {
       art(into, 'HOJoinArt', view.art)
       panel(into, 'HOJoinFade')
       tear(into, 700, view.card.mode.length * 7919 + 3)
       label(panel(into, 'Plate HOJoinPlate'), '', view.card.mode)
+      if (view.host) {
+        const host = panel(into, 'HOJoinHost')
+        if (view.host.id) $.CreatePanel('CitadelAvatarImage', host, '', { class: 'HOJoinAvatar', steamid: view.host.id })
+        label(host, 'HOJoinHostName', view.host.text)
+      }
     })
     find('HOJoinTitle').text = view.title
     find('HOJoinLine').text = view.line

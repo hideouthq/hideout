@@ -112,7 +112,11 @@
     const mode2 = modes.find((m) => m.name === name);
     return mode2 ? mode2.art.backdrop ?? mode2.art.card ?? mode2.art.tile : null;
   }
-  function viewJoining(snapshot, putAway, status) {
+  function hostOf(card, friends) {
+    const name = card.hostId && friends.names[card.hostId] || card.hostName;
+    return name ? { id: card.hostId, text: `${name}\u2019s game` } : null;
+  }
+  function viewJoining(snapshot, putAway, status, friends) {
     const card = snapshot.game?.join;
     if (!card || card.phase === putAway || status === "offline") return null;
     const words2 = card.words;
@@ -129,6 +133,7 @@
       title: failed || !words2 ? card.title : words2.title,
       line: [...card.picks, card.capacity ? `${card.capacity} players` : null].filter(Boolean).join(" \xB7 "),
       art: artFor(card.mode, snapshot.catalog?.modes ?? []),
+      host: hostOf(card, friends),
       steps: card.steps,
       busy: card.steps.length ? null : card.busy,
       box,
@@ -759,15 +764,20 @@
     const box = new Section();
     const acts = new Section();
     function drawJoining() {
-      const view = viewJoining(link.snapshot, putAway, link.status);
+      const view = viewJoining(link.snapshot, putAway, link.status, friends.current);
       const layer = find("HOJoining");
       layer.SetHasClass("Shown", view !== null);
       if (!view) return false;
-      banner.draw(find("HOJoinBanner"), JSON.stringify([view.art, view.card.mode]), (into) => {
+      banner.draw(find("HOJoinBanner"), JSON.stringify([view.art, view.card.mode, view.host]), (into) => {
         art(into, "HOJoinArt", view.art);
         panel(into, "HOJoinFade");
         tear(into, 700, view.card.mode.length * 7919 + 3);
         label(panel(into, "Plate HOJoinPlate"), "", view.card.mode);
+        if (view.host) {
+          const host3 = panel(into, "HOJoinHost");
+          if (view.host.id) $.CreatePanel("CitadelAvatarImage", host3, "", { class: "HOJoinAvatar", steamid: view.host.id });
+          label(host3, "HOJoinHostName", view.host.text);
+        }
       });
       find("HOJoinTitle").text = view.title;
       find("HOJoinLine").text = view.line;

@@ -1,5 +1,6 @@
+import type { Friends } from './friends.ts'
 import type { LinkStatus } from './link.ts'
-import type { Action, JoinCard, ModeCard, RestartReason, Snapshot, Step } from './wire.ts'
+import type { Action, JoinCard, ModeCard, RestartReason, Snapshot, Step, SteamId } from './wire.ts'
 
 export type JoiningButton =
   | { kind: 'act'; action: Action; label: string; primary: boolean }
@@ -10,6 +11,7 @@ export interface JoiningView {
   title: string
   line: string
   art: string | null
+  host: { id: SteamId | null; text: string } | null
   steps: Step[]
   busy: string | null
   box: { tone: 'failed' | 'note'; title: string; body: string } | null
@@ -29,8 +31,14 @@ function artFor(name: string, modes: ModeCard[]): string | null {
   return mode ? (mode.art.backdrop ?? mode.art.card ?? mode.art.tile) : null
 }
 
+/** Like the toasts, a host who is a friend goes by the friend list's name rather than the one the offer claims. */
+function hostOf(card: JoinCard, friends: Friends): JoiningView['host'] {
+  const name = (card.hostId && friends.names[card.hostId]) || card.hostName
+  return name ? { id: card.hostId, text: `${name}’s game` } : null
+}
+
 /** Offline, the snapshot's join is stale and every button needs the app, so the layer would trap the player. */
-export function viewJoining(snapshot: Snapshot, putAway: JoinCard['phase'] | null, status: LinkStatus): JoiningView | null {
+export function viewJoining(snapshot: Snapshot, putAway: JoinCard['phase'] | null, status: LinkStatus, friends: Friends): JoiningView | null {
   const card = snapshot.game?.join
   if (!card || card.phase === putAway || status === 'offline') return null
   const words = card.words
@@ -47,6 +55,7 @@ export function viewJoining(snapshot: Snapshot, putAway: JoinCard['phase'] | nul
     title: failed || !words ? card.title : words.title,
     line: [...card.picks, card.capacity ? `${card.capacity} players` : null].filter(Boolean).join(' · '),
     art: artFor(card.mode, snapshot.catalog?.modes ?? []),
+    host: hostOf(card, friends),
     steps: card.steps,
     busy: card.steps.length ? null : card.busy,
     box,

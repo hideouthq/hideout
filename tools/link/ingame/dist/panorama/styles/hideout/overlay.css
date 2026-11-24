@@ -329,6 +329,31 @@
 	font-size: 34px;
 }
 
+.HOJoinHost
+{
+	horizontal-align: right;
+	vertical-align: bottom;
+	margin-right: 22px;
+	margin-bottom: 26px;
+	flow-children: right;
+}
+
+.HOJoinAvatar
+{
+	width: 30px;
+	height: 30px;
+	margin-right: 10px;
+	vertical-align: middle;
+}
+
+.HOJoinHostName
+{
+	vertical-align: middle;
+	font-size: 16px;
+	font-weight: bold;
+	color: #EFE6D6;
+}
+
 .HOJoinBody
 {
 	width: 100%;

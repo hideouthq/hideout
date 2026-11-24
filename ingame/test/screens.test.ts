@@ -296,7 +296,7 @@ test('closing a not-reached toast hides it for that game alone', () => {
 })
 
 test('the joining dialog is the join card: review shows the restart and Join echoes it', () => {
-  const view = viewJoining(snapshotOf('game-review.json'), null, 'online')!
+  const view = viewJoining(snapshotOf('game-review.json'), null, 'online', friends)!
   assert.equal(view.title, 'Join Mugi’s game')
   assert.equal(view.line, '3v3 · 6 players')
   assert.equal(view.box?.tone, 'note')
@@ -304,13 +304,25 @@ test('the joining dialog is the join card: review shows the restart and Join ech
     { kind: 'act', action: 'stop', label: 'Cancel', primary: false },
     { kind: 'confirm', restart: 'game-updated', label: 'Join', primary: true },
   ])
-  assert.equal(viewJoining(snapshotOf('game-review.json'), 'review', 'online'), null)
-  assert.equal(viewJoining(snapshotOf('game-idle.json'), null, 'online'), null)
+  assert.equal(viewJoining(snapshotOf('game-review.json'), 'review', 'online', friends), null)
+  assert.equal(viewJoining(snapshotOf('game-idle.json'), null, 'online', friends), null)
+})
+
+test('the joining banner names the host’s game, by the friend list’s name when the host is a friend', () => {
+  const review = snapshotOf('game-review.json')
+  const join = review.game!.join!
+  const withHost = (hostId: SteamId | null, hostName: string | null) => withFrame(review, { ...review.game!, join: { ...join, hostId, hostName } })
+  const renamed = friendsOf([{ steamid: MUGI, name: 'mugi', status: '', presence: 'offline', currentUser: false }])
+  assert.deepEqual(viewJoining(review, null, 'online', renamed)?.host, { id: MUGI, text: 'mugi’s game' })
+  assert.deepEqual(viewJoining(review, null, 'online', friendsOf([]))?.host, { id: MUGI, text: 'Mugi’s game' })
+  assert.deepEqual(viewJoining(withHost(null, 'Mugi'), null, 'online', friends)?.host, { id: null, text: 'Mugi’s game' })
+  assert.equal(viewJoining(withHost(null, null), null, 'online', friends)?.host, null)
+  assert.equal(viewJoining(withHost('76561198000000005' as SteamId, null), null, 'online', friends)?.host, null, 'a stranger with no name shows nothing')
 })
 
 test('the joining dialog leaves once Hideout is gone, since nothing there works without it', () => {
-  assert.equal(viewJoining(snapshotOf('game-review.json'), null, 'offline'), null)
-  assert.notEqual(viewJoining(snapshotOf('game-review.json'), null, 'online'), null, 'and comes back with it')
+  assert.equal(viewJoining(snapshotOf('game-review.json'), null, 'offline', friends), null)
+  assert.notEqual(viewJoining(snapshotOf('game-review.json'), null, 'online', friends), null, 'and comes back with it')
 })
 
 test('the hosting strip names the hosted game and its players, with Stop', () => {
