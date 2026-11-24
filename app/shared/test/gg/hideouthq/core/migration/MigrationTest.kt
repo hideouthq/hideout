@@ -370,6 +370,26 @@ class MigrationTest {
     }
 
     @Test
+    fun anEmptyProfileComesAsAnEmptyProfile() = runTest {
+        val state = """{"profiles":{"default":{"name":"Default","folderName":null,"mods":[{"remoteId":"700001","installOrder":0}]},
+            "profile_1795528455057_nkc136lvk":{"name":"hud","folderName":"profile_1795528455057_nkc136lvk_hud","mods":[]}},"activeProfileId":"default","localMods":[]}"""
+        val managers = object : ManagerData by FakeManagerData(ForeignSeed.None) {
+            override suspend fun dmmState(): ByteArray = buildJsonObject { put("local-config", JsonPrimitive("""{"state":$state,"version":42}""")) }.toString().encodeToByteArray()
+        }
+        val world = World(seed = ForeignSeed.None, managers = managers)
+        world.files.putBytes(root, "$citadel/addons/pak10_dir.vpk", FakeVpk.directory(seed = 180))
+        world.files.putBytes(root, "$citadel/addons/.dmm.json", """{"version":3,"mods":{"700001":{"enabled":true,"shard":1,"currentVpks":["pak10_dir.vpk"]}}}""".encodeToByteArray())
+        val migration = with(world) { start() }
+
+        migration.look(dmm)
+        settle()
+        assertEquals(listOf("hud"), assertIs<Preview.Ready>(migration.state.value.previews[dmm]).profiles.map { it.name }, "the preview names it")
+        migration.import(dmm, ImportChoice.Everything)
+        settle()
+        assertEquals(emptySet(), world.store.manifest!!.profiles.profiles.single { it.name == "hud" }.enabled)
+    }
+
+    @Test
     fun thePreviewNamesTheProfilesTheImportMakesBesideTheUsersOwn() = runTest {
         val bytes = FakeVpk.directory(seed = 50)
         val held = heldMod("h1", root, bytes)

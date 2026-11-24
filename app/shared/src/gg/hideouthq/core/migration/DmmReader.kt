@@ -55,7 +55,7 @@ object DmmReader {
                         ?: listings.filter { it.entry.key == key }.mapNotNull { it.entry.order }.minOrNull(),
                 )
             },
-            profiles = profiles.filter { profile -> profile === active || readable.any { it.folder == profile.folder } }.map { profile ->
+            profiles = profiles.filter { profile -> profile === active || profile.mods.isEmpty() || readable.any { it.folder == profile.folder } }.map { profile ->
                 fun rank(listing: Listing) = profile.mods.firstOrNull { it["remoteId"].words == listing.entry.key }?.get("installOrder").number ?: listing.entry.order?.toDouble()
                 val members = listings.filter { it.manifest.folder == profile.folder && it.entry.enabled }.sortedWith(compareBy(nullsLast(), ::rank)).flatMap { it.files }
                 ForeignProfile(ProfileKey(profile.id), profile.name, profile.folder, members.map(ProfileMember::Files))
