@@ -59,15 +59,17 @@ sealed interface Role {
 class RecordContext(val me: LocalPlayer?, val listingOf: (InviteOffer) -> ModeListing?, val now: Instant)
 
 /**
- * Pure and total. A code reaching [Session.Finding] begins a guest record unless it is the one already being found, and
- * a record of an ended game is never carried into a new one. The host's offer joins the record as it arrives.
+ * Pure and total, folding [live] into the record of [next]. A host record begins only as [reduce] starts that host, so
+ * a request it refused changes nothing. A code reaching [Session.Finding] begins a guest record unless it is the one
+ * already being found, and a record of an ended game is never carried into a new one. The host's offer joins the record
+ * as it arrives.
  */
-fun recordAfter(record: GameRecord?, event: SessionEvent, next: Session, context: RecordContext): GameRecord? = when {
+fun recordAfter(live: LiveSession, event: SessionEvent, next: Session, context: RecordContext): GameRecord? = when {
     next == Session.Idle || next == Session.Recovering -> null
-    event is HostRequested && next is Session.HostPreparing -> GameRecord(Role.Host(event.mode, event.choices, event.outreach), context.me)
-    next is Session.Finding && !(record?.endedAt == null && (record?.role as? Role.Guest)?.code == next.code) ->
+    event is HostRequested && live.session.startsHost && next is Session.HostPreparing -> GameRecord(Role.Host(event.mode, event.choices, event.outreach), context.me)
+    next is Session.Finding && !(live.game?.endedAt == null && (live.game?.role as? Role.Guest)?.code == next.code) ->
         GameRecord(Role.Guest(next.code, next.acceptedBefore, next.acceptedBefore?.let(context.listingOf)), context.me)
-    else -> record?.let { kept ->
+    else -> live.game?.let { kept ->
         val role = kept.role
         val signedOn = (next as? Session.Hosting)?.players
         kept.copy(

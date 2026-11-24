@@ -335,7 +335,7 @@ class PresentTest {
     fun aCleanupThatFailedCanBeOpenedWithOrWithoutARecordOrTheDialog() {
         fun walk(vararg steps: Pair<SessionEvent, GameActivity>) = steps.fold(LiveSession()) { live, (event, client) ->
             val next = reduce(live.session, event, client, token).session
-            LiveSession(next, recordAfter(live.game, event, next, RecordContext(me, { bebop.listing }, at)))
+            LiveSession(next, recordAfter(live, event, next, RecordContext(me, { bebop.listing }, at)))
         }
         val closed = GameActivity.Closed
         val crashed = walk(SessionEvent.CrashFound to closed, SessionEvent.Recovered to closed, SessionEvent.ReleaseFailed("held") to closed)
@@ -381,13 +381,13 @@ class PresentTest {
         val context = RecordContext(me, { null }, at)
         fun after(live: LiveSession, event: SessionEvent): LiveSession {
             val next = reduce(live.session, event, GameActivity.Running, token).session
-            return LiveSession(next, recordAfter(live.game, event, next, context))
+            return LiveSession(next, recordAfter(live, event, next, context))
         }
         val score = SectionState.Scoreboard(listOf(ScoreSide(2, listOf(0)), ScoreSide(3, listOf(1))), emptyList())
         val events = listOf(LinkEvent.Server(ServerEvent.Joined(0, nori)), LinkEvent.Server(ServerEvent.Joined(1, self)), LinkEvent.Reported(listOf(score)))
         val hosting = events.fold(LiveSession(Session.Hosting(code, "street", own = OwnGame.In), hostRecord(started = true)), ::after)
         assertEquals(3 to 2, present(PresentInputs(hosting)).chip?.score, "live, yours first")
-        val ended = LiveSession(Session.Ended(EndReason.PlayerStopped), recordAfter(hosting.game, SessionEvent.FilesReleased, Session.Ended(EndReason.PlayerStopped), context))
+        val ended = LiveSession(Session.Ended(EndReason.PlayerStopped), recordAfter(hosting, SessionEvent.FilesReleased, Session.Ended(EndReason.PlayerStopped), context))
         val rows = assertNotNull(assertIs<Body.Ended>(assertNotNull(present(PresentInputs(ended)).game).body).lastMatch).rows
         assertEquals(listOf(true to 3, false to 2), rows.map { it.person.you to it.score }, "and after the end")
         assertNull(scoreOf(emptyList()))
@@ -407,7 +407,7 @@ class PresentTest {
 
     private fun walk(vararg events: SessionEvent, start: LiveSession = LiveSession()) = events.fold(start) { live, event ->
         val next = reduce(live.session, event, GameActivity.Closed, token).session
-        LiveSession(next, recordAfter(live.game, event, next, RecordContext(me, { bebop.listing }, clock)))
+        LiveSession(next, recordAfter(live, event, next, RecordContext(me, { bebop.listing }, clock)))
     }
 
     private fun joined(slot: Int, player: Player) = LinkEvent.Server(ServerEvent.Joined(slot, player))

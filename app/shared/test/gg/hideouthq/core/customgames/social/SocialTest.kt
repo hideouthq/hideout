@@ -17,9 +17,23 @@ import gg.hideouthq.core.customgames.RelayRegion
 import gg.hideouthq.core.customgames.Role
 import gg.hideouthq.core.customgames.Session
 import gg.hideouthq.core.customgames.SteamId
+import gg.hideouthq.core.customgames.GameSetup
+import gg.hideouthq.core.customgames.LinkEvent
+import gg.hideouthq.core.customgames.MenusScreenPort
+import gg.hideouthq.core.customgames.ModeContent
+import gg.hideouthq.core.customgames.PreparedHost
+import gg.hideouthq.core.customgames.RecordContext
+import gg.hideouthq.core.customgames.ServerEvent
+import gg.hideouthq.core.customgames.SessionEvent
+import gg.hideouthq.core.customgames.SetupAnswer
+import gg.hideouthq.core.customgames.recordAfter
+import gg.hideouthq.core.customgames.reduce
 import gg.hideouthq.core.data.fake.FakeCustomGamesFeed
+import gg.hideouthq.core.library.GameActivity
+import gg.hideouthq.core.library.GameRoot
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.time.Duration.Companion.minutes
@@ -71,6 +85,32 @@ class SocialTest {
         val wren = steam(9)
         val (_, added) = answered.after(SocialInput.Live(live.copy(game = record(setOf(Kestrel, Nori, wren)))))
         assertEquals(listOf(wren), added.filterIsInstance<SocialEffect.Deliver>().map { it.to }, "a friend invited later gets only theirs")
+    }
+
+    @Test
+    fun aSecondHostPressThatTheSessionRefusesNeitherPublishesNorInvites() {
+        val me = LocalPlayer(Me.value, null)
+        val prepared = PreparedHost("m", "s", emptyList(), ModeContent(emptyList()), Offer, me)
+        val events = listOf(
+            SessionEvent.HostRequested(Bebop, Choices.None),
+            SessionEvent.HostRequested(Bebop, Choices.None, outreach = Outreach(Listing.Public, setOf(Nori))),
+            SessionEvent.RuntimePrepared(prepared, 2),
+            SessionEvent.SetupRead(SetupAnswer.Ready(GameSetup(MenusScreenPort, "https://hideouthq.gg/bridge/"))),
+            SessionEvent.Admitted(GameRoot("/g")),
+            LinkEvent.InviteReady(Code, Fra),
+            LinkEvent.Server(ServerEvent.Ready("street")),
+        )
+        val context = RecordContext(me, { null }, Now)
+        val live = events.fold(LiveSession()) { live, event ->
+            val next = reduce(live.session, event, GameActivity.Closed, DeadlineToken(1)).session
+            LiveSession(next, recordAfter(live, event, next, context))
+        }
+        assertIs<Session.Hosting>(live.session)
+        assertEquals(Outreach.Private, (live.game?.role as? Role.Host)?.outreach, "the game that started is the first press's")
+
+        val (state, effects) = SocialState().after(SocialInput.Live(live))
+        assertEquals(emptyList(), effects, "nobody is invited")
+        assertNull(listingWanted(state, live), "and the game is not listed")
     }
 
     @Test

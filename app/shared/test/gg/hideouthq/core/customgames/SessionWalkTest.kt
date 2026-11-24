@@ -131,7 +131,7 @@ class SessionWalkTest {
     private fun apply(base: World, e: SessionEvent): World {
         val client = if (e is ClientActivity) e.activity else base.client
         val step = reduce(base.session, e, client, t1)
-        var w = base.copy(session = step.session, client = client, record = recordAfter(base.record, e, step.session, context))
+        var w = base.copy(session = step.session, client = client, record = recordAfter(LiveSession(base.session, base.record), e, step.session, context))
         for (c in step.commands) {
             w = when (c) {
                 JournalBegin -> w.copy(journal = true)

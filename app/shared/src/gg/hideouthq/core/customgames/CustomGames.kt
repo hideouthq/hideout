@@ -469,7 +469,7 @@ class CustomGames(
         val before = publishedLive.value
         val step = reduce(before.session, event, client, DeadlineToken(++lastToken), booting?.isActive == true)
         val context = RecordContext(me, { offer -> publishedModes.value.shownFor(offer)?.listing }, Clock.System.now())
-        val record = recordAfter(before.game, event, step.session, context)
+        val record = recordAfter(before, event, step.session, context)
         if (step.session is Session.HostPreparing && before.session !is Session.HostPreparing || step.session is Session.Finding && before.session !is Session.Finding) {
             usage?.attempt?.finish(UsageOutcome.Cancelled, UsageStage.Prepare)
             usage?.play?.close()

@@ -27,7 +27,7 @@ class CustomGamesLogTest {
         fun on(vararg events: SessionEvent) = events.forEach { event ->
             if (event is ClientActivity) client = event.activity
             val step = reduce(live.session, event, client, DeadlineToken(++token))
-            val record = recordAfter(live.game, event, step.session, RecordContext(null, { bebop.listing }, Instant.fromEpochSeconds(1)))
+            val record = recordAfter(live, event, step.session, RecordContext(null, { bebop.listing }, Instant.fromEpochSeconds(1)))
             val after = LiveSession(step.session, record)
             lines += customGamesLog(live, after)
             live = after

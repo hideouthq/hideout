@@ -24,7 +24,7 @@ class GameRecordTest {
     private fun play(vararg events: SessionEvent, start: LiveSession = LiveSession(), client: GameActivity = GameActivity.Closed, with: RecordContext = context): LiveSession =
         events.fold(start) { live, event ->
             val next = reduce(live.session, event, client, token).session
-            LiveSession(next, recordAfter(live.game, event, next, with))
+            LiveSession(next, recordAfter(live, event, next, with))
         }
 
     private val prepared = PreparedHost("m", "s", emptyList(), ModeContent(emptyList()), InviteOffer.of(mode, Choices.None, me), me)
