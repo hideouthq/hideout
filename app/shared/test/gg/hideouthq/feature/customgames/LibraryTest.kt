@@ -7,6 +7,7 @@ import gg.hideouthq.core.customgames.DeadlineToken
 import gg.hideouthq.core.customgames.EndReason
 import gg.hideouthq.core.customgames.FetchProblem
 import gg.hideouthq.core.customgames.FolderRead
+import gg.hideouthq.core.customgames.InGameConsent
 import gg.hideouthq.core.customgames.Install
 import gg.hideouthq.core.customgames.InstalledMode
 import gg.hideouthq.core.customgames.LibraryEntry
@@ -14,6 +15,7 @@ import gg.hideouthq.core.customgames.ModeId
 import gg.hideouthq.core.customgames.ModeKind
 import gg.hideouthq.core.customgames.ModeList
 import gg.hideouthq.core.customgames.ModeOrigin
+import gg.hideouthq.core.customgames.RestartReason
 import gg.hideouthq.core.customgames.Session
 import gg.hideouthq.core.customgames.SettingValue
 import gg.hideouthq.core.customgames.Sha256
@@ -36,6 +38,14 @@ class LibraryTest {
     private val released = FakeCustomGamesFeed.Placeholder
     private val feed = released.copy(modes = listOf(bebop, arena))
     private val today = LocalDate.of(2026, 11, 6)
+
+    @Test
+    fun onlyAYesSaysHideoutGamesShowInDeadlocksPlayMenuAfterARestart() {
+        assertTrue(menusAfterRestartShown(RestartReason.NotSetUp, Session.Idle, InGameConsent.Yes))
+        assertFalse(menusAfterRestartShown(RestartReason.NotSetUp, Session.Idle, InGameConsent.No))
+        assertFalse(menusAfterRestartShown(RestartReason.NotSetUp, Session.Idle, InGameConsent.Unanswered))
+        assertFalse(menusAfterRestartShown(null, Session.Idle, InGameConsent.Yes))
+    }
 
     @Test
     fun oneModeHidesTheFiltersSortAndSearch() {

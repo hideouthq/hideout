@@ -63,6 +63,7 @@ import gg.hideouthq.core.customgames.LinkProblem
 import gg.hideouthq.core.customgames.ModeKind
 import gg.hideouthq.core.customgames.ModeList
 import gg.hideouthq.core.customgames.RestartReason
+import gg.hideouthq.core.customgames.Session
 import gg.hideouthq.core.customgames.startsHost
 import gg.hideouthq.core.customgames.social.Social
 import gg.hideouthq.core.customgames.social.SocialStatus
@@ -165,7 +166,7 @@ fun CustomGamesRoute(
                 }
                 social?.let { InvitesBlocked(it) { id -> copy(id, Res.string.cg_toast_id_copied) } }
                 inGameBlock?.let { NoteCard(stringResource(Res.string.cg_ingame_blocked_lead), stringResource(Res.string.cg_ingame_blocked_body, it)) }
-                if (restarts == RestartReason.NotSetUp && live.session.startsHost) NoteCard(stringResource(Res.string.cg_menus_after_restart_lead), stringResource(Res.string.cg_menus_after_restart_body))
+                if (menusAfterRestartShown(restarts, live.session, inGame)) NoteCard(stringResource(Res.string.cg_menus_after_restart_lead), stringResource(Res.string.cg_menus_after_restart_body))
                 PillTabs(
                     ModeTab.entries, tab, { tab = it },
                     label = tabs::getValue,
@@ -212,6 +213,10 @@ fun CustomGamesRoute(
     HostDialog(hosting?.mode, modes, block, restarts, games, modal) { hosting = null }
     InGameDialog(inGame == InGameConsent.Unanswered && live.session.startsHost && hosting == null, modal, onInGame)
 }
+
+/** Whether the page says Hideout games show in Deadlock's Play menu once it restarts, which only a yes puts there. */
+internal fun menusAfterRestartShown(restarts: RestartReason?, session: Session, inGame: InGameConsent?): Boolean =
+    inGame == InGameConsent.Yes && restarts == RestartReason.NotSetUp && session.startsHost
 
 /** Shown once the site refused this PC's mailbox, with the player's own id, the one support resets it by. */
 @Composable
