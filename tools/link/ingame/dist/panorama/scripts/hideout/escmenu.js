@@ -160,6 +160,7 @@
       kind: opt(o.kind, str),
       players: pair(o.players),
       minutes: opt(o.minutes, pair),
+      goal: opt(o.goal, str),
       by: list(o.by, str),
       bytes: opt(o.bytes, num),
       art: { card: opt(art.card, str), backdrop: opt(art.backdrop, str), render: opt(art.render, str), overlay: opt(art.overlay, str), tile: opt(art.tile, str) },
@@ -200,6 +201,8 @@
       mode: str(o.mode),
       picks: list(o.picks, str),
       capacity: opt(o.capacity, num),
+      hostId: opt(o.hostId, (i) => str(i)),
+      hostName: opt(o.hostName, str),
       phase: oneOf(["finding", "review", "cleanup", "progress", "stopping", "restart", "restarting", "notin", "failed"])(o.phase),
       steps: list(o.steps, step),
       words: opt(o.words, words),
@@ -242,7 +245,7 @@
             supportId: opt(o.supportId, (v) => str(v))
           };
         case "catalog":
-          return { t: "catalog", modes: list(o.modes, mode) };
+          return { t: "catalog", modes: list(o.modes, mode), soon: list(o.soon, mode) };
         case "game":
           return { t: "game", host: opt(o.host, host), join: opt(o.join, join), session: opt(o.session, session), restartAhead: opt(o.restartAhead, restart) };
         case "inbox":

@@ -70,7 +70,7 @@ function render(): void {
 }
 
 function drawList(view: GamesView): void {
-  const key = JSON.stringify([view.empty, view.rows.map((r) => [r.mode.id, r.mode.name, r.mode.tagline, r.meta, r.mode.art, r.selected])])
+  const key = JSON.stringify([view.empty, view.rows.map((r) => [r.mode.id, r.mode.name, r.mode.tagline, r.meta, r.mode.art, r.selected, r.soon])])
   list.draw(find('HGList'), key, (into) => {
     const empty = view.empty
     if (empty?.kind === 'loading') spinner(panel(into, 'HGRow'), 'HGEmptySpinner')
@@ -82,10 +82,12 @@ function drawList(view: GamesView): void {
       label(text, 'HGRowDesc Wrap', empty.body)
     }
     for (const row of view.rows) {
-      const b = panel(into, `HGRow${row.selected ? ' On' : ''}`, 'Button')
+      const b = panel(into, `HGRow${row.selected ? ' On' : ''}${row.soon ? ' Later' : ''}`, 'Button')
       art(b, 'HGThumb', row.mode.art.card ?? row.mode.art.tile ?? row.mode.art.backdrop)
       const text = panel(b, 'HGRowText')
-      label(text, 'Title HGRowName', row.mode.name)
+      const name = panel(text, 'HGRowNameLine')
+      label(name, 'Title HGRowName', row.mode.name)
+      if (row.soon) label(name, 'HGSoon', 'Soon')
       label(text, 'HGRowDesc', row.mode.tagline)
       label(text, 'HGRowMeta', row.meta)
       b.SetPanelEvent('onactivate', () => dispatch({ kind: 'mode', mode: row.mode.id }))
@@ -108,7 +110,7 @@ function drawDetail(view: GamesView): void {
   chips.draw(find('HGChips'), JSON.stringify(view.chips), (into) => {
     for (const chip of view.chips) {
       const c = panel(into, 'HGChip')
-      const icon = panel(c, `HGChipIcon ${chip.icon === 'kind' ? 'Kind' : chip.icon === 'players' ? 'Players' : 'Time'}`)
+      const icon = panel(c, `HGChipIcon ${chip.icon[0]!.toUpperCase()}${chip.icon.slice(1)}`)
       if (chip.icon === 'kind') {
         panel(icon, 'FlagPole')
         panel(icon, 'FlagCloth')
@@ -116,7 +118,8 @@ function drawDetail(view: GamesView): void {
       label(c, '', chip.text)
     }
   })
-  settings.draw(find('HGSettings'), JSON.stringify([view.settings, view.listing, view.listingLine]), (into) => {
+  settings.draw(find('HGSettings'), JSON.stringify([view.soon, view.settings, view.listing, view.listingLine]), (into) => {
+    if (view.soon) return void label(into, 'HGSettingHint', 'Nothing to set until it’s out.')
     for (const { setting, value } of view.settings) {
       const options = setting.options.map((o) => ({ label: o.label, on: o.value === value, press: () => dispatch({ kind: 'pick', key: setting.key, value: o.value }) }))
       settingRow(into, setting.label, setting.hint ?? '', options)

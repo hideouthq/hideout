@@ -53,9 +53,18 @@ function runningHost(snapshot: Snapshot): HostCard | null {
   return host && host.phase !== 'ended' ? host : null
 }
 
-function selectedMode(state: GamesState, snapshot: Snapshot): ModeCard | null {
-  const modes = snapshot.catalog?.modes ?? []
-  return modes.find((m) => m.id === state.draft.mode) ?? modes[0] ?? null
+type Listed = { mode: ModeCard; soon: boolean }
+
+/** Playable modes first, then the ones not out yet. */
+function listed(snapshot: Snapshot): Listed[] {
+  const catalog = snapshot.catalog
+  if (!catalog) return []
+  return [...catalog.modes.map((mode) => ({ mode, soon: false })), ...catalog.soon.map((mode) => ({ mode, soon: true }))]
+}
+
+function selectedMode(state: GamesState, snapshot: Snapshot): Listed | null {
+  const modes = listed(snapshot)
+  return modes.find((m) => m.mode.id === state.draft.mode) ?? modes[0] ?? null
 }
 
 function pickOf(setting: Setting, picks: Record<string, string>): string {
@@ -90,8 +99,9 @@ export function reduceGames(state: GamesState, event: GamesEvent, snapshot: Snap
       return [{ ...state, draft: { ...draft, invitees } }, []]
     }
     case 'play': {
-      const mode = selectedMode(state, snapshot)
-      if (!mode || host || state.request.kind === 'sending') return [state, []]
+      const selected = selectedMode(state, snapshot)
+      if (!selected || selected.soon || host || state.request.kind === 'sending') return [state, []]
+      const mode = selected.mode
       const picks: Record<string, string> = {}
       for (const setting of mode.settings) picks[setting.key] = pickOf(setting, draft.picks)
       return sending('play', {
@@ -136,6 +146,7 @@ export interface ModeRow {
   mode: ModeCard
   selected: boolean
   meta: string
+  soon: boolean
 }
 
 export interface SettingRow {
@@ -171,8 +182,10 @@ export interface GamesView {
   rows: ModeRow[]
   empty: EmptyList | null
   selected: ModeCard | null
+  /** The selected mode isn't out yet. */
+  soon: boolean
   byline: string
-  chips: { icon: 'kind' | 'players' | 'time'; text: string }[]
+  chips: { icon: 'kind' | 'players' | 'time' | 'goal'; text: string }[]
   settings: SettingRow[]
   listing: Listing
   listingLine: string
@@ -192,6 +205,25 @@ function sizeText(bytes: number): string {
   if (bytes < 1e6) return `${Math.max(1, Math.round(bytes / 1e3))} KB`
   const mb = bytes / 1e6
   return `${mb < 10 ? Math.round(mb * 10) / 10 : Math.round(mb)} MB`
+}
+
+function goalText(goal: string, settings: Setting[], picks: Record<string, string>): string {
+  return goal.replace(/\{([^{}]+)\}/g, (raw, key: string) => {
+    const setting = settings.find((s) => s.key === key)
+    const value = setting && pickOf(setting, picks)
+    return setting?.options.find((o) => o.value === value)?.label ?? raw
+  })
+}
+
+function chipsOf(mode: ModeCard, picks: Record<string, string>): GamesView['chips'] {
+  const chips: GamesView['chips'] = []
+  const kind = mode.kind && KINDS[mode.kind]
+  if (kind) chips.push({ icon: 'kind', text: kind })
+  chips.push({ icon: 'players', text: playersText(mode.players) })
+  const minutes = mode.minutes
+  if (minutes) chips.push({ icon: 'time', text: minutes[0] === minutes[1] ? `~${minutes[0]} min` : `${minutes[0]}–${minutes[1]} min` })
+  if (mode.goal) chips.push({ icon: 'goal', text: goalText(mode.goal, mode.settings, picks) })
+  return chips
 }
 
 function metaLine(mode: ModeCard): string {
@@ -247,7 +279,7 @@ function emptyList(link: LinkStatus): EmptyList {
   return { kind: 'loading' }
 }
 
-function playButton(state: GamesState, snapshot: Snapshot, link: LinkStatus, mode: ModeCard | null): PlayButton {
+function playButton(state: GamesState, snapshot: Snapshot, link: LinkStatus, selected: Listed | null): PlayButton {
   if (link === 'offline') return { kind: 'blocked', label: OFFLINE.title, hint: OFFLINE.body }
   if (link === 'outdated') return { kind: 'blocked', label: OUTDATED.title, hint: OUTDATED.body }
   if (link === 'connecting' && !snapshot.catalog) return { kind: 'busy', label: 'Reaching Hideout…', hint: '' }
@@ -267,8 +299,10 @@ function playButton(state: GamesState, snapshot: Snapshot, link: LinkStatus, mod
     return { kind: 'act', label: ACTION_LABELS[action], action, hint: (host.phase === 'failed' ? words?.title : words?.body) ?? '' }
   }
   const join = snapshot.game?.join
+  const mode = selected?.mode ?? null
   const label = mode ? `Play ${mode.name}` : 'Play'
   if (join) return { kind: 'blocked', label, hint: join.title }
+  if (selected?.soon) return { kind: 'blocked', label: 'Coming soon', hint: `${selected.mode.name} isn’t out yet. It comes to Hideout in an update.` }
   if (state.request.kind === 'sending' && state.request.what === 'play') return { kind: 'busy', label: 'Starting…', hint: '' }
   if (!mode) return { kind: 'blocked', label, hint: '' }
   if (state.request.kind === 'refused' && state.request.what === 'play') return { kind: 'play', label, hint: REFUSALS[state.request.result] }
@@ -327,29 +361,23 @@ export function viewServers(snapshot: Snapshot, answer: CommandResult | null = n
 }
 
 export function viewGames(state: GamesState, snapshot: Snapshot, link: LinkStatus, friends: Friends, me: string): GamesView {
-  const modes = snapshot.catalog?.modes ?? []
-  const selected = selectedMode(state, snapshot)
+  const modes = listed(snapshot)
+  const choice = selectedMode(state, snapshot)
+  const selected = choice?.mode ?? null
   const host = runningHost(snapshot)
   const listing = host ? host.listing : state.draft.listing
-  const chips: GamesView['chips'] = []
-  if (selected) {
-    const kind = selected.kind && KINDS[selected.kind]
-    if (kind) chips.push({ icon: 'kind', text: kind })
-    chips.push({ icon: 'players', text: playersText(selected.players) })
-    const minutes = selected.minutes
-    if (minutes) chips.push({ icon: 'time', text: minutes[0] === minutes[1] ? `~${minutes[0]} min` : `${minutes[0]}–${minutes[1]} min` })
-  }
   const servers = viewServers(snapshot, state.serversAnswer)
   return {
     tab: state.tab,
-    counts: { games: modes.length, servers: snapshot.servers?.state === 'ready' ? servers.lines.length : null },
+    counts: { games: snapshot.catalog?.modes.length ?? 0, servers: snapshot.servers?.state === 'ready' ? servers.lines.length : null },
     servers,
     link,
-    rows: modes.map((mode) => ({ mode, selected: mode === selected, meta: metaLine(mode) })),
+    rows: modes.map(({ mode, soon }) => ({ mode, selected: mode === selected, meta: metaLine(mode), soon })),
     empty: modes.length ? null : emptyList(link),
     selected,
+    soon: choice?.soon ?? false,
     byline: selected ? [`by ${selected.by.join(', ')}`, selected.bytes === null ? null : sizeText(selected.bytes)].filter(Boolean).join(' · ') : '',
-    chips,
+    chips: selected ? chipsOf(selected, state.draft.picks) : [],
     settings: selected ? selected.settings.map((setting) => ({ setting, value: pickOf(setting, state.draft.picks) })) : [],
     listing,
     listingLine:
@@ -361,6 +389,6 @@ export function viewGames(state: GamesState, snapshot: Snapshot, link: LinkStatu
     friends: friends.online.map((friend) => ({ friend, button: friendButton(friend.id, state, snapshot) })),
     blocked: blockedLine(snapshot),
     offline: friends.offline,
-    play: playButton(state, snapshot, link, selected),
+    play: playButton(state, snapshot, link, choice),
   }
 }

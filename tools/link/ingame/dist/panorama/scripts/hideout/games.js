@@ -90,9 +90,14 @@
     const host2 = snapshot.game?.host ?? null;
     return host2 && host2.phase !== "ended" ? host2 : null;
   }
+  function listed(snapshot) {
+    const catalog = snapshot.catalog;
+    if (!catalog) return [];
+    return [...catalog.modes.map((mode2) => ({ mode: mode2, soon: false })), ...catalog.soon.map((mode2) => ({ mode: mode2, soon: true }))];
+  }
   function selectedMode(state2, snapshot) {
-    const modes = snapshot.catalog?.modes ?? [];
-    return modes.find((m) => m.id === state2.draft.mode) ?? modes[0] ?? null;
+    const modes = listed(snapshot);
+    return modes.find((m) => m.mode.id === state2.draft.mode) ?? modes[0] ?? null;
   }
   function pickOf(setting, picks) {
     const picked = picks[setting.key];
@@ -125,8 +130,9 @@
         return [{ ...state2, draft: { ...draft, invitees } }, []];
       }
       case "play": {
-        const mode2 = selectedMode(state2, snapshot);
-        if (!mode2 || host2 || state2.request.kind === "sending") return [state2, []];
+        const selected = selectedMode(state2, snapshot);
+        if (!selected || selected.soon || host2 || state2.request.kind === "sending") return [state2, []];
+        const mode2 = selected.mode;
         const picks = {};
         for (const setting of mode2.settings) picks[setting.key] = pickOf(setting, draft.picks);
         return sending("play", {
@@ -164,6 +170,23 @@
     if (bytes < 1e6) return `${Math.max(1, Math.round(bytes / 1e3))} KB`;
     const mb = bytes / 1e6;
     return `${mb < 10 ? Math.round(mb * 10) / 10 : Math.round(mb)} MB`;
+  }
+  function goalText(goal, settings2, picks) {
+    return goal.replace(/\{([^{}]+)\}/g, (raw, key) => {
+      const setting = settings2.find((s) => s.key === key);
+      const value = setting && pickOf(setting, picks);
+      return setting?.options.find((o) => o.value === value)?.label ?? raw;
+    });
+  }
+  function chipsOf(mode2, picks) {
+    const chips2 = [];
+    const kind = mode2.kind && KINDS[mode2.kind];
+    if (kind) chips2.push({ icon: "kind", text: kind });
+    chips2.push({ icon: "players", text: playersText(mode2.players) });
+    const minutes = mode2.minutes;
+    if (minutes) chips2.push({ icon: "time", text: minutes[0] === minutes[1] ? `~${minutes[0]} min` : `${minutes[0]}\u2013${minutes[1]} min` });
+    if (mode2.goal) chips2.push({ icon: "goal", text: goalText(mode2.goal, mode2.settings, picks) });
+    return chips2;
   }
   function metaLine(mode2) {
     const kind = mode2.kind && KINDS[mode2.kind];
@@ -207,7 +230,7 @@
     if (link2 === "outdated") return { kind: "note", ...OUTDATED };
     return { kind: "loading" };
   }
-  function playButton(state2, snapshot, link2, mode2) {
+  function playButton(state2, snapshot, link2, selected) {
     if (link2 === "offline") return { kind: "blocked", label: OFFLINE.title, hint: OFFLINE.body };
     if (link2 === "outdated") return { kind: "blocked", label: OUTDATED.title, hint: OUTDATED.body };
     if (link2 === "connecting" && !snapshot.catalog) return { kind: "busy", label: "Reaching Hideout\u2026", hint: "" };
@@ -227,8 +250,10 @@
       return { kind: "act", label: ACTION_LABELS[action2], action: action2, hint: (host2.phase === "failed" ? words2?.title : words2?.body) ?? "" };
     }
     const join2 = snapshot.game?.join;
+    const mode2 = selected?.mode ?? null;
     const label2 = mode2 ? `Play ${mode2.name}` : "Play";
     if (join2) return { kind: "blocked", label: label2, hint: join2.title };
+    if (selected?.soon) return { kind: "blocked", label: "Coming soon", hint: `${selected.mode.name} isn\u2019t out yet. It comes to Hideout in an update.` };
     if (state2.request.kind === "sending" && state2.request.what === "play") return { kind: "busy", label: "Starting\u2026", hint: "" };
     if (!mode2) return { kind: "blocked", label: label2, hint: "" };
     if (state2.request.kind === "refused" && state2.request.what === "play") return { kind: "play", label: label2, hint: REFUSALS[state2.request.result] };
@@ -301,36 +326,30 @@
     return { state: servers2.state, lines, note: lines.length ? null : SERVER_NOTES[servers2.state] };
   }
   function viewGames(state2, snapshot, link2, friends2, me2) {
-    const modes = snapshot.catalog?.modes ?? [];
-    const selected = selectedMode(state2, snapshot);
+    const modes = listed(snapshot);
+    const choice = selectedMode(state2, snapshot);
+    const selected = choice?.mode ?? null;
     const host2 = runningHost(snapshot);
     const listing2 = host2 ? host2.listing : state2.draft.listing;
-    const chips2 = [];
-    if (selected) {
-      const kind = selected.kind && KINDS[selected.kind];
-      if (kind) chips2.push({ icon: "kind", text: kind });
-      chips2.push({ icon: "players", text: playersText(selected.players) });
-      const minutes = selected.minutes;
-      if (minutes) chips2.push({ icon: "time", text: minutes[0] === minutes[1] ? `~${minutes[0]} min` : `${minutes[0]}\u2013${minutes[1]} min` });
-    }
     const servers2 = viewServers(snapshot, state2.serversAnswer);
     return {
       tab: state2.tab,
-      counts: { games: modes.length, servers: snapshot.servers?.state === "ready" ? servers2.lines.length : null },
+      counts: { games: snapshot.catalog?.modes.length ?? 0, servers: snapshot.servers?.state === "ready" ? servers2.lines.length : null },
       servers: servers2,
       link: link2,
-      rows: modes.map((mode2) => ({ mode: mode2, selected: mode2 === selected, meta: metaLine(mode2) })),
+      rows: modes.map(({ mode: mode2, soon }) => ({ mode: mode2, selected: mode2 === selected, meta: metaLine(mode2), soon })),
       empty: modes.length ? null : emptyList(link2),
       selected,
+      soon: choice?.soon ?? false,
       byline: selected ? [`by ${selected.by.join(", ")}`, selected.bytes === null ? null : sizeText(selected.bytes)].filter(Boolean).join(" \xB7 ") : "",
-      chips: chips2,
+      chips: selected ? chipsOf(selected, state2.draft.picks) : [],
       settings: selected ? selected.settings.map((setting) => ({ setting, value: pickOf(setting, state2.draft.picks) })) : [],
       listing: listing2,
       listingLine: listing2 === "public" ? me2 && selected ? `Listed in Servers as \u201C${me2}\u2019s ${selected.name}\u201D` : "Listed in Servers for anyone to join" : "Only friends you invite, or anyone with the code",
       friends: friends2.online.map((friend) => ({ friend, button: friendButton(friend.id, state2, snapshot) })),
       blocked: blockedLine(snapshot),
       offline: friends2.offline,
-      play: playButton(state2, snapshot, link2, selected)
+      play: playButton(state2, snapshot, link2, choice)
     };
   }
 
@@ -483,6 +502,7 @@
       kind: opt(o.kind, str),
       players: pair(o.players),
       minutes: opt(o.minutes, pair),
+      goal: opt(o.goal, str),
       by: list(o.by, str),
       bytes: opt(o.bytes, num),
       art: { card: opt(art2.card, str), backdrop: opt(art2.backdrop, str), render: opt(art2.render, str), overlay: opt(art2.overlay, str), tile: opt(art2.tile, str) },
@@ -523,6 +543,8 @@
       mode: str(o.mode),
       picks: list(o.picks, str),
       capacity: opt(o.capacity, num),
+      hostId: opt(o.hostId, (i) => str(i)),
+      hostName: opt(o.hostName, str),
       phase: oneOf(["finding", "review", "cleanup", "progress", "stopping", "restart", "restarting", "notin", "failed"])(o.phase),
       steps: list(o.steps, step),
       words: opt(o.words, words),
@@ -565,7 +587,7 @@
             supportId: opt(o.supportId, (v) => str(v))
           };
         case "catalog":
-          return { t: "catalog", modes: list(o.modes, mode) };
+          return { t: "catalog", modes: list(o.modes, mode), soon: list(o.soon, mode) };
         case "game":
           return { t: "game", host: opt(o.host, host), join: opt(o.join, join), session: opt(o.session, session), restartAhead: opt(o.restartAhead, restart) };
         case "inbox":
@@ -853,7 +875,7 @@
     drawServers(view.servers, view.link === "online" && link.snapshot.hello?.social !== void 0);
   }
   function drawList(view) {
-    const key = JSON.stringify([view.empty, view.rows.map((r) => [r.mode.id, r.mode.name, r.mode.tagline, r.meta, r.mode.art, r.selected])]);
+    const key = JSON.stringify([view.empty, view.rows.map((r) => [r.mode.id, r.mode.name, r.mode.tagline, r.meta, r.mode.art, r.selected, r.soon])]);
     list2.draw(find("HGList"), key, (into) => {
       const empty = view.empty;
       if (empty?.kind === "loading") spinner(panel(into, "HGRow"), "HGEmptySpinner");
@@ -865,10 +887,12 @@
         label(text2, "HGRowDesc Wrap", empty.body);
       }
       for (const row of view.rows) {
-        const b = panel(into, `HGRow${row.selected ? " On" : ""}`, "Button");
+        const b = panel(into, `HGRow${row.selected ? " On" : ""}${row.soon ? " Later" : ""}`, "Button");
         art(b, "HGThumb", row.mode.art.card ?? row.mode.art.tile ?? row.mode.art.backdrop);
         const text2 = panel(b, "HGRowText");
-        label(text2, "Title HGRowName", row.mode.name);
+        const name = panel(text2, "HGRowNameLine");
+        label(name, "Title HGRowName", row.mode.name);
+        if (row.soon) label(name, "HGSoon", "Soon");
         label(text2, "HGRowDesc", row.mode.tagline);
         label(text2, "HGRowMeta", row.meta);
         b.SetPanelEvent("onactivate", () => dispatch({ kind: "mode", mode: row.mode.id }));
@@ -890,7 +914,7 @@
     chips.draw(find("HGChips"), JSON.stringify(view.chips), (into) => {
       for (const chip of view.chips) {
         const c = panel(into, "HGChip");
-        const icon = panel(c, `HGChipIcon ${chip.icon === "kind" ? "Kind" : chip.icon === "players" ? "Players" : "Time"}`);
+        const icon = panel(c, `HGChipIcon ${chip.icon[0].toUpperCase()}${chip.icon.slice(1)}`);
         if (chip.icon === "kind") {
           panel(icon, "FlagPole");
           panel(icon, "FlagCloth");
@@ -898,7 +922,8 @@
         label(c, "", chip.text);
       }
     });
-    settings.draw(find("HGSettings"), JSON.stringify([view.settings, view.listing, view.listingLine]), (into) => {
+    settings.draw(find("HGSettings"), JSON.stringify([view.soon, view.settings, view.listing, view.listingLine]), (into) => {
+      if (view.soon) return void label(into, "HGSettingHint", "Nothing to set until it\u2019s out.");
       for (const { setting, value } of view.settings) {
         const options = setting.options.map((o) => ({ label: o.label, on: o.value === value, press: () => dispatch({ kind: "pick", key: setting.key, value: o.value }) }));
         settingRow(into, setting.label, setting.hint ?? "", options);

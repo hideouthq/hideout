@@ -69,6 +69,8 @@ export interface ModeCard {
   kind: string | null
   players: [number, number]
   minutes: [number, number] | null
+  /** Like "First to {kills} kills": each {key} is the picked option's label of the setting with that key. */
+  goal: string | null
   by: string[]
   bytes: number | null
   art: ModeArt
@@ -104,6 +106,8 @@ export interface JoinCard {
   mode: string
   picks: string[]
   capacity: number | null
+  hostId: SteamId | null
+  hostName: string | null
   phase: JoinPhase
   steps: Step[]
   words: Words | null
@@ -137,7 +141,8 @@ export interface ServerRow {
 
 /** [supportId] is set only while social is blocked: the player's own SteamID64, for support to reset this PC. */
 export type Hello = { t: 'hello'; protocol: number; social: Social; supportId: SteamId | null }
-export type Catalog = { t: 'catalog'; modes: ModeCard[] }
+/** [soon] are modes not out yet, with no settings and no size. */
+export type Catalog = { t: 'catalog'; modes: ModeCard[]; soon: ModeCard[] }
 export type Game = { t: 'game'; host: HostCard | null; join: JoinCard | null; session: SessionCard | null; restartAhead: Restart | null }
 export type Inbox = { t: 'inbox'; invites: InviteCard[] }
 export type Servers = { t: 'servers'; state: ServersState; rows: ServerRow[] }
@@ -259,6 +264,7 @@ function mode(v: Json): ModeCard {
     kind: opt(o.kind, str),
     players: pair(o.players),
     minutes: opt(o.minutes, pair),
+    goal: opt(o.goal, str),
     by: list(o.by, str),
     bytes: opt(o.bytes, num),
     art: { card: opt(art.card, str), backdrop: opt(art.backdrop, str), render: opt(art.render, str), overlay: opt(art.overlay, str), tile: opt(art.tile, str) },
@@ -301,6 +307,8 @@ function join(v: Json): JoinCard {
     mode: str(o.mode),
     picks: list(o.picks, str),
     capacity: opt(o.capacity, num),
+    hostId: opt(o.hostId, (i) => str(i) as SteamId),
+    hostName: opt(o.hostName, str),
     phase: oneOf<JoinPhase>(['finding', 'review', 'cleanup', 'progress', 'stopping', 'restart', 'restarting', 'notin', 'failed'])(o.phase),
     steps: list(o.steps, step),
     words: opt(o.words, words),
@@ -347,7 +355,7 @@ export function decodeFrame(text: string): Frame | null {
           supportId: opt(o.supportId, (v) => str(v) as SteamId),
         }
       case 'catalog':
-        return { t: 'catalog', modes: list(o.modes, mode) }
+        return { t: 'catalog', modes: list(o.modes, mode), soon: list(o.soon, mode) }
       case 'game':
         return { t: 'game', host: opt(o.host, host), join: opt(o.join, join), session: opt(o.session, session), restartAhead: opt(o.restartAhead, restart) }
       case 'inbox':
