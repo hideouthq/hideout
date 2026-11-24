@@ -84,10 +84,16 @@ interface CustomGamesPlatform {
     suspend fun clearEndedDevSession(game: GameRoot)
 
     /**
-     * The first search path [game]'s `gameinfo.gi` mounts ahead of Hideout's menus with a pack that holds a file the
-     * menus pack holds, or null when none does. Reads only the packs' directory trees.
+     * The first search path [game]'s `gameinfo.gi` mounts ahead of Hideout's menus with a pack that holds a file of the
+     * menus pack's renderer, or null when none does. Reads only the packs' directory trees.
      */
     suspend fun menusBlockedBy(game: GameRoot): String?
+
+    /**
+     * As [menusBlockedBy], for a file of the in-game UI's. Such a mod turns only that UI off: [menus] then builds the pack
+     * without it, and hosting from the app still works.
+     */
+    suspend fun inGameBlockedBy(game: GameRoot): String?
 
     /** Makes the mode's folder in [game] hold exactly [content], or nothing. An unwanted file a game or server holds stays and is named. */
     suspend fun stage(game: GameRoot, content: ModeContent?): StageResult

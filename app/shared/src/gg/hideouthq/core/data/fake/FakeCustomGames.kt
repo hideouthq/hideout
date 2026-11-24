@@ -272,6 +272,10 @@ class FakeCustomGamesPlatform(
 
     override suspend fun menusBlockedBy(game: GameRoot): String? = aheadOfMenus
 
+    var aheadOfInGame: String? = null
+
+    override suspend fun inGameBlockedBy(game: GameRoot): String? = aheadOfInGame
+
     override suspend fun stage(game: GameRoot, content: ModeContent?): StageResult {
         staged += game to content
         if (content == null) return StageResult.Staged(emptyList())

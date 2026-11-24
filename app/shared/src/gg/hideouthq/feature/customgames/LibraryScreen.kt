@@ -74,6 +74,7 @@ import gg.hideouthq.core.designsystem.component.HideoutIcon
 import gg.hideouthq.core.designsystem.component.HideoutIconButton
 import gg.hideouthq.core.designsystem.component.HideoutMenu
 import gg.hideouthq.core.designsystem.component.HideoutTooltip
+import gg.hideouthq.core.designsystem.component.NoteCard
 import gg.hideouthq.core.designsystem.component.MenuEntry
 import gg.hideouthq.core.designsystem.component.NoticeCard
 import gg.hideouthq.core.designsystem.component.PageHeader
@@ -119,6 +120,7 @@ fun CustomGamesRoute(
     val modes by games.modes.collectAsStateWithLifecycle()
     val live by games.live.collectAsStateWithLifecycle()
     val restarts by games.restartsDeadlock.collectAsStateWithLifecycle()
+    val inGameBlock by games.inGameBlockedBy.collectAsStateWithLifecycle()
     val linkProblem by games.linkProblem.collectAsStateWithLifecycle()
     val today = remember { LocalDate.now() }
     var tab by rememberSaveable { mutableStateOf(ModeTab.Browse) }
@@ -156,6 +158,7 @@ fun CustomGamesRoute(
                     CodeField(games::openInvite)
                 }
                 social?.let { InvitesBlocked(it) { id -> copy(id, Res.string.cg_toast_id_copied) } }
+                inGameBlock?.let { NoteCard(stringResource(Res.string.cg_ingame_blocked_lead), stringResource(Res.string.cg_ingame_blocked_body, it)) }
                 PillTabs(
                     ModeTab.entries, tab, { tab = it },
                     label = tabs::getValue,

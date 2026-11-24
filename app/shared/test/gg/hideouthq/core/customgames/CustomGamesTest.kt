@@ -2328,6 +2328,23 @@ class CustomGamesTest {
     }
 
     @Test
+    fun aModThatTakesOnlyTheInGameUiIsSaidAndTheSessionStillPlays() = game {
+        platform.aheadOfInGame = "citadel/popup"
+        games.refreshModes()
+        settle()
+        assertEquals("citadel/popup", games.inGameBlockedBy.value)
+        found()
+        games.confirmJoin(null)
+        settle()
+        assertIs<Session.Linking>(session)
+
+        platform.aheadOfInGame = null
+        games.refreshModes()
+        settle()
+        assertNull(games.inGameBlockedBy.value)
+    }
+
+    @Test
     fun menusAnotherFolderTakesEveryRunAreSaidInsteadOfARestartForEachSession() = game {
         runningSetUp()
         hostUntilStarting()

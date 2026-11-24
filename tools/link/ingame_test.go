@@ -319,3 +319,31 @@ func TestAShadowStartsFromTheLayoutThatWouldLoadWithoutHideout(t *testing.T) {
 		t.Errorf("built names the layouts it holds copies of as %v, want the overlay and popup: %s", built.Shadows, said[0].Raw)
 	}
 }
+
+func TestTheAppKnowsWhichFilesAreTheInGameUis(t *testing.T) {
+	app, err := os.ReadFile("../../app/desktopApp/src/main/kotlin/gg/hideouthq/customgames/GamesFolder.kt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	layouts := regexp.MustCompile(`InGameLayouts = setOf\(([^)]*)\)`).FindSubmatch(app)
+	if layouts == nil {
+		t.Fatal("GamesFolder.kt names no InGameLayouts")
+	}
+	var want []string
+	for _, s := range shadows {
+		compiled, _ := s2panorama.Compiled(s.layout)
+		want = append(want, strconv.Quote(compiled))
+	}
+	if got := strings.Split(string(layouts[1]), ", "); !slices.Equal(slices.Sorted(slices.Values(got)), slices.Sorted(slices.Values(want))) {
+		t.Errorf("the app's in-game layouts are %v and the pack's shadows are %v", got, want)
+	}
+	folder := regexp.MustCompile(`^panorama/[^/]+/hideout/.+`)
+	if err := fs.WalkDir(ingameSources(), ".", func(name string, entry fs.DirEntry, err error) error {
+		if err == nil && entry.Type().IsRegular() && !folder.MatchString(name) {
+			t.Errorf("%s is outside the folders the app reads as the in-game UI's", name)
+		}
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+}

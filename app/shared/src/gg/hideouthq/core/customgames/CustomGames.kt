@@ -130,6 +130,11 @@ class CustomGames(
     /** Why Host or Join would restart the running Deadlock first, or null when they wouldn't. */
     val restartsDeadlock: StateFlow<RestartReason?> = publishedRestarts.asStateFlow()
 
+    private val publishedInGameBlock = MutableStateFlow<String?>(null)
+
+    /** The search path loaded ahead of Hideout's menus whose mod keeps Hideout games out of Deadlock's own screens. */
+    val inGameBlockedBy: StateFlow<String?> = publishedInGameBlock.asStateFlow()
+
     private val publishedLink = MutableStateFlow<Long?>(null)
 
     /** The serial of the newest link, kept so one that started Hideout still gets the page once first-run setup is out of the way. */
@@ -538,6 +543,7 @@ class CustomGames(
     }
 
     private fun readRestartAhead() = queued {
+        publishedInGameBlock.value = files.game()?.let { game -> logged("read what loads ahead of the in-game UI") { platform.inGameBlockedBy(game) } }
         publishedRestarts.value = if (client != GameActivity.Running) null else logged("read whether Deadlock can take a mode") {
             files.game()?.let { game -> (setupOf(client, files.gamesLines(), platform.menus(game, null, rebuild = false), listedRenderer(), menusFailedThisRun, menusBlockedBy(game)) as? SetupAnswer.NeedsRestart)?.why }
         }

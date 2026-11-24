@@ -712,6 +712,19 @@ class DesktopCustomGamesTest {
     }
 
     @Test
+    fun aModAheadOfTheMenusWithTheirInGameLayoutsGetsAPackWithoutTheInGameUi() {
+        val renderer = rendererHere('c')
+        packIn("popup", "pak01_dir.vpk", "panorama/layout/popups/citadel_popup_custom_match.vxml_c" to "theirs")
+        searchPaths("Game citadel/popup", *hideoutLines, "Game citadel")
+        val games = games(writesPack())
+        assertEquals(MenusStamp(renderer.hex, "https://menus.example/bridge/", MenusScreenPort, null), runBlocking { games.menus(game, renderer, rebuild = true) })
+        assertEquals(listOf(true), record.readLines().joinToString("\n").split("menus\n").drop(1).map { "--renderer-only" in it }, "the renderer alone, never a half-shadowed in-game UI")
+
+        searchPaths(*hideoutLines, "Game citadel/popup", "Game citadel")
+        assertNotNull(runBlocking { games.menus(game, renderer, rebuild = true) }?.inGame, "back once that mod loads behind the menus")
+    }
+
+    @Test
     fun anEndedDevSessionIsClearedByTheHelperAndWhatItFoundIsLogged() {
         fun said(line: String) = "echo '$line'\necho '{\"type\":\"stopped\",\"reason\":\"done\"}'"
         runBlocking { games(said("{\"type\":\"dev-session\",\"live\":false}")).clearEndedDevSession(game) }
@@ -752,7 +765,14 @@ class DesktopCustomGamesTest {
         searchPaths("Game \"citadel\\news_only\"", *hideouts, "Game citadel")
         assertEquals("citadel\\news_only", blockedBy(), "as written, with Windows' separator")
         searchPaths("Game citadel/hud", *hideouts, "Game citadel")
-        assertEquals("citadel/hud", blockedBy(), "a layout the menus hold their own copy of")
+        assertNull(blockedBy(), "a layout only the in-game UI copies leaves the menus working")
+        assertEquals("citadel/hud", runBlocking { games.inGameBlockedBy(game) }, "and turns that UI off")
+        pack("popup", "panorama/layout/popups/citadel_popup_custom_match.vxml_c")
+        searchPaths("Game citadel/popup", "Game citadel/news_only", *hideouts, "Game citadel")
+        assertEquals("citadel/news_only", blockedBy())
+        assertEquals("citadel/popup", runBlocking { games.inGameBlockedBy(game) }, "the Custom Match popup alone")
+        searchPaths("Game citadel/tweaks", *hideouts, "Game citadel/hud", "Game citadel")
+        assertNull(runBlocking { games.inGameBlockedBy(game) }, "a pack read after the menus")
         searchPaths("Game citadel/tweaks", *hideouts, "Game citadel/news_only", "Game citadel")
         assertNull(blockedBy(), "a pack without menus files, and one read after the menus")
         searchPaths("Game citadel/modlock_dev/31bb65da30bd1ed1", "Game citadel")

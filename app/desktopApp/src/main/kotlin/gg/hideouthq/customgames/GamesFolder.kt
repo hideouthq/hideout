@@ -117,12 +117,21 @@ internal class GamesFolder(private val helper: Path, private val workFolder: Pat
         }
     }
 
-    /** What the engine reads of each folder is its loose files and its `pak*_dir.vpk` packs; only the packs' trees are read here. */
+    /**
+     * The first folder ahead of the menus with a file the renderer needs. What the engine reads of each folder is its loose
+     * files and its `pak*_dir.vpk` packs; only the packs' trees are read here.
+     */
     fun menusBlockedBy(game: GameRoot): String? {
-        val own = filesIn(rootOf(game).resolve(MenusFolder).resolve(PackFile)).keys
+        val own = filesIn(rootOf(game).resolve(MenusFolder).resolve(PackFile)).keys.filterNot(::isInGame).toSet()
         if (own.isEmpty()) return null
-        return searchOrderOf(game)?.aheadOfMenus.orEmpty().firstOrNull { path -> packsIn(game, path).any { pack -> filesIn(pack).keys.any(own::contains) } }
+        return aheadWith(game, own::contains)
     }
+
+    /** The first folder ahead of the menus with a file of the in-game UI's, whether or not the pack holds that UI now. */
+    fun inGameBlockedBy(game: GameRoot): String? = aheadWith(game, ::isInGame)
+
+    private fun aheadWith(game: GameRoot, wanted: (String) -> Boolean): String? =
+        searchOrderOf(game)?.aheadOfMenus.orEmpty().firstOrNull { path -> packsIn(game, path).any { pack -> filesIn(pack).keys.any(wanted) } }
 
     private fun searchOrderOf(game: GameRoot): SearchOrderRead.Read? {
         val info = try {
@@ -227,6 +236,12 @@ internal class GamesFolder(private val helper: Path, private val workFolder: Pat
         const val Busy = "another Hideout is using this game's custom games folder"
     }
 }
+
+/** `hideout-link`'s in-game UI: its own folders and its shadows of the game's layouts, which tools/link/ingame_test.go checks. */
+private val InGameLayouts = setOf("panorama/layout/citadel_hud_and_db_overlay.vxml_c", "panorama/layout/popups/citadel_popup_custom_match.vxml_c")
+private val InGameFolder = Regex("panorama/[^/]+/hideout/.+")
+
+private fun isInGame(name: String): Boolean = name in InGameLayouts || InGameFolder.matches(name)
 
 private fun objectOf(line: String): JsonObject? = try {
     Json.parseToJsonElement(line) as? JsonObject

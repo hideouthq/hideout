@@ -70,7 +70,8 @@ sealed interface SetupAnswer {
  * What a mode needs from this computer's Deadlock. A running Deadlock read `gameinfo.gi` and its pack as it started, and
  * Hideout writes neither while it runs, so [lines] and [menus] read now are what it has. With [client] closed the caller
  * has just written the lines, so only the pack can be missing. [menusBlockedBy] is a search path loaded ahead of the
- * menus that holds their files. It refuses the session, where a restart Hideout asked for could load it again.
+ * menus that holds their renderer's files. It refuses the session, where a restart Hideout asked for could load it
+ * again. One holding only the in-game UI's files doesn't, since that UI is all it costs.
  */
 fun setupOf(client: GameActivity, lines: GamesLines, menus: MenusStamp?, renderer: Sha256?, menusFailedThisRun: Boolean, menusBlockedBy: String?): SetupAnswer = when (client) {
     GameActivity.Closed -> when {

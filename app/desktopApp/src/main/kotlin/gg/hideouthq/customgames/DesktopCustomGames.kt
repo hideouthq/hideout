@@ -270,8 +270,10 @@ class DesktopCustomGames internal constructor(
             ?: return@withContext failed(keep = !stale)
         val rendererOnly = MenusStamp(built.hex, pageUrl, MenusScreenPort, revision)
         val want = rendererOnly.copy(inGame = InGameStamp(InGamePort, helperDigest, gamesFolder.sourcesOf(game, have?.inGame?.layouts?.keys.orEmpty())))
-        if (have == want) return@withContext have
-        if (want != unbuildable) {
+        // A mod ahead of the menus with the in-game UI's layouts would leave it half there, so it stays out.
+        val inGame = gamesFolder.inGameBlockedBy(game) == null
+        if (inGame && have == want) return@withContext have
+        if (inGame && want != unbuildable) {
             gamesFolder.buildMenus(game, store.folderOf(built), want)?.let { return@withContext it.stamp }
             unbuildable = want
         }
@@ -290,6 +292,8 @@ class DesktopCustomGames internal constructor(
     override suspend fun clearEndedDevSession(game: GameRoot) = withContext(Dispatchers.IO) { gamesFolder.clearEndedDevSession(game) }
 
     override suspend fun menusBlockedBy(game: GameRoot): String? = withContext(Dispatchers.IO) { gamesFolder.menusBlockedBy(game) }
+
+    override suspend fun inGameBlockedBy(game: GameRoot): String? = withContext(Dispatchers.IO) { gamesFolder.inGameBlockedBy(game) }
 
     override suspend fun stage(game: GameRoot, content: ModeContent?): StageResult = withContext(Dispatchers.IO) {
         gamesFolder.stage(game, content?.folders.orEmpty())
