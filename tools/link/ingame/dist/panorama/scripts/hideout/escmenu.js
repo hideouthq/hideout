@@ -112,6 +112,10 @@
     if (typeof v !== "string") throw new Malformed();
     return v;
   }
+  function bool(v) {
+    if (typeof v !== "boolean") throw new Malformed();
+    return v;
+  }
   function num(v) {
     if (typeof v !== "number" || !isFinite(v)) throw new Malformed();
     return v;
@@ -258,7 +262,15 @@
         case "catalog":
           return { t: "catalog", modes: list(o.modes, mode) };
         case "game":
-          return { t: "game", host: opt(o.host, host), join: opt(o.join, join), session: opt(o.session, session), restartAhead: opt(o.restartAhead, restart) };
+          return {
+            t: "game",
+            host: opt(o.host, host),
+            join: opt(o.join, join),
+            session: opt(o.session, session),
+            restartAhead: opt(o.restartAhead, restart),
+            startsHost: bool(o.startsHost),
+            takesInvite: bool(o.takesInvite)
+          };
         case "inbox":
           return { t: "inbox", invites: list(o.invites, invite) };
         case "servers":

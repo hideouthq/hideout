@@ -48,6 +48,18 @@ export function initialGames(tab: Tab): GamesState {
   return { tab, draft: { mode: null, picks: {}, listing: 'invite-only', invitees: [] }, request: { kind: 'idle' }, serversAnswer: null }
 }
 
+/** Before the first game frame the app's own answer is the gate. */
+function startsHost(snapshot: Snapshot): boolean {
+  return snapshot.game?.startsHost !== false
+}
+
+export function takesInvite(snapshot: Snapshot): boolean {
+  return snapshot.game?.takesInvite !== false
+}
+
+/** Why Play or a Join is off while the session takes neither. */
+export const LEAVE_FIRST = 'Leave your current game first.'
+
 function runningHost(snapshot: Snapshot): HostCard | null {
   const host = snapshot.game?.host ?? null
   return host && host.phase !== 'ended' ? host : null
@@ -93,7 +105,7 @@ export function reduceGames(state: GamesState, event: GamesEvent, snapshot: Snap
     }
     case 'play': {
       const mode = selectedMode(state, snapshot)
-      if (!mode || host || state.request.kind === 'sending') return [state, []]
+      if (!mode || host || state.request.kind === 'sending' || !startsHost(snapshot)) return [state, []]
       const picks: Record<string, string> = {}
       for (const setting of mode.settings) picks[setting.key] = pickOf(setting, draft.picks)
       return sending('play', {
@@ -108,7 +120,7 @@ export function reduceGames(state: GamesState, event: GamesEvent, snapshot: Snap
     case 'act':
       return sending('act', { k: 'act', action: event.action })
     case 'join':
-      return state.request.kind === 'sending' ? [state, []] : sending('join', { k: 'join', server: event.server })
+      return state.request.kind === 'sending' || !takesInvite(snapshot) ? [state, []] : sending('join', { k: 'join', server: event.server })
     case 'settled':
       if (event.result !== 'accepted') return [{ ...state, request: { kind: 'refused', what: event.what, result: event.result } }, []]
       // Play stays Starting until the game topic shows the hosted game, so the button never flashes back.
@@ -153,6 +165,8 @@ export interface ServerLine {
   fill: number
   ping: { text: string; tone: 'good' | 'fair' | 'poor' } | null
   status: string
+  full: boolean
+  /** Not full, and the session takes a join now. */
   joinable: boolean
 }
 
@@ -294,6 +308,7 @@ function playButton(state: GamesState, snapshot: Snapshot, link: LinkStatus, mod
   const join = snapshot.game?.join
   const label = mode ? `Play ${mode.name}` : 'Play'
   if (join) return { kind: 'blocked', label, hint: join.title }
+  if (!startsHost(snapshot)) return { kind: 'blocked', label, hint: LEAVE_FIRST }
   if (state.request.kind === 'sending' && state.request.what === 'play') return { kind: 'busy', label: 'Starting…', hint: '' }
   if (!mode) return { kind: 'blocked', label, hint: '' }
   if (state.request.kind === 'refused' && state.request.what === 'play') return { kind: 'play', label, hint: REFUSALS[state.request.result] }
@@ -337,7 +352,7 @@ const SERVER_NOTES: Record<ServersState, string | null> = {
   unavailable: 'This Hideout can’t list servers.',
 }
 
-function serverLine(row: ServerRow): ServerLine {
+function serverLine(row: ServerRow, joins: boolean): ServerLine {
   const [now, most] = row.players
   return {
     row,
@@ -347,7 +362,8 @@ function serverLine(row: ServerRow): ServerLine {
     fill: most > 0 ? Math.min(1, now / most) : 0,
     ping: row.ping === null ? null : { text: `${row.ping} ms`, tone: row.ping < 60 ? 'good' : row.ping < 100 ? 'fair' : 'poor' },
     status: SERVER_STATUS[row.status],
-    joinable: row.status !== 'full',
+    full: row.status === 'full',
+    joinable: joins && row.status !== 'full',
   }
 }
 
@@ -357,8 +373,9 @@ export function viewServers(snapshot: Snapshot, answer: CommandResult | null = n
     if (answer === 'unavailable') return { state: 'unavailable', lines: [], note: SERVER_NOTES.unavailable }
     return answer && answer !== 'accepted' ? { state: 'unreachable', lines: [], note: REFUSALS[answer] } : { state: 'idle', lines: [], note: null }
   }
-  const lines = servers.rows.map(serverLine)
-  return { state: servers.state, lines, note: lines.length ? null : SERVER_NOTES[servers.state] }
+  const joins = takesInvite(snapshot)
+  const lines = servers.rows.map((row) => serverLine(row, joins))
+  return { state: servers.state, lines, note: lines.length ? (joins ? null : LEAVE_FIRST) : SERVER_NOTES[servers.state] }
 }
 
 export function viewGames(state: GamesState, snapshot: Snapshot, link: LinkStatus, friends: Friends, me: string): GamesView {

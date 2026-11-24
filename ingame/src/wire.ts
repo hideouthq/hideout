@@ -151,7 +151,8 @@ export interface ServerRow {
  */
 export type Hello = { t: 'hello'; protocol: number; epoch: string; social: Social; supportId: SteamId | null }
 export type Catalog = { t: 'catalog'; modes: ModeCard[] }
-export type Game = { t: 'game'; host: HostCard | null; join: JoinCard | null; session: SessionCard | null; restartAhead: Restart | null }
+/** [startsHost] and [takesInvite] are the session's own rules, so Play and every Join are offered only when it takes them. */
+export type Game = { t: 'game'; host: HostCard | null; join: JoinCard | null; session: SessionCard | null; restartAhead: Restart | null; startsHost: boolean; takesInvite: boolean }
 export type Inbox = { t: 'inbox'; invites: InviteCard[] }
 export type Servers = { t: 'servers'; state: ServersState; rows: ServerRow[] }
 export type Frame = Hello | Catalog | Game | Inbox | Servers | { t: 'alive' }
@@ -215,6 +216,10 @@ function obj(v: Json): Record<string, Json> {
 }
 function str(v: Json): string {
   if (typeof v !== 'string') throw new Malformed()
+  return v
+}
+function bool(v: Json): boolean {
+  if (typeof v !== 'boolean') throw new Malformed()
   return v
 }
 function num(v: Json): number {
@@ -374,7 +379,15 @@ export function decodeFrame(text: string): Frame | null {
       case 'catalog':
         return { t: 'catalog', modes: list(o.modes, mode) }
       case 'game':
-        return { t: 'game', host: opt(o.host, host), join: opt(o.join, join), session: opt(o.session, session), restartAhead: opt(o.restartAhead, restart) }
+        return {
+          t: 'game',
+          host: opt(o.host, host),
+          join: opt(o.join, join),
+          session: opt(o.session, session),
+          restartAhead: opt(o.restartAhead, restart),
+          startsHost: bool(o.startsHost),
+          takesInvite: bool(o.takesInvite),
+        }
       case 'inbox':
         return { t: 'inbox', invites: list(o.invites, invite) }
       case 'servers':

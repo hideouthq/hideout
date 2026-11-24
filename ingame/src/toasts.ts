@@ -2,6 +2,7 @@
 // (joined, forgotten in any context, expired) without a message saying so.
 
 import type { Friends } from './friends.ts'
+import { LEAVE_FIRST, takesInvite } from './games.ts'
 import type { InviteCard, Snapshot, SteamId } from './wire.ts'
 
 export type ToastView =
@@ -15,6 +16,9 @@ export type ToastView =
       full: boolean
       left: number
       pointer: boolean
+      /** Join is off while the session takes no join, and this says why. */
+      joinable: boolean
+      blocked: string | null
     }
   | { kind: 'unreached'; key: string; friend: SteamId; name: string; link: string; full: boolean; pointer: boolean }
 
@@ -30,13 +34,14 @@ export function wantedToasts(snapshot: Snapshot, friends: Friends, now: number, 
   const views: ToastView[] = []
   if (screen === 'dashboard') return views
   const pointer = screen === 'escape'
+  const joinable = takesInvite(snapshot)
   for (const invite of snapshot.inbox?.invites ?? []) {
     const name = friends.names[invite.from]
     if (name === undefined || invite.expires <= now || hidden.has(invite.id)) continue
     const start = Math.min(arrived[invite.id] ?? now, now)
     const left = invite.expires > start ? (invite.expires - now) / (invite.expires - start) : 0
     const line = [...invite.picks, `${invite.players[0]} of ${invite.players[1]}`].join(' · ')
-    views.push({ kind: 'invite', key: invite.id, name, invite, line, full: views.length === 0, left: Math.max(0, Math.min(1, left)), pointer })
+    views.push({ kind: 'invite', key: invite.id, name, invite, line, full: views.length === 0, left: Math.max(0, Math.min(1, left)), pointer, joinable, blocked: joinable ? null : LEAVE_FIRST })
   }
   const host = snapshot.game?.host
   if (host?.link) {

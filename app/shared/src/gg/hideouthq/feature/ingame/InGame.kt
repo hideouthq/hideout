@@ -222,7 +222,8 @@ suspend fun inGameFrames(inputs: PresentInputs, epoch: String, social: SocialVie
     val join = serverJoin?.let { joinView(it, inputs.modes) } ?: shown.join
     val hostId = invitedBy?.takeIf { (role as? Role.Guest)?.code == it.code }?.from
     val restartAhead = inputs.restartsDeadlock?.let { Restart(RestartWire.of(it), restartAheadPhrase(it, host = true).load(words)) }
-    val game = Frame.Game(host, join?.let { joinCard(it, hostId.takeIf { serverJoin == null }) }, sessionCard(shown, role, hostId), restartAhead)
+    val session = inputs.live.session
+    val game = Frame.Game(host, join?.let { joinCard(it, hostId.takeIf { serverJoin == null }) }, sessionCard(shown, role, hostId), restartAhead, session.startsHost, session.takesInvite)
     return mapOf(
         Topic.Hello to Frame.Hello(InGameProtocol, epoch, social = socialWire(social.status), supportId = (social.status as? SocialStatus.Blocked)?.self?.value),
         Topic.Catalog to catalog(inputs.modes),

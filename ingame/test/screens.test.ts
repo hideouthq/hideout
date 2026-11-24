@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { test } from 'node:test'
 import { viewEscEntries } from '../src/escmenu.ts'
 import { type Friends, friendsOf } from '../src/friends.ts'
@@ -428,4 +428,31 @@ test('out of a running game, the panel’s big button rejoins it, for host and g
     assert.equal(view.play.label, 'Rejoin Bebop Wars', name)
     assert.deepEqual(effects, [{ kind: 'send', what: 'act', command: { k: 'act', action: 'play' } }])
   }
+})
+
+test('every Play, server Join and toast Join the screens offer is one the session takes', () => {
+  const games = readdirSync(new URL('../fixtures/', import.meta.url)).filter((name) => name.startsWith('game-'))
+  for (const name of games) {
+    const snapshot = snapshotOf('hello-on.json', 'catalog.json', 'servers.json', 'inbox.json', name)
+    const game = snapshot.game!
+    const { view, effects } = run(snapshot, { kind: 'play' }, { kind: 'tab', tab: 'servers' }, { kind: 'join', server: '3c41a9e07d5b2f18' })
+    if (view.play.kind === 'play') assert.equal(game.startsHost, true, `${name}: Play, while the session starts no host`)
+    for (const line of view.servers.lines) if (line.joinable) assert.equal(game.takesInvite, true, `${name}: a server's Join, while the session takes no join`)
+    for (const toast of wantedToasts(snapshot, friends, 0, {}, new Set(), 'escape')) {
+      if (toast.kind === 'invite' && toast.joinable) assert.equal(game.takesInvite, true, `${name}: a toast's Join, while the session takes no join`)
+    }
+    for (const effect of effects) {
+      if (effect.kind === 'send' && effect.command.k === 'host') assert.equal(game.startsHost, true, `${name}: sent a host`)
+      if (effect.kind === 'send' && effect.command.k === 'join') assert.equal(game.takesInvite, true, `${name}: sent a join`)
+    }
+  }
+})
+
+test('a guest in a match and a host whose game runs are told to leave it first', () => {
+  const guest = run(snapshotOf('hello.json', 'catalog.json', 'game-guest.json')).view.play
+  assert.deepEqual(guest, { kind: 'blocked', label: 'Play Arena', hint: 'Leave your current game first.' })
+  const hosting = run(snapshotOf('hello-on.json', 'catalog.json', 'servers.json', 'inbox.json', 'game-ready.json'), { kind: 'tab', tab: 'servers' })
+  assert.equal(hosting.view.servers.note, 'Leave your current game first.')
+  const toast = wantedToasts(snapshotOf('inbox.json', 'game-ready.json'), friends, 0, {}, new Set(), 'escape')[0]
+  assert.equal(toast?.kind === 'invite' && toast.blocked, 'Leave your current game first.')
 })

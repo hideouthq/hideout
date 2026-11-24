@@ -193,7 +193,7 @@ function drawServers(view: ServersView, reachable: boolean): void {
   servers.draw(find('HGServerRows'), JSON.stringify([view, reachable, refusal]), (into) => {
     if ((view.state === 'idle' || view.state === 'loading') && !view.lines.length) spinner(panel(into, 'HGServersLoading'))
     for (const line of view.lines) {
-      const row = panel(into, `HGServer${line.joinable ? '' : ' Full'}`)
+      const row = panel(into, `HGServer${line.full ? ' Full' : ''}`)
       const name = panel(row, 'HGColName HGServerName')
       art(name, 'HGServerThumb', line.row.tile)
       const text = panel(name, 'HGServerText')
@@ -205,7 +205,7 @@ function drawServers(view: ServersView, reachable: boolean): void {
       label(players, 'HGServerCell', `${line.row.players[0]} / ${line.row.players[1]}`)
       label(row, `HGColPing HGServerCell HGPing ${line.ping ? line.ping.tone[0]!.toUpperCase() + line.ping.tone.slice(1) : ''}`, line.ping?.text ?? '–')
       label(row, 'HGColStatus HGServerStatus', line.status)
-      button(row, `SecondaryButton Outline Small ${line.joinable ? 'Gold' : ''} HGServerJoin`, line.joinable ? 'Join' : 'Full', line.joinable ? () => dispatch({ kind: 'join', server: line.row.id }) : null)
+      button(row, `SecondaryButton Outline Small ${line.joinable ? 'Gold' : ''} HGServerJoin`, line.full ? 'Full' : 'Join', line.joinable ? () => dispatch({ kind: 'join', server: line.row.id }) : null)
     }
     const note = find('HGServerNote')
     note.RemoveAndDeleteChildren()

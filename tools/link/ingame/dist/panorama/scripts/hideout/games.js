@@ -109,6 +109,13 @@
   function initialGames(tab) {
     return { tab, draft: { mode: null, picks: {}, listing: "invite-only", invitees: [] }, request: { kind: "idle" }, serversAnswer: null };
   }
+  function startsHost(snapshot) {
+    return snapshot.game?.startsHost !== false;
+  }
+  function takesInvite(snapshot) {
+    return snapshot.game?.takesInvite !== false;
+  }
+  var LEAVE_FIRST = "Leave your current game first.";
   function runningHost(snapshot) {
     const host2 = snapshot.game?.host ?? null;
     return host2 && host2.phase !== "ended" ? host2 : null;
@@ -151,7 +158,7 @@
       }
       case "play": {
         const mode2 = selectedMode(state2, snapshot);
-        if (!mode2 || host2 || state2.request.kind === "sending") return [state2, []];
+        if (!mode2 || host2 || state2.request.kind === "sending" || !startsHost(snapshot)) return [state2, []];
         const picks = {};
         for (const setting of mode2.settings) picks[setting.key] = pickOf(setting, draft.picks);
         return sending("play", {
@@ -166,7 +173,7 @@
       case "act":
         return sending("act", { k: "act", action: event.action });
       case "join":
-        return state2.request.kind === "sending" ? [state2, []] : sending("join", { k: "join", server: event.server });
+        return state2.request.kind === "sending" || !takesInvite(snapshot) ? [state2, []] : sending("join", { k: "join", server: event.server });
       case "settled":
         if (event.result !== "accepted") return [{ ...state2, request: { kind: "refused", what: event.what, result: event.result } }, []];
         if (event.what === "play" && !host2) return [state2, []];
@@ -275,6 +282,7 @@
     const join2 = snapshot.game?.join;
     const label2 = mode2 ? `Play ${mode2.name}` : "Play";
     if (join2) return { kind: "blocked", label: label2, hint: join2.title };
+    if (!startsHost(snapshot)) return { kind: "blocked", label: label2, hint: LEAVE_FIRST };
     if (state2.request.kind === "sending" && state2.request.what === "play") return { kind: "busy", label: "Starting\u2026", hint: "" };
     if (!mode2) return { kind: "blocked", label: label2, hint: "" };
     if (state2.request.kind === "refused" && state2.request.what === "play") return { kind: "play", label: label2, hint: REFUSALS[state2.request.result] };
@@ -331,7 +339,7 @@
     unreachable: "Hideout couldn\u2019t reach the server list. It tries again in a moment.",
     unavailable: "This Hideout can\u2019t list servers."
   };
-  function serverLine(row) {
+  function serverLine(row, joins) {
     const [now, most] = row.players;
     return {
       row,
@@ -341,7 +349,8 @@
       fill: most > 0 ? Math.min(1, now / most) : 0,
       ping: row.ping === null ? null : { text: `${row.ping} ms`, tone: row.ping < 60 ? "good" : row.ping < 100 ? "fair" : "poor" },
       status: SERVER_STATUS[row.status],
-      joinable: row.status !== "full"
+      full: row.status === "full",
+      joinable: joins && row.status !== "full"
     };
   }
   function viewServers(snapshot, answer = null) {
@@ -350,8 +359,9 @@
       if (answer === "unavailable") return { state: "unavailable", lines: [], note: SERVER_NOTES.unavailable };
       return answer && answer !== "accepted" ? { state: "unreachable", lines: [], note: REFUSALS[answer] } : { state: "idle", lines: [], note: null };
     }
-    const lines = servers2.rows.map(serverLine);
-    return { state: servers2.state, lines, note: lines.length ? null : SERVER_NOTES[servers2.state] };
+    const joins = takesInvite(snapshot);
+    const lines = servers2.rows.map((row) => serverLine(row, joins));
+    return { state: servers2.state, lines, note: lines.length ? joins ? null : LEAVE_FIRST : SERVER_NOTES[servers2.state] };
   }
   function viewGames(state2, snapshot, link2, friends2, me2) {
     const modes = snapshot.catalog?.modes ?? [];
@@ -475,6 +485,10 @@
   }
   function str(v) {
     if (typeof v !== "string") throw new Malformed();
+    return v;
+  }
+  function bool(v) {
+    if (typeof v !== "boolean") throw new Malformed();
     return v;
   }
   function num(v) {
@@ -623,7 +637,15 @@
         case "catalog":
           return { t: "catalog", modes: list(o.modes, mode) };
         case "game":
-          return { t: "game", host: opt(o.host, host), join: opt(o.join, join), session: opt(o.session, session), restartAhead: opt(o.restartAhead, restart) };
+          return {
+            t: "game",
+            host: opt(o.host, host),
+            join: opt(o.join, join),
+            session: opt(o.session, session),
+            restartAhead: opt(o.restartAhead, restart),
+            startsHost: bool(o.startsHost),
+            takesInvite: bool(o.takesInvite)
+          };
         case "inbox":
           return { t: "inbox", invites: list(o.invites, invite) };
         case "servers":
@@ -1029,7 +1051,7 @@
     servers.draw(find("HGServerRows"), JSON.stringify([view, reachable, refusal]), (into) => {
       if ((view.state === "idle" || view.state === "loading") && !view.lines.length) spinner(panel(into, "HGServersLoading"));
       for (const line of view.lines) {
-        const row = panel(into, `HGServer${line.joinable ? "" : " Full"}`);
+        const row = panel(into, `HGServer${line.full ? " Full" : ""}`);
         const name = panel(row, "HGColName HGServerName");
         art(name, "HGServerThumb", line.row.tile);
         const text3 = panel(name, "HGServerText");
@@ -1041,7 +1063,7 @@
         label(players, "HGServerCell", `${line.row.players[0]} / ${line.row.players[1]}`);
         label(row, `HGColPing HGServerCell HGPing ${line.ping ? line.ping.tone[0].toUpperCase() + line.ping.tone.slice(1) : ""}`, line.ping?.text ?? "\u2013");
         label(row, "HGColStatus HGServerStatus", line.status);
-        button(row, `SecondaryButton Outline Small ${line.joinable ? "Gold" : ""} HGServerJoin`, line.joinable ? "Join" : "Full", line.joinable ? () => dispatch({ kind: "join", server: line.row.id }) : null);
+        button(row, `SecondaryButton Outline Small ${line.joinable ? "Gold" : ""} HGServerJoin`, line.full ? "Full" : "Join", line.joinable ? () => dispatch({ kind: "join", server: line.row.id }) : null);
       }
       const note = find("HGServerNote");
       note.RemoveAndDeleteChildren();

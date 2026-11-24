@@ -39,9 +39,10 @@ sealed interface Frame {
     @SerialName("catalog")
     data class Catalog(val modes: List<ModeCard>) : Frame
 
+    /** [startsHost] and [takesInvite] are the session's own rules for a Host and a Join press, so a screen never offers one it would refuse. */
     @Serializable
     @SerialName("game")
-    data class Game(val host: HostCard?, val join: JoinCard?, val session: SessionCard?, val restartAhead: Restart?) : Frame
+    data class Game(val host: HostCard?, val join: JoinCard?, val session: SessionCard?, val restartAhead: Restart?, val startsHost: Boolean, val takesInvite: Boolean) : Frame
 
     @Serializable
     @SerialName("inbox")

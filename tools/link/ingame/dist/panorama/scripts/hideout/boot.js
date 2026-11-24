@@ -244,6 +244,10 @@
     if (typeof v !== "string") throw new Malformed();
     return v;
   }
+  function bool(v) {
+    if (typeof v !== "boolean") throw new Malformed();
+    return v;
+  }
   function num(v) {
     if (typeof v !== "number" || !isFinite(v)) throw new Malformed();
     return v;
@@ -390,7 +394,15 @@
         case "catalog":
           return { t: "catalog", modes: list(o.modes, mode) };
         case "game":
-          return { t: "game", host: opt(o.host, host), join: opt(o.join, join), session: opt(o.session, session), restartAhead: opt(o.restartAhead, restart) };
+          return {
+            t: "game",
+            host: opt(o.host, host),
+            join: opt(o.join, join),
+            session: opt(o.session, session),
+            restartAhead: opt(o.restartAhead, restart),
+            startsHost: bool(o.startsHost),
+            takesInvite: bool(o.takesInvite)
+          };
         case "inbox":
           return { t: "inbox", invites: list(o.invites, invite) };
         case "servers":
@@ -570,18 +582,36 @@
     return { kind: "acts", acts: out };
   }
 
+  // src/games.ts
+  function takesInvite(snapshot) {
+    return snapshot.game?.takesInvite !== false;
+  }
+  var LEAVE_FIRST = "Leave your current game first.";
+  var REFUSALS = {
+    accepted: "",
+    busy: "Finish the game that\u2019s running first.",
+    gone: "That\u2019s no longer there. Pick another.",
+    invalid: "Hideout couldn\u2019t read that. Try again.",
+    unavailable: "This Hideout can\u2019t do that yet.",
+    outdated: "Restart Deadlock to update Hideout games.",
+    stale: "Hideout reconnected. Press again.",
+    unreachable: "Hideout didn\u2019t answer. Is it still open?"
+  };
+  var OUTDATED = { title: "Restart Deadlock", body: REFUSALS.outdated };
+
   // src/toasts.ts
   function wantedToasts(snapshot, friends, now, arrived, hidden, screen) {
     const views = [];
     if (screen === "dashboard") return views;
     const pointer = screen === "escape";
+    const joinable = takesInvite(snapshot);
     for (const invite2 of snapshot.inbox?.invites ?? []) {
       const name = friends.names[invite2.from];
       if (name === void 0 || invite2.expires <= now || hidden.has(invite2.id)) continue;
       const start = Math.min(arrived[invite2.id] ?? now, now);
       const left = invite2.expires > start ? (invite2.expires - now) / (invite2.expires - start) : 0;
       const line = [...invite2.picks, `${invite2.players[0]} of ${invite2.players[1]}`].join(" \xB7 ");
-      views.push({ kind: "invite", key: invite2.id, name, invite: invite2, line, full: views.length === 0, left: Math.max(0, Math.min(1, left)), pointer });
+      views.push({ kind: "invite", key: invite2.id, name, invite: invite2, line, full: views.length === 0, left: Math.max(0, Math.min(1, left)), pointer, joinable, blocked: joinable ? null : LEAVE_FIRST });
     }
     const host2 = snapshot.game?.host;
     if (host2?.link) {
@@ -772,13 +802,13 @@
           draw();
         });
       } else {
-        const join2 = () => {
+        const join2 = view.joinable ? () => {
           hidden.add(view.key);
           link.send({ k: "join", invite: view.invite.id }, (result) => {
             if (result !== "accepted") hidden.delete(view.key);
           });
           draw();
-        };
+        } : null;
         if (view.full) {
           const text2 = panel(row, "HOToastText");
           const cap = panel(text2, "CapRow");
@@ -786,13 +816,14 @@
           label(cap, "Cap", "Hideout invite");
           line(text2, [[view.name, true], ["invited you to", false]]);
           label(text2, "Title HOToastMode", view.invite.mode);
-          label(text2, "HOToastLine", view.line);
+          label(text2, "HOToastLine", view.blocked ?? view.line);
           if (view.pointer) button(row, "Cream HOToastJoin", "Join", join2);
         } else {
           line(row, [[view.name, true], ["invited you to", false], [view.invite.mode, true]]);
+          if (view.blocked) label(row, "HOToastLine", view.blocked);
           if (view.pointer) button(row, "SecondaryButton Outline Small Gold", "Join", join2);
         }
-        if (!view.pointer) escHint(row, "to join");
+        if (!view.pointer && view.joinable) escHint(row, "to join");
       }
       if (view.pointer) {
         const x = panel(row, "HOToastClose", "Button");

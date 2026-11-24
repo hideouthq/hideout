@@ -35,6 +35,7 @@ class SessionWalkTest {
 
     private val t1 = DeadlineToken(1)
     private val code = InviteCode.parse("P95-MAN-26D")!!
+    private val unseen = InviteCode.parse("Q22-RST-33E")!!
     private val offer = InviteOffer.of(FakeCustomGamesFeed.SampleMode, Choices.None, FakeCustomGamesPlatform.SamplePlayer)
     private val content = ModeContent(listOf("c"))
     private val prepared = PreparedHost("m", "s", emptyList(), content, InviteOffer.of(FakeCustomGamesFeed.SampleFolder, Choices.None, FakeCustomGamesPlatform.SamplePlayer), FakeCustomGamesPlatform.SamplePlayer)
@@ -251,6 +252,9 @@ class SessionWalkTest {
             val event = eventOf(action, w)
             if (event == null || reduce(w.session, event, w.client, t1) == Step(w.session)) report("a card offers $action, which ${w.session::class.simpleName} ignores", w)
         }
+        // The game frame sends these two as they are, and the in-game screens enable Play and every Join on them.
+        if (w.session.startsHost && reduce(w.session, HostRequested(FakeCustomGamesFeed.SampleFolder, Choices.None), w.client, t1) == Step(w.session)) report("the screens offer Play, which ${w.session::class.simpleName} ignores", w)
+        if (w.session.takesInvite && reduce(w.session, InviteOpened(unseen), w.client, t1) == Step(w.session)) report("the screens offer Join, which ${w.session::class.simpleName} ignores", w)
     }
 
     @Test

@@ -84,13 +84,15 @@ function boot(): void {
         draw()
       })
     } else {
-      const join = () => {
-        hidden.add(view.key)
-        link.send({ k: 'join', invite: view.invite.id }, (result) => {
-          if (result !== 'accepted') hidden.delete(view.key)
-        })
-        draw()
-      }
+      const join = view.joinable
+        ? () => {
+            hidden.add(view.key)
+            link.send({ k: 'join', invite: view.invite.id }, (result) => {
+              if (result !== 'accepted') hidden.delete(view.key)
+            })
+            draw()
+          }
+        : null
       if (view.full) {
         const text = panel(row, 'HOToastText')
         const cap = panel(text, 'CapRow')
@@ -98,13 +100,14 @@ function boot(): void {
         label(cap, 'Cap', 'Hideout invite')
         line(text, [[view.name, true], ['invited you to', false]])
         label(text, 'Title HOToastMode', view.invite.mode)
-        label(text, 'HOToastLine', view.line)
+        label(text, 'HOToastLine', view.blocked ?? view.line)
         if (view.pointer) button(row, 'Cream HOToastJoin', 'Join', join)
       } else {
         line(row, [[view.name, true], ['invited you to', false], [view.invite.mode, true]])
+        if (view.blocked) label(row, 'HOToastLine', view.blocked)
         if (view.pointer) button(row, 'SecondaryButton Outline Small Gold', 'Join', join)
       }
-      if (!view.pointer) escHint(row, 'to join')
+      if (!view.pointer && view.joinable) escHint(row, 'to join')
     }
     if (view.pointer) {
       const x = panel(row, 'HOToastClose', 'Button')
