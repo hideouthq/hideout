@@ -23,7 +23,7 @@ func writeStockGame(t testing.TB, layouts fstest.MapFS) string {
 	if err := os.MkdirAll(citadel, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	compiled, err := s2panorama.CompileTree("stock", layouts)
+	compiled, err := s2panorama.CompileTree("stock", layouts, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

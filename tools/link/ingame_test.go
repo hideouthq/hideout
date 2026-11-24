@@ -16,6 +16,7 @@ import (
 	"testing"
 	"testing/fstest"
 
+	"github.com/paralin/modlock/source2/kv3"
 	s2panorama "github.com/paralin/modlock/source2/panorama"
 	"github.com/paralin/modlock/source2/resource"
 	"github.com/paralin/modlock/source2/vpk"
@@ -50,7 +51,16 @@ func stockTexture(t testing.TB, width, height uint16) *fstest.MapFile {
 	binary.LittleEndian.PutUint16(header, 1)
 	binary.LittleEndian.PutUint16(header[20:], width)
 	binary.LittleEndian.PutUint16(header[22:], height)
-	data, err := resource.Write(1, []resource.Block{{Tag: "DATA", Data: header}})
+	// The game's textures name the source they were built from, which the sheet records.
+	red2, err := kv3.Encode(kv3.Object{{Key: "m_InputDependencies", Value: []any{kv3.Object{
+		{Key: "m_RelativeFilename", Value: "panorama/images/textures/grain.psd"},
+		{Key: "m_nFileCRC", Value: uint32(1)},
+		{Key: "m_bFileExists", Value: true},
+	}}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := resource.Write(1, []resource.Block{{Tag: "RED2", Data: red2}, {Tag: "DATA", Data: header}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -283,7 +293,7 @@ func TestAShadowStartsFromTheLayoutThatWouldLoadWithoutHideout(t *testing.T) {
 	stock := stockLayouts(t)
 	modded := func(panel string) string {
 		layout := bytes.Replace(stock[overlaySource].Data, []byte("<CitadelTooltipManager"), []byte(`<Panel id="`+panel+`" />`+"\n\t\t<CitadelTooltipManager"), 1)
-		compiled, err := s2panorama.CompileTree("mod", fstest.MapFS{overlaySource: {Data: layout}})
+		compiled, err := s2panorama.CompileTree("mod", fstest.MapFS{overlaySource: {Data: layout}}, nil)
 		if err != nil {
 			t.Fatal(err)
 		}

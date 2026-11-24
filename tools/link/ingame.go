@@ -5,7 +5,6 @@ import (
 	"embed"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/fs"
 	"strings"
@@ -102,7 +101,7 @@ func ingameFiles(stock *vpk.Archive, layers []*vpk.Archive, sources fs.FS, cfg I
 	if err != nil {
 		return nil, err
 	}
-	return s2panorama.CompileTree("hideout", withStockTextures{tree, stock})
+	return s2panorama.CompileTree("hideout", tree, stock.ReadFile)
 }
 
 // withNewsScripts adds newsScripts after the renderer's own script in its news layout.
@@ -123,7 +122,7 @@ func withNewsScripts(renderer fstest.MapFS) error {
 	for _, src := range newsScripts {
 		includes.WriteString("\t\t<include src=\"" + src + "\" />\n")
 	}
-	data, err := s2panorama.Compile("hideout", newsLayout, []byte(strings.Replace(layout, "</scripts>", includes.String()+"\t</scripts>", 1)))
+	data, err := s2panorama.Compile("hideout", newsLayout, []byte(strings.Replace(layout, "</scripts>", includes.String()+"\t</scripts>", 1)), nil)
 	if err != nil {
 		return err
 	}
@@ -151,29 +150,6 @@ func withScripts(layout string, srcs ...string) (string, error) {
 	}
 	block.WriteString("\t</scripts>")
 	return strings.Replace(layout, scriptsAnchor, block.String(), 1), nil
-}
-
-// withStockTextures lets a sheet's url() of a stock texture read the player's copy, so the
-// sheet records its real size where it would otherwise record 0x0 and draw nothing. Only
-// the sources are listed, so CompileTree never puts a stock file in the pack.
-type withStockTextures struct {
-	sources fstest.MapFS
-	stock   *vpk.Archive
-}
-
-func (t withStockTextures) Open(name string) (fs.File, error) {
-	file, err := t.sources.Open(name)
-	if !errors.Is(err, fs.ErrNotExist) || !strings.HasSuffix(name, ".vtex_c") {
-		return file, err
-	}
-	if _, ok := t.stock.Size(name); !ok {
-		return nil, err
-	}
-	data, err := t.stock.ReadFile(name)
-	if err != nil {
-		return nil, err
-	}
-	return fstest.MapFS{name: {Data: data}}.Open(name)
 }
 
 func newPackToken() string {
