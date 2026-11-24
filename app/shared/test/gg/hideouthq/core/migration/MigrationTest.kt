@@ -296,6 +296,27 @@ class MigrationTest {
     }
 
     @Test
+    fun grimoiresLeftoverFoldersWithoutItsRecordsOfferNothingAndClaimNoOtherManagersFiles() = runTest {
+        val managers = object : ManagerData by FakeManagerData(ForeignSeed.None) {
+            override suspend fun dmmState(): ByteArray = resourceBytes("dmm/state-v42.json")
+        }
+        val world = World(seed = ForeignSeed.None, managers = managers)
+        world.files.putBytes(root, "$citadel/addons/pak01_dir.vpk", FakeVpk.directory(seed = 170))
+        world.files.putBytes(root, "$citadel/addons/pak02_dir.vpk", FakeVpk.directory(seed = 171))
+        world.files.putBytes(root, "$citadel/addons/745080_ability_recast_timer.vpk", FakeVpk.directory(seed = 172))
+        world.files.putBytes(root, "$citadel/addons/.dmm.json", resourceBytes("dmm/addons-manifest-dmm230-windows.json"))
+        world.files.putBytes(root, "$citadel/grimoire/readme.txt", byteArrayOf())
+        world.files.putBytes(root, "$citadel/addons/.disabled/readme.txt", byteArrayOf())
+        val grimoire = ImportSource.Installed(Manager.Grimoire)
+        val migration = with(world) { start() }
+
+        assertEquals(listOf(Manager.DeadlockModManager), migration.state.value.sources.filter { it.found }.map { it.manager }, "only the manager whose records are here is found")
+        migration.look(grimoire)
+        settle()
+        assertEquals(Preview.Failed(ImportProblem.SourceUnreadable("Grimoire keeps nothing on this computer")), migration.state.value.previews[grimoire], "Deadlock Mod Manager's files are not Grimoire's")
+    }
+
+    @Test
     fun theModsTheManagerListsWithoutFilesAreCountedAndLeftOut() = runTest {
         val world = World()
         world.files.remove(root, "$citadel/addons/700003_Ranked HUD.vpk")

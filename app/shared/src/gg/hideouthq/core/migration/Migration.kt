@@ -218,7 +218,7 @@ class Migration(
         )
         val found = mapOf(
             Manager.DeadlockModManager to (managers.dmmState() != null || inGame.getValue(Manager.DeadlockModManager)),
-            Manager.Grimoire to (managers.grimoire(null) != null || inGame.getValue(Manager.Grimoire)),
+            Manager.Grimoire to (managers.grimoire(null) != null),
         )
         val sources = Manager.entries.map { FoundSource(it, found.getValue(it), inGame.getValue(it)) }.sortedWith(compareBy({ !it.inGame }, { !it.found }))
         mutableState.update { state -> state.copy(sources = sources) }
@@ -410,8 +410,8 @@ class Migration(
             }
             Manager.Grimoire -> {
                 val files = managers.grimoire(source.dataFolder)
-                if (files == null && source.dataFolder != null) Read.Refused(ImportProblem.SourceUnreadable("${source.dataFolder} holds none of Grimoire's files"))
-                else Read.Found(GrimoireReader.read(files?.metadata, files?.profiles, survey.autoexec), emptyMap())
+                if (files == null) Read.Refused(ImportProblem.SourceUnreadable(source.dataFolder?.let { "$it holds none of Grimoire's files" } ?: "Grimoire keeps nothing on this computer"))
+                else Read.Found(GrimoireReader.read(files.metadata, files.profiles, survey.autoexec), emptyMap())
             }
         }
         is ImportSource.Bundle -> when (val opened = managers.bundle(source.folder)) {

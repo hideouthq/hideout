@@ -1,0 +1,47 @@
+{
+  "version": 3,
+  "mods": {
+    "687789": {
+      "enabled": true,
+      "compatibilityEnabled": false,
+      "compatibilityOptedOut": false,
+      "order": null,
+      "shard": 1,
+      "currentVpks": [
+        "pak02_dir.vpk"
+      ],
+      "disabledVpks": [],
+      "originalVpkNames": [
+        "pak04_dir.vpk"
+      ]
+    },
+    "722853": {
+      "enabled": true,
+      "compatibilityEnabled": false,
+      "compatibilityOptedOut": false,
+      "order": null,
+      "shard": 1,
+      "currentVpks": [
+        "pak01_dir.vpk"
+      ],
+      "disabledVpks": [],
+      "originalVpkNames": [
+        "pak02_dir.vpk"
+      ]
+    },
+    "745080": {
+      "enabled": false,
+      "compatibilityEnabled": false,
+      "compatibilityOptedOut": false,
+      "order": null,
+      "shard": 1,
+      "currentVpks": [],
+      "disabledVpks": [
+        "745080_ability_recast_timer.vpk"
+      ],
+      "originalVpkNames": [
+        "ability_recast_timer.vpk"
+      ]
+    }
+  }
+}
