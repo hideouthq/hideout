@@ -16,6 +16,7 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
@@ -273,7 +274,8 @@ class CustomGames(
     /** Whether Hideout is having the firewall ask about the game server now, while the player looks at Hideout. */
     val firewallAsking: StateFlow<Boolean> = publishedFirewallAsking.asStateFlow()
 
-    private val firewallTurn = Mutex()
+    /** Held while [client] changes and while [firewallJob] starts, so no ask starts once Deadlock has. */
+    private val firewallLock = Any()
 
     @Volatile
     private var firewallJob: Job? = null
@@ -283,14 +285,19 @@ class CustomGames(
      * the in-game UI, which hosts from inside the game, whenever Deadlock is closed and no session runs. Deadlock starting ends it.
      */
     private fun askFirewallWhileClosed() {
-        if (firewallJob?.isActive == true) return
-        firewallJob = scope.launch { if (inGameWanted() && noSession()) askFirewall() }
+        startAsk(scope) { if (inGameWanted() && noSession()) askFirewall() }
     }
 
-    private suspend fun askFirewall() = firewallTurn.withLock {
-        if (client != GameActivity.Closed || logged("read the firewall's rules") { platform.firewallDecision() } != FirewallDecision.Unknown) return@withLock
-        val game = files.game() ?: return@withLock
-        val listed = listedFeed() ?: return@withLock
+    /** The one ask there is, started in [within] only while Deadlock is closed. [advance] cancels it as Deadlock starts. */
+    private fun startAsk(within: CoroutineScope, ask: suspend () -> Unit): Job? = synchronized(firewallLock) {
+        if (client != GameActivity.Closed) return null
+        firewallJob?.takeIf { it.isActive } ?: within.launch { ask() }.also { firewallJob = it }
+    }
+
+    private suspend fun askFirewall() {
+        if (logged("read the firewall's rules") { platform.firewallDecision() } != FirewallDecision.Unknown) return
+        val game = files.game() ?: return
+        val listed = listedFeed() ?: return
         publishedFirewallAsking.value = true
         try {
             logged("have the firewall ask about the game server") { platform.askFirewall(game, listed) }
@@ -559,12 +566,13 @@ class CustomGames(
     private suspend fun advance(event: SessionEvent) {
         if (event is LinkEvent.Stopped) link = null
         if (event is ClientActivity) {
-            client = event.activity
+            synchronized(firewallLock) {
+                client = event.activity
+                if (event.activity != GameActivity.Closed) firewallJob?.cancel()
+            }
             if (event.activity == GameActivity.Closed) {
                 menusFailedThisRun = false
                 askFirewallWhileClosed()
-            } else {
-                firewallJob?.cancel()
             }
         }
         if (event == LinkEvent.Entered || event == ClientActivity(GameActivity.Closed)) booting?.cancel()
@@ -755,7 +763,7 @@ class CustomGames(
             platform.prepareHost(mode, choices, newest, progress).also {
                 if (it is RuntimePrepared) {
                     me = it.host.me
-                    askFirewall()
+                    coroutineScope { startAsk(this) { askFirewall() }?.join() }
                 }
             }
         }

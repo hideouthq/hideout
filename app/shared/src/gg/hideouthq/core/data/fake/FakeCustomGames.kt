@@ -67,10 +67,12 @@ import gg.hideouthq.core.library.GamesLines
 import gg.hideouthq.core.library.LibraryProblem
 import gg.hideouthq.core.library.SessionAdmission
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import kotlin.time.Duration
 import kotlin.time.Instant
@@ -259,14 +261,28 @@ class FakeCustomGamesPlatform(
 
     /** The game each [askFirewall] ran on. One the gate holds is still asking. */
     val firewallAsks = mutableListOf<GameRoot>()
+    val firewallFeeds = mutableListOf<CustomGamesFeed>()
     var firewallGate: CompletableDeferred<Unit>? = null
+
+    /** What an ask does as it ends, finished or cancelled, before [firewallEnds] counts it. */
+    var firewallCleanup: suspend () -> Unit = {}
+    var firewallEnds = 0
+        private set
 
     override suspend fun firewallDecision(): FirewallDecision = firewall
 
     override suspend fun askFirewall(game: GameRoot, feed: CustomGamesFeed) {
         firewallAsks += game
-        firewallGate?.await()
-        firewall = FirewallDecision.Decided
+        firewallFeeds += feed
+        try {
+            firewallGate?.await()
+            firewall = FirewallDecision.Decided
+        } finally {
+            withContext(NonCancellable) {
+                firewallCleanup()
+                firewallEnds++
+            }
+        }
     }
 
     /** Whether each rebuild in [menusRebuilds] asked for the in-game UI. */

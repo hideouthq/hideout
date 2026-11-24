@@ -2450,6 +2450,43 @@ class CustomGamesTest {
     }
 
     @Test
+    fun deadlockStartingWhileAHostAsksEndsTheAskAndTheHostGoesOn() = scenario {
+        platform.firewall = FirewallDecision.Unknown
+        platform.firewallGate = CompletableDeferred()
+        started(FakeCustomGamesFeed()).apply {
+            games.host(Source, Choices.None, null)
+            settle()
+            assertTrue(games.firewallAsking.value)
+
+            files.clientActivity.value = GameActivity.Running
+            settle()
+            assertEquals(1, platform.firewallEnds, "Windows' question would land over the game")
+            assertFalse(games.firewallAsking.value)
+            assertFalse(session is Session.HostPreparing, "the host goes on without asking")
+        }
+    }
+
+    @Test
+    fun deadlockStartingWhileAHostPreparesKeepsTheAskFromStarting() = scenario {
+        platform.firewall = FirewallDecision.Unknown
+        val download = CompletableDeferred<Unit>()
+        platform.prepare = { _, offer, _, _ ->
+            download.await()
+            SessionEvent.RuntimePrepared(Prepared.copy(offer = offer), Port)
+        }
+        started(FakeCustomGamesFeed()).apply {
+            games.host(Source, Choices.None, null)
+            settle()
+            files.clientActivity.value = GameActivity.Running
+            settle()
+            download.complete(Unit)
+            settle()
+            assertEquals(emptyList(), platform.firewallAsks)
+            assertFalse(session is Session.HostPreparing)
+        }
+    }
+
+    @Test
     fun unansweredAHostedGameGetsAPackWithoutTheInGameUi() = game {
         hostUntilHosting()
         assertEquals(listOf(false), platform.inGameRebuilds, "the renderer alone")
