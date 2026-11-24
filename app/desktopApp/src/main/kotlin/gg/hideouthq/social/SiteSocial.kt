@@ -27,6 +27,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.awaitCancellation
@@ -145,7 +146,7 @@ internal class SiteRoutes(private val client: OkHttpClient, private val signer: 
             }
         }
         try {
-            runInterruptible(Dispatchers.IO) {
+            runInterruptible(Exchanges) {
                 fun send() = client.newCall(signed(method, path, body)).also(running::set).apply { deadline?.let { timeout().deadlineNanoTime(it) } }.execute()
                 try {
                     var skewed = false
@@ -170,6 +171,14 @@ internal class SiteRoutes(private val client: OkHttpClient, private val signer: 
     private companion object {
         const val NotFound = 404
         val JsonType = "application/json".toMediaType()
+
+        /**
+         * Dispatchers.IO itself would run the exchange on a caller already there without dispatching, so a caller
+         * started undispatched, as collectLatest starts each value's block, would hold its thread and never see the
+         * value that cancels it.
+         */
+        @OptIn(ExperimentalCoroutinesApi::class)
+        val Exchanges = Dispatchers.IO.limitedParallelism(64)
     }
 }
 
