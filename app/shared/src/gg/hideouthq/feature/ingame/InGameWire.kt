@@ -32,9 +32,10 @@ sealed interface Frame {
     @SerialName("hello")
     data class Hello(val protocol: Int, val social: SocialWire, val supportId: String?) : Frame
 
+    /** [soon] are the feed's upcoming modes the library doesn't list, each with no [ModeCard.bytes] or settings. */
     @Serializable
     @SerialName("catalog")
-    data class Catalog(val modes: List<ModeCard>) : Frame
+    data class Catalog(val modes: List<ModeCard>, val soon: List<ModeCard>) : Frame
 
     @Serializable
     @SerialName("game")
@@ -64,7 +65,10 @@ data class ModeCard(
     val kind: String?,
     val players: List<Int>,
     val minutes: List<Int>?,
+    /** The listing's goal as written, each `{key}` left for the panel to fill with the picked option's label. */
+    val goal: String?,
     val by: List<String>,
+    /** The mode's own packages, installed or not. Null for a folder. */
     val bytes: Long?,
     val art: ModeArtCard,
     val settings: List<SettingCard>,

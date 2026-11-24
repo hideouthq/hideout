@@ -27,6 +27,9 @@ import gg.hideouthq.core.customgames.SettingValue
 import gg.hideouthq.core.customgames.SiteOrigin
 import gg.hideouthq.core.customgames.SteamId
 import gg.hideouthq.core.customgames.Transfer
+import gg.hideouthq.core.customgames.InstalledMode
+import gg.hideouthq.core.customgames.UpcomingMode
+import gg.hideouthq.core.customgames.parseUpcomingListing
 import gg.hideouthq.core.customgames.social.InvitationId
 import gg.hideouthq.core.customgames.social.ListingId
 import gg.hideouthq.core.data.fake.FakeCustomGamesFeed
@@ -48,6 +51,9 @@ import gg.hideouthq.feature.customgames.PresentInputs
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.nio.file.Files
@@ -76,7 +82,12 @@ class InGameWireTest {
     private val kestrel = checkNotNull(SteamId.parse("76561198000000007"))
     private val bebop = FakeCustomGamesFeed.BebopWars
     private val threes = checkNotNull(Choices.defaultsOf(bebop.listing).with(bebop.listing.settings.single(), checkNotNull(SettingValue.parse("3v3"))))
-    private val modes = ModeList(feed = FakeCustomGamesFeed.SampleModes.copy(modes = listOf(FakeCustomGamesFeed.SampleMode, bebop)))
+    private val listings: Path = Path.of(System.getProperty("user.dir")).resolve("../../core/testResources/customgames/listings").normalize()
+
+    private fun upcoming(id: String) =
+        UpcomingMode(ModeId(id), checkNotNull(parseUpcomingListing(Json.parseToJsonElement(Files.readString(listings.resolve("upcoming/$id.json"))).jsonObject) { "https://feed.example/$it" }))
+
+    private val modes = ModeList(feed = FakeCustomGamesFeed.SampleModes.copy(modes = listOf(FakeCustomGamesFeed.SampleMode, bebop), upcoming = listOf(upcoming("hero-roulette"), upcoming("dodgeball"))))
     private val hostRecord = GameRecord(Role.Host(bebop, threes, Outreach(Listing.Public, setOf(kestrel))), me)
     private val site = SiteOrigin.parse("https://hideouthq.gg")
 
@@ -155,6 +166,34 @@ class InGameWireTest {
         for ((read, name) in listOf(ServersRead.Idle to "idle", ServersRead.Loading to "loading", ServersRead.Unreachable to "unreachable")) {
             golden("servers-$name.json", frames(LiveSession(), on.copy(state = SocialState(servers = Servers(read)))).getValue(Topic.Servers))
         }
+    }
+
+    private suspend fun catalog(modes: ModeList): JsonObject =
+        Json.parseToJsonElement(inGameFrames(PresentInputs(LiveSession(), modes = modes)).getValue(Topic.Catalog)).jsonObject
+
+    private fun JsonObject.ids(key: String) = getValue(key).jsonArray.map { it.jsonObject.getValue("id").jsonPrimitive.content }
+
+    @Test
+    fun soonListsTheFeedsUpcomingModesTheLibraryDoesNotWithNoSizeOrSettings() = runTest {
+        val shipped = upcoming("dodgeball").copy(id = bebop.id)
+        val installedOnly = FakeCustomGamesFeed.SampleMode.copy(id = ModeId("kept"))
+        val feed = modes.feed!!.copy(upcoming = listOf(upcoming("hero-roulette"), shipped, upcoming("dodgeball").copy(id = installedOnly.id)))
+        val frame = catalog(modes.copy(feed = feed, installed = mapOf(installedOnly.id to InstalledMode(installedOnly, 5, null))))
+        assertEquals(listOf("arena", "bebop-wars", "kept"), frame.ids("modes"))
+        assertEquals(listOf("hero-roulette"), frame.ids("soon"), "one the library lists, from the feed or installed, isn't soon")
+        val soon = frame.getValue("soon").jsonArray.single().jsonObject
+        assertEquals(JsonNull, soon["bytes"])
+        assertEquals(JsonArray(emptyList()), soon["settings"])
+        assertEquals("First to 20 kills", soon["goal"]?.jsonPrimitive?.content)
+    }
+
+    @Test
+    fun aModeCardCarriesItsSizeOnceInstalledAndItsGoalUnfilled() = runTest {
+        val installed = modes.copy(installed = mapOf(bebop.id to InstalledMode(bebop, 12_048_000, null)))
+        val card = catalog(installed).getValue("modes").jsonArray.first { it.jsonObject["id"]?.jsonPrimitive?.content == bebop.id.value }.jsonObject
+        assertEquals(12_048_000L, card["bytes"]?.jsonPrimitive?.content?.toLong(), "rules and client, whatever is on disk")
+        assertEquals("First to 25 kills", card["goal"]?.jsonPrimitive?.content)
+        assertEquals(listOf(8, 10), card["minutes"]?.jsonArray?.map { it.jsonPrimitive.content.toInt() })
     }
 
     @Test

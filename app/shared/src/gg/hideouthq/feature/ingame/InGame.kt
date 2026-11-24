@@ -5,16 +5,18 @@ import gg.hideouthq.core.customgames.CustomGames
 import gg.hideouthq.core.customgames.DisplayName
 import gg.hideouthq.core.customgames.LibraryEntry
 import gg.hideouthq.core.customgames.Listing
-import gg.hideouthq.core.customgames.Mode
+import gg.hideouthq.core.customgames.ModeId
 import gg.hideouthq.core.customgames.ModeList
 import gg.hideouthq.core.customgames.ModeListing
 import gg.hideouthq.core.customgames.ModeOrigin
+import gg.hideouthq.core.customgames.ModeSetting
 import gg.hideouthq.core.customgames.Role
 import gg.hideouthq.core.customgames.Session
 import gg.hideouthq.core.customgames.SettingKey
 import gg.hideouthq.core.customgames.SettingValue
 import gg.hideouthq.core.customgames.SiteOrigin
 import gg.hideouthq.core.customgames.SteamId
+import gg.hideouthq.core.customgames.download
 import gg.hideouthq.core.customgames.library
 import gg.hideouthq.core.customgames.social.Delivery
 import gg.hideouthq.core.customgames.social.GameStatus
@@ -211,7 +213,7 @@ suspend fun inGameFrames(inputs: PresentInputs, social: SocialView = SocialView(
     val game = Frame.Game(host, join?.let { joinCard(it) }, sessionCard(shown, role), restartAhead)
     return mapOf(
         Topic.Hello to Frame.Hello(InGameProtocol, social = socialWire(social.status), supportId = (social.status as? SocialStatus.Blocked)?.self?.value),
-        Topic.Catalog to Frame.Catalog(catalog(inputs.modes)),
+        Topic.Catalog to catalog(inputs.modes),
         Topic.Game to game,
         Topic.Inbox to Frame.Inbox(social.state.inbox.map { inviteCard(it, inputs.modes) }),
         Topic.Servers to servers(social, inputs.modes),
@@ -260,23 +262,27 @@ private suspend fun serverRow(game: PublicGame, modes: ModeList, ping: Map<Int, 
     )
 }
 
-private fun catalog(modes: ModeList): List<ModeCard> =
-    library(modes).filterIsInstance<LibraryEntry.Listed>().map { modeCard(it.mode, modes.downloadToHost(it.mode)) }
+private fun catalog(modes: ModeList): Frame.Catalog {
+    val listed = library(modes).filterIsInstance<LibraryEntry.Listed>().map { it.mode }
+    val ids = listed.map { it.id }.toSet()
+    val soon = modes.feed?.upcoming.orEmpty().filter { it.id !in ids }
+    return Frame.Catalog(listed.map { modeCard(it.id, it.listing, it.download) }, soon.map { modeCard(it.id, it.listing, bytes = null, settings = emptyList()) })
+}
 
-private fun modeCard(mode: Mode, bytes: Long?): ModeCard {
-    val listing = mode.listing
+private fun modeCard(id: ModeId, listing: ModeListing, bytes: Long?, settings: List<ModeSetting> = listing.settings): ModeCard {
     val art = listing.art
     return ModeCard(
-        id = mode.id.value,
+        id = id.value,
         name = listing.name,
         tagline = listing.tagline,
         kind = listing.kind?.wire,
         players = listOf(listing.players.first, listing.players.last),
         minutes = listing.minutes?.let { listOf(it.first, it.last) },
+        goal = listing.goal,
         by = listing.creators,
         bytes = bytes,
         art = ModeArtCard(art.card, art.backdrop, art.render, art.overlay, art.tile),
-        settings = listing.settings.map { setting ->
+        settings = settings.map { setting ->
             SettingCard(setting.key.value, setting.label, setting.hint, setting.default.value, setting.options.map { OptionCard(it.value.value, it.label, it.players) })
         },
     )
