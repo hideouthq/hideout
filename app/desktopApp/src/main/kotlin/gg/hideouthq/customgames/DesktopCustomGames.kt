@@ -266,15 +266,16 @@ class DesktopCustomGames internal constructor(
         if (!rebuild) return@withContext have
         val revision = SteamInf.revision(game)?.source
         val stale = have != null && have.revision != revision
-        // Every pack holds copies of the game's own layouts, and one from before an update can break its HUD, so a stale
-        // pack never outlives a failed build, and nor does an in-game part whose build failed.
-        suspend fun failed(keep: Boolean) = if (have == null || keep || !gamesFolder.removeMenus(game)) have else null
-        val built = renderer?.let(::ifFetched) ?: have?.takeIf { stale }?.renderer?.let(Sha256::parse)?.let(::ifFetched)
-            ?: return@withContext failed(keep = !stale)
-        val rendererOnly = MenusStamp(built.hex, pageUrl, MenusScreenPort, revision)
-        val want = rendererOnly.copy(inGame = InGameStamp(InGamePort, helperDigest, gamesFolder.sourcesOf(game, have?.inGame?.layouts?.keys.orEmpty())))
         // A mod ahead of the menus with the in-game UI's layouts would leave it half there, so it stays out.
         val withInGame = inGame && gamesFolder.inGameBlockedBy(game) == null
+        val unwantedInGame = have?.inGame != null && !withInGame
+        // Every pack holds copies of the game's own layouts, and one from before an update can break its HUD, so a stale
+        // pack never outlives a failed build, and nor does an in-game part whose build failed or that is not wanted.
+        suspend fun failed(keep: Boolean) = if (have == null || keep || !gamesFolder.removeMenus(game)) have else null
+        val built = renderer?.let(::ifFetched) ?: have?.takeIf { stale || (it.inGame != null) != withInGame }?.renderer?.let(Sha256::parse)?.let(::ifFetched)
+            ?: return@withContext failed(keep = !stale && !unwantedInGame)
+        val rendererOnly = MenusStamp(built.hex, pageUrl, MenusScreenPort, revision)
+        val want = rendererOnly.copy(inGame = InGameStamp(InGamePort, helperDigest, gamesFolder.sourcesOf(game, have?.inGame?.layouts?.keys.orEmpty())))
         if (withInGame && have == want) return@withContext have
         if (withInGame && want != unbuildable) {
             gamesFolder.buildMenus(game, store.folderOf(built), want)?.let { return@withContext it.stamp }

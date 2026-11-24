@@ -745,6 +745,22 @@ class DesktopCustomGamesTest {
     }
 
     @Test
+    fun theAnswerToTheInGameUiIsFollowedFromThePacksOwnRendererWhenTheListedOneIsNotFetched() {
+        val renderer = rendererHere('c')
+        val listed = checkNotNull(Sha256.parse("e".repeat(64)))
+        updateGameTo(100)
+        val games = games(writesPack())
+        assertNotNull(runBlocking { games.menus(game, renderer, rebuild = true, inGame = true) }?.inGame)
+
+        assertEquals(MenusStamp(renderer.hex, "https://menus.example/bridge/", MenusScreenPort, 100), runBlocking { games.menus(game, listed, rebuild = true, inGame = false) }, "no in-game UI after a no")
+        assertEquals(MenusStamp(renderer.hex, "https://menus.example/bridge/", MenusScreenPort, 100, InGameStamp(InGamePort, helperDigest, emptyMap())), runBlocking { games.menus(game, listed, rebuild = true, inGame = true) }, "and back after a yes")
+
+        Files.delete(runtimeFolder.resolve(renderer.hex))
+        assertNull(runBlocking { games.menus(game, listed, rebuild = true, inGame = false) }, "with no renderer to build from, the in-game UI still goes")
+        assertFalse(gamesFolder.resolve("menus/pak01_dir.vpk").exists())
+    }
+
+    @Test
     fun anEndedDevSessionIsClearedByTheHelperAndWhatItFoundIsLogged() {
         fun said(line: String) = "echo '$line'\necho '{\"type\":\"stopped\",\"reason\":\"done\"}'"
         runBlocking { games(said("{\"type\":\"dev-session\",\"live\":false}")).clearEndedDevSession(game) }
