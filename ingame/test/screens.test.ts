@@ -242,8 +242,8 @@ test('servers read as rows with places, fill, ping tone and joinability', () => 
   assert.deepEqual(
     view.lines.map((l) => [l.name, l.sub.split(' · ').at(-1), l.region, l.fill, l.ping, l.status, l.joinable]),
     [
-      ['Mugi’s Bebop Wars', 'Hosted by Mugi', 'Frankfurt', 0.5, { text: '31 ms', tone: 'good' }, 'In the lobby', true],
-      ['Bebop Wars', 'Hideout server', 'Seattle', 1, null, 'Full', false],
+      ['Mugi’s Bebop Wars', 'Hosted by Mugi', 'EU Central', 0.5, { text: '31 ms', tone: 'good' }, 'In the lobby', true],
+      ['Bebop Wars', 'Hideout server', 'NA West', 1, null, 'Full', false],
     ],
   )
   assert.equal(view.lines[0]?.sub, 'Bebop Wars · 3v3 · Hosted by Mugi')
@@ -252,6 +252,13 @@ test('servers read as rows with places, fill, ping tone and joinability', () => 
   assert.equal(run(EMPTY, { kind: 'servers-answered', result: 'unavailable' }).view.servers.note, 'This Hideout can’t list servers.')
   const { effects } = run(snapshotOf('servers.json'), { kind: 'tab', tab: 'servers' }, { kind: 'join', server: '3c41a9e07d5b2f18' })
   assert.deepEqual(effects, [{ kind: 'send', what: 'join', command: { k: 'join', server: '3c41a9e07d5b2f18' } }])
+})
+
+test('a server names its region as the game does, and an unknown one by its code', () => {
+  const servers = snapshotOf('servers.json').servers!
+  const regions = ['ams', 'waw', 'tor', 'den', 'hnl', 'tok', 'xyz'].map((region) => ({ ...servers.rows[0]!, region }))
+  const view = viewServers(withFrame(EMPTY, { ...servers, rows: regions }))
+  assert.deepEqual(view.lines.map((l) => l.region), ['EU West', 'EU East', 'NA East', 'NA Central', 'Hawaii', 'Japan', 'XYZ'])
 })
 
 test('a join’s note goes once the joining layer shows the join, or the player changes tab', () => {

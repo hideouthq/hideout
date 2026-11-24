@@ -326,11 +326,12 @@ function inviteButton(id: SteamId, state: GamesState, snapshot: Snapshot): Frien
   return host.link ? 'copy-link' : 'off'
 }
 
+/** Keyed by the relay region code a server reports, named the way Deadlock's own server regions read. */
 const REGIONS: Record<string, string> = {
-  ams: 'Amsterdam', blr: 'Bangalore', dbi: 'Dubai', den: 'Denver', dfw: 'Dallas', fra: 'Frankfurt', hkg: 'Hong Kong',
-  hnl: 'Honolulu', jnb: 'Johannesburg', lax: 'Los Angeles', lhr: 'London', mad: 'Madrid', mia: 'Miami', nai: 'Nairobi',
-  nyc: 'New York', ord: 'Chicago', par: 'Paris', sao: 'São Paulo', sea: 'Seattle', sfo: 'San Francisco', sin: 'Singapore',
-  syd: 'Sydney', tok: 'Tokyo', tor: 'Toronto', waw: 'Warsaw',
+  ams: 'EU West', lhr: 'EU West', par: 'EU West', mad: 'EU West', fra: 'EU Central', waw: 'EU East',
+  nyc: 'NA East', mia: 'NA East', tor: 'NA East', ord: 'NA Central', dfw: 'NA Central', den: 'NA Central',
+  sfo: 'NA West', sea: 'NA West', lax: 'NA West', hnl: 'Hawaii', sao: 'South America', jnb: 'Africa South',
+  nai: 'Africa East', dbi: 'Middle East', blr: 'India', sin: 'Southeast Asia', hkg: 'Asia East', tok: 'Japan', syd: 'Oceania',
 }
 
 const SERVER_STATUS: Record<ServerRow['status'], string> = { lobby: 'In the lobby', match: 'In a match', full: 'Full' }
