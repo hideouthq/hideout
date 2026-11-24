@@ -542,6 +542,11 @@
 	text-overflow: ellipsis;
 }
 
+.HGFriendStatus.InMatch
+{
+	color: #E6B977;
+}
+
 .HGFriend .Outline
 {
 	vertical-align: middle;

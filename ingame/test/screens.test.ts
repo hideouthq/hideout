@@ -23,20 +23,67 @@ const friends: Friends = friendsOf([
 ])
 
 function run(snapshot: Snapshot, ...events: GamesEvent[]) {
+  return runWith(friends, snapshot, ...events)
+}
+
+function runWith(list: Friends, snapshot: Snapshot, ...events: GamesEvent[]) {
   let state: GamesState = initialGames('games')
   const effects = []
   for (const event of events) {
-    const [next, out] = reduceGames(state, event, snapshot)
+    const [next, out] = reduceGames(state, event, snapshot, list)
     state = next
     effects.push(...out)
   }
-  return { state, effects, view: viewGames(state, snapshot, 'online', friends, 'Mugi') }
+  return { state, effects, view: viewGames(state, snapshot, 'online', list, 'Mugi') }
 }
+
+const NORI = '76561198000000003' as SteamId
+const playing = (status: string) => friendsOf([{ steamid: NORI, name: 'nori', status, presence: 'playing', currentUser: false }]).online[0]!
 
 test('the friend list shows online friends, counts offline ones and leaves the player out', () => {
   assert.deepEqual(friends.online.map((f) => f.name), ['Kestrel', 'Mugi'])
   assert.equal(friends.offline, 1)
   assert.equal(friends.names['76561198000000009'], undefined)
+})
+
+test('a friend’s status reads as Deadlock’s menus say it, and says when they’re in a match', () => {
+  const seen = (f: { status: string; inMatch: boolean }) => [f.status, f.inMatch]
+  assert.deepEqual(seen(playing('Main Menu')), ['In the main menu', false])
+  assert.deepEqual(seen(playing('Finding Match')), ['Finding a match', false])
+  assert.deepEqual(seen(playing('Picking Hero')), ['In a match', true])
+  assert.deepEqual(seen(playing('Playing: Haze 4.2k')), ['In a match', true])
+  assert.deepEqual(seen(playing('Playing: Haze 12:34')), ['In a match · 12 min', true])
+  assert.deepEqual(seen(playing('Playing: Haze 1:02:09')), ['In a match · 62 min', true])
+  assert.deepEqual(seen(playing('Playing: Haze 7 min')), ['In a match · 7 min', true])
+  assert.deepEqual(seen(playing('In the lobby')), ['In the lobby', false])
+  assert.deepEqual(seen(playing('')), ['Online', false])
+  const online = friendsOf([
+    { steamid: NORI, name: 'nori', status: '', presence: 'online', currentUser: false },
+    { steamid: MUGI, name: 'Mugi', status: 'Playing: Haze', presence: 'online', currentUser: false },
+  ]).online
+  assert.deepEqual(online.map(seen), [['Online', false], ['Playing: Haze', false]], 'outside Deadlock the text is shown as Steam gives it')
+})
+
+test('a friend in a match gets a disabled In match, and pressing it does nothing', () => {
+  const list = friendsOf([
+    { steamid: KESTREL, name: 'Kestrel', status: 'Playing: Haze 12:34', presence: 'playing', currentUser: false },
+    { steamid: MUGI, name: 'Mugi', status: 'Main Menu', presence: 'playing', currentUser: false },
+  ])
+  const before = runWith(list, snapshotOf('catalog.json', 'game-idle.json'), { kind: 'friend', id: KESTREL }, { kind: 'friend', id: MUGI })
+  assert.deepEqual(before.view.friends.map((f) => f.button), ['in-match', 'invited'])
+  assert.deepEqual(before.state.draft.invitees, [MUGI])
+
+  const hosting = snapshotOf('hello-on.json', 'catalog.json', 'game-invites.json')
+  const mugiPlaying = friendsOf([{ steamid: MUGI, name: 'Mugi', status: 'Picking Hero', presence: 'playing', currentUser: false }])
+  const invites = runWith(mugiPlaying, hosting, { kind: 'friend', id: MUGI })
+  assert.deepEqual(invites.effects, [])
+  assert.equal(invites.view.friends[0]?.button, 'in-match')
+  const notReached = '76561198000000008' as SteamId
+  const unreached = friendsOf([{ steamid: notReached, name: 'Nori', status: 'Picking Hero', presence: 'playing', currentUser: false }])
+  assert.equal(runWith(unreached, hosting, { kind: 'friend', id: notReached }).effects.length, 0, 'not Copy link either')
+
+  const invited = runWith(list, snapshotOf('catalog.json', 'game-starting.json'))
+  assert.equal(invited.view.friends[0]?.button, 'invited', 'an invited friend stays Invited')
 })
 
 test('the list shows the catalog, the first mode picked, with its own words', () => {
@@ -152,7 +199,7 @@ test('a friend the invite didn’t reach gets Copy link, which copies the game�
   const notReached = '76561198000000008' as SteamId
   const extra = friendsOf([{ steamid: notReached, name: 'Nori', status: '', presence: 'online', currentUser: false }])
   assert.equal(viewGames(initialGames('games'), snapshot, 'online', extra, '').friends[0]?.button, 'copy-link')
-  const [, effects] = reduceGames(initialGames('games'), { kind: 'friend', id: notReached }, snapshot)
+  const [, effects] = reduceGames(initialGames('games'), { kind: 'friend', id: notReached }, snapshot, extra)
   assert.deepEqual(effects, [{ kind: 'copy-and-chat', link: 'https://hideouthq.gg/join#P95-MAN-26D', friend: notReached }])
 })
 
@@ -212,9 +259,9 @@ test('a join’s note goes once the joining layer shows the join, or the player 
   const join = { kind: 'join', server: '3c41a9e07d5b2f18' } as const
   const { state } = run(servers, { kind: 'tab', tab: 'servers' }, join, { kind: 'settled', what: 'join', result: 'unreachable' })
   assert.deepEqual(state.request, { kind: 'refused', what: 'join', result: 'unreachable' })
-  assert.deepEqual(reduceGames(state, { kind: 'seen' }, servers)[0].request, state.request, 'a frame without the join keeps it')
-  assert.deepEqual(reduceGames(state, { kind: 'seen' }, withFrame(servers, frame('game-review.json')))[0].request, { kind: 'idle' })
-  assert.deepEqual(reduceGames(state, { kind: 'tab', tab: 'games' }, servers)[0].request, { kind: 'idle' })
+  assert.deepEqual(reduceGames(state, { kind: 'seen' }, servers, friends)[0].request, state.request, 'a frame without the join keeps it')
+  assert.deepEqual(reduceGames(state, { kind: 'seen' }, withFrame(servers, frame('game-review.json')), friends)[0].request, { kind: 'idle' })
+  assert.deepEqual(reduceGames(state, { kind: 'tab', tab: 'games' }, servers, friends)[0].request, { kind: 'idle' })
 })
 
 test('toasts show friends’ unexpired invites, one full then slim, with the friend list’s name', () => {

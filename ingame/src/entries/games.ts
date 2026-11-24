@@ -1,5 +1,5 @@
 import { FriendWatch, textOf } from '../friends.ts'
-import { type GamesEffect, type GamesEvent, type GamesView, type ServersView, initialGames, reduceGames, refusalText, viewGames } from '../games.ts'
+import { type FriendButton, type GamesEffect, type GamesEvent, type GamesView, type ServersView, initialGames, reduceGames, refusalText, viewGames } from '../games.ts'
 import { Link } from '../link.ts'
 import { Section, art, button, label, mark, panel, paper, spinner, tear } from '../ui.ts'
 import type { Config, Listing } from '../wire.ts'
@@ -27,7 +27,7 @@ function readServers(): void {
 }
 
 function dispatch(event: GamesEvent): void {
-  const [next, effects] = reduceGames(state, event, link.snapshot)
+  const [next, effects] = reduceGames(state, event, link.snapshot, friends.current)
   const wasServers = state.tab === 'servers'
   state = next
   effects.forEach(run)
@@ -95,6 +95,14 @@ function drawList(view: GamesView): void {
   })
 }
 
+const FRIEND_BUTTONS: Record<FriendButton, { caption: string; look: string; pressable: boolean }> = {
+  invite: { caption: 'Invite', look: 'Gold', pressable: true },
+  invited: { caption: 'Invited', look: 'Done', pressable: true },
+  'copy-link': { caption: 'Copy link', look: 'Gold', pressable: true },
+  'in-match': { caption: 'In match', look: '', pressable: false },
+  off: { caption: 'Invite', look: '', pressable: false },
+}
+
 function drawDetail(view: GamesView): void {
   const mode = view.selected
   find('HGDetail').visible = mode !== null
@@ -149,11 +157,9 @@ function drawDetail(view: GamesView): void {
       $.CreatePanel('CitadelAvatarImage', row, '', { class: 'HGAvatar', steamid: friend.id })
       const text = panel(row, 'HGFriendText')
       label(text, 'HGFriendName', friend.name)
-      label(text, 'HGFriendStatus', friend.status || 'Online')
-      const press = kind === 'off' ? null : () => dispatch({ kind: 'friend', id: friend.id })
-      const look = kind === 'invited' ? 'Done' : kind === 'off' ? '' : 'Gold'
-      const caption = kind === 'invited' ? 'Invited' : kind === 'copy-link' ? 'Copy link' : 'Invite'
-      button(row, `SecondaryButton Outline Small ${look}`, caption, press)
+      label(text, `HGFriendStatus${friend.inMatch ? ' InMatch' : ''}`, friend.status)
+      const { caption, look, pressable } = FRIEND_BUTTONS[kind]
+      button(row, `SecondaryButton Outline Small ${look}`, caption, pressable ? () => dispatch({ kind: 'friend', id: friend.id }) : null)
     }
     if (view.offline) label(into, 'HGOffline', `${view.offline} ${view.offline === 1 ? 'friend' : 'friends'} offline`)
   })

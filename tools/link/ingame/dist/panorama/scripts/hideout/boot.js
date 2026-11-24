@@ -11,6 +11,24 @@
     { id: "FriendsOnline", presence: "online" },
     { id: "FriendsOffline", presence: "offline" }
   ];
+  var IN_DEADLOCK = [
+    { raw: /^Main Menu/i, text: "In the main menu", inMatch: false },
+    { raw: /^Finding Match/i, text: "Finding a match", inMatch: false },
+    { raw: /^Picking Hero/i, text: "In a match", inMatch: true },
+    { raw: /^Playing:/i, text: "In a match", inMatch: true }
+  ];
+  function matchMinutes(raw) {
+    const clock = raw.match(/(?:(\d+):)?(\d+):(\d\d)/);
+    if (clock) return Number(clock[1] ?? 0) * 60 + Number(clock[2]);
+    const minutes = raw.match(/(\d+)\s*min\b/i);
+    return minutes ? Number(minutes[1]) : null;
+  }
+  function statusOf(presence, raw) {
+    const known = presence === "playing" ? IN_DEADLOCK.find((s) => s.raw.test(raw.trim())) : void 0;
+    if (!known) return { status: raw.trim() || "Online", inMatch: false };
+    const minutes = known.inMatch ? matchMinutes(raw) : null;
+    return { status: minutes === null ? known.text : `${known.text} \xB7 ${minutes} min`, inMatch: known.inMatch };
+  }
   function friendsOf(raw) {
     const seen = /* @__PURE__ */ new Set();
     const online = [];
@@ -21,7 +39,7 @@
       seen.add(f.steamid);
       names[f.steamid] = f.name;
       if (f.presence === "offline") offline++;
-      else online.push({ id: f.steamid, name: f.name, status: f.status, presence: f.presence });
+      else online.push({ id: f.steamid, name: f.name, presence: f.presence, ...statusOf(f.presence, f.status) });
     }
     return { online, offline, names };
   }

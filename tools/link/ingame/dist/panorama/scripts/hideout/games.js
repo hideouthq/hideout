@@ -11,6 +11,24 @@
     { id: "FriendsOnline", presence: "online" },
     { id: "FriendsOffline", presence: "offline" }
   ];
+  var IN_DEADLOCK = [
+    { raw: /^Main Menu/i, text: "In the main menu", inMatch: false },
+    { raw: /^Finding Match/i, text: "Finding a match", inMatch: false },
+    { raw: /^Picking Hero/i, text: "In a match", inMatch: true },
+    { raw: /^Playing:/i, text: "In a match", inMatch: true }
+  ];
+  function matchMinutes(raw) {
+    const clock = raw.match(/(?:(\d+):)?(\d+):(\d\d)/);
+    if (clock) return Number(clock[1] ?? 0) * 60 + Number(clock[2]);
+    const minutes = raw.match(/(\d+)\s*min\b/i);
+    return minutes ? Number(minutes[1]) : null;
+  }
+  function statusOf(presence, raw) {
+    const known = presence === "playing" ? IN_DEADLOCK.find((s) => s.raw.test(raw.trim())) : void 0;
+    if (!known) return { status: raw.trim() || "Online", inMatch: false };
+    const minutes = known.inMatch ? matchMinutes(raw) : null;
+    return { status: minutes === null ? known.text : `${known.text} \xB7 ${minutes} min`, inMatch: known.inMatch };
+  }
   function friendsOf(raw) {
     const seen = /* @__PURE__ */ new Set();
     const online = [];
@@ -21,7 +39,7 @@
       seen.add(f.steamid);
       names[f.steamid] = f.name;
       if (f.presence === "offline") offline++;
-      else online.push({ id: f.steamid, name: f.name, status: f.status, presence: f.presence });
+      else online.push({ id: f.steamid, name: f.name, presence: f.presence, ...statusOf(f.presence, f.status) });
     }
     return { online, offline, names };
   }
@@ -103,7 +121,7 @@
     const picked = picks[setting.key];
     return picked !== void 0 && setting.options.some((o) => o.value === picked) ? picked : setting.default;
   }
-  function reduceGames(state2, event, snapshot) {
+  function reduceGames(state2, event, snapshot, friends2) {
     const host2 = runningHost(snapshot);
     const draft = state2.draft;
     const sending = (what, command) => [
@@ -121,8 +139,10 @@
         if (host2) return host2.listing === event.listing ? [state2, []] : sending("listing", { k: "listing", listing: event.listing });
         return [{ ...state2, draft: { ...draft, listing: event.listing } }, []];
       case "friend": {
+        const inMatch = friends2.online.some((f) => f.id === event.id && f.inMatch);
+        const button2 = friendButton(event.id, inMatch, state2, snapshot);
+        if (button2 === "in-match") return [state2, []];
         if (host2) {
-          const button2 = friendButton(event.id, state2, snapshot);
           if (button2 === "invite") return sending("invite", { k: "invite", to: [event.id] });
           return button2 === "copy-link" && host2.link ? [state2, [{ kind: "copy-and-chat", link: host2.link, friend: event.id }]] : [state2, []];
         }
@@ -259,7 +279,11 @@
     if (state2.request.kind === "refused" && state2.request.what === "play") return { kind: "play", label: label2, hint: REFUSALS[state2.request.result] };
     return { kind: "play", label: label2, hint: snapshot.game?.restartAhead?.text ?? inviteHint(state2, snapshot) };
   }
-  function friendButton(id, state2, snapshot) {
+  function friendButton(id, inMatch, state2, snapshot) {
+    const button2 = inviteButton(id, state2, snapshot);
+    return inMatch && button2 !== "invited" ? "in-match" : button2;
+  }
+  function inviteButton(id, state2, snapshot) {
     const host2 = runningHost(snapshot);
     const blocked = snapshot.hello?.social === "blocked";
     if (!host2) return blocked ? "off" : state2.draft.invitees.includes(id) ? "invited" : "invite";
@@ -346,7 +370,7 @@
       settings: selected ? selected.settings.map((setting) => ({ setting, value: pickOf(setting, state2.draft.picks) })) : [],
       listing: listing2,
       listingLine: listing2 === "public" ? me2 && selected ? `Listed in Servers as \u201C${me2}\u2019s ${selected.name}\u201D` : "Listed in Servers for anyone to join" : "Only friends you invite, or anyone with the code",
-      friends: friends2.online.map((friend) => ({ friend, button: friendButton(friend.id, state2, snapshot) })),
+      friends: friends2.online.map((friend) => ({ friend, button: friendButton(friend.id, friend.inMatch, state2, snapshot) })),
       blocked: blockedLine(snapshot),
       offline: friends2.offline,
       play: playButton(state2, snapshot, link2, choice)
@@ -836,7 +860,7 @@
     link.send({ k: "servers" }, (result) => dispatch({ kind: "servers-answered", result }));
   }
   function dispatch(event) {
-    const [next, effects] = reduceGames(state, event, link.snapshot);
+    const [next, effects] = reduceGames(state, event, link.snapshot, friends.current);
     const wasServers = state.tab === "servers";
     state = next;
     effects.forEach(run);
@@ -899,6 +923,13 @@
       }
     });
   }
+  var FRIEND_BUTTONS = {
+    invite: { caption: "Invite", look: "Gold", pressable: true },
+    invited: { caption: "Invited", look: "Done", pressable: true },
+    "copy-link": { caption: "Copy link", look: "Gold", pressable: true },
+    "in-match": { caption: "In match", look: "", pressable: false },
+    off: { caption: "Invite", look: "", pressable: false }
+  };
   function drawDetail(view) {
     const mode2 = view.selected;
     find("HGDetail").visible = mode2 !== null;
@@ -953,11 +984,9 @@
         $.CreatePanel("CitadelAvatarImage", row, "", { class: "HGAvatar", steamid: friend.id });
         const text2 = panel(row, "HGFriendText");
         label(text2, "HGFriendName", friend.name);
-        label(text2, "HGFriendStatus", friend.status || "Online");
-        const press = kind === "off" ? null : () => dispatch({ kind: "friend", id: friend.id });
-        const look = kind === "invited" ? "Done" : kind === "off" ? "" : "Gold";
-        const caption = kind === "invited" ? "Invited" : kind === "copy-link" ? "Copy link" : "Invite";
-        button(row, `SecondaryButton Outline Small ${look}`, caption, press);
+        label(text2, `HGFriendStatus${friend.inMatch ? " InMatch" : ""}`, friend.status);
+        const { caption, look, pressable } = FRIEND_BUTTONS[kind];
+        button(row, `SecondaryButton Outline Small ${look}`, caption, pressable ? () => dispatch({ kind: "friend", id: friend.id }) : null);
       }
       if (view.offline) label(into, "HGOffline", `${view.offline} ${view.offline === 1 ? "friend" : "friends"} offline`);
     });

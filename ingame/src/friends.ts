@@ -9,6 +9,7 @@ export interface Friend {
   name: string
   status: string
   presence: Presence
+  inMatch: boolean
 }
 
 export interface Friends {
@@ -34,6 +35,28 @@ export interface RawFriend {
   currentUser: boolean
 }
 
+// Deadlock's Steam rich presence is "Main Menu", "Picking Hero", "Finding Match" or "Playing: %hero% %net_worth%".
+const IN_DEADLOCK: { raw: RegExp; text: string; inMatch: boolean }[] = [
+  { raw: /^Main Menu/i, text: 'In the main menu', inMatch: false },
+  { raw: /^Finding Match/i, text: 'Finding a match', inMatch: false },
+  { raw: /^Picking Hero/i, text: 'In a match', inMatch: true },
+  { raw: /^Playing:/i, text: 'In a match', inMatch: true },
+]
+
+function matchMinutes(raw: string): number | null {
+  const clock = raw.match(/(?:(\d+):)?(\d+):(\d\d)/)
+  if (clock) return Number(clock[1] ?? 0) * 60 + Number(clock[2])
+  const minutes = raw.match(/(\d+)\s*min\b/i)
+  return minutes ? Number(minutes[1]) : null
+}
+
+function statusOf(presence: Presence, raw: string): { status: string; inMatch: boolean } {
+  const known = presence === 'playing' ? IN_DEADLOCK.find((s) => s.raw.test(raw.trim())) : undefined
+  if (!known) return { status: raw.trim() || 'Online', inMatch: false }
+  const minutes = known.inMatch ? matchMinutes(raw) : null
+  return { status: minutes === null ? known.text : `${known.text} · ${minutes} min`, inMatch: known.inMatch }
+}
+
 export function friendsOf(raw: RawFriend[]): Friends {
   const seen = new Set<string>()
   const online: Friend[] = []
@@ -44,7 +67,7 @@ export function friendsOf(raw: RawFriend[]): Friends {
     seen.add(f.steamid)
     names[f.steamid] = f.name
     if (f.presence === 'offline') offline++
-    else online.push({ id: f.steamid as SteamId, name: f.name, status: f.status, presence: f.presence })
+    else online.push({ id: f.steamid as SteamId, name: f.name, presence: f.presence, ...statusOf(f.presence, f.status) })
   }
   return { online, offline, names }
 }

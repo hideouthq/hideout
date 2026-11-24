@@ -72,7 +72,7 @@ function pickOf(setting: Setting, picks: Record<string, string>): string {
   return picked !== undefined && setting.options.some((o) => o.value === picked) ? picked : setting.default
 }
 
-export function reduceGames(state: GamesState, event: GamesEvent, snapshot: Snapshot): [GamesState, GamesEffect[]] {
+export function reduceGames(state: GamesState, event: GamesEvent, snapshot: Snapshot, friends: Friends): [GamesState, GamesEffect[]] {
   const host = runningHost(snapshot)
   const draft = state.draft
   const sending = (what: Press, command: Command): [GamesState, GamesEffect[]] => [
@@ -90,8 +90,10 @@ export function reduceGames(state: GamesState, event: GamesEvent, snapshot: Snap
       if (host) return host.listing === event.listing ? [state, []] : sending('listing', { k: 'listing', listing: event.listing })
       return [{ ...state, draft: { ...draft, listing: event.listing } }, []]
     case 'friend': {
+      const inMatch = friends.online.some((f) => f.id === event.id && f.inMatch)
+      const button = friendButton(event.id, inMatch, state, snapshot)
+      if (button === 'in-match') return [state, []]
       if (host) {
-        const button = friendButton(event.id, state, snapshot)
         if (button === 'invite') return sending('invite', { k: 'invite', to: [event.id] })
         return button === 'copy-link' && host.link ? [state, [{ kind: 'copy-and-chat', link: host.link, friend: event.id }]] : [state, []]
       }
@@ -134,7 +136,7 @@ export function reduceGames(state: GamesState, event: GamesEvent, snapshot: Snap
   }
 }
 
-export type FriendButton = 'invite' | 'invited' | 'copy-link' | 'off'
+export type FriendButton = 'invite' | 'invited' | 'copy-link' | 'in-match' | 'off'
 
 export type PlayButton =
   | { kind: 'play'; label: string; hint: string }
@@ -309,7 +311,12 @@ function playButton(state: GamesState, snapshot: Snapshot, link: LinkStatus, sel
   return { kind: 'play', label, hint: snapshot.game?.restartAhead?.text ?? inviteHint(state, snapshot) }
 }
 
-function friendButton(id: SteamId, state: GamesState, snapshot: Snapshot): FriendButton {
+function friendButton(id: SteamId, inMatch: boolean, state: GamesState, snapshot: Snapshot): FriendButton {
+  const button = inviteButton(id, state, snapshot)
+  return inMatch && button !== 'invited' ? 'in-match' : button
+}
+
+function inviteButton(id: SteamId, state: GamesState, snapshot: Snapshot): FriendButton {
   const host = runningHost(snapshot)
   const blocked = snapshot.hello?.social === 'blocked'
   if (!host) return blocked ? 'off' : state.draft.invitees.includes(id) ? 'invited' : 'invite'
@@ -386,7 +393,7 @@ export function viewGames(state: GamesState, snapshot: Snapshot, link: LinkStatu
           ? `Listed in Servers as “${me}’s ${selected.name}”`
           : 'Listed in Servers for anyone to join'
         : 'Only friends you invite, or anyone with the code',
-    friends: friends.online.map((friend) => ({ friend, button: friendButton(friend.id, state, snapshot) })),
+    friends: friends.online.map((friend) => ({ friend, button: friendButton(friend.id, friend.inMatch, state, snapshot) })),
     blocked: blockedLine(snapshot),
     offline: friends.offline,
     play: playButton(state, snapshot, link, choice),
