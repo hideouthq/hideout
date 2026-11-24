@@ -27,6 +27,11 @@
 	visibility: collapse;
 }
 
+.HOCorner.InEscape
+{
+	margin-right: 450px;
+}
+
 .HOToasts
 {
 	width: 100%;

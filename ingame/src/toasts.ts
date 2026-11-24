@@ -18,12 +18,18 @@ export type ToastView =
     }
   | { kind: 'unreached'; key: string; friend: SteamId; name: string; link: string; full: boolean; pointer: boolean }
 
+/** Playing, in the room or a match, the game holds the mouse. The Esc menu and dashboard screens free it. */
+export type Screen = 'playing' | 'escape' | 'dashboard'
+
 /**
- * [hidden] holds keys closed here before the app's state catches up. Without a [pointer] the toasts' buttons can't be
- * pressed, so they say Esc frees one.
+ * [hidden] holds keys closed here before the app's state catches up. While playing the toasts' buttons can't be pressed,
+ * so they say Esc frees the mouse. Dashboard screens, the games panel among them, sit in another root that can cover the
+ * overlay and that it can't see into, so the toasts wait for the player to leave them.
  */
-export function wantedToasts(snapshot: Snapshot, friends: Friends, now: number, arrived: Record<string, number>, hidden: ReadonlySet<string>, pointer: boolean): ToastView[] {
+export function wantedToasts(snapshot: Snapshot, friends: Friends, now: number, arrived: Record<string, number>, hidden: ReadonlySet<string>, screen: Screen): ToastView[] {
   const views: ToastView[] = []
+  if (screen === 'dashboard') return views
+  const pointer = screen === 'escape'
   for (const invite of snapshot.inbox?.invites ?? []) {
     const name = friends.names[invite.from]
     if (name === undefined || invite.expires <= now || hidden.has(invite.id)) continue

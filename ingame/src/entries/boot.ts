@@ -5,7 +5,7 @@ import { FriendWatch } from '../friends.ts'
 import { type JoiningButton, viewJoining } from '../joining.ts'
 import { Link } from '../link.ts'
 import { type StripAct, type StripView, viewStrip } from '../strip.ts'
-import { type ToastView, wantedToasts } from '../toasts.ts'
+import { type Screen, type ToastView, wantedToasts } from '../toasts.ts'
 import { Section, art, button, escHint, label, mark, panel, paper, spinner, tear } from '../ui.ts'
 import type { Config, Game, JoinCard, Step } from '../wire.ts'
 
@@ -184,13 +184,15 @@ function boot(): void {
    * Stock classes: the overlay is InHideout in the main-menu room. Its client status is InEscapeMenu while Esc is open and
    * InDashboard while a room screen such as Play is, the only times the game gives the player a mouse pointer.
    */
-  function screen(): { room: boolean; pointer: boolean; escape: boolean } {
+  function screen(): { room: boolean; pointer: boolean; escape: boolean; screen: Screen } {
     const status = top.FindChildTraverse('ClientStatus')
     const escape = status?.BHasClass('InEscapeMenu') ?? false
+    const dashboard = status?.BHasClass('InDashboard') ?? false
     return {
       room: top.FindChildTraverse('HudAndDBOverlay')?.BHasClass('InHideout') ?? false,
-      pointer: escape || (status?.BHasClass('InDashboard') ?? false),
+      pointer: escape || dashboard,
       escape,
+      screen: escape ? 'escape' : dashboard ? 'dashboard' : 'playing',
     }
   }
 
@@ -238,10 +240,12 @@ function boot(): void {
     for (const invite of link.snapshot.inbox?.invites ?? []) arrived[invite.id] ??= now
     if (link.snapshot.game?.join?.phase !== putAway) putAway = null
     const joining = drawJoining()
-    const games = top.FindChildTraverse('HideoutGames')
-    find('HOCorner').SetHasClass('Away', joining || (games !== null && games.visible))
     const where = screen()
-    drawToasts(wantedToasts(link.snapshot, friends.current, now, arrived, hidden, where.pointer))
+    const corner = find('HOCorner')
+    corner.SetHasClass('Away', joining)
+    // The Esc menu lists friends down its right side, so there the toasts step left of the list rather than cover it.
+    corner.SetHasClass('InEscape', where.escape)
+    drawToasts(wantedToasts(link.snapshot, friends.current, now, arrived, hidden, where.screen))
     drawStrip(where)
   }
 

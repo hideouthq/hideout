@@ -569,8 +569,10 @@
   }
 
   // src/toasts.ts
-  function wantedToasts(snapshot, friends, now, arrived, hidden, pointer) {
+  function wantedToasts(snapshot, friends, now, arrived, hidden, screen) {
     const views = [];
+    if (screen === "dashboard") return views;
+    const pointer = screen === "escape";
     for (const invite2 of snapshot.inbox?.invites ?? []) {
       const name = friends.names[invite2.from];
       if (name === void 0 || invite2.expires <= now || hidden.has(invite2.id)) continue;
@@ -862,10 +864,12 @@
     function screen() {
       const status = top.FindChildTraverse("ClientStatus");
       const escape2 = status?.BHasClass("InEscapeMenu") ?? false;
+      const dashboard = status?.BHasClass("InDashboard") ?? false;
       return {
         room: top.FindChildTraverse("HudAndDBOverlay")?.BHasClass("InHideout") ?? false,
-        pointer: escape2 || (status?.BHasClass("InDashboard") ?? false),
-        escape: escape2
+        pointer: escape2 || dashboard,
+        escape: escape2,
+        screen: escape2 ? "escape" : dashboard ? "dashboard" : "playing"
       };
     }
     const strip = new Section();
@@ -908,10 +912,11 @@
       for (const invite2 of link.snapshot.inbox?.invites ?? []) arrived[_a = invite2.id] ?? (arrived[_a] = now);
       if (link.snapshot.game?.join?.phase !== putAway) putAway = null;
       const joining = drawJoining();
-      const games = top.FindChildTraverse("HideoutGames");
-      find("HOCorner").SetHasClass("Away", joining || games !== null && games.visible);
       const where = screen();
-      drawToasts(wantedToasts(link.snapshot, friends.current, now, arrived, hidden, where.pointer));
+      const corner = find("HOCorner");
+      corner.SetHasClass("Away", joining);
+      corner.SetHasClass("InEscape", where.escape);
+      drawToasts(wantedToasts(link.snapshot, friends.current, now, arrived, hidden, where.screen));
       drawStrip(where);
     }
     function tick() {

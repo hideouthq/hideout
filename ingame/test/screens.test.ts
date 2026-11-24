@@ -271,25 +271,31 @@ test('a join’s note goes once the joining layer shows the join, or the player 
 test('toasts show friends’ unexpired invites, one full then slim, with the friend list’s name', () => {
   const snapshot = snapshotOf('inbox.json')
   const expires = snapshot.inbox!.invites[0]!.expires
-  const toasts = wantedToasts(snapshot, friends, expires - 15000, { '9f2c41d07e6b4a58b3c1d2e3f4a5b6c7': expires - 30000 }, new Set(), true)
+  const toasts = wantedToasts(snapshot, friends, expires - 15000, { '9f2c41d07e6b4a58b3c1d2e3f4a5b6c7': expires - 30000 }, new Set(), 'escape')
   assert.deepEqual(toasts.map((t) => [t.kind, t.kind === 'invite' && t.name, t.full]), [['invite', 'Mugi', true]])
   assert.equal(toasts[0]?.kind === 'invite' && toasts[0].left, 0.5)
   assert.equal(toasts[0]?.kind === 'invite' && toasts[0].line, '3v3 · 2 of 6')
-  assert.deepEqual(wantedToasts(snapshot, friends, expires + 1, {}, new Set(), true), [])
-  assert.deepEqual(wantedToasts(snapshot, friends, 0, {}, new Set(['9f2c41d07e6b4a58b3c1d2e3f4a5b6c7']), true), [])
+  assert.deepEqual(wantedToasts(snapshot, friends, expires + 1, {}, new Set(), 'escape'), [])
+  assert.deepEqual(wantedToasts(snapshot, friends, 0, {}, new Set(['9f2c41d07e6b4a58b3c1d2e3f4a5b6c7']), 'escape'), [])
+})
+
+test('toasts wait while a dashboard screen is open, since it can cover them, and come back after', () => {
+  const snapshot = snapshotOf('inbox.json', 'game-invites.json')
+  assert.deepEqual(wantedToasts(snapshot, friends, 0, {}, new Set(), 'dashboard'), [])
+  assert.deepEqual(wantedToasts(snapshot, friends, 0, {}, new Set(), 'playing').map((t) => t.kind), ['invite', 'unreached'])
 })
 
 test('a not-reached invite of the hosted game shows a Copy link toast', () => {
-  const toasts = wantedToasts(snapshotOf('game-invites.json'), friends, 0, {}, new Set(), true)
+  const toasts = wantedToasts(snapshotOf('game-invites.json'), friends, 0, {}, new Set(), 'escape')
   assert.deepEqual(toasts.map((t) => t.kind === 'unreached' && [t.friend, t.name, t.link, t.full]), [['76561198000000008', 'A friend', 'https://hideouthq.gg/join#P95-MAN-26D', true]])
 })
 
 test('closing a not-reached toast hides it for that game alone', () => {
   const first = snapshotOf('game-invites.json')
-  const closed = new Set(wantedToasts(first, friends, 0, {}, new Set(), true).map((t) => t.key))
-  assert.deepEqual(wantedToasts(first, friends, 0, {}, closed, true), [])
+  const closed = new Set(wantedToasts(first, friends, 0, {}, new Set(), 'escape').map((t) => t.key))
+  assert.deepEqual(wantedToasts(first, friends, 0, {}, closed, 'escape'), [])
   const next = withFrame(first, { ...first.game!, t: 'game', host: { ...first.game!.host!, link: 'https://hideouthq.gg/join#T4N-GL3-ZZ9' } })
-  assert.deepEqual(wantedToasts(next, friends, 0, {}, closed, true).map((t) => t.kind === 'unreached' && t.friend), ['76561198000000008'], 'a later game that misses the same friend says so again')
+  assert.deepEqual(wantedToasts(next, friends, 0, {}, closed, 'escape').map((t) => t.kind === 'unreached' && t.friend), ['76561198000000008'], 'a later game that misses the same friend says so again')
 })
 
 test('the joining dialog is the join card: review shows the restart and Join echoes it', () => {
@@ -376,10 +382,10 @@ test('while the game holds the mouse, the strip and toasts say Esc frees it inst
   assert.deepEqual(strip(snapshotOf('catalog.json', 'game-ready.json'), false, false)?.buttons, { kind: 'esc', words: 'to stop' })
   assert.deepEqual(strip(snapshotOf('catalog.json', 'game-notin.json'), false, false)?.buttons, { kind: 'esc', words: 'to rejoin' })
   assert.deepEqual(strip(snapshotOf('catalog.json', 'game-ending.json'), false, false)?.buttons, { kind: 'spinner' }, 'a spinner needs no pointer')
-  const invites = wantedToasts(snapshotOf('inbox.json'), friends, 0, {}, new Set(), false)
-  const unreached = wantedToasts(snapshotOf('game-invites.json'), friends, 0, {}, new Set(), false)
+  const invites = wantedToasts(snapshotOf('inbox.json'), friends, 0, {}, new Set(), 'playing')
+  const unreached = wantedToasts(snapshotOf('game-invites.json'), friends, 0, {}, new Set(), 'playing')
   assert.deepEqual([...invites, ...unreached].map((t) => [t.kind, t.pointer]), [['invite', false], ['unreached', false]])
-  assert.equal(wantedToasts(snapshotOf('inbox.json'), friends, 0, {}, new Set(), true)[0]?.pointer, true)
+  assert.equal(wantedToasts(snapshotOf('inbox.json'), friends, 0, {}, new Set(), 'escape')[0]?.pointer, true)
 })
 
 test('no strip without a running game, or once Hideout is gone', () => {
