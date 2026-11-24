@@ -8,6 +8,8 @@ import gg.hideouthq.core.library.Manager
 import gg.hideouthq.core.library.Profile
 import gg.hideouthq.core.library.ProfileColour
 import gg.hideouthq.core.library.ProfileId
+import gg.hideouthq.core.library.SubmissionKind
+import gg.hideouthq.core.library.SubmissionRef
 import gg.hideouthq.core.migration.FoundSource
 import gg.hideouthq.core.migration.ImportChoice
 import gg.hideouthq.core.migration.ImportPhase
@@ -24,8 +26,10 @@ import kotlin.test.assertTrue
 
 class ImportUiTest {
     private val dmm = ImportSource.Installed(Manager.DeadlockModManager)
+    private val neon = SubmissionRef(SubmissionKind.Mod, 700001)
+    private val ranked = SubmissionRef(SubmissionKind.Mod, 700003)
     private val preview = Preview.Ready(
-        mods = listOf(PreviewMod("Neon Haze", "pak10_dir.vpk", true), PreviewMod("Ranked HUD", "700003_Ranked HUD.vpk", false)),
+        mods = listOf(PreviewMod("Neon Haze", "pak10_dir.vpk", true, neon), PreviewMod("Ranked HUD", "700003_Ranked HUD.vpk", false, ranked)),
         profiles = listOf(Profile(ProfileId("p"), "Ranked", ProfileColour.Blue, setOf("a"), mapOf(GameRoot("/games/Deadlock") to listOf("a")))),
         crosshair = listOf("citadel_crosshair_pip_gap \"-7\"", "citadel_crosshair_color_g \"255\""),
         commands = emptyList(),
@@ -62,11 +66,19 @@ class ImportUiTest {
 
     @Test
     fun filesTheManagerNeverListedComeWithTheModsButCountAsNoneOfItsOwn() {
-        val loose = found.copy(previews = mapOf(dmm to preview.copy(found = listOf(PreviewMod("pak04", "pak04_dir.vpk", true)))))
+        val loose = found.copy(previews = mapOf(dmm to preview.copy(found = listOf(PreviewMod("pak04", "pak04_dir.vpk", true, null)))))
         assertEquals(ImportRow(ImportItem.Mods, 3, ticked = true), ui(imports = loose).rows.first(), "the Mods row brings the loose file too")
         assertEquals(ImportCounts(2, 1, 1, 0), ui(ImportPick(listing = true), loose).sources.first().counts, "the manager's card counts only its own mods")
-        val onlyLoose = found.copy(previews = mapOf(dmm to Preview.Ready(emptyList(), emptyList(), emptyList(), emptyList(), found = listOf(PreviewMod("pak04", "pak04_dir.vpk", true)))))
+        val onlyLoose = found.copy(previews = mapOf(dmm to Preview.Ready(emptyList(), emptyList(), emptyList(), emptyList(), found = listOf(PreviewMod("pak04", "pak04_dir.vpk", true, null)))))
         assertFalse(ui(ImportPick(listing = true), onlyLoose).sources.any { it.found }, "a manager with nothing of its own is not offered for files no one listed")
+    }
+
+    @Test
+    fun aModShowsTheCoverTheCatalogueHoldsForItsSubmissionAndALooseFileNone() {
+        val loose = found.copy(previews = mapOf(dmm to preview.copy(found = listOf(PreviewMod("pak04", "pak04_dir.vpk", true, null)))))
+        val page = importUi(ImportPick(), loose) { if (it == neon) "https://images.example/neon.webp" else null }
+        assertEquals(mapOf(neon to "https://images.example/neon.webp"), page.covers, "a submission the catalogue lacks and a loose file keep the placeholder")
+        assertEquals(emptyMap(), ui(imports = loose).covers, "no catalogue, no covers")
     }
 
     @Test

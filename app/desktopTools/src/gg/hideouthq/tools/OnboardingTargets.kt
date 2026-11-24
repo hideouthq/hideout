@@ -45,7 +45,7 @@ internal val onboardingTargets: List<Target> = listOf(
         AppWith({ AppContainer.fake(FakeConfig()) }, Route.Library)
     },
     Target("onboarding_import_found", 1440, 900, interact = { advanceUntil("the sources") { hasText("An export file") }; steps("Grimoire"); toImport() }) {
-        Setup { OnboardingFixture.container(seed = LibrarySeed.Empty, foreign = ForeignSeed.Both) }
+        Setup { OnboardingFixture.container(seed = LibrarySeed.Empty, foreign = ForeignSeed.Both, catalogued = ForeignCovers.mods, images = ForeignCovers) }
     },
     Target("onboarding_import_compact", 1000, 680, scale = 1f, interact = { toImport() }) { Setup { dmm() } },
 )

@@ -4,6 +4,7 @@ import gg.hideouthq.core.analytics.*
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import gg.hideouthq.core.data.CatalogRepository
 import gg.hideouthq.core.data.FolderPicker
 import gg.hideouthq.core.data.Preferences
 import gg.hideouthq.core.library.FolderCheck
@@ -28,6 +29,7 @@ class OnboardingViewModel(
     private val migration: Migration,
     private val preferences: Preferences,
     private val folderPicker: FolderPicker,
+    catalog: CatalogRepository? = null,
     private val onImported: () -> Unit = {},
     analytics: UsageAnalytics? = null,
 ) : ViewModel(), OnboardingActions {
@@ -36,7 +38,7 @@ class OnboardingViewModel(
 
     private val usage = analytics?.begin(UsageOperation.Setup)
     private val local = MutableStateFlow(Local())
-    private val picker = ImportPicker(migration, folderPicker, viewModelScope)
+    private val picker = ImportPicker(migration, catalog, folderPicker, viewModelScope)
 
     val imports: ImportActions get() = picker
 

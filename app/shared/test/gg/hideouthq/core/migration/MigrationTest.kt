@@ -261,9 +261,9 @@ class MigrationTest {
         val preview = assertIs<Preview.Ready>(migration.state.value.previews[dmm])
         assertEquals(
             listOf(
-                PreviewMod("Neon Haze", "pak10_dir.vpk", true),
-                PreviewMod("Iron Sights", "pak11_dir.vpk", true),
-                PreviewMod("Ranked HUD", "700003_Ranked HUD.vpk", false),
+                PreviewMod("Neon Haze", "pak10_dir.vpk", true, SubmissionRef(SubmissionKind.Mod, 700001)),
+                PreviewMod("Iron Sights", "pak11_dir.vpk", true, SubmissionRef(SubmissionKind.Mod, 700002)),
+                PreviewMod("Ranked HUD", "700003_Ranked HUD.vpk", false, SubmissionRef(SubmissionKind.Mod, 700003)),
             ),
             preview.mods,
         )
@@ -332,7 +332,7 @@ class MigrationTest {
         val preview = assertIs<Preview.Ready>(migration.state.value.previews[grimoire])
         assertEquals(listOf("Grimoire Locker · hero cards", "Skyline", "night_market"), preview.mods.map { it.name }, "Grimoire's own mods, and what sits in its own folders")
         assertEquals(
-            listOf(PreviewMod("Classic Investments", "pak01_dir.vpk", false), PreviewMod("Blue Chonky Whale over Rem", "pak02_dir.vpk", false), PreviewMod("pak04", "pak04_dir.vpk", false)),
+            listOf(PreviewMod("Classic Investments", "pak01_dir.vpk", false, SubmissionRef(SubmissionKind.Mod, 724744)), PreviewMod("Blue Chonky Whale over Rem", "pak02_dir.vpk", false, SubmissionRef(SubmissionKind.Mod, 735850)), PreviewMod("pak04", "pak04_dir.vpk", false, null)),
             preview.found,
             "Deadlock Mod Manager's files by its names, and the loose one by its file, none of them as Grimoire's",
         )

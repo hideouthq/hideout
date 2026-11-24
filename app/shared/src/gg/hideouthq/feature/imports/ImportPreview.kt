@@ -35,6 +35,8 @@ import gg.hideouthq.core.designsystem.component.StatusChip
 import gg.hideouthq.core.designsystem.theme.HideoutTheme
 import gg.hideouthq.core.designsystem.theme.HideoutWeights
 import gg.hideouthq.core.library.Profile
+import gg.hideouthq.core.library.SubmissionRef
+import gg.hideouthq.core.migration.PreviewMod
 import gg.hideouthq.core.ui.color
 import gg.hideouthq.resources.Res
 import gg.hideouthq.resources.import_found
@@ -55,10 +57,10 @@ fun ImportPreviewPanel(state: ImportUi) {
                 PreviewCard(itemName(row.item), row.ticked, Modifier.width(300.dp).fillMaxHeight()) {
                     if (row.item == ImportItem.Profiles) preview.profiles.take(ShownRows).forEach { PreviewProfileRow(it) }
                     else {
-                        preview.mods.take(ShownRows).forEach { PreviewModRow(it.name, stringResource(if (it.enabled) Res.string.library_filter_on else Res.string.library_filter_off)) }
+                        preview.mods.take(ShownRows).forEach { PreviewModRow(it, state.covers, stringResource(if (it.enabled) Res.string.library_filter_on else Res.string.library_filter_off)) }
                         if (preview.found.isNotEmpty()) {
                             CardTitle(stringResource(Res.string.import_found), Modifier.padding(top = 8.dp))
-                            preview.found.take(ShownRows).forEach { PreviewModRow(it.name, it.file) }
+                            preview.found.take(ShownRows).forEach { PreviewModRow(it, state.covers, it.file) }
                         }
                     }
                 }
@@ -88,12 +90,12 @@ private fun CardTitle(title: String, modifier: Modifier = Modifier, chip: Boolea
 }
 
 @Composable
-private fun PreviewModRow(name: String, caption: String) {
+private fun PreviewModRow(mod: PreviewMod, covers: Map<SubmissionRef, String>, caption: String) {
     val scheme = MaterialTheme.colorScheme
     val type = HideoutTheme.typography
     Row(Modifier.fillMaxWidth().height(42.dp).padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-        CoverArt(name, Modifier.size(44.dp, 30.dp), shape = RoundedCornerShape(8.dp))
-        Text(name, style = type.bodyStrong, color = scheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        CoverArt(mod.name, Modifier.size(44.dp, 30.dp), shape = RoundedCornerShape(8.dp), imageUrl = mod.submission?.let(covers::get))
+        Text(mod.name, style = type.bodyStrong, color = scheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
         Text(caption, style = type.caption.copy(fontWeight = HideoutWeights.Medium), color = scheme.outline, maxLines = 1)
     }
 }

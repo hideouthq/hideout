@@ -134,7 +134,7 @@ fun LibraryRoute(
             }
             override fun importFromManager() {
                 if (migration.state.value.run?.phase is ImportPhase.Finished) migration.dismiss()
-                importing = ImportPicker(migration, folderPicker, scope)
+                importing = ImportPicker(migration, catalog, folderPicker, scope)
             }
             override fun reorderParts(installId: String) { reordering = installId }
             override fun inspectFilePriority(installId: String) { if (filePriorities != null) inspecting = installId }

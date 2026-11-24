@@ -35,6 +35,7 @@ import gg.hideouthq.core.library.MigrationId
 import gg.hideouthq.core.library.ModLibrary
 import gg.hideouthq.core.library.Profile
 import gg.hideouthq.core.library.Sha256
+import gg.hideouthq.core.library.SubmissionRef
 import gg.hideouthq.core.library.Takeover
 import gg.hideouthq.core.library.TakeoverOutcome
 import gg.hideouthq.core.library.gateOf
@@ -101,8 +102,11 @@ sealed interface Preview {
     data class Failed(val problem: ImportProblem) : Preview
 }
 
-/** A mod that would come: its title, the name of the file it comes from, and whether it comes in on. */
-data class PreviewMod(val name: String, val file: String, val enabled: Boolean)
+/**
+ * A mod that would come: its title, the name of the file it comes from, whether it comes in on, and the submission
+ * Library will know it by, null for a file nobody names.
+ */
+data class PreviewMod(val name: String, val file: String, val enabled: Boolean, val submission: SubmissionRef?)
 
 /** What to bring. Profiles cannot come without the mods they hold, so that choice does not exist. */
 data class ImportChoice(val mods: ModsChoice, val crosshair: Boolean, val commands: Boolean) {
@@ -252,9 +256,9 @@ class Migration(
         val there = library.manifest.profiles.profiles.map { it.id }.toSet()
         val crosshair = CrosshairLines.read(assessment.autoexec.crosshair).crosshair
         val (own, found) = placed.plan.adopted.zip(assessment.prospects).partition { (_, prospect) -> prospect.fromSource }
-        fun shown(adopted: List<Pair<Adoption, Prospect>>) = adopted.map { (it, _) -> PreviewMod(it.record.title, it.sources.first().name, it.record.installId in on) }
+        fun shown(adopted: List<Pair<Adoption, Prospect>>) = adopted.map { (it, _) -> PreviewMod(it.record.title, it.sources.first().name, it.record.installId in on, it.record.sets.first().source.submission) }
         return Preview.Ready(
-            mods = shown(own) + takeover.copies.map { PreviewMod(it.title, it.fileName, it.enabled) },
+            mods = shown(own) + takeover.copies.map { PreviewMod(it.title, it.fileName, it.enabled, it.matched.submission) },
             profiles = placed.profiles.map { name -> (placed.plan.book.profiles + placed.plan.target.profiles).first { it.name == name } }.filter { it.id !in there },
             crosshair = assessment.autoexec.crosshair.takeIf { crosshairs.state.value.yours.entries.none { it.crosshair == crosshair } }.orEmpty(),
             commands = assessment.autoexec.commands,

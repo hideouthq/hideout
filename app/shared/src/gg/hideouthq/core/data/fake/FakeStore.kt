@@ -11,7 +11,7 @@ internal class FakeStore(val config: FakeConfig) {
         SampleCatalog.mods.map { mod ->
             val rated = mod.copy(mature = mod.id in config.mature)
             config.previews[mod.id]?.let { rated.copy(preview = it, has3dPreview = true) } ?: rated
-        },
+        } + config.catalogued,
     )
 
     fun <T> Flow<T>.withLatency(): Flow<T> = if (config.latencyMillis <= 0) this else flow {

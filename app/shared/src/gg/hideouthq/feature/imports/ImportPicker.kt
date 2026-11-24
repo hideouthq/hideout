@@ -1,6 +1,8 @@
 package gg.hideouthq.feature.imports
 
+import gg.hideouthq.core.data.CatalogRepository
 import gg.hideouthq.core.data.FolderPicker
+import gg.hideouthq.core.library.SubmissionRef
 import gg.hideouthq.core.library.Manager
 import gg.hideouthq.core.migration.ImportChoice
 import gg.hideouthq.core.migration.ImportPhase
@@ -9,11 +11,14 @@ import gg.hideouthq.core.migration.Migration
 import gg.hideouthq.core.migration.MigrationState
 import gg.hideouthq.core.migration.ModsChoice
 import gg.hideouthq.core.migration.Preview
+import gg.hideouthq.core.migration.PreviewMod
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -32,12 +37,17 @@ data class ImportPick(
 /** Every import is [Migration]'s, so leaving a host never stops one. */
 class ImportPicker(
     private val migration: Migration,
+    private val catalog: CatalogRepository?,
     private val folderPicker: FolderPicker,
     private val scope: CoroutineScope,
 ) : ImportActions {
     private val pick = MutableStateFlow(ImportPick())
 
-    val ui: Flow<ImportUi> = combine(pick, migration.state) { pick, imports -> importUi(pick, imports) }
+    private val catalogue = catalog?.mods?.onStart { emit(emptyList()) } ?: flowOf(emptyList())
+
+    val ui: Flow<ImportUi> = combine(pick, migration.state, catalogue) { pick, imports, _ ->
+        importUi(pick, imports) { catalog?.cachedMod(it.modId)?.cover?.url }
+    }
 
     init {
         scope.launch {
@@ -92,7 +102,7 @@ class ImportPicker(
  * The page as it stands. With one manager found that has something to bring, it opens on what that brings; with
  * several, or none, on the list. A run shows whichever host started it.
  */
-fun importUi(pick: ImportPick, imports: MigrationState): ImportUi {
+fun importUi(pick: ImportPick, imports: MigrationState, cover: (SubmissionRef) -> String? = { null }): ImportUi {
     fun previewOf(manager: Manager) = imports.previews[ImportSource.Installed(manager)]
     val looking = imports.sources.isEmpty() || imports.sources.any { it.found && previewOf(it.manager).let { preview -> preview == null || preview == Preview.Looking } }
     val sources = sourceCards(imports)
@@ -107,6 +117,7 @@ fun importUi(pick: ImportPick, imports: MigrationState): ImportUi {
         sources = sources,
         from = optionOf(source),
         preview = ready,
+        covers = ready?.let { (it.mods + it.found).mapNotNull(PreviewMod::submission).distinct().mapNotNull { ref -> cover(ref)?.let { url -> ref to url } }.toMap() }.orEmpty(),
         rows = ready?.let { rows(it, if (importing) run.choice else pick.choice, enabled = !importing) }.orEmpty(),
         problem = (phase as? ImportPhase.Stopped)?.problem ?: (preview as? Preview.Failed)?.problem,
         importing = importing,

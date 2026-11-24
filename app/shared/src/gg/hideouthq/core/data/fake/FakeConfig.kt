@@ -1,6 +1,7 @@
 package gg.hideouthq.core.data.fake
 
 import gg.hideouthq.core.data.CacheStorage
+import gg.hideouthq.core.model.Mod
 import gg.hideouthq.preview.IndexEntry
 
 data class FakeConfig(
@@ -14,6 +15,8 @@ data class FakeConfig(
     val autoexec: String? = null,
     val appUpdate: FakeAppUpdate = FakeAppUpdate.None,
     val mature: Set<String> = emptySet(),
+    /** Mods the catalogue lists beside the sample's, such as another manager's mods a render shows with covers. */
+    val catalogued: List<Mod> = emptyList(),
 )
 
 enum class SampleGameInfo { HideoutBlock, Rewritten, AnotherTool }

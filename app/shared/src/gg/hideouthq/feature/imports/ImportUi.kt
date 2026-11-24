@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import gg.hideouthq.core.library.ImportProblem
 import gg.hideouthq.core.library.ImportWait
 import gg.hideouthq.core.library.Manager
+import gg.hideouthq.core.library.SubmissionRef
 import gg.hideouthq.core.migration.Preview
 
 /** Where mods can come from. */
@@ -47,6 +48,8 @@ data class ImportUi(
     val asking: SourceOption? = null,
     val from: SourceOption? = null,
     val preview: Preview.Ready? = null,
+    /** The cover of each of [preview]'s submissions the catalogue already holds. */
+    val covers: Map<SubmissionRef, String> = emptyMap(),
     val rows: List<ImportRow> = emptyList(),
     val problem: ImportProblem? = null,
     val importing: Boolean = false,

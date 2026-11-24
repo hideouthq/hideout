@@ -13,6 +13,9 @@ import gg.hideouthq.core.data.fake.InMemoryMigrationRecords
 import gg.hideouthq.core.data.fake.LibrarySeed
 import gg.hideouthq.core.data.fake.SampleGame
 import gg.hideouthq.core.data.fake.sampleGameFiles
+import gg.hideouthq.core.designsystem.image.NoRemoteImages
+import gg.hideouthq.core.designsystem.image.RemoteImages
+import gg.hideouthq.core.model.Mod
 
 internal object OnboardingFixture {
     fun container(
@@ -23,8 +26,10 @@ internal object OnboardingFixture {
         processes: GameProcesses = FakeProcesses(),
         migrationRecords: MigrationRecords = InMemoryMigrationRecords(),
         files: InMemoryGameFiles = sampleGameFiles(FakeConfig(game = game, seed = seed, foreign = foreign)),
+        catalogued: List<Mod> = emptyList(),
+        images: RemoteImages = NoRemoteImages,
     ): AppContainer = AppContainer.fake(
-        FakeConfig(game = game, seed = seed, setupDone = false, foreign = foreign),
-        files = files, gameBanana = gameBanana, processes = processes, migrationRecords = migrationRecords,
+        FakeConfig(game = game, seed = seed, setupDone = false, foreign = foreign, catalogued = catalogued),
+        files = files, images = images, gameBanana = gameBanana, processes = processes, migrationRecords = migrationRecords,
     )
 }
