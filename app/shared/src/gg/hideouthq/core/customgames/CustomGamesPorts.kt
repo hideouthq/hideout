@@ -72,9 +72,9 @@ interface CustomGamesPlatform {
      * The stamp of the menus pack [game] has, rebuilt first from [renderer] when [rebuild] and the stamp differs from what
      * is wanted now. Only called with [rebuild] while Deadlock is closed. A pack from before a game update is rebuilt from
      * its own renderer when [renderer] is not fetched, and removed when no build succeeds. Otherwise a failed rebuild
-     * keeps a renderer-only pack.
+     * keeps a renderer-only pack. A rebuild holds the in-game UI only when [inGame] and no mod would shadow it.
      */
-    suspend fun menus(game: GameRoot, renderer: Sha256?, rebuild: Boolean): MenusStamp?
+    suspend fun menus(game: GameRoot, renderer: Sha256?, rebuild: Boolean, inGame: Boolean): MenusStamp?
 
     /** Gets the renderer [feed] names, so [menus] can build a pack before anything is hosted. */
     suspend fun fetchRenderer(feed: CustomGamesFeed): FetchProblem?

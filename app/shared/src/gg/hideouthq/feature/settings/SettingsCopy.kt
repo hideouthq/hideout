@@ -3,6 +3,7 @@ package gg.hideouthq.feature.settings
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.text.AnnotatedString
 import gg.hideouthq.core.appupdate.whatsNew
+import gg.hideouthq.core.customgames.InGameConsent
 import gg.hideouthq.core.data.FolderRefusal
 import gg.hideouthq.core.data.InstallDefaults
 import gg.hideouthq.core.designsystem.component.ButtonVariant
@@ -246,6 +247,7 @@ private fun live(setting: Setting, state: SettingsUiState, fixed: String?): Live
         SettingId.Load3dPreviews -> Live(fixed, RowControl.Switch(state.load3dPreviews ?: true, enabled = state.load3dPreviews != null), note = unsaved)
         SettingId.HideMature -> Live(fixed, RowControl.Switch(state.hideMature ?: false, enabled = state.hideMature != null), note = unsaved)
         SettingId.CustomGames -> Live(fixed, RowControl.Switch(state.customGames ?: false, enabled = state.customGames != null), note = unsaved)
+        SettingId.InGameUi -> Live(fixed, RowControl.Switch(state.inGameUi == InGameConsent.Yes, enabled = state.inGameUi != null), note = unsaved)
         SettingId.HostModeFolders -> Live(fixed, RowControl.Switch(state.hostModeFolders ?: false, enabled = state.hostModeFolders != null), note = unsaved)
         SettingId.WhatsNew -> Live(
             description = state.appUpdate?.takeIf { it.phase.version != null }?.let { headlineLine(whatsNew(it).headline) } ?: fixed,

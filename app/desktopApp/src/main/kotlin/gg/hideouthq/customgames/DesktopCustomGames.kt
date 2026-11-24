@@ -261,7 +261,7 @@ class DesktopCustomGames internal constructor(
         SessionOwned(appIdFile = Files.notExists(appIdFileOf(game)), compileCache = windows && Files.notExists(compileCache))
     }
 
-    override suspend fun menus(game: GameRoot, renderer: Sha256?, rebuild: Boolean): MenusStamp? = withContext(Dispatchers.IO) {
+    override suspend fun menus(game: GameRoot, renderer: Sha256?, rebuild: Boolean, inGame: Boolean): MenusStamp? = withContext(Dispatchers.IO) {
         val have = gamesFolder.pack(game)?.stamp
         if (!rebuild) return@withContext have
         val revision = SteamInf.revision(game)?.source
@@ -274,9 +274,9 @@ class DesktopCustomGames internal constructor(
         val rendererOnly = MenusStamp(built.hex, pageUrl, MenusScreenPort, revision)
         val want = rendererOnly.copy(inGame = InGameStamp(InGamePort, helperDigest, gamesFolder.sourcesOf(game, have?.inGame?.layouts?.keys.orEmpty())))
         // A mod ahead of the menus with the in-game UI's layouts would leave it half there, so it stays out.
-        val inGame = gamesFolder.inGameBlockedBy(game) == null
-        if (inGame && have == want) return@withContext have
-        if (inGame && want != unbuildable) {
+        val withInGame = inGame && gamesFolder.inGameBlockedBy(game) == null
+        if (withInGame && have == want) return@withContext have
+        if (withInGame && want != unbuildable) {
             gamesFolder.buildMenus(game, store.folderOf(built), want)?.let { return@withContext it.stamp }
             unbuildable = want
         }

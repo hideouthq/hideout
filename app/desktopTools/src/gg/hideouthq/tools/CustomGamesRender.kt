@@ -50,8 +50,8 @@ private fun customGamesTargets(images: RemoteImages, folder: File): List<CustomG
     return listOf(
         CustomGamesTarget("page", 1440, 1900, { app(Route.CustomGames) }) {
             openBebopWars()
-            check(hasText("Hook your opponent across the canal to score.")) { "the banner shows the listing's summary" }
-            check(hasText("Overtime if time runs out")) { "the side panel shows the listing's facts" }
+            check(hasText("Hook pulled teammates home.")) { "the banner shows the listing's summary" }
+            check(hasText("Higher score after 8 minutes, then sudden death")) { "the side panel shows the listing's facts" }
             check(hasText("The canal")) { "the legend shows under the map" }
             capture("page")
         },
@@ -64,6 +64,21 @@ private fun customGamesTargets(images: RemoteImages, folder: File): List<CustomG
             moveTo(nodes().first { it.hasLabel("Bebop Wars") })
             advance(600)
             capture("bebop_hovered")
+        },
+        CustomGamesTarget("optin", 1440, 900, { CustomGamesApp(images, folder, Route.CustomGames, inGame = null) }) {
+            optInShown()
+            capture("optin")
+            clickLabel("Turn on")
+            advance(600)
+            check(!hasText(OptInTitle)) { "Turn on answers the question for good" }
+            capture("optin_answered")
+        },
+        CustomGamesTarget("optin_compact", 1000, 700, { CustomGamesApp(images, folder, Route.CustomGames, inGame = null) }) {
+            optInShown()
+            capture("optin_compact")
+            clickLabel("Not now")
+            advance(600)
+            check(!hasText(OptInTitle)) { "Not now answers it too" }
         },
         CustomGamesTarget("servers", 1440, 900, { app(Route.CustomGames) }) {
             clickLabel("Servers")
@@ -115,6 +130,18 @@ private fun Script.joinThrough(name: String) {
     capture("${name}_started")
 }
 
+private const val OptInTitle = "Play Hideout games inside Deadlock"
+
+private fun Script.optInShown() {
+    waitForLocalImages()
+    check(hasText(OptInTitle)) { "the page asks before Hideout's UI goes into Deadlock" }
+    check(hasText("Hideout games show up in Custom Match")) { "the first point" }
+    check(hasText("Friends’ invites pop up in game")) { "the second point" }
+    check(hasText("Stop or Leave from the Esc menu")) { "the third point" }
+    check(hasText("Hideout adds a small menus file to Deadlock’s folder. Turn it off any time in Settings.")) { "what it changes" }
+    check(shows("Turn on") && shows("Not now")) { "both answers" }
+}
+
 private fun Script.openBebopWars() {
     moveTo(nodes().first { it.hasLabel("Bebop Wars") })
     click()
@@ -130,13 +157,18 @@ private fun Script.waitForLocalImages() {
 }
 
 @Composable
-private fun CustomGamesApp(images: RemoteImages, folder: File, start: Route, running: Boolean = false, link: String? = null) {
+private fun CustomGamesApp(images: RemoteImages, folder: File, start: Route, running: Boolean = false, link: String? = null, inGame: Boolean? = true) {
     CompositionLocalProvider(LocalWindowChrome provides RenderedWindowChrome) {
         val container = remember {
             val json = Json.parseToJsonElement(File(folder, "hideout.json").readText()).jsonObject
             val listing = checkNotNull(parseListing(json) { File(folder, it).toURI().toString() }) { "$folder/hideout.json breaks a listing rule" }
             val feed = FakeCustomGamesFeed.Placeholder.copy(modes = listOf(FakeCustomGamesFeed.BebopWars.copy(listing = listing)))
-            val preferences = Preferences(MemoryStorage()).also { runBlocking { it.setCustomGames(true) } }
+            val preferences = Preferences(MemoryStorage()).also {
+                runBlocking {
+                    it.setCustomGames(true)
+                    inGame?.let { on -> it.setInGameUi(on) }
+                }
+            }
             val processes = FakeProcesses(if (running) ProcessScan.Seen(game = true) else ProcessScan.Seen())
             AppContainer.fake(images = images, processes = processes, preferences = preferences, customGamesFeed = feed).also { app ->
                 link?.let { app.customGames?.openLink(it) }

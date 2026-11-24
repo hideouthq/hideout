@@ -269,7 +269,7 @@ class AppContainer(
             ).apply { start() }
             library.refuseSessionsWhen { appUpdates.restartBegun }
             val customGames = customGamesPlatform?.let {
-                CustomGames(it, LibrarySessionFiles(library, launcher), customGamesFeed, scope, ports.log, preferences.hostFolders(), analytics, preferences.customGamesOn()).apply { start() }
+                CustomGames(it, LibrarySessionFiles(library, launcher), customGamesFeed, scope, ports.log, preferences.hostFolders(), analytics, preferences.inGameAnswer()).apply { start() }
             }
             scope.launch { prefetchFeaturedRenders(catalog, preferences.preferredHeroes, images) }
             statsService?.let { stats -> scope.launch { followPlayedHeroes(stats, catalog, preferences) } }
@@ -373,7 +373,7 @@ class AppContainer(
                 library.state.modsBusy(), gameScope,
             ).apply { start() }
             library.refuseSessionsWhen { appUpdates.restartBegun }
-            val customGames = CustomGames(FakeCustomGamesPlatform(), LibrarySessionFiles(library, launcher), FakeCustomGamesFeed(answer = CustomGamesFetch.Fresh(customGamesFeed)), gameScope, hostFolders = preferences.hostFolders(), analytics = analytics).apply { start() }
+            val customGames = CustomGames(FakeCustomGamesPlatform(), LibrarySessionFiles(library, launcher), FakeCustomGamesFeed(answer = CustomGamesFetch.Fresh(customGamesFeed)), gameScope, hostFolders = preferences.hostFolders(), analytics = analytics, inGame = preferences.inGameAnswer()).apply { start() }
             return AppContainer(
                 analytics = analytics,
                 catalog = catalog,
@@ -427,4 +427,4 @@ private fun neverChecking(preferences: Preferences) = AppUpdates(
 
 private fun Preferences.hostFolders() = hostModeFolders.onStart { readHostModeFolders() }.filterNotNull()
 
-private fun Preferences.customGamesOn() = customGames.onStart { readCustomGames() }.filterNotNull()
+private fun Preferences.inGameAnswer() = inGameUi.onStart { readInGameUi() }.filterNotNull()

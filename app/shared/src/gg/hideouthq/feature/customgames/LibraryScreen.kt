@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import gg.hideouthq.core.customgames.CustomGames
 import gg.hideouthq.core.customgames.FolderRead
+import gg.hideouthq.core.customgames.InGameConsent
 import gg.hideouthq.core.customgames.LibraryEntry
 import gg.hideouthq.core.customgames.LinkProblem
 import gg.hideouthq.core.customgames.ModeKind
@@ -117,6 +118,9 @@ fun CustomGamesRoute(
     /** Whether one notification is wanted when servers go live, and the switch that says so. */
     notifyServers: Boolean,
     onNotifyServers: (Boolean) -> Unit,
+    /** The player's answer to Hideout's UI inside Deadlock, null before it is read, and how a new one is saved. */
+    inGame: InGameConsent?,
+    onInGame: (Boolean) -> Unit,
     social: Social? = null,
 ) {
     val modes by games.modes.collectAsStateWithLifecycle()
@@ -206,6 +210,7 @@ fun CustomGamesRoute(
         }
     }
     HostDialog(hosting?.mode, modes, block, restarts, games, modal) { hosting = null }
+    InGameDialog(inGame == InGameConsent.Unanswered && live.session.startsHost && hosting == null, modes.feed?.modes?.firstOrNull(), modal, onInGame)
 }
 
 /** Shown once the site refused this PC's mailbox, with the player's own id, the one support resets it by. */

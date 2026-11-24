@@ -3,6 +3,9 @@
     <string name="setting_custom_games_title">Custom games</string>
     <string name="setting_custom_games_description">Host a mode or join a friend’s with a code. Still being tested.</string>
     <string name="setting_custom_games_keywords">custom games, host, join, invite, friends, mode, server, multiplayer</string>
+    <string name="setting_ingame_ui_title">Hideout games inside Deadlock</string>
+    <string name="setting_ingame_ui_description">Hideout games in Custom Match, friends’ invites in game, and Stop or Leave in the Esc menu. Hideout adds a small menus file to Deadlock’s folder.</string>
+    <string name="setting_ingame_ui_keywords">in game, deadlock, custom match, invites, esc menu, menus, custom games</string>
     <string name="setting_host_mode_folders_title">Host mode folders</string>
     <string name="setting_host_mode_folders_description">Add a mode’s build folder in Custom games and host it before it’s released. Friends you invite get its files from your PC.</string>
     <string name="setting_host_mode_folders_keywords">developer, mode folder, build, mod.json, host, custom games, test</string>
@@ -316,6 +319,13 @@
     <string name="cg_problem_menus_body">Deadlock needs them to play a mode, and they didn’t download. Check your connection, then try again.</string>
     <string name="cg_menus_after_restart_lead">Restart Deadlock to play from inside it.</string>
     <string name="cg_menus_after_restart_body">Hideout games show up in Deadlock’s Play menu the next time it starts.</string>
+    <string name="cg_ingame_title">Play Hideout games inside Deadlock</string>
+    <string name="cg_ingame_point_band">Hideout games show up in Custom Match</string>
+    <string name="cg_ingame_point_invites">Friends’ invites pop up in game</string>
+    <string name="cg_ingame_point_esc">Stop or Leave from the Esc menu</string>
+    <string name="cg_ingame_file">Hideout adds a small menus file to Deadlock’s folder. Turn it off any time in Settings.</string>
+    <string name="cg_ingame_turn_on">Turn on</string>
+    <string name="cg_ingame_not_now">Not now</string>
     <string name="cg_ingame_blocked_lead">Hideout games won’t show inside Deadlock.</string>
     <string name="cg_ingame_blocked_body">A mod in %1$s changes Deadlock’s HUD or Custom Match screen, and gameinfo.gi loads it ahead of Hideout. You can still host and join from here. Remove that mod, or load it after Hideout, then restart Deadlock.</string>
     <string name="cg_problem_menus_blocked_title">Another tool’s menus are in the way</string>

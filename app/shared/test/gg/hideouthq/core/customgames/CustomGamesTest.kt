@@ -133,9 +133,9 @@ class CustomGamesTest {
 
     private val runs = mutableListOf<Run>()
 
-    private inner class Run(val test: TestScope, feed: CustomGamesFeedSource? = null, computer: CustomGamesPlatform = platform, hostFolders: Flow<Boolean> = flowOf(false), analytics: UsageAnalytics? = null, settingOn: Flow<Boolean> = flowOf(false)) {
+    private inner class Run(val test: TestScope, feed: CustomGamesFeedSource? = null, computer: CustomGamesPlatform = platform, hostFolders: Flow<Boolean> = flowOf(false), analytics: UsageAnalytics? = null, inGame: Flow<InGameConsent> = flowOf(InGameConsent.Unanswered)) {
         val scope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(test.testScheduler)).also { runs += this }
-        val games = CustomGames(computer, files, feed, scope, logs::add, hostFolders, analytics, settingOn)
+        val games = CustomGames(computer, files, feed, scope, logs::add, hostFolders, analytics, inGame)
         val session get() = games.live.value.session
         val link: FakeLinkProcess get() = platform.links.last()
 
@@ -368,7 +368,7 @@ class CustomGamesTest {
         }
     }
 
-    private fun TestScope.started(feed: CustomGamesFeedSource? = null) = Run(this, feed).apply {
+    private fun TestScope.started(feed: CustomGamesFeedSource? = null, inGame: InGameConsent = InGameConsent.Unanswered) = Run(this, feed, inGame = flowOf(inGame)).apply {
         files.held = false
         games.start()
         settle()
@@ -2330,41 +2330,114 @@ class CustomGamesTest {
     private val Listed = FakeCustomGamesFeed.SampleModes.runtime.renderer.sha256
 
     @Test
-    fun turningCustomGamesOnSetsUpAClosedDeadlockBeforeAnythingIsInstalled() = scenario {
+    fun sayingYesSetsUpAClosedDeadlockBeforeAnythingIsInstalled() = scenario {
         platform.menusStamp = null
-        val on = MutableStateFlow(false)
-        val run = Run(this, FakeCustomGamesFeed(), settingOn = on)
+        val answer = MutableStateFlow(InGameConsent.Unanswered)
+        val run = Run(this, FakeCustomGamesFeed(), inGame = answer)
         run.games.start()
         run.settle()
         assertEquals(GamesLines.Off, files.lines)
-        assertEquals(emptyList(), platform.renderersFetched, "off, nothing is fetched")
+        assertEquals(emptyList(), platform.renderersFetched, "unanswered, nothing is fetched")
 
-        on.value = true
+        answer.value = InGameConsent.Yes
         run.settle()
         assertEquals(listOf(Listed), platform.renderersFetched, "the renderer the feed names")
         assertEquals(GamesLines.Mounted, files.lines, "the lines the menus load from")
         assertEquals(listOf<Sha256?>(Listed), platform.menusRebuilds, "and the pack, so the band shows at Deadlock's next start")
+        assertEquals(listOf(true), platform.inGameRebuilds, "with the in-game UI")
     }
 
     @Test
-    fun turningCustomGamesOffWithNothingInstalledTakesTheMenusOut() = scenario {
+    fun sayingNoSetsNothingUp() = scenario {
         platform.menusStamp = null
-        val on = MutableStateFlow(true)
-        val run = Run(this, FakeCustomGamesFeed(), settingOn = on)
+        val answer = MutableStateFlow(InGameConsent.Unanswered)
+        val run = Run(this, FakeCustomGamesFeed(), inGame = answer)
+        run.games.start()
+        run.settle()
+        answer.value = InGameConsent.No
+        run.settle()
+        assertEquals(emptyList(), platform.renderersFetched)
+        assertEquals(GamesLines.Off, files.lines)
+        assertEquals(emptyList(), platform.menusRebuilds)
+    }
+
+    @Test
+    fun unansweredAHostedGameGetsAPackWithoutTheInGameUi() = game {
+        hostUntilHosting()
+        assertEquals(listOf(false), platform.inGameRebuilds, "the renderer alone")
+    }
+
+    @Test
+    fun afterANoAJoinedGameGetsAPackWithoutTheInGameUi() = scenario {
+        started(inGame = InGameConsent.No).apply {
+            joinUntilPlaying()
+            assertEquals(listOf(false), platform.inGameRebuilds)
+        }
+    }
+
+    @Test
+    fun afterAYesAHostedGameGetsThePackWithTheInGameUi() = scenario {
+        started(inGame = InGameConsent.Yes).apply {
+            hostUntilHosting()
+            assertTrue(platform.inGameRebuilds.isNotEmpty() && platform.inGameRebuilds.all { it })
+        }
+    }
+
+    @Test
+    fun sayingYesAfterAPackWithoutTheInGameUiAddsIt() = scenario {
+        files.lines = GamesLines.Mounted
+        platform.installedModes[Source.id] = InstalledMode(Source, 1, null)
+        val answer = MutableStateFlow(InGameConsent.No)
+        val run = Run(this, FakeCustomGamesFeed(), inGame = answer)
+        run.games.start()
+        run.settle()
+        platform.inGameRebuilds.clear()
+
+        answer.value = InGameConsent.Yes
+        run.settle()
+        assertEquals(emptyList(), platform.renderersFetched, "the pack's renderer is there already")
+        assertEquals(listOf(true), platform.inGameRebuilds)
+    }
+
+    @Test
+    fun turningInGameOffWithNothingInstalledTakesTheMenusOut() = scenario {
+        platform.menusStamp = null
+        val answer = MutableStateFlow(InGameConsent.Yes)
+        val run = Run(this, FakeCustomGamesFeed(), inGame = answer)
         run.games.start()
         run.settle()
         assertEquals(GamesLines.Mounted, files.lines)
 
-        on.value = false
+        answer.value = InGameConsent.No
         run.settle()
-        assertEquals(GamesLines.Off, files.lines, "off, Deadlock is left as it was before")
+        assertEquals(GamesLines.Off, files.lines, "Deadlock is left as it was before")
+    }
+
+    @Test
+    fun turningInGameOffWithAModeInstalledTakesOnlyTheInGameUiOutOnceDeadlockCloses() = scenario {
+        files.lines = GamesLines.Mounted
+        platform.installedModes[Source.id] = InstalledMode(Source, 1, null)
+        files.clientActivity.value = GameActivity.Running
+        val answer = MutableStateFlow(InGameConsent.Yes)
+        val run = Run(this, FakeCustomGamesFeed(), inGame = answer)
+        run.games.start()
+        run.settle()
+
+        answer.value = InGameConsent.No
+        run.settle()
+        assertEquals(emptyList(), platform.inGameRebuilds, "nothing is built under a running Deadlock")
+
+        files.clientActivity.value = GameActivity.Closed
+        run.settle()
+        assertEquals(listOf(false), platform.inGameRebuilds, "the renderer alone")
+        assertEquals(GamesLines.Mounted, files.lines, "the installed mode still plays")
     }
 
     @Test
     fun withDeadlockRunningTheAppSaysTheMenusFollowItsRestart() = scenario {
         platform.menusStamp = null
         files.clientActivity.value = GameActivity.Running
-        val run = Run(this, FakeCustomGamesFeed(), settingOn = flowOf(true))
+        val run = Run(this, FakeCustomGamesFeed(), inGame = flowOf(InGameConsent.Yes))
         run.games.start()
         run.settle()
         assertEquals(listOf(Listed), platform.renderersFetched, "fetched while it runs")
@@ -2382,28 +2455,38 @@ class CustomGamesTest {
     fun aStartWithThePackBuiltFetchesNothingAndRemovingTheLastModeKeepsTheMenus() = scenario {
         files.lines = GamesLines.Mounted
         platform.installedModes[Source.id] = InstalledMode(Source, 1, null)
-        val run = Run(this, FakeCustomGamesFeed(), settingOn = flowOf(true))
+        val run = Run(this, FakeCustomGamesFeed(), inGame = flowOf(InGameConsent.Yes))
         run.games.start()
         run.settle()
         assertEquals(emptyList(), platform.renderersFetched)
 
         run.games.remove(Source.id)
         run.settle()
-        assertEquals(GamesLines.Mounted, files.lines, "custom games are still on")
+        assertEquals(GamesLines.Mounted, files.lines, "the in-game UI is still wanted")
     }
 
     @Test
-    fun aModThatTakesOnlyTheInGameUiIsSaidAndTheSessionStillPlays() = game {
-        platform.aheadOfInGame = "citadel/popup"
-        games.refreshModes()
-        settle()
-        assertEquals("citadel/popup", games.inGameBlockedBy.value)
-        found()
-        games.confirmJoin(null)
-        settle()
-        assertIs<Session.Linking>(session)
+    fun aModThatTakesOnlyTheInGameUiIsSaidAndTheSessionStillPlays() = scenario {
+        started(inGame = InGameConsent.Yes).apply {
+            platform.aheadOfInGame = "citadel/popup"
+            games.refreshModes()
+            settle()
+            assertEquals("citadel/popup", games.inGameBlockedBy.value)
+            found()
+            games.confirmJoin(null)
+            settle()
+            assertIs<Session.Linking>(session)
 
-        platform.aheadOfInGame = null
+            platform.aheadOfInGame = null
+            games.refreshModes()
+            settle()
+            assertNull(games.inGameBlockedBy.value)
+        }
+    }
+
+    @Test
+    fun aModOverTheInGameUiGoesUnsaidWithoutAYes() = game {
+        platform.aheadOfInGame = "citadel/popup"
         games.refreshModes()
         settle()
         assertNull(games.inGameBlockedBy.value)

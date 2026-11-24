@@ -37,6 +37,9 @@ import gg.hideouthq.resources.setting_bug_report_description
 import gg.hideouthq.resources.setting_bug_report_keywords
 import gg.hideouthq.resources.setting_bug_report_title
 import gg.hideouthq.resources.setting_host_mode_folders_description
+import gg.hideouthq.resources.setting_ingame_ui_description
+import gg.hideouthq.resources.setting_ingame_ui_keywords
+import gg.hideouthq.resources.setting_ingame_ui_title
 import gg.hideouthq.resources.setting_host_mode_folders_keywords
 import gg.hideouthq.resources.setting_host_mode_folders_title
 import gg.hideouthq.resources.setting_keep_description
@@ -95,7 +98,7 @@ import gg.hideouthq.resources.settings_group_installing
 import gg.hideouthq.resources.settings_group_theme
 import org.jetbrains.compose.resources.StringResource
 
-internal enum class SettingId { UsageAnalytics, Deadlock, ModsFolder, ModLoading, Stats, StatsAccount, ShareMatchIds, StatsSource, StatsCache, AskWhichVersion, DownloadFolder, KeepDownloads, SpaceUsed, Load3dPreviews, Previews, HideMature, AccentColour, ModCards, AutoRepair, CustomGames, HostModeFolders, BackUp, Backups, Version, CheckAppUpdates, DownloadAppUpdates, WhatsNew, ModSource, BugReport, Licences }
+internal enum class SettingId { UsageAnalytics, Deadlock, ModsFolder, ModLoading, Stats, StatsAccount, ShareMatchIds, StatsSource, StatsCache, AskWhichVersion, DownloadFolder, KeepDownloads, SpaceUsed, Load3dPreviews, Previews, HideMature, AccentColour, ModCards, AutoRepair, CustomGames, InGameUi, HostModeFolders, BackUp, Backups, Version, CheckAppUpdates, DownloadAppUpdates, WhatsNew, ModSource, BugReport, Licences }
 
 internal enum class SettingGroup(val tab: SettingsTab, val heading: StringResource?) {
     Deadlock(SettingsTab.Game, null),
@@ -245,6 +248,10 @@ internal val SettingsRegistry: List<Setting> = listOf(
     Setting(
         SettingId.CustomGames, SettingGroup.Experimental, Res.string.setting_custom_games_title, Res.string.setting_custom_games_description,
         Res.string.setting_custom_games_keywords, HideoutIcons.Globe, SettingControl.Switch, Visibility.WithCustomGames,
+    ),
+    Setting(
+        SettingId.InGameUi, SettingGroup.Experimental, Res.string.setting_ingame_ui_title, Res.string.setting_ingame_ui_description,
+        Res.string.setting_ingame_ui_keywords, HideoutIcons.Gamepad, SettingControl.Switch, Visibility.WithCustomGames,
     ),
     Setting(
         SettingId.HostModeFolders, SettingGroup.Developer, Res.string.setting_host_mode_folders_title, Res.string.setting_host_mode_folders_description,

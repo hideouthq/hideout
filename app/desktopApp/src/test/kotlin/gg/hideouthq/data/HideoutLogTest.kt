@@ -33,6 +33,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import gg.hideouthq.core.customgames.InGameConsent
 
 @OptIn(ExperimentalPathApi::class)
 class HideoutLogTest {
@@ -91,7 +92,7 @@ class HideoutLogTest {
             listOf(InstalledSet(InstalledSource.Local("l1", "lash.vpk"), null, null, SetOrigin.Imported(FileImage(2048, "a".repeat(64))), null, "lash.vpk", listOf(SetFile(VpkPart.Directory, FileImage(2048, "a".repeat(64)))))),
         )
         val library = LibraryState(game = GameStatus.Ready(game, FoundVia.Chosen), library = LibraryStatus.Ready(listOf(lash)))
-        val settings = SettingsSnapshot("$home/Deadlock", InstallDefaults(downloadFolder = DownloadFolder("$home/Downloads/Hideout")), true, true, true, false, true, false, true, false, false, emptyList())
+        val settings = SettingsSnapshot("$home/Deadlock", InstallDefaults(downloadFolder = DownloadFolder("$home/Downloads/Hideout")), true, true, true, false, true, InGameConsent.Unanswered, false, true, false, false, emptyList())
         val log = HideoutLog(root)
         log.write("Left in place: $home/Deadlock/game/citadel/addons/pak01_dir.vpk")
         val machine = Machine("1.2.3", "on the JVM, not packaged, doesn't update itself", "Linux 6.8 amd64", "KDE, wayland", "en-GB", "Java 25, OpenJDK")

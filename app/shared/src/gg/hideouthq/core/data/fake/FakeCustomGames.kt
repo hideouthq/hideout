@@ -254,9 +254,13 @@ class FakeCustomGamesPlatform(
 
     override suspend fun ownedBeforeServer(game: GameRoot): SessionOwned = SampleOwned
 
-    override suspend fun menus(game: GameRoot, renderer: Sha256?, rebuild: Boolean): MenusStamp? {
+    /** Whether each rebuild in [menusRebuilds] asked for the in-game UI. */
+    val inGameRebuilds = mutableListOf<Boolean>()
+
+    override suspend fun menus(game: GameRoot, renderer: Sha256?, rebuild: Boolean, inGame: Boolean): MenusStamp? {
         if (rebuild) {
             menusRebuilds += renderer
+            inGameRebuilds += inGame
             if (renderer != null && rebuildGives != null) menusStamp = rebuildGives
         }
         return menusStamp

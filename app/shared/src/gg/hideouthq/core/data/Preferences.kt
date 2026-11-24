@@ -1,5 +1,6 @@
 package gg.hideouthq.core.data
 
+import gg.hideouthq.core.customgames.InGameConsent
 import gg.hideouthq.core.model.Accent
 import gg.hideouthq.core.model.Appearance
 import gg.hideouthq.core.model.Backdrop
@@ -35,6 +36,7 @@ class Preferences(private val storage: CacheStorage, private val clock: Clock = 
     private val publishedLoad3dPreviews = MutableStateFlow<Boolean?>(null)
     private val publishedHideMature = MutableStateFlow<Boolean?>(null)
     private val publishedCustomGames = MutableStateFlow<Boolean?>(null)
+    private val publishedInGameUi = MutableStateFlow<InGameConsent?>(null)
     private val publishedHostModeFolders = MutableStateFlow<Boolean?>(null)
     private val publishedAppearance = MutableStateFlow(Appearance())
     private val publishedNotifyServers = MutableStateFlow(false)
@@ -184,6 +186,13 @@ class Preferences(private val storage: CacheStorage, private val clock: Clock = 
 
     suspend fun setCustomGames(on: Boolean) = change { it.copy(customGames = on) }
 
+    /** Settings › Experimental › "Hideout games inside Deadlock", as last read or saved; null before [readInGameUi]. */
+    val inGameUi: StateFlow<InGameConsent?> = publishedInGameUi.asStateFlow()
+
+    suspend fun readInGameUi() = mutex.withLock { publishedInGameUi.value = load().inGameConsent() }
+
+    suspend fun setInGameUi(on: Boolean) = change { it.copy(inGameUi = on) }
+
     /** Settings › Developer › "Host mode folders", as last read or saved; null before [readHostModeFolders]. */
     val hostModeFolders: StateFlow<Boolean?> = publishedHostModeFolders.asStateFlow()
 
@@ -241,6 +250,7 @@ class Preferences(private val storage: CacheStorage, private val clock: Clock = 
         publishedLoad3dPreviews.value = next.load3dPreviews
         publishedHideMature.value = next.hideMature
         publishedCustomGames.value = next.customGames
+        publishedInGameUi.value = next.inGameConsent()
         publishedHostModeFolders.value = next.hostModeFolders
         publishedAppearance.value = next.appearance()
         publishedNotifyServers.value = next.notifyServers
@@ -300,6 +310,8 @@ private data class StoredPreferences(
     val load3dPreviews: Boolean = true,
     val hideMature: Boolean = false,
     val customGames: Boolean = true,
+    /** Null until the player answers the custom games page's question. */
+    val inGameUi: Boolean? = null,
     val hostModeFolders: Boolean = false,
     val accent: String? = null,
     val modCards: String? = null,
@@ -326,10 +338,16 @@ private data class StoredPreferences(
         modCards = ModCardStyle.entries.firstOrNull { it.name == modCards } ?: ModCardStyle.OnImage,
     )
 
+    fun inGameConsent() = when (inGameUi) {
+        null -> InGameConsent.Unanswered
+        true -> InGameConsent.Yes
+        false -> InGameConsent.No
+    }
+
     fun stats() = StatsPreferences(statsEnabled, statsAccountId, statsMode, statsPeriod, steamTrackingEnabled, shareMatchIdsSince)
 
     fun snapshot() = SettingsSnapshot(
-        gameFolder, defaults(), autoRepair, downloadAppUpdates, load3dPreviews, hideMature, customGames, hostModeFolders, statsEnabled, steamTrackingEnabled,
+        gameFolder, defaults(), autoRepair, downloadAppUpdates, load3dPreviews, hideMature, customGames, inGameConsent(), hostModeFolders, statsEnabled, steamTrackingEnabled,
         shareMatchIdsSince != null, unfinishedInstalls.map { it.modId },
     )
 }
@@ -343,6 +361,7 @@ data class SettingsSnapshot(
     val load3dPreviews: Boolean,
     val hideMature: Boolean,
     val customGames: Boolean,
+    val inGameUi: InGameConsent,
     val hostModeFolders: Boolean,
     val stats: Boolean,
     val steamTracking: Boolean,

@@ -342,6 +342,7 @@ private fun settings(settings: SettingsSnapshot): ReportSection {
             Fact("Load 3D previews by default", on(settings.load3dPreviews)),
             Fact("Hide mature mods", on(settings.hideMature)),
             Fact("Custom games", on(settings.customGames)),
+            Fact("Hideout games inside Deadlock", settings.inGameUi.name.lowercase()),
             Fact("Host mode folders", on(settings.hostModeFolders)),
             Fact("Stats", "${on(settings.stats)}, Steam tracking ${on(settings.steamTracking)}, sharing match IDs ${on(settings.shareMatchIds)}"),
             Fact("Unfinished downloads", settings.unfinishedInstalls.joinToString().ifEmpty { "none" }),

@@ -95,6 +95,7 @@ internal class SettingsViewModel(
         .combine(preferences.load3dPreviews) { state, load3dPreviews -> state.copy(load3dPreviews = load3dPreviews) }
         .combine(preferences.hideMature) { state, on -> state.copy(hideMature = on) }
         .combine(preferences.customGames) { state, customGames -> state.copy(customGames = customGames) }
+        .combine(preferences.inGameUi) { state, answer -> state.copy(inGameUi = answer) }
         .combine(preferences.hostModeFolders) { state, on -> state.copy(hostModeFolders = on) }
         .combine(analytics?.choice ?: flowOf(null)) { state, choice -> state.copy(analyticsEnabled = choice?.let { it == AnalyticsChoice.Enabled }) }
         .combine(preferences.appearance) { state, appearance -> state.copy(appearance = appearance) }
@@ -107,6 +108,7 @@ internal class SettingsViewModel(
         viewModelScope.launch { preferences.readLoad3dPreviews() }
         viewModelScope.launch { preferences.readHideMature() }
         viewModelScope.launch { preferences.readCustomGames() }
+        viewModelScope.launch { preferences.readInGameUi() }
         viewModelScope.launch { preferences.readHostModeFolders() }
         if (statsAvailable) viewModelScope.launch { preferences.statsPreferences() }
         measurePreviews()
@@ -144,6 +146,7 @@ internal class SettingsViewModel(
             SettingId.Load3dPreviews -> preferences.setLoad3dPreviews(on)
             SettingId.HideMature -> preferences.setHideMature(on)
             SettingId.CustomGames -> preferences.setCustomGames(on)
+            SettingId.InGameUi -> preferences.setInGameUi(on)
             SettingId.HostModeFolders -> preferences.setHostModeFolders(on)
             else -> Unit
         }

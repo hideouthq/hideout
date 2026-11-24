@@ -23,6 +23,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.getAndUpdate
@@ -87,6 +89,9 @@ data class ModeList(
     fun withNewest(found: CustomGamesFeed?): ModeList = copy(feed = listOfNotNull(found, feed).maxByOrNull { it.sequence })
 }
 
+/** The player's answer to putting Hideout's own UI into Deadlock's screens: the games band, invite toasts and the Esc menu's entries. */
+enum class InGameConsent { Unanswered, Yes, No }
+
 /** Why a clicked link did not reach [Session.Confirming]. */
 enum class LinkProblem {
     Unreadable,
@@ -98,8 +103,8 @@ enum class LinkProblem {
 /**
  * The owner of a custom game. One coroutine reads events, runs [reduce] and [recordAfter], publishes [live] and carries
  * out the commands, which post their results back as events. No state but [live] says where a session is or what it is for.
- * While [settingOn] says custom games are on, Deadlock is kept set up for them, so its own menus offer Hideout games
- * before anything is installed or hosted.
+ * Once the player says yes to [inGame], Deadlock is kept set up for it, so its own menus offer Hideout games before
+ * anything is installed or hosted. Without that yes, a pack a session needs is built without the in-game UI.
  *
  * Admitting, launching, releasing and the journal run one at a time in the order issued, on a queue of their own, so the
  * helper can still be stopped while the library takes its time. [start] ends what a crash left before any event is read.
@@ -112,7 +117,7 @@ class CustomGames(
     private val log: (String) -> Unit = {},
     private val hostFolders: Flow<Boolean>,
     private val analytics: UsageAnalytics? = null,
-    private val settingOn: Flow<Boolean> = flowOf(false),
+    private val inGame: Flow<InGameConsent> = flowOf(InGameConsent.Unanswered),
 ) : AutoCloseable {
     private class UsageRun(val attempt: UsageAttempt, var stage: UsageStage = UsageStage.Prepare, var play: UsagePlay? = null)
     private var usage: UsageRun? = null
@@ -193,8 +198,8 @@ class CustomGames(
     @Volatile
     private var foldersShown = false
 
-    @Volatile
-    private var menusWanted = false
+    /** Whether [inGame] is yes, null until it is read, so no pack is built before the answer is known. */
+    private val inGameAnswer = MutableStateFlow<Boolean?>(null)
 
     private val storeChanges = Mutex()
 
@@ -227,10 +232,10 @@ class CustomGames(
             }
         }
         scope.launch {
-            settingOn.collect {
-                val turnedOff = menusWanted && !it
-                menusWanted = it
-                if (it) readyMenus()
+            inGame.collect { consent ->
+                val wanted = consent == InGameConsent.Yes
+                val turnedOff = inGameAnswer.getAndUpdate { wanted } == true && !wanted
+                if (wanted) readyMenus()
                 if (turnedOff) {
                     lastRemovalEndsTheUse()
                     upkeepGame()
@@ -240,17 +245,20 @@ class CustomGames(
     }
 
     /**
-     * Fetches the renderer the feed names and builds the pack while Deadlock is closed, unless a pack is built already.
-     * With Deadlock running, [restartsDeadlock] says the menus follow its restart.
+     * Fetches the renderer the feed names unless a pack is built already, then builds the pack with the in-game UI while
+     * Deadlock is closed. With Deadlock running, [restartsDeadlock] says the menus follow its restart.
      */
     private suspend fun readyMenus() {
         val game = files.game()
-        if (game != null && logged("read the menus") { platform.menus(game, null, rebuild = false) } != null) return
-        val listed = publishedModes.value.feed ?: feed?.lastGood() ?: (feed?.fetch() as? CustomGamesFetch.Fresh)?.feed ?: return
-        changeModes { it.withNewest(listed) }
-        logged("fetch the menus' renderer") { platform.fetchRenderer(listed) }?.let { log("Custom games: could not fetch the menus' renderer: $it") }
+        if (game == null || logged("read the menus") { platform.menus(game, null, rebuild = false, inGame = false) } == null) {
+            val listed = publishedModes.value.feed ?: feed?.lastGood() ?: (feed?.fetch() as? CustomGamesFetch.Fresh)?.feed ?: return
+            changeModes { it.withNewest(listed) }
+            logged("fetch the menus' renderer") { platform.fetchRenderer(listed) }?.let { log("Custom games: could not fetch the menus' renderer: $it") }
+        }
         upkeepGame()
     }
+
+    private suspend fun inGameWanted(): Boolean = inGameAnswer.filterNotNull().first()
 
     /** [restartAccepted] is the [restartsDeadlock] the player was shown as they pressed, so the session restarts Deadlock for it without asking again. */
     fun host(mode: Mode, choices: Choices, restartAccepted: RestartReason?, outreach: Outreach = Outreach.Private) = post(HostRequested(mode, choices, restartAccepted, outreach))
@@ -339,7 +347,7 @@ class CustomGames(
     }
 
     private suspend fun lastRemovalEndsTheUse() {
-        logged("record that custom games are not in use") { if (!menusWanted && platform.installed().isEmpty() && platform.folders.read().isEmpty()) files.useCustomGames(false) }
+        logged("record that custom games are not in use") { if (!inGameWanted() && platform.installed().isEmpty() && platform.folders.read().isEmpty()) files.useCustomGames(false) }
     }
 
     private suspend fun readFolders() {
@@ -558,14 +566,14 @@ class CustomGames(
             val lines = files.gamesLines()
             when {
                 lines == GamesLines.Pending || lines == GamesLines.Removed -> files.useCustomGames(true)
-                menusWanted && (lines == GamesLines.Off || lines == GamesLines.Leaving) -> files.useCustomGames(true)
+                inGameWanted() && (lines == GamesLines.Off || lines == GamesLines.Leaving) -> files.useCustomGames(true)
                 lines == GamesLines.Leaving -> files.useCustomGames(false)
             }
             when (files.gamesLines()) {
                 GamesLines.Off -> platform.removeGamesFolder(game)
                 is GamesLines.Unreadable -> Unit
                 GamesLines.Mounted, GamesLines.Pending, GamesLines.Removed, GamesLines.Leaving -> {
-                    platform.menus(game, listedRenderer(), rebuild = true)
+                    platform.menus(game, listedRenderer(), rebuild = true, inGame = inGameWanted())
                     platform.stage(game, null)
                 }
             }
@@ -575,9 +583,9 @@ class CustomGames(
     }
 
     private fun readRestartAhead() = queued {
-        publishedInGameBlock.value = files.game()?.let { game -> logged("read what loads ahead of the in-game UI") { platform.inGameBlockedBy(game) } }
+        publishedInGameBlock.value = files.game()?.takeIf { inGameWanted() }?.let { game -> logged("read what loads ahead of the in-game UI") { platform.inGameBlockedBy(game) } }
         publishedRestarts.value = if (client != GameActivity.Running) null else logged("read whether Deadlock can take a mode") {
-            files.game()?.let { game -> (setupOf(client, files.gamesLines(), platform.menus(game, null, rebuild = false), listedRenderer(), menusFailedThisRun, menusBlockedBy(game)) as? SetupAnswer.NeedsRestart)?.why }
+            files.game()?.let { game -> (setupOf(client, files.gamesLines(), platform.menus(game, null, rebuild = false, inGame = false), listedRenderer(), menusFailedThisRun, menusBlockedBy(game)) as? SetupAnswer.NeedsRestart)?.why }
         }
         null
     }
@@ -590,7 +598,7 @@ class CustomGames(
         val client = if (written == LibraryProblem.GameRunning) GameActivity.Running else seen
         if (client == GameActivity.Closed && written != null) return SetupRead(SetupAnswer.Failed(Refusal.Library(written)))
         if (client == GameActivity.Closed) logged("clear an ended Modlock dev session") { platform.clearEndedDevSession(game) }
-        val menus = platform.menus(game, renderer, rebuild = client == GameActivity.Closed)
+        val menus = platform.menus(game, renderer, rebuild = client == GameActivity.Closed, inGame = inGameWanted())
         return SetupRead(setupOf(client, files.gamesLines(), menus, renderer, menusFailedThisRun, menusBlockedBy(game)))
     }
 

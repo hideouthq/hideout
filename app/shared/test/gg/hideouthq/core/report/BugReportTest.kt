@@ -49,6 +49,7 @@ import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.time.Instant
+import gg.hideouthq.core.customgames.InGameConsent
 
 class BugReportTest {
     private val root = GameRoot("/games/Deadlock")
@@ -116,6 +117,7 @@ class BugReportTest {
             Load 3D previews by default: on
             Hide mature mods: off
             Custom games: on
+            Hideout games inside Deadlock: unanswered
             Host mode folders: off
             Stats: on, Steam tracking off, sharing match IDs off
             Unfinished downloads: none
@@ -246,7 +248,7 @@ class BugReportTest {
             savedAt = Instant.parse("2026-11-16T10:05:00Z"),
             machine = Machine("1.2.3", "appimage package, updates itself", "Linux 6.8 amd64 (Ubuntu 24.04)", "KDE, wayland", "en-GB", "Java 25, Substrate VM"),
             library = state,
-            settings = SettingsSnapshot(null, InstallDefaults(), true, true, true, false, true, false, true, false, false, emptyList()),
+            settings = SettingsSnapshot(null, InstallDefaults(), true, true, true, false, true, InGameConsent.Unanswered, false, true, false, false, emptyList()),
             customGames = customGames,
             loading = mapOf(SetFolder.Addons to addons) + past,
             gameInfo = gameInfo,

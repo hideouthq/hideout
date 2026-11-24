@@ -1,6 +1,7 @@
 package gg.hideouthq.feature.settings
 
 import gg.hideouthq.core.appupdate.AppUpdateState
+import gg.hideouthq.core.customgames.InGameConsent
 import gg.hideouthq.core.data.FolderRefusal
 import gg.hideouthq.core.data.InstallDefaults
 import gg.hideouthq.core.data.StatsPreferences
@@ -66,6 +67,8 @@ internal data class SettingsUiState(
     val customGamesAvailable: Boolean = false,
     /** Whether Custom games shows in the sidebar; null until read, and off by default. */
     val customGames: Boolean? = null,
+    /** Whether Hideout's UI goes into Deadlock's own screens; null until read. Unanswered shows as off. */
+    val inGameUi: InGameConsent? = null,
     /** Whether the custom games library offers mode folders to host; null until read, and off by default. */
     val hostModeFolders: Boolean? = null,
     /** Where updating Hideout stands; null in a view model that was given none. */

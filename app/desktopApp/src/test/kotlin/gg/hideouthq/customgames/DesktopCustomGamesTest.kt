@@ -430,7 +430,7 @@ class DesktopCustomGamesTest {
         val feed = CustomGamesFeed(1, ModeRuntime(mapOf(DesktopOs.Linux to artifact("renderer")), artifact("renderer"), artifact("renderer"), artifact("renderer")), emptyList())
         val games = games(writesPack())
         assertNull(runBlocking { games.fetchRenderer(feed) })
-        assertNotNull(runBlocking { games.menus(game, artifact("renderer").sha256, rebuild = true) }?.inGame)
+        assertNotNull(runBlocking { games.menus(game, artifact("renderer").sha256, rebuild = true, inGame = true) }?.inGame)
         assertNotNull(runBlocking { games.fetchRenderer(feed.copy(runtime = feed.runtime.copy(renderer = goneRenderer(artifact("renderer"))))) }, "one that won't download says so")
     }
 
@@ -571,9 +571,9 @@ class DesktopCustomGamesTest {
     fun menusAreBuiltOnceForTheRendererSiteAndGame() {
         val renderer = rendererHere('c')
         val games = games(writesPack())
-        assertNull(runBlocking { games.menus(game, renderer, rebuild = false) }, "no pack, and no build asked for")
+        assertNull(runBlocking { games.menus(game, renderer, rebuild = false, inGame = false) }, "no pack, and no build asked for")
         val stamp = MenusStamp(renderer.hex, "https://menus.example/bridge/", MenusScreenPort, null, InGameStamp(InGamePort, helperDigest, emptyMap()))
-        assertEquals(stamp, runBlocking { games.menus(game, renderer, rebuild = true) })
+        assertEquals(stamp, runBlocking { games.menus(game, renderer, rebuild = true, inGame = true) })
         val asked = record.readLines().filterNot { it.startsWith("env ") }
         assertEquals(
             listOf("menus", "--game", game.path, "--renderer", runtimeFolder.resolve(renderer.hex).pathString, "--page", "https://menus.example/bridge/", "--screen-port", "29700", "--ingame-port", "29701", "--out"),
@@ -584,15 +584,15 @@ class DesktopCustomGamesTest {
         assertEquals(setOf("hideout.lock", "menus", "menus.json"), Files.list(gamesFolder).use { files -> files.map { it.fileName.toString() }.toList().toSet() }, "no part file is left")
 
         Files.delete(record)
-        assertEquals(stamp, runBlocking { games.menus(game, renderer, rebuild = true) })
+        assertEquals(stamp, runBlocking { games.menus(game, renderer, rebuild = true, inGame = true) })
         assertFalse(record.exists(), "a current pack is not built again")
 
         val failing = games("echo '{\"type\":\"stopped\",\"reason\":\"failed\",\"message\":\"no news layout\"}'\nexit 1")
-        assertEquals(stamp, runBlocking { failing.menus(game, checkNotNull(Sha256.parse("e".repeat(64))), rebuild = true) }, "a renderer never fetched builds nothing")
+        assertEquals(stamp, runBlocking { failing.menus(game, checkNotNull(Sha256.parse("e".repeat(64))), rebuild = true, inGame = true) }, "a renderer never fetched builds nothing")
 
         val tokenless = games(writesPack(token = null))
         val d = rendererHere('d')
-        assertEquals(MenusStamp(d.hex, "https://menus.example/bridge/", MenusScreenPort, null), runBlocking { tokenless.menus(game, d, rebuild = true) }, "an in-game build that names no token failed")
+        assertEquals(MenusStamp(d.hex, "https://menus.example/bridge/", MenusScreenPort, null), runBlocking { tokenless.menus(game, d, rebuild = true, inGame = true) }, "an in-game build that names no token failed")
     }
 
     private fun failsUnlessRendererOnly(message: String) = """
@@ -608,26 +608,26 @@ class DesktopCustomGamesTest {
     fun aGameUpdateTheInGamePartCannotFollowLeavesTheRendererAlone() {
         val renderer = rendererHere('c')
         updateGameTo(100)
-        assertEquals(100, runBlocking { games(writesPack()).menus(game, renderer, rebuild = true) }?.revision)
+        assertEquals(100, runBlocking { games(writesPack()).menus(game, renderer, rebuild = true, inGame = true) }?.revision)
         assertNotNull(runBlocking { games(writesPack()).menusPack(game) }?.token)
 
         updateGameTo(101)
         Files.deleteIfExists(record)
         val games = games(failsUnlessRendererOnly("want one </styles>, found 2"))
         val rendererOnly = MenusStamp(renderer.hex, "https://menus.example/bridge/", MenusScreenPort, 101)
-        assertEquals(rendererOnly, runBlocking { games.menus(game, renderer, rebuild = true) }, "the overlay copied from the game before its update is gone")
+        assertEquals(rendererOnly, runBlocking { games.menus(game, renderer, rebuild = true, inGame = true) }, "the overlay copied from the game before its update is gone")
         assertEquals(MenusPack(rendererOnly, null), runBlocking { games.menusPack(game) })
         assertEquals(listOf(false, true), record.readLines().joinToString("\n").split("menus\n").drop(1).map { "--renderer-only" in it }, "the in-game build, then the renderer alone")
         assertTrue(logs.any { "want one </styles>" in it })
 
         Files.delete(record)
-        assertEquals(rendererOnly, runBlocking { games.menus(game, renderer, rebuild = true) })
+        assertEquals(rendererOnly, runBlocking { games.menus(game, renderer, rebuild = true, inGame = true) })
         assertFalse(record.exists(), "the same game and helper are not tried again")
 
-        assertNotNull(runBlocking { games(writesPack()).menus(game, renderer, rebuild = true) }?.inGame)
+        assertNotNull(runBlocking { games(writesPack()).menus(game, renderer, rebuild = true, inGame = true) }?.inGame)
         updateGameTo(102)
         val broken = games("echo '{\"type\":\"stopped\",\"reason\":\"failed\",\"message\":\"no news layout\"}'\nexit 1")
-        assertNull(runBlocking { broken.menus(game, renderer, rebuild = true) }, "with nothing built, the in-game part of the last pack goes too")
+        assertNull(runBlocking { broken.menus(game, renderer, rebuild = true, inGame = true) }, "with nothing built, the in-game part of the last pack goes too")
         assertFalse(gamesFolder.resolve("menus/pak01_dir.vpk").exists())
     }
 
@@ -636,16 +636,16 @@ class DesktopCustomGamesTest {
         val renderer = rendererHere('c')
         val listed = checkNotNull(Sha256.parse("e".repeat(64)))
         updateGameTo(100)
-        assertEquals(100, runBlocking { games(writesPack()).menus(game, renderer, rebuild = true) }?.revision)
+        assertEquals(100, runBlocking { games(writesPack()).menus(game, renderer, rebuild = true, inGame = true) }?.revision)
 
         updateGameTo(101)
-        val rebuilt = runBlocking { games(writesPack()).menus(game, listed, rebuild = true) }
+        val rebuilt = runBlocking { games(writesPack()).menus(game, listed, rebuild = true, inGame = true) }
         assertEquals(MenusStamp(renderer.hex, "https://menus.example/bridge/", MenusScreenPort, 101, InGameStamp(InGamePort, helperDigest, emptyMap())), rebuilt, "the renderer the pack was built from")
-        assertEquals(rebuilt, runBlocking { games(writesPack()).menus(game, null, rebuild = true) }, "with no feed read, a current pack stays")
+        assertEquals(rebuilt, runBlocking { games(writesPack()).menus(game, null, rebuild = true, inGame = true) }, "with no feed read, a current pack stays")
 
         updateGameTo(102)
         Files.delete(runtimeFolder.resolve(renderer.hex))
-        assertNull(runBlocking { games(writesPack()).menus(game, listed, rebuild = true) }, "no renderer to build from")
+        assertNull(runBlocking { games(writesPack()).menus(game, listed, rebuild = true, inGame = true) }, "no renderer to build from")
         assertFalse(gamesFolder.resolve("menus/pak01_dir.vpk").exists(), "the stale pack is gone")
     }
 
@@ -653,10 +653,10 @@ class DesktopCustomGamesTest {
     fun aRendererOnlyPackThatCannotFollowAGameUpdateIsRemoved() {
         val renderer = rendererHere('c')
         updateGameTo(100)
-        assertEquals(MenusStamp(renderer.hex, "https://menus.example/bridge/", MenusScreenPort, 100), runBlocking { games(failsUnlessRendererOnly("no overlay")).menus(game, renderer, rebuild = true) })
+        assertEquals(MenusStamp(renderer.hex, "https://menus.example/bridge/", MenusScreenPort, 100), runBlocking { games(failsUnlessRendererOnly("no overlay")).menus(game, renderer, rebuild = true, inGame = true) })
 
         updateGameTo(101)
-        assertNull(runBlocking { games("echo '{\"type\":\"stopped\",\"reason\":\"failed\",\"message\":\"no news layout\"}'\nexit 1").menus(game, renderer, rebuild = true) })
+        assertNull(runBlocking { games("echo '{\"type\":\"stopped\",\"reason\":\"failed\",\"message\":\"no news layout\"}'\nexit 1").menus(game, renderer, rebuild = true, inGame = true) })
         assertFalse(gamesFolder.resolve("menus/pak01_dir.vpk").exists(), "its copy of the news layout is from before the update")
     }
 
@@ -667,7 +667,7 @@ class DesktopCustomGamesTest {
         Files.writeString(gamesFolder.resolve("menus/pak01_dir.vpk"), "pack\n")
         Files.writeString(gamesFolder.resolve("menus.json"), """{"renderer":"${renderer.hex}","page":"https://menus.example/bridge/","screen":29700,"revision":null}""")
         val games = games(writesPack())
-        val old = runBlocking { games.menus(game, renderer, rebuild = false) }
+        val old = runBlocking { games.menus(game, renderer, rebuild = false, inGame = false) }
         assertEquals(
             SetupAnswer.Ready(GameSetup(MenusScreenPort, "https://menus.example/bridge/")),
             setupOf(GameActivity.Running, GamesLines.Mounted, old, renderer, menusFailedThisRun = false, menusBlockedBy = null),
@@ -675,7 +675,7 @@ class DesktopCustomGamesTest {
         )
         assertNull(runBlocking { games.menusPack(game) }?.token, "the old pack has no in-game part to admit")
 
-        val rebuilt = runBlocking { games.menus(game, renderer, rebuild = true) }
+        val rebuilt = runBlocking { games.menus(game, renderer, rebuild = true, inGame = true) }
         assertEquals(MenusStamp(renderer.hex, "https://menus.example/bridge/", MenusScreenPort, null, InGameStamp(InGamePort, helperDigest, emptyMap())), rebuilt, "a closed Deadlock gets the in-game part")
         assertEquals(checkNotNull(PackToken.parse(Token)), runBlocking { games.menusPack(game) }?.token)
     }
@@ -706,18 +706,18 @@ class DesktopCustomGamesTest {
         val games = games(writesPack(shadows = listOf(overlay, popup)))
         fun crc(text: String) = CRC32().apply { update(text.encodeToByteArray()) }.value
 
-        val built = assertNotNull(runBlocking { games.menus(game, renderer, rebuild = true) }?.inGame)
+        val built = assertNotNull(runBlocking { games.menus(game, renderer, rebuild = true, inGame = true) }?.inGame)
         assertEquals(mapOf(overlay to LayoutSource("citadel/addons/pak02_dir.vpk", crc("first")), popup to null), built.layouts, "the first pack that holds each, else the game's own")
         assertEquals((1..3).map { citadel.resolve("addons/pak0${it}_dir.vpk").pathString }, record.readLines().zipWithNext().filter { it.first == "--layer" }.map { it.second }, "every pack behind the menus, in the order the game reads them")
 
         Files.delete(record)
-        runBlocking { games.menus(game, renderer, rebuild = true) }
+        runBlocking { games.menus(game, renderer, rebuild = true, inGame = true) }
         assertFalse(record.exists(), "unchanged mods build nothing")
 
         packIn("addons", "pak02_dir.vpk", overlay to "first, updated")
-        assertEquals(crc("first, updated"), runBlocking { games.menus(game, renderer, rebuild = true) }?.inGame?.layouts?.get(overlay)?.crc, "a changed mod is followed")
+        assertEquals(crc("first, updated"), runBlocking { games.menus(game, renderer, rebuild = true, inGame = true) }?.inGame?.layouts?.get(overlay)?.crc, "a changed mod is followed")
         Files.delete(citadel.resolve("addons/pak02_dir.vpk"))
-        assertEquals(LayoutSource("citadel/addons/pak03_dir.vpk", crc("second")), runBlocking { games.menus(game, renderer, rebuild = true) }?.inGame?.layouts?.get(overlay), "and so is one taken out")
+        assertEquals(LayoutSource("citadel/addons/pak03_dir.vpk", crc("second")), runBlocking { games.menus(game, renderer, rebuild = true, inGame = true) }?.inGame?.layouts?.get(overlay), "and so is one taken out")
     }
 
     @Test
@@ -726,11 +726,22 @@ class DesktopCustomGamesTest {
         packIn("popup", "pak01_dir.vpk", "panorama/layout/popups/citadel_popup_custom_match.vxml_c" to "theirs")
         searchPaths("Game citadel/popup", *hideoutLines, "Game citadel")
         val games = games(writesPack())
-        assertEquals(MenusStamp(renderer.hex, "https://menus.example/bridge/", MenusScreenPort, null), runBlocking { games.menus(game, renderer, rebuild = true) })
+        assertEquals(MenusStamp(renderer.hex, "https://menus.example/bridge/", MenusScreenPort, null), runBlocking { games.menus(game, renderer, rebuild = true, inGame = true) })
         assertEquals(listOf(true), record.readLines().joinToString("\n").split("menus\n").drop(1).map { "--renderer-only" in it }, "the renderer alone, never a half-shadowed in-game UI")
 
         searchPaths(*hideoutLines, "Game citadel/popup", "Game citadel")
-        assertNotNull(runBlocking { games.menus(game, renderer, rebuild = true) }?.inGame, "back once that mod loads behind the menus")
+        assertNotNull(runBlocking { games.menus(game, renderer, rebuild = true, inGame = true) }?.inGame, "back once that mod loads behind the menus")
+    }
+
+    @Test
+    fun aPackBuiltWithoutTheInGameUiWantedHasTheRendererAloneAndLosesItsInGameUi() {
+        val renderer = rendererHere('c')
+        val games = games(writesPack())
+        assertNotNull(runBlocking { games.menus(game, renderer, rebuild = true, inGame = true) }?.inGame)
+        assertEquals(MenusStamp(renderer.hex, "https://menus.example/bridge/", MenusScreenPort, null), runBlocking { games.menus(game, renderer, rebuild = true, inGame = false) })
+        assertEquals(listOf(false, true), record.readLines().joinToString("\n").split("menus\n").drop(1).map { "--renderer-only" in it }, "rebuilt as the renderer alone")
+        assertEquals(MenusStamp(renderer.hex, "https://menus.example/bridge/", MenusScreenPort, null), runBlocking { games.menus(game, renderer, rebuild = true, inGame = false) })
+        assertEquals(2, record.readLines().joinToString("\n").split("menus\n").drop(1).size, "and left alone after")
     }
 
     @Test
