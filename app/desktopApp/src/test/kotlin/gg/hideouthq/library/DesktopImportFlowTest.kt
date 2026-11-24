@@ -208,7 +208,7 @@ class DesktopImportFlowTest {
         assertEquals(ImportSummary(on = 3, off = 1, profiles = listOf("Ranked"), crosshair = true, commands = 0), summary)
         val records = library.awaitSettled()
         val adopted = records.filter { it.installId != "own" }
-        assertEquals(listOf("Neon Haze" to 1, "Iron Sights" to 2, "pak04_dir.vpk" to 4, "Parked Skin" to null), adopted.map { it.title to it.numbers.firstOrNull()?.value })
+        assertEquals(listOf("Neon Haze" to 1, "Iron Sights" to 2, "pak04" to 4, "Parked Skin" to null), adopted.map { it.title to it.numbers.firstOrNull()?.value })
         assertEquals(
             listOf(1_800_001L, 1_800_002L).map { InstalledSource.Remote(SubmissionIdentity(SubmissionKind.Mod, it - 1_100_000, it, null)) },
             adopted.take(2).map { it.sets.single().source },
@@ -294,7 +294,7 @@ class DesktopImportFlowTest {
         assertEquals(ImportSummary(on = 7, off = 1, profiles = listOf("Fun"), crosshair = true, commands = 0), summary)
         val records = library.awaitSettled().sortedBy { it.numbers.firstOrNull()?.value ?: Int.MAX_VALUE }
         assertEquals(
-            listOf("Grimoire Locker · hero cards", "Grimoire Locker · hero sounds", "Grimoire Locker · hero colors", "Grimoire Locker · trippy skins", "pak05_dir.vpk", "pak01_dir.vpk", "Hideout's own", "pak01_dir.vpk (pak01_dir.vpk)", "night_market_dir.vpk"),
+            listOf("Grimoire Locker · hero cards", "Grimoire Locker · hero sounds", "Grimoire Locker · hero colors", "Grimoire Locker · trippy skins", "pak05", "pak01", "Hideout's own", "pak01 (pak01_dir.vpk)", "night_market"),
             records.map { it.title },
             "Grimoire's own folder loads first, then addons, then addons1, and its parked mod is off",
         )
