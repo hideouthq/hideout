@@ -320,6 +320,7 @@
     <string name="cg_menus_after_restart_lead">Restart Deadlock to play from inside it.</string>
     <string name="cg_menus_after_restart_body">Hideout games show up in Deadlock’s Play menu the next time it starts.</string>
     <string name="cg_ingame_title">Play Hideout games inside Deadlock</string>
+    <string name="cg_ingame_badge">Inside Deadlock</string>
     <string name="cg_ingame_point_band">Hideout games show up in Custom Match</string>
     <string name="cg_ingame_point_invites">Friends’ invites pop up in game</string>
     <string name="cg_ingame_point_esc">Stop or Leave from the Esc menu</string>
