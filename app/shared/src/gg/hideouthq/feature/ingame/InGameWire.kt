@@ -157,6 +157,9 @@ data class JoinCard(
     val mode: String,
     val picks: List<String>,
     val capacity: Int?,
+    /** The host's SteamID64, known only for an invite this panel joined through. */
+    val hostId: String?,
+    val hostName: String?,
     val phase: JoinPhase,
     val steps: List<StepCard>,
     val words: Words?,

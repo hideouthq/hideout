@@ -265,10 +265,10 @@ class Social(
 
     fun wantServers() = post(SocialInput.ServersWanted)
 
-    fun take(id: InvitationId): JoinTicket? {
-        val ticket = published.value.inbox.firstOrNull { it.id == id }?.ticket ?: return null
+    fun take(id: InvitationId): Invitation? {
+        val invitation = published.value.inbox.firstOrNull { it.id == id } ?: return null
         post(SocialInput.Closed(id))
-        return ticket
+        return invitation
     }
 
     fun forget(id: InvitationId) = post(SocialInput.Closed(id))

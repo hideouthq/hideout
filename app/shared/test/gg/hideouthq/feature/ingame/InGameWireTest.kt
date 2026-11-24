@@ -91,8 +91,10 @@ class InGameWireTest {
     private val hostRecord = GameRecord(Role.Host(bebop, threes, Outreach(Listing.Public, setOf(kestrel))), me)
     private val site = SiteOrigin.parse("https://hideouthq.gg")
 
-    private suspend fun frames(live: LiveSession, social: SocialView = SocialView(), restarts: RestartReason? = null, transfer: Transfer? = null) =
-        inGameFrames(PresentInputs(live, restarts, transfer, modes, site = site), social)
+    private suspend fun frames(live: LiveSession, social: SocialView = SocialView(), restarts: RestartReason? = null, transfer: Transfer? = null, invitedBy: InvitedBy? = null) =
+        inGameFrames(PresentInputs(live, restarts, transfer, modes, site = site), social, invitedBy = invitedBy)
+
+    private val mugi = checkNotNull(SteamId.parse("76561198000000002"))
 
     private fun invitation(id: String) = checkNotNull(InvitationId.parse(id))
 
@@ -119,7 +121,7 @@ class InGameWireTest {
 
         val offer = InviteOffer.of(bebop, threes, LocalPlayer("76561198000000002", DisplayName.parse("Mugi")))
         val review = LiveSession(Session.Confirming(Invite(code, offer)), GameRecord(Role.Guest(code, offer, bebop.listing), me))
-        golden("game-review.json", frames(review, restarts = RestartReason.GameUpdated).getValue(Topic.Game))
+        golden("game-review.json", frames(review, restarts = RestartReason.GameUpdated, invitedBy = InvitedBy(code, mugi)).getValue(Topic.Game))
 
         val guest = GameRecord(Role.Guest(code, offer, bebop.listing), me, startedAt = Instant.fromEpochSeconds(1_800_000_000))
         golden("game-guest.json", frames(LiveSession(Session.Playing(GuestLink(LinkPath.Relay), OwnGame.In), guest)).getValue(Topic.Game))
@@ -194,6 +196,25 @@ class InGameWireTest {
         assertEquals(12_048_000L, card["bytes"]?.jsonPrimitive?.content?.toLong(), "rules and client, whatever is on disk")
         assertEquals("First to 25 kills", card["goal"]?.jsonPrimitive?.content)
         assertEquals(listOf(8, 10), card["minutes"]?.jsonArray?.map { it.jsonPrimitive.content.toInt() })
+    }
+
+    @Test
+    fun theJoiningCardNamesTheHostAndGivesTheirIdOnlyForTheInviteThisPanelJoined() = runTest {
+        val offer = InviteOffer.of(bebop, threes, LocalPlayer(mugi.value, DisplayName.parse("Mugi")))
+        val review = LiveSession(Session.Confirming(Invite(code, offer)), GameRecord(Role.Guest(code, offer, bebop.listing), me))
+        fun JsonObject.join() = getValue("join").jsonObject
+        suspend fun card(invitedBy: InvitedBy?, serverJoin: ServerJoin? = null) =
+            Json.parseToJsonElement(inGameFrames(PresentInputs(review, modes = modes), serverJoin = serverJoin, invitedBy = invitedBy).getValue(Topic.Game)).jsonObject.join()
+
+        val invited = card(InvitedBy(code, mugi))
+        assertEquals(mugi.value, invited["hostId"]?.jsonPrimitive?.content)
+        assertEquals("Mugi", invited["hostName"]?.jsonPrimitive?.content)
+        assertEquals(JsonNull, card(InvitedBy(checkNotNull(InviteCode.parse("Q22-RST-33E")), mugi))["hostId"], "an invite for another game")
+        assertEquals(JsonNull, card(null)["hostId"], "a link opened outside the game")
+        val listed = ServerJoin(PublicGame(listing("3c41a9e07d5b2f18"), offer, RelayRegion(4, "fra"), 3, GameStatus.Lobby))
+        val server = card(InvitedBy(code, mugi), listed)
+        assertEquals(JsonNull, server["hostId"], "a listing carries no host id")
+        assertEquals("Mugi", server["hostName"]?.jsonPrimitive?.content)
     }
 
     @Test

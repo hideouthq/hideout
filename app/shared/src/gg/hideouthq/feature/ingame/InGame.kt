@@ -3,6 +3,7 @@ package gg.hideouthq.feature.ingame
 import gg.hideouthq.core.customgames.Choices
 import gg.hideouthq.core.customgames.CustomGames
 import gg.hideouthq.core.customgames.DisplayName
+import gg.hideouthq.core.customgames.InviteCode
 import gg.hideouthq.core.customgames.LibraryEntry
 import gg.hideouthq.core.customgames.Listing
 import gg.hideouthq.core.customgames.ModeId
@@ -77,14 +78,15 @@ import java.util.concurrent.atomic.AtomicInteger
 
 class InGame(private val games: CustomGames, val social: Social, site: SiteOrigin?, private val scope: CoroutineScope) {
     private val serverJoin = MutableStateFlow<ServerJoin?>(null)
+    private val invitedBy = MutableStateFlow<InvitedBy?>(null)
     private var looking: Job? = null
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val topics: StateFlow<Map<Topic, String>> =
         combine(games.live, games.modes, games.transfer, games.restartsDeadlock, social.state) { live, modes, transfer, restarts, state ->
             PresentInputs(live, restarts, transfer, modes, games.firewallMayAsk, site) to SocialView(social.status(state), social.available, state)
-        }.combine(serverJoin) { (inputs, view), join -> Triple(inputs, view, join) }
-            .mapLatest { (inputs, view, join) -> inGameFrames(inputs, view, join) }.stateIn(scope, SharingStarted.Eagerly, emptyMap())
+        }.combine(serverJoin.combine(invitedBy, ::Pair)) { (inputs, view), joins -> Triple(inputs, view, joins) }
+            .mapLatest { (inputs, view, joins) -> inGameFrames(inputs, view, joins.first, joins.second) }.stateIn(scope, SharingStarted.Eagerly, emptyMap())
 
     private val open = AtomicInteger()
 
@@ -125,7 +127,8 @@ class InGame(private val games: CustomGames, val social: Social, site: SiteOrigi
         is PanelCommand.JoinInvite -> online {
             if (!games.live.value.session.takesInvite) return@online CommandResult.Busy
             val found = social.take(command.id) ?: return@online CommandResult.Gone
-            accepted { games.join(found) }
+            invitedBy.value = InvitedBy(found.ticket.code, found.from)
+            accepted { games.join(found.ticket) }
         }
         is PanelCommand.JoinServer -> online {
             if (!games.live.value.session.takesInvite) return@online CommandResult.Busy
@@ -190,6 +193,9 @@ class InGame(private val games: CustomGames, val social: Social, site: SiteOrigi
 
 data class SocialView(val status: SocialStatus = SocialStatus.Off, val available: Boolean = false, val state: SocialState = SocialState())
 
+/** The invite this panel last joined through. Its sender is the only host id a guest learns, since a listing carries none. */
+data class InvitedBy(val code: InviteCode, val from: SteamId)
+
 /** A join pressed in Servers, before the session has its code. [refused] is null while the site is asked. */
 data class ServerJoin(val game: PublicGame, val refused: Resolved.Refused? = null)
 
@@ -203,14 +209,15 @@ private fun choicesOf(listing: ModeListing, picks: Map<SettingKey, SettingValue>
 private val words: ResourceEnvironment by lazy { getSystemResourceEnvironment() }
 
 /** A [serverJoin] is the newest press, so its card shows over the session's. */
-suspend fun inGameFrames(inputs: PresentInputs, social: SocialView = SocialView(), serverJoin: ServerJoin? = null): Map<Topic, String> {
+suspend fun inGameFrames(inputs: PresentInputs, social: SocialView = SocialView(), serverJoin: ServerJoin? = null, invitedBy: InvitedBy? = null): Map<Topic, String> {
     val shown = present(inputs)
     val role = inputs.live.game?.role
     val deliveries = social.state.hosted?.takeIf { it.code == (inputs.live.session as? Session.Hosting)?.code }?.deliveries.orEmpty()
     val host = if (role !is Role.Host) null else shown.game?.let { hostCard(it, role, shown.chip?.count, deliveries) }
     val join = serverJoin?.let { joinView(it, inputs.modes) } ?: shown.join
+    val hostId = invitedBy?.takeIf { serverJoin == null && (role as? Role.Guest)?.code == it.code }?.from
     val restartAhead = inputs.restartsDeadlock?.let { Restart(RestartWire.of(it), restartAheadPhrase(it, host = true).load(words)) }
-    val game = Frame.Game(host, join?.let { joinCard(it) }, sessionCard(shown, role), restartAhead)
+    val game = Frame.Game(host, join?.let { joinCard(it, hostId) }, sessionCard(shown, role), restartAhead)
     return mapOf(
         Topic.Hello to Frame.Hello(InGameProtocol, social = socialWire(social.status), supportId = (social.status as? SocialStatus.Blocked)?.self?.value),
         Topic.Catalog to catalog(inputs.modes),
@@ -357,13 +364,15 @@ private fun joinView(join: ServerJoin, modes: ModeList): JoinView {
     return JoinView(offer.host, faceOf(offer, modes), offer.capacity, step)
 }
 
-private suspend fun joinCard(view: JoinView): JoinCard {
+private suspend fun joinCard(view: JoinView, hostId: SteamId?): JoinCard {
     val step = view.step
     return JoinCard(
         title = namedPhrase(view.host, Res.string.cg_join_title, Res.string.cg_join_title_friend).load(words),
         mode = view.face.namePhrase.load(words),
         picks = view.face.picks,
         capacity = view.capacity,
+        hostId = hostId?.value,
+        hostName = view.host?.value,
         phase = joinPhase(step),
         steps = (step as? JoinStep.Progress)?.steps.orEmpty().map { stepCard(it, view.face.namePhrase, view.host) },
         words = joinHeadline(step, view)?.let { Words(it.title.load(words), it.body.load(words)) },

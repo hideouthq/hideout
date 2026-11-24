@@ -236,6 +236,7 @@ class InGameSocialTest {
         val finding = games.live.awaited("finding the friend's game") { it.session is Session.Finding }.session as Session.Finding
         assertEquals(FriendCode, finding.code)
         assertEquals(FriendOffer, finding.acceptedBefore)
+        assertEquals(Kestrel.value, join("the joining card") { true }["hostId"]?.jsonPrimitive?.content, "the friend who sent the invite")
         inbox("the toast gone everywhere") { it.isEmpty() }
         assertEquals(CommandResult.Gone, press(PanelCommand.JoinInvite(invite.id)), "taken already")
     }
@@ -276,6 +277,7 @@ class InGameSocialTest {
 
         directory.answer.complete(Resolved.Open(JoinTicket(FriendCode, FriendOffer)))
         assertEquals(FriendCode, (games.live.awaited("finding the listed game") { it.session is Session.Finding }.session as Session.Finding).code)
+        assertEquals(JsonNull, join("the session's joining card") { true }["hostId"], "a listing names no host's id")
     }
 
     @Test
