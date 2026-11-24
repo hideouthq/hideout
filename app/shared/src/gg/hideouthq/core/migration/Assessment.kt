@@ -67,7 +67,8 @@ data class CopyProspect(val mod: ClaimedMod, val fileName: String, val enabled: 
  *  - One mod's sets that load are one prospect wherever they load, and those that do not are a second one. A set no
  *    claim names is a prospect of its own.
  *  - A set that comes and the source claims nothing of is who one of [others], the other managers on this computer,
- *    says it is, which only names it: what comes is the source's to say.
+ *    says it is, which only names it: what comes is the source's to say. A path claim of theirs names only a file of a
+ *    size it recorded, if it recorded any, since another one was put in that slot since.
  *  - A prospect no manager claims anything of is who its imprint says it is, when one of its sets has one.
  *  - A mod the source lists that no set found anywhere in the game is, no bundle file holds and Hideout does not hold
  *    already, by its submission, its name or its bytes, is [Assessment.missing].
@@ -100,7 +101,7 @@ fun assess(library: ForeignLibrary, survey: GameSurvey, held: List<ManifestRecor
         val willLoad = copies.any { it.folder == CitadelPath.Addons && PakNumbers.mounted(it.directory.path.name) != null }
         val comes = if (takesOver) chosen.position != null || willLoad || owner != null || chosen.root.role == RootRole.AdoptOff else owner != null
         if (comes) {
-            coming += chosen to (owner ?: others.firstNotNullOfOrNull { ownerAmong(it.mods, copies, chosen) })
+            coming += chosen to (owner ?: others.firstNotNullOfOrNull { ownerAmong(it.mods, copies, chosen, bySize = true) })
             if (takesOver) duplicates += copies.filter { it !== chosen }.flatMap { it.files }
         }
     }
@@ -173,9 +174,11 @@ fun assess(library: ForeignLibrary, survey: GameSurvey, held: List<ManifestRecor
     return Assessment(prospects, duplicates, copies, profiles, library.autoexec, library.footprint.manifests, liveName, missing)
 }
 
-/** The one mod of [mods] that claims [copies], or the one whose recorded size [chosen] has when more do. */
-private fun ownerAmong(mods: List<ForeignMod>, copies: List<FoundSet>, chosen: FoundSet): ForeignMod? {
-    val claimants = mods.filter { mod -> mod.matchers.any { matcher -> copies.any { matches(matcher, it) } } }
+/** The one mod of [mods] that claims [copies], or the one whose recorded size [chosen] has when more do. [bySize] holds every path claim to its sizes. */
+private fun ownerAmong(mods: List<ForeignMod>, copies: List<FoundSet>, chosen: FoundSet, bySize: Boolean = false): ForeignMod? {
+    fun claims(matcher: SetMatcher, set: FoundSet) = matches(matcher, set) &&
+        (!bySize || matcher !is SetMatcher.At || matcher.sizes.isEmpty() || set.directory.image.sizeBytes in matcher.sizes)
+    val claimants = mods.filter { mod -> mod.matchers.any { matcher -> copies.any { claims(matcher, it) } } }
     val sized = claimants.filter { mod -> mod.matchers.any { it is SetMatcher.At && chosen.directory.image.sizeBytes in it.sizes && copies.any { set -> matches(it, set) } } }
     return claimants.singleOrNull() ?: sized.singleOrNull()
 }

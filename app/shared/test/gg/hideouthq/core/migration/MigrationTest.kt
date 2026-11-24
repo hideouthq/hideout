@@ -318,11 +318,13 @@ class MigrationTest {
 
     @Test
     fun aGrimoireImportBringsDeadlockModManagersFilesByItsNamesAndLooseFilesApart() = runTest {
+        val vpks = (1..4).map { FakeVpk.directory(seed = 180 + it) }
         val managers = object : ManagerData by FakeManagerData(ForeignSeed.Grimoire) {
-            override suspend fun dmmState(): ByteArray = resourceBytes("dmm/state-v42.json")
+            override suspend fun dmmState(): ByteArray = resourceBytes("dmm/state-v42.json").decodeToString()
+                .replace("40785", "${vpks[0].size}").replace("121412656", "${vpks[1].size}").replace("16148932", "${vpks[2].size}").encodeToByteArray()
         }
         val world = World(seed = ForeignSeed.Grimoire, managers = managers)
-        (1..4).forEach { world.files.putBytes(root, "$citadel/addons/pak0${it}_dir.vpk", FakeVpk.directory(seed = 180 + it)) }
+        vpks.forEachIndexed { index, bytes -> world.files.putBytes(root, "$citadel/addons/pak0${index + 1}_dir.vpk", bytes) }
         world.files.putBytes(root, "$citadel/addons/.dmm.json", resourceBytes("dmm/addons-manifest-v42.json"))
         val grimoire = ImportSource.Installed(Manager.Grimoire)
         val migration = with(world) { start() }

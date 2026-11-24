@@ -210,6 +210,20 @@ class AssessTest {
     }
 
     @Test
+    fun aFileSwappedIntoASlotAnotherManagerListsIsWhoItsImprintSays() {
+        val imprint = Imprint(ModIdentity.File(SubmissionIdentity(SubmissionKind.Mod, 512_345, 987_654, null)), FilePrint(18_874_368, 0x3B7A2C91))
+        val listed = ModIdentity.File(SubmissionIdentity(SubmissionKind.Mod, 1, 2, null))
+        val dmm = ForeignLibrary(
+            listOf(ForeignMod(ModKey("a"), "Listed", listed, listOf(SetMatcher.At(CitadelPath("addons/pak03_dir.vpk"), "listed.vpk", setOf(5_000))), null)),
+            emptyList(), null, AutoexecLines(emptyList(), emptyList()), Footprint(emptyList(), emptyList(), emptyList()),
+        )
+        fun named(size: Long) = assess(GrimoireReader.read(null, null, null), survey(set("addons/pak03_dir.vpk", LoadPosition(0, 3), size = size, imprint = imprint)), emptyList(), others = listOf(dmm))
+            .prospects.map { Triple(it.mod.claim, it.mod.title, it.mod.selfReported) }
+        assertEquals(listOf(Triple(imprint.claim, null, true)), named(6_000), "the manager recorded other bytes there")
+        assertEquals(listOf(Triple(listed, "Listed", false)), named(5_000))
+    }
+
+    @Test
     fun filesTheSourceNeverListedComeApartNamedByTheManagerThatListsThem() {
         val skyline = image("grimoire/pak05_dir.vpk")
         val grimoire = GrimoireReader.read(
@@ -221,9 +235,9 @@ class AssessTest {
         val game = survey(
             set("grimoire/pak05_dir.vpk", LoadPosition(0, 5)),
             set("grimoire/pak07_dir.vpk", LoadPosition(0, 7)),
-            set("addons/pak01_dir.vpk", LoadPosition(1, 1)),
-            set("addons/pak02_dir.vpk", LoadPosition(1, 2)),
-            set("addons/pak03_dir.vpk", LoadPosition(1, 3)),
+            set("addons/pak01_dir.vpk", LoadPosition(1, 1), 40_785),
+            set("addons/pak02_dir.vpk", LoadPosition(1, 2), 121_412_656),
+            set("addons/pak03_dir.vpk", LoadPosition(1, 3), 16_148_932),
             set("addons/pak04_dir.vpk", LoadPosition(1, 4)),
             mounts = listOf("grimoire", "addons"),
         )
