@@ -2414,6 +2414,46 @@ class CustomGamesTest {
     }
 
     @Test
+    fun turningInGameOffDuringAJoinLeavesTheGuestsLinesAlone() = scenario {
+        val answer = MutableStateFlow(InGameConsent.Yes)
+        val run = Run(this, FakeCustomGamesFeed(), inGame = answer)
+        run.games.start()
+        run.settle()
+        run.joinUntilLinked()
+        files.uses.clear()
+
+        answer.value = InGameConsent.No
+        run.settle()
+        assertEquals(emptyList(), files.uses, "nothing is written while the guest is on its way in")
+        assertEquals(GamesLines.Mounted, files.lines)
+
+        run.link.say(LinkEvent.Linked)
+        run.link.say(LinkEvent.Path(LinkPath.Direct))
+        run.settle()
+        assertIs<Session.Playing>(run.session)
+        assertEquals(GamesLines.Mounted, files.lines, "the joined game still loads")
+    }
+
+    @Test
+    fun menusMountedBeforeTheQuestionAreTakenOutWithoutAYes() = scenario {
+        files.lines = GamesLines.Mounted
+        files.clientActivity.value = GameActivity.Running
+        val answer = MutableStateFlow(InGameConsent.Unanswered)
+        val run = Run(this, FakeCustomGamesFeed(), inGame = answer)
+        run.games.start()
+        run.settle()
+        answer.value = InGameConsent.No
+        run.settle()
+        assertEquals(GamesLines.Mounted, files.lines, "nothing is written while Deadlock runs")
+
+        files.clientActivity.value = GameActivity.Closed
+        run.settle()
+        assertEquals(GamesLines.Off, files.lines, "nothing here uses them")
+        assertEquals(listOf(Game), platform.gamesFoldersRemoved)
+        assertEquals(emptyList(), platform.menusRebuilds, "and no renderer-only pack is left")
+    }
+
+    @Test
     fun turningInGameOffWithAModeInstalledTakesOnlyTheInGameUiOutOnceDeadlockCloses() = scenario {
         files.lines = GamesLines.Mounted
         platform.installedModes[Source.id] = InstalledMode(Source, 1, null)
@@ -2560,15 +2600,30 @@ class CustomGamesTest {
     }
 
     @Test
-    fun aGuestWithNoModeOrFolderKeepsTheLinesThroughEveryClose() = scenario {
+    fun aGuestWithNoModeOrFolderKeepsTheLinesThroughEveryCloseAfterAJoin() = scenario {
+        val run = started()
+        platform.gamesFoldersRemoved.clear()
+        run.joinUntilPlaying()
+        run.games.stop()
+        run.settle()
+        assertIs<Session.Ended>(run.session)
+        files.clientActivity.value = GameActivity.Running
+        run.settle()
+        files.clientActivity.value = GameActivity.Closed
+        run.settle()
+        assertEquals(GamesLines.Mounted, files.lines, "a friend's folder mode installs nothing, and the next join needs no restart")
+        assertEquals(emptyList(), platform.gamesFoldersRemoved)
+    }
+
+    @Test
+    fun menusLeftFromAnEarlierRunWithNothingUsingThemAreTakenOut() = scenario {
         files.lines = GamesLines.Mounted
         files.clientActivity.value = GameActivity.Running
         val run = started()
         files.clientActivity.value = GameActivity.Closed
         run.settle()
-        assertEquals(GamesLines.Mounted, files.lines, "a friend's folder mode installs nothing, and the next join needs no restart")
-        assertEquals(emptyList(), files.uses)
-        assertEquals(emptyList(), platform.gamesFoldersRemoved)
+        assertEquals(GamesLines.Off, files.lines, "no yes, mode, folder or session this run")
+        assertEquals(listOf(Game), platform.gamesFoldersRemoved)
     }
 
     @Test

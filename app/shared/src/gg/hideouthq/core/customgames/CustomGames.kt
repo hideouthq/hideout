@@ -201,6 +201,10 @@ class CustomGames(
     /** Whether [inGame] is yes, null until it is read, so no pack is built before the answer is known. */
     private val inGameAnswer = MutableStateFlow<Boolean?>(null)
 
+    /** Lines a session mounted stay for the rest of the run, so a guest with no mode joins again without a restart. */
+    @Volatile
+    private var sessionMounted = false
+
     private val storeChanges = Mutex()
 
     /** The first read lists what is installed, and only later reads log what changed. */
@@ -234,12 +238,8 @@ class CustomGames(
         scope.launch {
             inGame.collect { consent ->
                 val wanted = consent == InGameConsent.Yes
-                val turnedOff = inGameAnswer.getAndUpdate { wanted } == true && !wanted
-                if (wanted) readyMenus()
-                if (turnedOff) {
-                    lastRemovalEndsTheUse()
-                    upkeepGame()
-                }
+                val answered = inGameAnswer.getAndUpdate { wanted } != null
+                if (wanted) readyMenus() else if (answered) upkeepGame()
             }
         }
     }
@@ -347,8 +347,10 @@ class CustomGames(
     }
 
     private suspend fun lastRemovalEndsTheUse() {
-        logged("record that custom games are not in use") { if (!inGameWanted() && platform.installed().isEmpty() && platform.folders.read().isEmpty()) files.useCustomGames(false) }
+        logged("record that custom games are not in use") { if (!inUse()) files.useCustomGames(false) }
     }
+
+    private suspend fun inUse(): Boolean = inGameWanted() || sessionMounted || platform.installed().isNotEmpty() || platform.folders.read().isNotEmpty()
 
     private suspend fun readFolders() {
         if (!foldersShown) return publishedModes.update { it.copy(folders = null) }
@@ -565,6 +567,7 @@ class CustomGames(
             val game = files.game() ?: return@logged
             val lines = files.gamesLines()
             when {
+                lines != GamesLines.Off && lines !is GamesLines.Unreadable && !inUse() -> files.useCustomGames(false)
                 lines == GamesLines.Pending || lines == GamesLines.Removed -> files.useCustomGames(true)
                 inGameWanted() && (lines == GamesLines.Off || lines == GamesLines.Leaving) -> files.useCustomGames(true)
                 lines == GamesLines.Leaving -> files.useCustomGames(false)
@@ -594,6 +597,7 @@ class CustomGames(
 
     private suspend fun setUp(renderer: Sha256?, seen: GameActivity): SessionEvent {
         val game = files.game() ?: return SetupRead(SetupAnswer.Failed(Refusal.Library(LibraryProblem.GameNotFound)))
+        sessionMounted = true
         val written = files.useCustomGames(true)
         val client = if (written == LibraryProblem.GameRunning) GameActivity.Running else seen
         if (client == GameActivity.Closed && written != null) return SetupRead(SetupAnswer.Failed(Refusal.Library(written)))
