@@ -261,8 +261,11 @@
       }
       const action2 = host2.actions[0];
       if (!action2) return { kind: "busy", label: "Starting\u2026", hint: words2?.body ?? "" };
+      if (host2.phase === "notin" && action2 === "play") return rejoin(snapshot.catalog?.modes.find((m) => m.id === host2.mode)?.name ?? null);
       return { kind: "act", label: ACTION_LABELS[action2], action: action2, hint: (host2.phase === "failed" ? words2?.title : words2?.body) ?? "" };
     }
+    const session2 = snapshot.game?.session;
+    if (session2?.phase === "notin" && session2.actions.includes("play")) return rejoin(session2.mode);
     const join2 = snapshot.game?.join;
     const label2 = mode2 ? `Play ${mode2.name}` : "Play";
     if (join2) return { kind: "blocked", label: label2, hint: join2.title };
@@ -270,6 +273,9 @@
     if (!mode2) return { kind: "blocked", label: label2, hint: "" };
     if (state2.request.kind === "refused" && state2.request.what === "play") return { kind: "play", label: label2, hint: REFUSALS[state2.request.result] };
     return { kind: "play", label: label2, hint: snapshot.game?.restartAhead?.text ?? inviteHint(state2, snapshot) };
+  }
+  function rejoin(mode2) {
+    return { kind: "act", label: mode2 ? `Rejoin ${mode2}` : "Rejoin", action: "play", hint: "The match keeps running. Rejoin sends your Deadlock back in." };
   }
   function friendButton(id, inMatch, state2, snapshot) {
     const button2 = inviteButton(id, state2, snapshot);

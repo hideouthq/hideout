@@ -1,17 +1,21 @@
-// Deadlock's own Esc menu, in the hub and in every match, gets one entry while a Hideout session can be stopped: Stop
-// for the host, Leave for a guest. Both send the session's stop.
+// Deadlock's own Esc menu, in the hub and in every match, gets Hideout's entries while a session can take them: Rejoin
+// while the player's Deadlock is out of a running game, then Stop for the host or Leave for a guest.
 
 import type { LinkStatus } from './link.ts'
-import type { Snapshot } from './wire.ts'
+import type { Action, Snapshot } from './wire.ts'
 
 export interface EscEntry {
-  label: 'STOP HIDEOUT GAME' | 'LEAVE HIDEOUT GAME'
-  /** From a press until the game frame changes, so a second press can't send a second stop. */
+  label: 'Rejoin Hideout Game' | 'Stop Hideout Game' | 'Leave Hideout Game'
+  action: Action
+  /** From a press until the game frame changes, so a second press can't send a second command. */
   busy: boolean
 }
 
-export function viewEscEntry(snapshot: Snapshot, status: LinkStatus, pressed: boolean): EscEntry | null {
+export function viewEscEntries(snapshot: Snapshot, status: LinkStatus, pressed: boolean): EscEntry[] {
   const session = snapshot.game?.session
-  if (!session || !session.actions.includes('stop') || status === 'offline' || status === 'outdated') return null
-  return { label: session.role === 'host' ? 'STOP HIDEOUT GAME' : 'LEAVE HIDEOUT GAME', busy: pressed }
+  if (!session || status === 'offline' || status === 'outdated') return []
+  const entries: EscEntry[] = []
+  if (session.phase === 'notin' && session.actions.includes('play')) entries.push({ label: 'Rejoin Hideout Game', action: 'play', busy: pressed })
+  if (session.actions.includes('stop')) entries.push({ label: session.role === 'host' ? 'Stop Hideout Game' : 'Leave Hideout Game', action: 'stop', busy: pressed })
+  return entries
 }

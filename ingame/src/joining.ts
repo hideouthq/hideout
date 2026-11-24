@@ -37,10 +37,13 @@ function hostOf(card: JoinCard, friends: Friends): JoiningView['host'] {
   return name ? { id: card.hostId, text: `${name}’s game` } : null
 }
 
-/** Offline, the snapshot's join is stale and every button needs the app, so the layer would trap the player. */
+/**
+ * Offline, the snapshot's join is stale and every button needs the app, so the layer would trap the player. A game the
+ * player's Deadlock left is the strip's, which offers Rejoin without covering the room.
+ */
 export function viewJoining(snapshot: Snapshot, putAway: JoinCard['phase'] | null, status: LinkStatus, friends: Friends): JoiningView | null {
   const card = snapshot.game?.join
-  if (!card || card.phase === putAway || status === 'offline') return null
+  if (!card || card.phase === putAway || card.phase === 'notin' || status === 'offline') return null
   const words = card.words
   const failed = card.phase === 'failed'
   const buttons: JoiningButton[] = card.actions.map((action) => ({ kind: 'act', action, ...LABELS[action] }))

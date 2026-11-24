@@ -118,7 +118,7 @@
   }
   function viewJoining(snapshot, putAway, status, friends) {
     const card = snapshot.game?.join;
-    if (!card || card.phase === putAway || status === "offline") return null;
+    if (!card || card.phase === putAway || card.phase === "notin" || status === "offline") return null;
     const words2 = card.words;
     const failed = card.phase === "failed";
     const buttons = card.actions.map((action2) => ({ kind: "act", action: action2, ...LABELS[action2] }));
@@ -519,17 +519,48 @@
 
   // src/strip.ts
   var HIDDEN = ["failed", "ended"];
-  function viewStrip(snapshot, status, pressed, pointer) {
+  function viewStrip(snapshot, status, pressed, pointer, friends) {
+    if (status === "offline" || status === "outdated") return null;
+    const session2 = snapshot.game?.session;
     const host2 = snapshot.game?.host;
-    if (!host2 || HIDDEN.includes(host2.phase) || status === "offline" || status === "outdated") return null;
+    if (host2 && !HIDDEN.includes(host2.phase)) return hostStrip(snapshot, host2, pressed, pointer);
+    if (session2?.role === "guest" && session2.phase === "notin") return guestStrip(snapshot, session2, pressed, pointer, friends);
+    return null;
+  }
+  function hostStrip(snapshot, host2, pressed, pointer) {
     const mode2 = snapshot.catalog?.modes.find((m) => m.id === host2.mode);
     const art2 = mode2 ? mode2.art.tile ?? mode2.art.card : null;
     const name = mode2?.name ?? "your game";
-    const button2 = !host2.actions.includes("stop") || pressed ? "spinner" : pointer ? "stop" : "esc";
-    if (host2.phase === "ready") {
-      return { kind: "hosting", art: art2, mode: name, players: host2.players ? `${host2.players[0]} of ${host2.players[1]}` : null, button: button2 };
+    if (host2.phase === "notin") {
+      return { art: art2, line: [[mode2?.name ?? "Your game", true], ["is still running", false]], sub: inIt(host2), buttons: outButtons(host2.actions, "Stop", pressed, pointer) };
     }
-    return { kind: "status", art: art2, mode: name, words: host2.words?.title ?? "", button: button2 };
+    const buttons = !host2.actions.includes("stop") || pressed ? { kind: "spinner" } : pointer ? { kind: "acts", acts: [{ action: "stop", label: "Stop", primary: false }] } : { kind: "esc", words: "to stop" };
+    if (host2.phase === "ready") {
+      const players = host2.players ? [[`\xB7 ${host2.players[0]} of ${host2.players[1]}`, false]] : [];
+      return { art: art2, line: [["Hosting", false], [name, true], ...players], sub: null, buttons };
+    }
+    return { art: art2, line: [[name, true], [`\xB7 ${host2.words?.title ?? ""}`, false]], sub: null, buttons };
+  }
+  function inIt(host2) {
+    if (!host2.players) return null;
+    const others = Math.max(0, host2.players[0] - 1);
+    return others ? `${others} ${others === 1 ? "player" : "players"} in it` : "Nobody in it right now";
+  }
+  function guestStrip(snapshot, session2, pressed, pointer, friends) {
+    const mode2 = snapshot.catalog?.modes.find((m) => m.name === session2.mode);
+    const art2 = mode2 ? mode2.art.tile ?? mode2.art.card : null;
+    const hostName = session2.hostId && friends.names[session2.hostId] || session2.hostName;
+    const game = hostName ? `${hostName}\u2019s ${session2.mode}` : session2.mode;
+    return { art: art2, line: [["You left", false], [game, true]], sub: null, buttons: outButtons(session2.actions, "Leave", pressed, pointer) };
+  }
+  function outButtons(actions, end, pressed, pointer) {
+    if (pressed) return { kind: "spinner" };
+    const rejoin = actions.includes("play");
+    if (!pointer) return { kind: "esc", words: rejoin ? "to rejoin" : `to ${end.toLowerCase()}` };
+    const out = [];
+    if (actions.includes("stop")) out.push({ action: "stop", label: end, primary: false });
+    if (rejoin) out.push({ action: "play", label: "Rejoin", primary: true });
+    return { kind: "acts", acts: out };
   }
 
   // src/toasts.ts
@@ -833,10 +864,10 @@
       };
     }
     const strip = new Section();
-    let stopPressed = null;
+    let stripPressed = null;
     function drawStrip(where) {
-      if (stopPressed && stopPressed.in !== link.snapshot.game) stopPressed = null;
-      const view = viewStrip(link.snapshot, link.status, stopPressed !== null, where.pointer);
+      if (stripPressed && stripPressed.in !== link.snapshot.game) stripPressed = null;
+      const view = viewStrip(link.snapshot, link.status, stripPressed !== null, where.pointer, friends.current);
       const into = find("HOStrip");
       into.SetHasClass("Shown", view !== null && where.room && !where.escape);
       strip.draw(into, JSON.stringify(view), (into2) => {
@@ -849,21 +880,19 @@
       panel(card, "Grain", "Panel", { hittest: "false" });
       const row = panel(card, "HOToastRow");
       art(panel(row, "HOToastArt"), "HOToastPic", view.art);
-      if (view.kind === "hosting") line(row, [["Hosting", false], [view.mode, true], ...view.players ? [[`\xB7 ${view.players}`, false]] : []]);
-      else line(row, [[view.mode, true], [`\xB7 ${view.words}`, false]]);
-      if (view.button === "esc") {
-        escHint(row, "to stop");
-        return;
-      }
-      const spins = view.button === "spinner";
-      const stop = button(row, `SecondaryButton Outline Small Gold HOStop${spins ? " Busy" : ""}`, spins ? "" : "Stop", spins ? null : stopGame);
-      if (spins) spinner(stop);
+      const text2 = panel(row, "HOStripText");
+      line(text2, view.line);
+      if (view.sub) label(text2, "HOToastLine", view.sub);
+      const buttons = view.buttons;
+      if (buttons.kind === "esc") escHint(row, buttons.words);
+      else if (buttons.kind === "spinner") spinner(button(row, "SecondaryButton Outline Small Gold HOStop Busy", "", null));
+      else for (const act of buttons.acts) button(row, act.primary ? "Cream HOStripPrimary" : "SecondaryButton Outline Small Gold HOStop", act.label, () => stripAct(act));
     }
-    function stopGame() {
-      stopPressed = { in: link.snapshot.game };
-      link.send({ k: "act", action: "stop" }, (result) => {
+    function stripAct(act) {
+      stripPressed = { in: link.snapshot.game };
+      link.send({ k: "act", action: act.action }, (result) => {
         if (result === "accepted") return;
-        stopPressed = null;
+        stripPressed = null;
         draw();
       });
       draw();

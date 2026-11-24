@@ -285,8 +285,11 @@ function playButton(state: GamesState, snapshot: Snapshot, link: LinkStatus, mod
     }
     const action = host.actions[0]
     if (!action) return { kind: 'busy', label: 'Starting…', hint: words?.body ?? '' }
+    if (host.phase === 'notin' && action === 'play') return rejoin(snapshot.catalog?.modes.find((m) => m.id === host.mode)?.name ?? null)
     return { kind: 'act', label: ACTION_LABELS[action], action, hint: (host.phase === 'failed' ? words?.title : words?.body) ?? '' }
   }
+  const session = snapshot.game?.session
+  if (session?.phase === 'notin' && session.actions.includes('play')) return rejoin(session.mode)
   const join = snapshot.game?.join
   const label = mode ? `Play ${mode.name}` : 'Play'
   if (join) return { kind: 'blocked', label, hint: join.title }
@@ -294,6 +297,10 @@ function playButton(state: GamesState, snapshot: Snapshot, link: LinkStatus, mod
   if (!mode) return { kind: 'blocked', label, hint: '' }
   if (state.request.kind === 'refused' && state.request.what === 'play') return { kind: 'play', label, hint: REFUSALS[state.request.result] }
   return { kind: 'play', label, hint: snapshot.game?.restartAhead?.text ?? inviteHint(state, snapshot) }
+}
+
+function rejoin(mode: string | null): PlayButton {
+  return { kind: 'act', label: mode ? `Rejoin ${mode}` : 'Rejoin', action: 'play', hint: 'The match keeps running. Rejoin sends your Deadlock back in.' }
 }
 
 function friendButton(id: SteamId, inMatch: boolean, state: GamesState, snapshot: Snapshot): FriendButton {

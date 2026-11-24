@@ -4,7 +4,7 @@
 import { FriendWatch } from '../friends.ts'
 import { type JoiningButton, viewJoining } from '../joining.ts'
 import { Link } from '../link.ts'
-import { type StripView, viewStrip } from '../strip.ts'
+import { type StripAct, type StripView, viewStrip } from '../strip.ts'
 import { type ToastView, wantedToasts } from '../toasts.ts'
 import { Section, art, button, escHint, label, mark, panel, paper, spinner, tear } from '../ui.ts'
 import type { Config, Game, JoinCard, Step } from '../wire.ts'
@@ -195,12 +195,12 @@ function boot(): void {
   }
 
   const strip = new Section()
-  let stopPressed: { in: Game | null } | null = null
+  let stripPressed: { in: Game | null } | null = null
 
-  /** The Esc menu, in the room and in a match, has its own Stop entry from the HUD's script, so the strip stays out of it. */
+  /** The Esc menu, in the room and in a match, has its own entries from the HUD's script, so the strip stays out of it. */
   function drawStrip(where: { room: boolean; pointer: boolean; escape: boolean }): void {
-    if (stopPressed && stopPressed.in !== link.snapshot.game) stopPressed = null
-    const view = viewStrip(link.snapshot, link.status, stopPressed !== null, where.pointer)
+    if (stripPressed && stripPressed.in !== link.snapshot.game) stripPressed = null
+    const view = viewStrip(link.snapshot, link.status, stripPressed !== null, where.pointer, friends.current)
     const into = find('HOStrip')
     into.SetHasClass('Shown', view !== null && where.room && !where.escape)
     strip.draw(into, JSON.stringify(view), (into) => {
@@ -214,22 +214,20 @@ function boot(): void {
     panel(card, 'Grain', 'Panel', { hittest: 'false' })
     const row = panel(card, 'HOToastRow')
     art(panel(row, 'HOToastArt'), 'HOToastPic', view.art)
-    if (view.kind === 'hosting') line(row, [['Hosting', false], [view.mode, true], ...(view.players ? ([[`· ${view.players}`, false]] as [string, boolean][]) : [])])
-    else line(row, [[view.mode, true], [`· ${view.words}`, false]])
-    if (view.button === 'esc') {
-      escHint(row, 'to stop')
-      return
-    }
-    const spins = view.button === 'spinner'
-    const stop = button(row, `SecondaryButton Outline Small Gold HOStop${spins ? ' Busy' : ''}`, spins ? '' : 'Stop', spins ? null : stopGame)
-    if (spins) spinner(stop)
+    const text = panel(row, 'HOStripText')
+    line(text, view.line)
+    if (view.sub) label(text, 'HOToastLine', view.sub)
+    const buttons = view.buttons
+    if (buttons.kind === 'esc') escHint(row, buttons.words)
+    else if (buttons.kind === 'spinner') spinner(button(row, 'SecondaryButton Outline Small Gold HOStop Busy', '', null))
+    else for (const act of buttons.acts) button(row, act.primary ? 'Cream HOStripPrimary' : 'SecondaryButton Outline Small Gold HOStop', act.label, () => stripAct(act))
   }
 
-  function stopGame(): void {
-    stopPressed = { in: link.snapshot.game }
-    link.send({ k: 'act', action: 'stop' }, (result) => {
+  function stripAct(act: StripAct): void {
+    stripPressed = { in: link.snapshot.game }
+    link.send({ k: 'act', action: act.action }, (result) => {
       if (result === 'accepted') return
-      stopPressed = null
+      stripPressed = null
       draw()
     })
     draw()

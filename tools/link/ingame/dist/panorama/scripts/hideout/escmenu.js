@@ -5,10 +5,13 @@
   var __publicField = (obj2, key, value) => __defNormalProp(obj2, typeof key !== "symbol" ? key + "" : key, value);
 
   // src/escmenu.ts
-  function viewEscEntry(snapshot, status, pressed) {
+  function viewEscEntries(snapshot, status, pressed) {
     const session2 = snapshot.game?.session;
-    if (!session2 || !session2.actions.includes("stop") || status === "offline" || status === "outdated") return null;
-    return { label: session2.role === "host" ? "STOP HIDEOUT GAME" : "LEAVE HIDEOUT GAME", busy: pressed };
+    if (!session2 || status === "offline" || status === "outdated") return [];
+    const entries = [];
+    if (session2.phase === "notin" && session2.actions.includes("play")) entries.push({ label: "Rejoin Hideout Game", action: "play", busy: pressed });
+    if (session2.actions.includes("stop")) entries.push({ label: session2.role === "host" ? "Stop Hideout Game" : "Leave Hideout Game", action: "stop", busy: pressed });
+    return entries;
   }
 
   // src/titles.ts
@@ -388,7 +391,6 @@
   };
 
   // src/entries/escmenu.ts
-  var ENTRY = "HideoutEscEntry";
   function start() {
     let root = $.GetContextPanel();
     while (root.GetParent()) root = root.GetParent();
@@ -396,38 +398,35 @@
     const host2 = $.CreatePanel("Panel", root, "HideoutEscRoot", { hittest: "false" });
     const link = new Link(host2, HideoutConfig, draw);
     let pressed = null;
-    let entry = null;
+    const rows = /* @__PURE__ */ new Map();
     function draw() {
       if (pressed && pressed.in !== link.snapshot.game) pressed = null;
-      const view = viewEscEntry(link.snapshot, link.status, pressed !== null);
-      if (entry && !entry.button.IsValid()) entry = null;
-      if (!view) {
-        if (entry) entry.button.GetParent().visible = false;
-        return;
+      const entries = viewEscEntries(link.snapshot, link.status, pressed !== null);
+      for (const [action2, row] of rows) if (!row.button.IsValid()) rows.delete(action2);
+      for (const [action2, row] of rows) row.button.visible = entries.some((e) => e.action === action2);
+      let previous = null;
+      for (const entry of entries) {
+        const row = rows.get(entry.action) ?? build(entry);
+        if (!row) return;
+        rows.set(entry.action, row);
+        if (previous) row.button.GetParent().MoveChildAfter(row.button, previous);
+        previous = row.button;
+        row.button.visible = true;
+        row.label.text = entry.label;
+        row.button.enabled = !entry.busy;
       }
-      entry ?? (entry = build());
-      if (!entry) return;
-      entry.button.GetParent().visible = true;
-      entry.label.text = view.label;
-      entry.button.enabled = !view.busy;
     }
-    function build() {
-      const list2 = root.FindChildTraverse("EscapeMenu")?.FindChildTraverse("SubOptions");
+    function build(entry) {
+      const list2 = root.FindChildTraverse("EscapeMenu")?.FindChildTraverse("ContextualMenu");
       if (!list2) return null;
-      const row = $.CreatePanel("Panel", list2, ENTRY);
-      const button = $.CreatePanel("Button", row, "", { class: "nav_menu_item minor" });
+      const button = $.CreatePanel("Button", list2, `HideoutEsc-${entry.action}`, { class: "nav_menu_item minor" });
       const label = $.CreatePanel("Label", button, "", { class: "menuButtonLabel" });
-      button.SetPanelEvent("onactivate", stop);
-      const rows = Array.from({ length: list2.GetChildCount() }, (_, i) => list2.GetChild(i));
-      const settings = rows.find((p) => p?.BHasClass("SettingsRow"));
-      const feedback = rows.find((p) => p?.BHasClass("FeedbackRow"));
-      if (settings) list2.MoveChildBefore(row, settings);
-      else if (feedback) list2.MoveChildAfter(row, feedback);
+      button.SetPanelEvent("onactivate", () => act(entry.action));
       return { button, label };
     }
-    function stop() {
+    function act(action2) {
       pressed = { in: link.snapshot.game };
-      link.send({ k: "act", action: "stop" }, (result) => {
+      link.send({ k: "act", action: action2 }, (result) => {
         if (result === "accepted") return;
         pressed = null;
         draw();
@@ -440,7 +439,7 @@
       $.Schedule(1, tick);
     }
     tick();
-    $.Msg("[hideout] Esc menu entry started");
+    $.Msg("[hideout] Esc menu entries started");
   }
   start();
 })();

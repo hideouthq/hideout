@@ -561,3 +561,23 @@
 	font-size: 15px;
 	color: #9A9286;
 }
+
+.HOStripText
+{
+	width: fill-parent-flow( 1.0 );
+	vertical-align: middle;
+	flow-children: down;
+}
+
+.HOStripPrimary
+{
+	width: 104px;
+	height: 34px;
+	vertical-align: middle;
+	margin-right: 6px;
+}
+
+.HOStripPrimary Label
+{
+	font-size: 15px;
+}

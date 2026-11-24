@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
-import { viewEscEntry } from '../src/escmenu.ts'
+import { viewEscEntries } from '../src/escmenu.ts'
 import { type Friends, friendsOf } from '../src/friends.ts'
 import { type GamesEvent, type GamesState, initialGames, reduceGames, viewGames, viewServers } from '../src/games.ts'
 import { viewJoining } from '../src/joining.ts'
@@ -303,57 +303,104 @@ test('the joining dialog leaves once Hideout is gone, since nothing there works 
   assert.notEqual(viewJoining(snapshotOf('game-review.json'), null, 'online', friends), null, 'and comes back with it')
 })
 
+const strip = (snapshot: Snapshot, pressed = false, pointer = true, list: Friends = friends) => viewStrip(snapshot, 'online', pressed, pointer, list)
+const STOP = { action: 'stop', label: 'Stop', primary: false }
+
 test('the hosting strip names the hosted game and its players, with Stop', () => {
-  assert.deepEqual(viewStrip(snapshotOf('catalog.json', 'game-ready.json'), 'online', false, true), {
-    kind: 'hosting',
+  assert.deepEqual(strip(snapshotOf('catalog.json', 'game-ready.json')), {
     art: null,
-    mode: 'Bebop Wars',
-    players: '1 of 6',
-    button: 'stop',
+    line: [['Hosting', false], ['Bebop Wars', true], ['· 1 of 6', false]],
+    sub: null,
+    buttons: { kind: 'acts', acts: [STOP] },
   })
 })
 
 test('a starting or ending game shows the host card’s words, and Stop only while the card offers it', () => {
-  const starting = viewStrip(snapshotOf('catalog.json', 'game-starting.json'), 'online', false, true)
-  assert.deepEqual(starting, { kind: 'status', art: null, mode: 'Bebop Wars', words: 'Starting your game', button: 'stop' })
-  const ending = viewStrip(snapshotOf('catalog.json', 'game-ending.json'), 'online', false, true)
-  assert.deepEqual(ending, { kind: 'status', art: null, mode: 'Bebop Wars', words: 'Ending your game', button: 'spinner' })
+  const starting = strip(snapshotOf('catalog.json', 'game-starting.json'))
+  assert.deepEqual([starting?.line, starting?.buttons], [[['Bebop Wars', true], ['· Starting your game', false]], { kind: 'acts', acts: [STOP] }])
+  const ending = strip(snapshotOf('catalog.json', 'game-ending.json'))
+  assert.deepEqual([ending?.line, ending?.buttons], [[['Bebop Wars', true], ['· Ending your game', false]], { kind: 'spinner' }])
 })
 
-test('a pressed Stop spins until the game frame changes', () => {
-  assert.equal(viewStrip(snapshotOf('catalog.json', 'game-ready.json'), 'online', true, true)?.button, 'spinner')
+test('a host whose Deadlock left the game is told it still runs, with Rejoin and Stop', () => {
+  const view = strip(snapshotOf('catalog.json', 'game-notin.json'))
+  assert.deepEqual(view?.line, [['Bebop Wars', true], ['is still running', false]])
+  assert.equal(view?.sub, '1 player in it', 'the host card counts the host, who is out')
+  assert.deepEqual(view?.buttons, { kind: 'acts', acts: [STOP, { action: 'play', label: 'Rejoin', primary: true }] })
+})
+
+test('a guest who left the game gets the strip with Rejoin and Leave, and no joining dialog', () => {
+  const left = snapshotOf('catalog.json', 'game-guest-notin.json')
+  const view = strip(left)
+  assert.deepEqual(view?.line, [['You left', false], ['Mugi’s Bebop Wars', true]])
+  assert.deepEqual(view?.buttons, {
+    kind: 'acts',
+    acts: [
+      { action: 'stop', label: 'Leave', primary: false },
+      { action: 'play', label: 'Rejoin', primary: true },
+    ],
+  })
+  const renamed = friendsOf([{ steamid: MUGI, name: 'mugi', status: '', presence: 'offline', currentUser: false }])
+  assert.deepEqual(strip(left, false, true, renamed)?.line[1], ['mugi’s Bebop Wars', true], 'a friend host goes by the friend list’s name')
+  assert.equal(strip(snapshotOf('catalog.json', 'game-guest.json')), null, 'a guest in the match has no strip')
+  const review = snapshotOf('game-review.json')
+  const joinLeft = withFrame(review, { ...review.game!, join: { ...review.game!.join!, phase: 'notin', actions: ['play', 'stop'] } })
+  assert.equal(viewJoining(joinLeft, null, 'online', friends), null, 'a join the player’s Deadlock left is the strip’s, not a full-screen dialog')
+})
+
+test('a pressed strip button spins until the game frame changes', () => {
+  assert.deepEqual(strip(snapshotOf('catalog.json', 'game-ready.json'), true)?.buttons, { kind: 'spinner' })
+  assert.deepEqual(strip(snapshotOf('catalog.json', 'game-guest-notin.json'), true)?.buttons, { kind: 'spinner' })
 })
 
 test('while the game holds the mouse, the strip and toasts say Esc frees it instead of offering buttons it can’t reach', () => {
-  assert.equal(viewStrip(snapshotOf('catalog.json', 'game-ready.json'), 'online', false, false)?.button, 'esc')
-  assert.equal(viewStrip(snapshotOf('catalog.json', 'game-ending.json'), 'online', false, false)?.button, 'spinner', 'a spinner needs no pointer')
+  assert.deepEqual(strip(snapshotOf('catalog.json', 'game-ready.json'), false, false)?.buttons, { kind: 'esc', words: 'to stop' })
+  assert.deepEqual(strip(snapshotOf('catalog.json', 'game-notin.json'), false, false)?.buttons, { kind: 'esc', words: 'to rejoin' })
+  assert.deepEqual(strip(snapshotOf('catalog.json', 'game-ending.json'), false, false)?.buttons, { kind: 'spinner' }, 'a spinner needs no pointer')
   const invites = wantedToasts(snapshotOf('inbox.json'), friends, 0, {}, new Set(), false)
   const unreached = wantedToasts(snapshotOf('game-invites.json'), friends, 0, {}, new Set(), false)
   assert.deepEqual([...invites, ...unreached].map((t) => [t.kind, t.pointer]), [['invite', false], ['unreached', false]])
   assert.equal(wantedToasts(snapshotOf('inbox.json'), friends, 0, {}, new Set(), true)[0]?.pointer, true)
 })
 
-test('no strip without a running hosted game, or once Hideout is gone', () => {
-  assert.equal(viewStrip(snapshotOf('catalog.json', 'game-idle.json'), 'online', false, true), null)
-  assert.equal(viewStrip(snapshotOf('catalog.json', 'game-failed.json'), 'online', false, true), null)
-  assert.equal(viewStrip(snapshotOf('catalog.json', 'game-review.json'), 'online', false, true), null, 'a guest joining has the joining dialog')
-  assert.equal(viewStrip(snapshotOf('catalog.json', 'game-ready.json'), 'offline', false, true), null)
+test('no strip without a running game, or once Hideout is gone', () => {
+  assert.equal(strip(snapshotOf('catalog.json', 'game-idle.json')), null)
+  assert.equal(strip(snapshotOf('catalog.json', 'game-failed.json')), null)
+  assert.equal(strip(snapshotOf('catalog.json', 'game-review.json')), null, 'a guest joining has the joining dialog')
+  assert.equal(viewStrip(snapshotOf('catalog.json', 'game-ready.json'), 'offline', false, true, friends), null)
+  assert.equal(viewStrip(snapshotOf('catalog.json', 'game-guest-notin.json'), 'outdated', false, true, friends), null)
 })
 
+const labels = (snapshot: Snapshot) => viewEscEntries(snapshot, 'online', false).map((e) => [e.label, e.action])
+
 test('Deadlock’s Esc menu offers the host Stop and a guest Leave, in the match and while joining', () => {
-  assert.deepEqual(viewEscEntry(snapshotOf('game-ready.json'), 'online', false), { label: 'STOP HIDEOUT GAME', busy: false })
-  assert.deepEqual(viewEscEntry(snapshotOf('game-guest.json'), 'online', false), { label: 'LEAVE HIDEOUT GAME', busy: false })
-  assert.equal(viewEscEntry(snapshotOf('game-review.json'), 'online', false)?.label, 'LEAVE HIDEOUT GAME')
+  assert.deepEqual(labels(snapshotOf('game-ready.json')), [['Stop Hideout Game', 'stop']])
+  assert.deepEqual(labels(snapshotOf('game-guest.json')), [['Leave Hideout Game', 'stop']])
+  assert.deepEqual(labels(snapshotOf('game-review.json')), [['Leave Hideout Game', 'stop']])
+})
+
+test('out of a running game, the Esc menu offers Rejoin above Stop or Leave', () => {
+  assert.deepEqual(labels(snapshotOf('game-notin.json')), [['Rejoin Hideout Game', 'play'], ['Stop Hideout Game', 'stop']])
+  assert.deepEqual(labels(snapshotOf('game-guest-notin.json')), [['Rejoin Hideout Game', 'play'], ['Leave Hideout Game', 'stop']])
 })
 
 test('a pressed Esc menu entry stays greyed until the game frame changes', () => {
-  assert.equal(viewEscEntry(snapshotOf('game-ready.json'), 'online', true)?.busy, true)
+  assert.deepEqual(viewEscEntries(snapshotOf('game-notin.json'), 'online', true).map((e) => e.busy), [true, true])
 })
 
 test('no Esc menu entry while the session takes no stop, or once Hideout is gone', () => {
-  assert.equal(viewEscEntry(snapshotOf('game-idle.json'), 'online', false), null)
-  assert.equal(viewEscEntry(snapshotOf('game-ending.json'), 'online', false), null)
-  assert.equal(viewEscEntry(snapshotOf('game-failed.json'), 'online', false), null)
-  assert.equal(viewEscEntry(snapshotOf('game-ready.json'), 'offline', false), null)
-  assert.equal(viewEscEntry(snapshotOf('game-guest.json'), 'outdated', false), null)
+  assert.deepEqual(viewEscEntries(snapshotOf('game-idle.json'), 'online', false), [])
+  assert.deepEqual(viewEscEntries(snapshotOf('game-ending.json'), 'online', false), [])
+  assert.deepEqual(viewEscEntries(snapshotOf('game-failed.json'), 'online', false), [])
+  assert.deepEqual(viewEscEntries(snapshotOf('game-ready.json'), 'offline', false), [])
+  assert.deepEqual(viewEscEntries(snapshotOf('game-guest-notin.json'), 'outdated', false), [])
+})
+
+test('out of a running game, the panel’s big button rejoins it, for host and guest', () => {
+  for (const name of ['game-notin.json', 'game-guest-notin.json']) {
+    const { view, effects } = run(snapshotOf('catalog.json', name), { kind: 'act', action: 'play' })
+    assert.equal(view.play.kind, 'act')
+    assert.equal(view.play.label, 'Rejoin Bebop Wars', name)
+    assert.deepEqual(effects, [{ kind: 'send', what: 'act', command: { k: 'act', action: 'play' } }])
+  }
 })
