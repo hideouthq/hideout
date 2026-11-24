@@ -81,7 +81,7 @@
 
   // src/wire.ts
   var PROTOCOL = 1;
-  var RESULTS = ["accepted", "busy", "gone", "invalid", "unavailable", "outdated"];
+  var RESULTS = ["accepted", "busy", "gone", "invalid", "unavailable", "outdated", "stale"];
   function resultOfWidth(width, scale = 1) {
     return RESULTS[Math.round(width / scale) - 1] ?? "unreachable";
   }
@@ -251,6 +251,7 @@
           return {
             t: "hello",
             protocol: num(o.protocol),
+            epoch: str(o.epoch),
             social: oneOf(["on", "off", "other-account", "blocked"])(o.social),
             supportId: opt(o.supportId, (v) => str(v))
           };
@@ -362,6 +363,7 @@
       const query = [
         `p=${PROTOCOL}`,
         `t=${this.config.token}`,
+        `e=${this.snapshot.hello?.epoch ?? ""}`,
         `b=${this.boot}`,
         `n=${this.sequence++}`,
         `c=${encodeURIComponent(JSON.stringify(item.command))}`

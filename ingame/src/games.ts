@@ -229,6 +229,7 @@ const REFUSALS: Record<CommandResult, string> = {
   invalid: 'Hideout couldn’t read that. Try again.',
   unavailable: 'This Hideout can’t do that yet.',
   outdated: 'Restart Deadlock to update Hideout games.',
+  stale: 'Hideout reconnected. Press again.',
   unreachable: 'Hideout didn’t answer. Is it still open?',
 }
 

@@ -105,6 +105,7 @@ export class Link {
     const query = [
       `p=${PROTOCOL}`,
       `t=${this.config.token}`,
+      `e=${this.snapshot.hello?.epoch ?? ''}`,
       `b=${this.boot}`,
       `n=${this.sequence++}`,
       `c=${encodeURIComponent(JSON.stringify(item.command))}`,

@@ -31,12 +31,16 @@ import java.util.zip.CRC32
 import java.util.zip.DeflaterOutputStream
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TimeMark
+import kotlin.time.TimeSource
 
 /**
  * Every route refuses a Host that isn't loopback, which keeps DNS rebinding out. The stream admits the pack's Origin
  * and the game's User-Agent, as Modlock's relay does. A Panorama Image panel sends no Origin, so `/c` takes the pack's
- * token instead, and a repeated sequence number gets its first answer again, so a retried image can't host twice.
+ * token instead. A retried image can't host twice: one sent before Hideout restarted names another [InGame.epoch] and
+ * never runs, and within this start a repeated sequence number gets its first answer again.
  */
 class InGameEndpoint(
     private val inGame: InGame,
@@ -141,6 +145,7 @@ class InGameEndpoint(
         val sequence = query["n"]?.toLongOrNull()?.takeIf { it >= 0 }
         val result = when {
             query["p"] != InGameProtocol.toString() -> CommandResult.Outdated
+            query["e"] != inGame.epoch -> CommandResult.Stale
             boot == null || sequence == null -> CommandResult.Invalid
             else -> seen.answer(boot, sequence) { query["c"]?.let(InGameWire::parseCommand)?.let { runBlocking { inGame.run(it) } } ?: CommandResult.Invalid }
         }
@@ -180,24 +185,29 @@ private fun queryOf(raw: String?): Map<String, String> = try {
     emptyMap()
 }
 
-/** Holds each boot's newest press while it runs too, so a retry waits for that answer and other boots don't wait at all. */
-internal class Seen(private val boots: Int = 16) {
-    private val last = LinkedHashMap<String, Pair<Long, CompletableFuture<CommandResult>>>()
+/**
+ * Holds each boot's newest press while it runs too, so a retry waits for that answer and other boots don't wait at all.
+ * A boot is forgotten once it has pressed nothing for [forget], far longer than the game retries an image.
+ */
+internal class Seen(private val forget: Duration = 10.minutes, private val time: TimeSource = TimeSource.Monotonic) {
+    private class Press(val sequence: Long, val answer: CompletableFuture<CommandResult>, val at: TimeMark)
+
+    private val last = LinkedHashMap<String, Press>()
 
     fun answer(boot: String, sequence: Long, run: () -> CommandResult): CommandResult {
         val pending = CompletableFuture<CommandResult>()
         val answer = synchronized(this) {
-            last[boot]?.let { (newest, answer) -> if (sequence == newest) return@synchronized answer else if (sequence < newest) return CommandResult.Invalid }
+            while (last.isNotEmpty() && last.values.first().at.elapsedNow() > forget) last.remove(last.keys.first())
+            last[boot]?.let { newest -> if (sequence == newest.sequence) return@synchronized newest.answer else if (sequence < newest.sequence) return CommandResult.Invalid }
             last.remove(boot)
-            last[boot] = sequence to pending
-            while (last.size > boots) last.remove(last.keys.first())
+            last[boot] = Press(sequence, pending, time.markNow())
             pending
         }
         if (answer === pending) {
             try {
                 pending.complete(run())
             } catch (e: Throwable) {
-                synchronized(this) { if (last[boot]?.second === pending) last.remove(boot) }
+                synchronized(this) { if (last[boot]?.answer === pending) last.remove(boot) }
                 pending.completeExceptionally(e)
             }
         }

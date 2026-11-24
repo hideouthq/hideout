@@ -27,10 +27,13 @@ enum class Topic { Hello, Catalog, Game, Inbox, Servers }
 
 @Serializable
 sealed interface Frame {
-    /** [supportId] is set only while [social] is blocked: the player's own SteamID64, for support to reset this PC. */
+    /**
+     * [epoch] is drawn once per Hideout start, and a command sent with another is refused. [supportId] is set only while
+     * [social] is blocked: the player's own SteamID64, for support to reset this PC.
+     */
     @Serializable
     @SerialName("hello")
-    data class Hello(val protocol: Int, val social: SocialWire, val supportId: String?) : Frame
+    data class Hello(val protocol: Int, val epoch: String, val social: SocialWire, val supportId: String?) : Frame
 
     @Serializable
     @SerialName("catalog")
@@ -249,6 +252,9 @@ enum class CommandResult(val width: Int) {
     Unavailable(5),
 
     Outdated(6),
+
+    /** Sent to a Hideout that has restarted since, which never runs it: the player presses again. */
+    Stale(7),
 }
 
 sealed interface PanelCommand {

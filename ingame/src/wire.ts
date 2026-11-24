@@ -145,8 +145,11 @@ export interface ServerRow {
   status: ServerStatus
 }
 
-/** [supportId] is set only while social is blocked: the player's own SteamID64, for support to reset this PC. */
-export type Hello = { t: 'hello'; protocol: number; social: Social; supportId: SteamId | null }
+/**
+ * [epoch] is drawn once per Hideout start, and every command carries the newest heard, so one sent to an earlier start
+ * never runs. [supportId] is set only while social is blocked: the player's own SteamID64, for support to reset this PC.
+ */
+export type Hello = { t: 'hello'; protocol: number; epoch: string; social: Social; supportId: SteamId | null }
 export type Catalog = { t: 'catalog'; modes: ModeCard[] }
 export type Game = { t: 'game'; host: HostCard | null; join: JoinCard | null; session: SessionCard | null; restartAhead: Restart | null }
 export type Inbox = { t: 'inbox'; invites: InviteCard[] }
@@ -165,9 +168,10 @@ export type Command =
   | { k: 'servers' }
   | { k: 'hello'; self: SteamId | null }
 
-export type CommandResult = 'accepted' | 'busy' | 'gone' | 'invalid' | 'unavailable' | 'outdated' | 'unreachable'
+/** 'stale' is a command Hideout refused because it restarted since this script heard its hello. */
+export type CommandResult = 'accepted' | 'busy' | 'gone' | 'invalid' | 'unavailable' | 'outdated' | 'stale' | 'unreachable'
 
-const RESULTS: CommandResult[] = ['accepted', 'busy', 'gone', 'invalid', 'unavailable', 'outdated']
+const RESULTS: CommandResult[] = ['accepted', 'busy', 'gone', 'invalid', 'unavailable', 'outdated', 'stale']
 
 /** An image's content width is in screen pixels, which is [scale] times the PNG's width when the screen isn't 1080 lines tall. */
 export function resultOfWidth(width: number, scale = 1): CommandResult {
@@ -363,6 +367,7 @@ export function decodeFrame(text: string): Frame | null {
         return {
           t: 'hello',
           protocol: num(o.protocol),
+          epoch: str(o.epoch),
           social: oneOf<Social>(['on', 'off', 'other-account', 'blocked'])(o.social),
           supportId: opt(o.supportId, (v) => str(v) as SteamId),
         }

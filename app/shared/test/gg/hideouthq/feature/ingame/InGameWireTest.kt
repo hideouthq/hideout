@@ -61,6 +61,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.time.Instant
 
+private const val Epoch = "5e0c7a1b9d2f4e86"
+
 /** The Panorama side's tests read the same golden files. HIDEOUT_WRITE_FIXTURES=1 rewrites them; read the diff. */
 class InGameWireTest {
     private val fixtures: Path = Path.of(System.getProperty("user.dir")).resolve("../../ingame/fixtures").normalize()
@@ -85,7 +87,7 @@ class InGameWireTest {
     private val site = SiteOrigin.parse("https://hideouthq.gg")
 
     private suspend fun frames(live: LiveSession, social: SocialView = SocialView(), restarts: RestartReason? = null, transfer: Transfer? = null, invitedBy: InvitedBy? = null) =
-        inGameFrames(PresentInputs(live, restarts, transfer, modes, site = site), social, invitedBy = invitedBy)
+        inGameFrames(PresentInputs(live, restarts, transfer, modes, site = site), Epoch, social, invitedBy = invitedBy)
 
     private val mugi = checkNotNull(SteamId.parse("76561198000000002"))
 
@@ -150,7 +152,7 @@ class InGameWireTest {
             ),
         )
         val on = SocialView(SocialStatus.On, available = true, state)
-        val social = inGameFrames(PresentInputs(LiveSession(hosting, record), modes = modes, site = site), on)
+        val social = inGameFrames(PresentInputs(LiveSession(hosting, record), modes = modes, site = site), Epoch, on)
         golden("hello-on.json", social.getValue(Topic.Hello))
         golden("game-invites.json", social.getValue(Topic.Game))
         golden("inbox.json", social.getValue(Topic.Inbox))
@@ -167,7 +169,7 @@ class InGameWireTest {
     }
 
     private suspend fun catalog(modes: ModeList): JsonObject =
-        Json.parseToJsonElement(inGameFrames(PresentInputs(LiveSession(), modes = modes)).getValue(Topic.Catalog)).jsonObject
+        Json.parseToJsonElement(inGameFrames(PresentInputs(LiveSession(), modes = modes), Epoch).getValue(Topic.Catalog)).jsonObject
 
     @Test
     fun aModeCardCarriesItsSizeOnceInstalledAndItsGoalUnfilled() = runTest {
@@ -184,7 +186,7 @@ class InGameWireTest {
         val review = LiveSession(Session.Confirming(Invite(code, offer)), GameRecord(Role.Guest(code, offer, bebop.listing), me))
         fun JsonObject.join() = getValue("join").jsonObject
         suspend fun card(invitedBy: InvitedBy?, serverJoin: ServerJoin? = null) =
-            Json.parseToJsonElement(inGameFrames(PresentInputs(review, modes = modes), serverJoin = serverJoin, invitedBy = invitedBy).getValue(Topic.Game)).jsonObject.join()
+            Json.parseToJsonElement(inGameFrames(PresentInputs(review, modes = modes), Epoch, serverJoin = serverJoin, invitedBy = invitedBy).getValue(Topic.Game)).jsonObject.join()
 
         val invited = card(InvitedBy(code, mugi))
         assertEquals(mugi.value, invited["hostId"]?.jsonPrimitive?.content)

@@ -28,6 +28,7 @@ import gg.hideouthq.core.customgames.social.SocialNetwork
 import gg.hideouthq.core.data.fake.FakeCustomGamesFeed
 import gg.hideouthq.core.data.fake.FakeCustomGamesPlatform
 import gg.hideouthq.core.data.fake.FakeSessionFiles
+import gg.hideouthq.feature.ingame.CommandResult
 import gg.hideouthq.feature.ingame.InGame
 import gg.hideouthq.feature.ingame.Topic
 import kotlinx.coroutines.CompletableDeferred
@@ -59,7 +60,9 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TestTimeSource
 
 private const val Token = "0123456789abcdef0123456789abcdef"
 private const val Site = "https://hideouthq.gg"
@@ -108,7 +111,7 @@ class InGameEndpointTest {
         return ByteBuffer.wrap(png, 16, 4).int
     }
 
-    private fun press(n: Int, c: String, t: String = Token, p: String = "1") = command("p=$p&t=$t&b=4242&n=$n&c=${URLEncoder.encode(c, Charsets.UTF_8)}")
+    private fun press(n: Int, c: String, t: String = Token, p: String = "1", e: String = inGame.epoch) = command("p=$p&t=$t&e=$e&b=4242&n=$n&c=${URLEncoder.encode(c, Charsets.UTF_8)}")
 
     private fun listed() = runBlocking { withTimeout(60.seconds) { inGame.opened(); games.modes.first { it.feed != null } } }
 
@@ -167,6 +170,42 @@ class InGameEndpointTest {
     }
 
     @Test
+    fun aPressFromBeforeHideoutRestartedNeverRuns() {
+        listed()
+        val hello = Json.parseToJsonElement(runBlocking { inGame.topics.first { it.isNotEmpty() } }.getValue(Topic.Hello)).jsonObject
+        val before = "p=1&t=$Token&e=${hello["epoch"]?.jsonPrimitive?.content}&b=4242&n=1&c=${URLEncoder.encode(Host, Charsets.UTF_8)}"
+        assertEquals(1, command(before))
+        runBlocking { withTimeout(60.seconds) { games.live.first { it.session is Session.HostStarting } } }
+        games.stop()
+        runBlocking { withTimeout(60.seconds) { games.live.first { it.session is Session.Ended } } }
+
+        val restarted = InGame(games, Social(games, null, scope).apply { start() }, SiteOrigin.parse(Site), scope)
+        InGameEndpoint(restarted, { pack }, {}).use { other ->
+            assertTrue(other.start(0))
+            assertEquals(7, runBlocking { withTimeout(10.seconds) { queryFrom(before, other).await() } }, "the image Deadlock retried after the restart is stale")
+            assertEquals(5, runBlocking { withTimeout(10.seconds) { pressFrom("4242", """{"k":"servers"}""", other, restarted.epoch).await() } }, "while a press with the new start's epoch is heard")
+        }
+        assertEquals(1, platform.hostRequests.size, "and hosts nothing twice")
+    }
+
+    @Test
+    fun aBootIsRememberedHoweverManyOthersPressUntilItHasBeenQuietTenMinutes() {
+        val time = TestTimeSource()
+        val seen = Seen(time = time)
+        var runs = 0
+        val press = { runs++; CommandResult.Accepted }
+        seen.answer("first", 1, press)
+        for (other in 1..40) seen.answer("other$other", 1) { CommandResult.Accepted }
+        time += 9.minutes
+        seen.answer("first", 1, press)
+        assertEquals(1, runs, "a retried image gets its first answer")
+        time += 2.minutes
+        seen.answer("late", 1) { CommandResult.Accepted }
+        seen.answer("first", 1, press)
+        assertEquals(2, runs, "a boot quiet that long is forgotten")
+    }
+
+    @Test
     fun aServerJoinIsAnsweredBeforeTheDirectoryIs() {
         listed()
         val asked = CompletableDeferred<Unit>()
@@ -191,22 +230,24 @@ class InGameEndpointTest {
         val social = Social(games, SocialNetwork(mailbox, directory) { null }, scope).apply { start() }
         social.wantServers()
         runBlocking { withTimeout(10.seconds) { social.state.first { it.servers.games.isNotEmpty() } } }
-        InGameEndpoint(InGame(games, social, SiteOrigin.parse(Site), scope), { pack }, {}).use { other ->
+        val served = InGame(games, social, SiteOrigin.parse(Site), scope)
+        InGameEndpoint(served, { pack }, {}).use { other ->
             assertTrue(other.start(0))
             val join = """{"k":"join","server":"${id.value}"}"""
-            assertEquals(1, runBlocking { withTimeout(2.seconds) { pressFrom("games", join, other).await() } }, "accepted while the directory has not answered")
+            assertEquals(1, runBlocking { withTimeout(2.seconds) { pressFrom("games", join, other, served.epoch).await() } }, "accepted while the directory has not answered")
             runBlocking { withTimeout(10.seconds) { asked.await() } }
-            assertEquals(1, runBlocking { withTimeout(2.seconds) { pressFrom("games", join, other).await() } }, "a retried image gets the same answer")
+            assertEquals(1, runBlocking { withTimeout(2.seconds) { pressFrom("games", join, other, served.epoch).await() } }, "a retried image gets the same answer")
             answer.complete(Resolved.Open(Ticket))
             runBlocking { withTimeout(10.seconds) { games.live.first { it.session is Session.Finding } } }
             assertEquals(1, resolves.get(), "and asks the directory once")
         }
     }
 
-    private fun pressFrom(boot: String, c: String, to: InGameEndpoint) = scope.async(Dispatchers.IO) {
+    private fun pressFrom(boot: String, c: String, to: InGameEndpoint, epoch: String) = queryFrom("p=1&t=$Token&e=$epoch&b=$boot&n=1&c=${URLEncoder.encode(c, Charsets.UTF_8)}", to)
+
+    private fun queryFrom(query: String, to: InGameEndpoint) = scope.async(Dispatchers.IO) {
         val port = checkNotNull(to.port)
         val socket = Socket("127.0.0.1", port).also { sockets += it }
-        val query = "p=1&t=$Token&b=$boot&n=1&c=${URLEncoder.encode(c, Charsets.UTF_8)}"
         socket.getOutputStream().write("GET /c?$query HTTP/1.1\r\nHost: 127.0.0.1:$port\r\nConnection: close\r\n\r\n".encodeToByteArray())
         val input = socket.getInputStream()
         generateSequence { input.line().takeIf { it.isNotEmpty() } }.count()

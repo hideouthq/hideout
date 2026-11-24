@@ -74,9 +74,12 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.ResourceEnvironment
 import org.jetbrains.compose.resources.getSystemResourceEnvironment
+import java.security.SecureRandom
+import java.util.HexFormat
 import java.util.concurrent.atomic.AtomicInteger
 
-class InGame(private val games: CustomGames, val social: Social, site: SiteOrigin?, private val scope: CoroutineScope) {
+/** [epoch] is this Hideout start's, which the game's commands carry so one sent to an earlier start never runs. */
+class InGame(private val games: CustomGames, val social: Social, site: SiteOrigin?, private val scope: CoroutineScope, val epoch: String = drawEpoch()) {
     private val serverJoin = MutableStateFlow<ServerJoin?>(null)
     private val invitedBy = MutableStateFlow<InvitedBy?>(null)
     private var looking: Job? = null
@@ -86,7 +89,7 @@ class InGame(private val games: CustomGames, val social: Social, site: SiteOrigi
         combine(games.live, games.modes, games.transfer, games.restartsDeadlock, social.state) { live, modes, transfer, restarts, state ->
             PresentInputs(live, restarts, transfer, modes, games.firewallMayAsk, site) to SocialView(social.status(state), social.available, state)
         }.combine(serverJoin.combine(invitedBy, ::Pair)) { (inputs, view), joins -> Triple(inputs, view, joins) }
-            .mapLatest { (inputs, view, joins) -> inGameFrames(inputs, view, joins.first, joins.second) }.stateIn(scope, SharingStarted.Eagerly, emptyMap())
+            .mapLatest { (inputs, view, joins) -> inGameFrames(inputs, epoch, view, joins.first, joins.second) }.stateIn(scope, SharingStarted.Eagerly, emptyMap())
 
     private val open = AtomicInteger()
 
@@ -208,8 +211,10 @@ private fun choicesOf(listing: ModeListing, picks: Map<SettingKey, SettingValue>
 /** Read once: it asks the desktop for its theme over D-Bus, which no string needs and which takes 25 s where nothing answers. */
 private val words: ResourceEnvironment by lazy { getSystemResourceEnvironment() }
 
+private fun drawEpoch(): String = HexFormat.of().formatHex(ByteArray(8).also(SecureRandom()::nextBytes))
+
 /** A [serverJoin] is the newest press, so its card shows over the session's. */
-suspend fun inGameFrames(inputs: PresentInputs, social: SocialView = SocialView(), serverJoin: ServerJoin? = null, invitedBy: InvitedBy? = null): Map<Topic, String> {
+suspend fun inGameFrames(inputs: PresentInputs, epoch: String, social: SocialView = SocialView(), serverJoin: ServerJoin? = null, invitedBy: InvitedBy? = null): Map<Topic, String> {
     val shown = present(inputs)
     val role = inputs.live.game?.role
     val deliveries = social.state.hosted?.takeIf { it.code == (inputs.live.session as? Session.Hosting)?.code }?.deliveries.orEmpty()
@@ -219,7 +224,7 @@ suspend fun inGameFrames(inputs: PresentInputs, social: SocialView = SocialView(
     val restartAhead = inputs.restartsDeadlock?.let { Restart(RestartWire.of(it), restartAheadPhrase(it, host = true).load(words)) }
     val game = Frame.Game(host, join?.let { joinCard(it, hostId.takeIf { serverJoin == null }) }, sessionCard(shown, role, hostId), restartAhead)
     return mapOf(
-        Topic.Hello to Frame.Hello(InGameProtocol, social = socialWire(social.status), supportId = (social.status as? SocialStatus.Blocked)?.self?.value),
+        Topic.Hello to Frame.Hello(InGameProtocol, epoch, social = socialWire(social.status), supportId = (social.status as? SocialStatus.Blocked)?.self?.value),
         Topic.Catalog to catalog(inputs.modes),
         Topic.Game to game,
         Topic.Inbox to Frame.Inbox(social.state.inbox.map { inviteCard(it, inputs.modes) }),
