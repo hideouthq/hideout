@@ -6,6 +6,7 @@ import gg.hideouthq.library.readSmallText
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.StandardCopyOption
 import kotlin.io.path.isRegularFile
 
 internal const val ServerProgram = "modlock-host.exe"
@@ -21,24 +22,42 @@ internal class ServerHome(private val folder: Path, private val log: (String) ->
     val program: Path = folder.resolve(ServerProgram)
 
     /**
-     * The server to run from [source], the unpacked host package [digest]: this home's copy of it, or the package's own
-     * while the copy can't be made, as while a server left from an earlier session still runs from here.
+     * [program] holding the server from [source], the unpacked host package [digest], or null while it can't. The new
+     * copy is made beside it and swapped in whole, and a server running from here keeps Windows from moving its folder,
+     * so a failed copy leaves the server here as it was.
      */
-    fun take(source: Path, digest: Sha256): Path {
-        val stamp = folder.resolve(StampFile)
-        if (readSmallText(stamp) == digest.hex && program.isRegularFile()) return program
+    fun take(source: Path, digest: Sha256): Path? {
+        if (readSmallText(folder.resolve(StampFile)) == digest.hex && program.isRegularFile()) return program
+        val next = folder.resolveSibling("${folder.fileName}.next")
+        val old = folder.resolveSibling("${folder.fileName}.old")
         return try {
-            Files.deleteIfExists(stamp)
-            deleteTree(folder)
+            deleteTree(next)
+            deleteTree(old)
             Files.walk(source).use { paths ->
-                paths.forEach { Files.copy(it, folder.resolve(source.relativize(it).toString())) }
+                paths.forEach { Files.copy(it, next.resolve(source.relativize(it).toString())) }
             }
-            Files.writeString(stamp, digest.hex)
+            Files.writeString(next.resolve(StampFile), digest.hex)
+            if (Files.exists(folder)) Files.move(folder, old, StandardCopyOption.ATOMIC_MOVE)
+            try {
+                Files.move(next, folder, StandardCopyOption.ATOMIC_MOVE)
+            } catch (e: IOException) {
+                if (Files.exists(old)) Files.move(old, folder, StandardCopyOption.ATOMIC_MOVE)
+                throw e
+            }
             program
         } catch (e: IOException) {
             log("Custom games: could not copy the game server: ${e::class.simpleName}")
-            source.resolve(ServerProgram)
+            null
+        } finally {
+            quietly { deleteTree(next) }
+            quietly { deleteTree(old) }
         }
+    }
+
+    private inline fun quietly(work: () -> Unit) = try {
+        work()
+    } catch (e: IOException) {
+        Unit
     }
 }
 

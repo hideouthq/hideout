@@ -131,7 +131,7 @@ class DesktopCustomGames internal constructor(
             log("Custom games: could not fetch the game server for the firewall to ask about: $it")
             return@withContext
         }
-        val server = serverHome.take(store.folderOf(host.sha256), host.sha256)
+        val server = serverHome.take(store.folderOf(host.sha256), host.sha256) ?: return@withContext
         val left = JournalEntry(game, owned = ownedBeforeServer(game))
         recordAsk(left)
         deleteTree(askDump)
@@ -225,7 +225,7 @@ class DesktopCustomGames internal constructor(
         val mods = listOf(store.folderOf(runtime.platform.sha256).pathString, rules).distinct()
         val offer = InviteOffer.of(mode, choices, me, shared)
         val modlock = store.folderOf(cli.sha256).resolve(modlockName).pathString
-        val server = serverHome.take(store.folderOf(runtime.host.sha256), runtime.host.sha256).pathString
+        val server = serverHome.take(store.folderOf(runtime.host.sha256), runtime.host.sha256)?.pathString ?: return@withContext refused(PreflightProblem.Download(FetchProblem.Disk))
         val host = PreparedHost(modlock, server, mods, ModeContent(content), offer, me, shared?.let { localContent.pathString }, ifFetched(runtime.renderer.sha256))
         RuntimePrepared(host, freeUdpPort())
     }
