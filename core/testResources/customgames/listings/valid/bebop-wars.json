@@ -1,9 +1,14 @@
 {
   "name": "Bebop Wars",
-  "tagline": "Hook your opponent across the canal. First to 25 wins.",
-  "summary": "Hook your opponent across the canal to score. Spend souls on upgrades in the Winter Shop. First to 25 wins.",
-  "description": "A winter hook arena for 1v1, 2v2, and 3v3. Pull an enemy to your bank to score one capture. First to 25 wins, or lead after eight minutes; ties go to overtime. Start with Hook and 300 Souls, then earn tools and capped Hook upgrades through captures, team income and saves. Death keeps your purchases and returns you to your shop after four seconds.",
+  "tagline": "Hook enemies across the canal and finish them on your bank. First to 25 kills wins.",
+  "summary": "Hook an enemy across the canal, then finish them with a second Hook or melee. Hook pulled teammates home. First to 25 kills wins.",
+  "description": "A winter hook arena for 1v1, 2v2 and 3v3. First to 25 kills wins. After eight minutes the higher score wins, and a tie goes to sudden death. A Hook hit takes 55% of the target's maximum health and drags them onto your bank, so two hits normally kill. A pulled enemy who survives fights on there with Hook, melee and parry, and their teammates can hook them home. A rescue pays 25 Souls. Everyone starts with Hook and 300 Souls. The shop sells eight items in three sections, setup, utility and defense, and you equip one from each. Your kills unlock Hook upgrades at 3, 5 and 10: longer range, a shorter cooldown, then Rebound. Death keeps your purchases and returns you to your shop after four seconds.",
   "kind": "teams",
+  "minutes": {
+    "min": 8,
+    "max": 10
+  },
+  "goal": "First to 25 kills",
   "players": {
     "min": 2,
     "max": 6
@@ -16,53 +21,70 @@
   "howToPlay": [
     {
       "title": "Hook them across",
-      "body": "Aim across the canal and throw. Pull your opponent onto your side to score.",
+      "body": "Throw your Hook across the canal. A hit takes 55% of their health and drags them onto your bank.",
       "icon": "hook"
     },
     {
-      "title": "Spend souls",
-      "body": "Souls come in as you play. Upgrades from the Winter Shop last the whole match.",
-      "icon": "souls"
+      "title": "Finish them",
+      "body": "A second Hook normally kills, and melee works too. Each kill is a point. First to 25 wins, or the higher score after eight minutes.",
+      "icon": "trophy"
     },
     {
-      "title": "First to 25",
-      "body": "Each capture is a point. If time runs out, it goes to overtime and the shop closes.",
-      "icon": "trophy"
+      "title": "Hook teammates home",
+      "body": "When an enemy pulls a teammate over, hook them back before they fall. A rescue pays 25 Souls. Spend Souls at your shop on items that last the match.",
+      "icon": "souls"
     }
   ],
   "legend": [
     {
-      "label": "Your side",
+      "label": "Your team",
       "color": "#E6B977"
     },
     {
-      "label": "The canal",
-      "color": "#2E6E9E"
-    },
-    {
-      "label": "Their side",
+      "label": "Enemy team",
       "color": "#8FB4E8"
     },
     {
+      "label": "Hook cable",
+      "color": "#F3EEE4"
+    },
+    {
+      "label": "The canal, crossed only by a Hook",
+      "color": "#2E6E9E"
+    },
+    {
       "label": "Each side has its own Curiosity Shop",
-      "color": "#E6B977"
+      "color": "#F1DFB8"
     }
   ],
   "facts": [
     {
       "label": "To win",
-      "value": "First to 25",
-      "note": "Overtime if time runs out"
+      "value": "First to 25 kills",
+      "note": "Higher score after 8 minutes, then sudden death"
+    },
+    {
+      "label": "Hook",
+      "value": "55% of health per hit",
+      "note": "Two hits normally kill"
+    },
+    {
+      "label": "Start with",
+      "value": "Hook and 300 Souls",
+      "note": "Eight items in three shop sections"
     },
     {
       "label": "Arena",
-      "value": "The canal by the Curiosity Shop"
+      "value": "A winter canal with a shop on each bank"
     }
   ],
   "whatsNew": [
-    "First release: 1v1, 2v2 and 3v3.",
-    "Winter Shop: five upgrades to buy with souls.",
-    "Overtime when the clock runs out."
+    "Kills score now. A Hook hit takes 55% of health, so two hits normally kill.",
+    "Pulled enemies fight on your bank with Hook, melee and parry.",
+    "Hook a pulled teammate home. A rescue pays 25 Souls.",
+    "The shop has eight items in three sections: setup, utility and defense.",
+    "Hook upgrades at 3, 5 and 10 kills.",
+    "A new arena and a scoreboard in the game's own style."
   ],
   "art": {
     "card": "art/card-background@2x.jpg",
@@ -72,8 +94,8 @@
     "tile": "art/bebop-thumb@2x.png",
     "explainer": "art/how-to-play-map@2x.png",
     "screenshots": [
-      "art/bebop-wars-shot-hook.jpg",
-      "art/bebop-wars-shot-hook-tight.jpg",
+      "art/bebop-wars-shot-pull.jpg",
+      "art/bebop-wars-shot-rescue.jpg",
       "art/bebop-wars-shot-shop.jpg"
     ]
   },
@@ -81,7 +103,7 @@
     {
       "key": "teams",
       "label": "Teams",
-      "hint": "Players per team. Every format has the same shop prices and capture payout.",
+      "hint": "Players per team. Shop prices and kill payouts are the same in every format.",
       "default": "2v2",
       "options": [
         {

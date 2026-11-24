@@ -358,33 +358,54 @@ class FakeCustomGamesFeed(
 
         val BebopWarsListing = ModeListing(
             name = "Bebop Wars",
-            tagline = "Hook your opponent across the canal. First to 25 wins.",
-            description = "A winter hook arena for 1v1, 2v2, and 3v3. Pull an enemy to your bank to score one capture. First to 25 wins, or lead after eight minutes; ties go to overtime. " +
-                "Start with Hook and 300 Souls, then earn tools and capped Hook upgrades through captures, team income and saves. Death keeps your purchases and returns you to your shop after four seconds.",
+            tagline = "Hook enemies across the canal and finish them on your bank. First to 25 kills wins.",
+            description = "A winter hook arena for 1v1, 2v2 and 3v3. First to 25 kills wins. After eight minutes the higher score wins, and a tie goes to sudden death. " +
+                "A Hook hit takes 55% of the target's maximum health and drags them onto your bank, so two hits normally kill. " +
+                "A pulled enemy who survives fights on there with Hook, melee and parry, and their teammates can hook them home. A rescue pays 25 Souls. " +
+                "Everyone starts with Hook and 300 Souls. The shop sells eight items in three sections, setup, utility and defense, and you equip one from each. " +
+                "Your kills unlock Hook upgrades at 3, 5 and 10: longer range, a shorter cooldown, then Rebound. Death keeps your purchases and returns you to your shop after four seconds.",
             players = 2..6,
             creators = listOf("Hideout team"),
             released = LocalDate.of(2026, 11, 6),
             kind = ModeKind.Teams,
+            minutes = 8..10,
+            goal = "First to 25 kills",
             curated = true,
             howToPlay = listOf(
-                HowToPlay("Hook them across", "Aim across the canal and throw. Pull your opponent onto your side to score.", StepIcon.Hook),
-                HowToPlay("Spend souls", "Souls come in as you play. Upgrades from the Winter Shop last the whole match.", StepIcon.Souls),
-                HowToPlay("First to 25", "Each capture is a point. If time runs out, it goes to overtime and the shop closes.", StepIcon.Trophy),
+                HowToPlay("Hook them across", "Throw your Hook across the canal. A hit takes 55% of their health and drags them onto your bank.", StepIcon.Hook),
+                HowToPlay("Finish them", "A second Hook normally kills, and melee works too. Each kill is a point. First to 25 wins, or the higher score after eight minutes.", StepIcon.Trophy),
+                HowToPlay(
+                    "Hook teammates home",
+                    "When an enemy pulls a teammate over, hook them back before they fall. A rescue pays 25 Souls. Spend Souls at your shop on items that last the match.",
+                    StepIcon.Souls,
+                ),
             ),
-            whatsNew = listOf("First release: 1v1, 2v2 and 3v3.", "Winter Shop: five upgrades to buy with souls.", "Overtime when the clock runs out."),
+            whatsNew = listOf(
+                "Kills score now. A Hook hit takes 55% of health, so two hits normally kill.",
+                "Pulled enemies fight on your bank with Hook, melee and parry.",
+                "Hook a pulled teammate home. A rescue pays 25 Souls.",
+                "The shop has eight items in three sections: setup, utility and defense.",
+                "Hook upgrades at 3, 5 and 10 kills.",
+                "A new arena and a scoreboard in the game's own style.",
+            ),
             settings = listOf(
                 ModeSetting(
-                    checkNotNull(SettingKey.parse("teams")), "Teams", "Players per team. Every format has the same shop prices and capture payout.",
+                    checkNotNull(SettingKey.parse("teams")), "Teams", "Players per team. Shop prices and kill payouts are the same in every format.",
                     listOf(SettingOption(pick("1v1"), "1v1", 2), SettingOption(pick("2v2"), "2v2", 4), SettingOption(pick("3v3"), "3v3", 6)), pick("2v2"),
                 ),
             ),
             sections = listOf(SectionKind.Scoreboard),
-            summary = "Hook your opponent across the canal to score. Spend souls on upgrades in the Winter Shop. First to 25 wins.",
+            summary = "Hook an enemy across the canal, then finish them with a second Hook or melee. Hook pulled teammates home. First to 25 kills wins.",
             legend = listOf(
-                LegendEntry("Your side", 0xE6B977), LegendEntry("The canal", 0x2E6E9E), LegendEntry("Their side", 0x8FB4E8),
-                LegendEntry("Each side has its own Curiosity Shop", 0xE6B977),
+                LegendEntry("Your team", 0xE6B977), LegendEntry("Enemy team", 0x8FB4E8), LegendEntry("Hook cable", 0xF3EEE4),
+                LegendEntry("The canal, crossed only by a Hook", 0x2E6E9E), LegendEntry("Each side has its own Curiosity Shop", 0xF1DFB8),
             ),
-            facts = listOf(ModeFact("To win", "First to 25", "Overtime if time runs out"), ModeFact("Arena", "The canal by the Curiosity Shop")),
+            facts = listOf(
+                ModeFact("To win", "First to 25 kills", "Higher score after 8 minutes, then sudden death"),
+                ModeFact("Hook", "55% of health per hit", "Two hits normally kill"),
+                ModeFact("Start with", "Hook and 300 Souls", "Eight items in three shop sections"),
+                ModeFact("Arena", "A winter canal with a shop on each bank"),
+            ),
         )
 
         val BebopWars = Mode(

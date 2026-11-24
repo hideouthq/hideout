@@ -1,0 +1,15 @@
+{
+  "name": "Hero Roulette",
+  "tagline": "Every kill swaps your hero. First to twenty.",
+  "description": "Every kill swaps your hero. First to twenty.",
+  "kind": "free-for-all",
+  "goal": "First to 20 kills",
+  "players": {
+    "min": 2,
+    "max": 12
+  },
+  "creators": [
+    "Hideout team"
+  ],
+  "curated": true
+}

@@ -1,0 +1,15 @@
+{
+  "name": "Dodgeball",
+  "tagline": "One ball, and it's coming for you. Parry it at the right moment to send it on, faster every time. Miss and you're out.",
+  "description": "One ball, and it's coming for you. Parry it at the right moment to send it on, faster every time. Miss and you're out.",
+  "kind": "free-for-all",
+  "goal": "Last one standing",
+  "players": {
+    "min": 2,
+    "max": 12
+  },
+  "creators": [
+    "Hideout team"
+  ],
+  "curated": true
+}

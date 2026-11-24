@@ -45,17 +45,39 @@ class ModeListingTest {
     }
 
     @Test
+    fun everyUpcomingListingReadsOnlyAsUpcoming() {
+        val upcoming = cases("upcoming")
+        assertEquals(3, upcoming.size)
+        for (file in upcoming) {
+            val listing = assertNotNull(parseUpcomingListing(json(file.readText())) { it }, file.name)
+            assertNull(listing.released, file.name)
+            assertNull(read(file), file.name)
+        }
+        for (file in cases("invalid")) {
+            if (file.name != "no-released.json") assertNull(parseUpcomingListing(json(file.readText())) { it }, file.name)
+        }
+    }
+
+    @Test
+    fun aGoalNamesASettingAsTheAuthorWroteIt() {
+        val listing = assertNotNull(read(cases.resolve("valid/goal-from-setting.json")))
+        assertEquals("First to {kills} kills", listing.goal)
+        assertNull(assertNotNull(read(cases.resolve("valid/minimal.json"))).goal)
+    }
+
+    @Test
     fun bebopWarsReadsAsItsAuthorWroteIt() {
         assertEquals("Bebop Wars", bebop.name)
         assertEquals(ModeKind.Teams, bebop.kind)
         assertEquals(2..6, bebop.players)
-        assertNull(bebop.minutes)
+        assertEquals(8..10, bebop.minutes)
+        assertEquals("First to 25 kills", bebop.goal)
         assertEquals(LocalDate.of(2026, 11, 6), bebop.released)
         assertEquals(listOf(SectionKind.Scoreboard), bebop.sections)
-        assertEquals(listOf(StepIcon.Hook, StepIcon.Souls, StepIcon.Trophy), bebop.howToPlay.map { it.icon })
-        assertEquals("Hook your opponent across the canal to score. Spend souls on upgrades in the Winter Shop. First to 25 wins.", bebop.summary)
-        assertEquals(LegendEntry("The canal", 0x2E6E9E), bebop.legend[1])
-        assertEquals(ModeFact("To win", "First to 25", "Overtime if time runs out"), bebop.facts.first())
+        assertEquals(listOf(StepIcon.Hook, StepIcon.Trophy, StepIcon.Souls), bebop.howToPlay.map { it.icon })
+        assertEquals("Hook an enemy across the canal, then finish them with a second Hook or melee. Hook pulled teammates home. First to 25 kills wins.", bebop.summary)
+        assertEquals(LegendEntry("The canal, crossed only by a Hook", 0x2E6E9E), bebop.legend[3])
+        assertEquals(ModeFact("To win", "First to 25 kills", "Higher score after 8 minutes, then sudden death"), bebop.facts.first())
         assertEquals("https://feed.example/art/card-background@2x.jpg", bebop.art.card)
         assertEquals("https://feed.example/art/bebop-hook-layer@2x.png", bebop.art.overlay)
         assertEquals(3, bebop.art.screenshots.size)

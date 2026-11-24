@@ -24,11 +24,13 @@ data class ModeListing(
     val players: IntRange,
     /** Never empty, except in a [plainListing]. */
     val creators: List<String>,
-    /** Null only for a [plainListing]. */
+    /** Null only for a [plainListing] or an upcoming mode's. */
     val released: LocalDate?,
     /** Null for a kind this Hideout doesn't know, which then lists under All only. */
     val kind: ModeKind? = null,
     val minutes: IntRange? = null,
+    /** How a match is won, such as "First to {kills} kills". Each `{key}` names one of [settings], for the screen to fill with the picked option's label. */
+    val goal: String? = null,
     /** Listed by Hideout's own team. A folder is never curated, whatever its file says. */
     val curated: Boolean = false,
     /** The game's `SourceRevision` the author last checked the mode on. */
@@ -204,7 +206,12 @@ fun plainListing(name: String): ModeListing = ModeListing(name, "", "", 1..MaxPl
  * image into an absolute address, or null to leave that image out. Unknown fields, unknown kinds, unknown section and
  * icon names, and settings with no `options`, which a later Hideout may draw, are skipped.
  */
-fun parseListing(json: JsonObject, art: (String) -> String?): ModeListing? {
+fun parseListing(json: JsonObject, art: (String) -> String?): ModeListing? = parseListing(json, art, upcoming = false)
+
+/** As [parseListing], for a mode the feed announces before it ships, which may leave out its release date. */
+fun parseUpcomingListing(json: JsonObject, art: (String) -> String?): ModeListing? = parseListing(json, art, upcoming = true)
+
+private fun parseListing(json: JsonObject, art: (String) -> String?, upcoming: Boolean): ModeListing? {
     val wire = try {
         ListingJson.decodeFromJsonElement<WireListing>(json)
     } catch (e: IllegalArgumentException) {
@@ -223,9 +230,10 @@ fun parseListing(json: JsonObject, art: (String) -> String?): ModeListing? {
         description = text(wire.description, 2000, lines = true) ?: return null,
         players = players,
         creators = wire.creators.map { text(it, 48) ?: return null },
-        released = date(wire.released ?: return null) ?: return null,
+        released = wire.released?.let { date(it) ?: return null } ?: if (upcoming) null else return null,
         kind = ModeKind.entries.firstOrNull { it.wire == wire.kind },
         minutes = wire.minutes?.let { it.range(MaxMinutes) ?: return null },
+        goal = wire.goal?.let { goal(it, settings) ?: return null },
         curated = wire.curated,
         checkedOn = wire.checkedOn?.let(::GameRevision),
         howToPlay = wire.howToPlay.map { step ->
@@ -253,6 +261,7 @@ internal fun ModeListing.toJson(): JsonObject = ListingJson.encodeToJsonElement(
         released = released?.toString(),
         kind = kind?.wire,
         minutes = minutes?.let { WireRange(it.first, it.last) },
+        goal = goal,
         curated = curated,
         checkedOn = checkedOn?.source,
         howToPlay = howToPlay.map { WireHowToPlay(it.title, it.body, it.icon?.wire) },
@@ -277,6 +286,15 @@ private fun WireSetting.parse(players: IntRange): ModeSetting? {
     if (options.size !in 2..5 || options.distinctBy { it.value }.size != options.size || !sizesFit) return null
     val default = SettingValue.parse(default ?: return null)?.takeIf { value -> options.any { it.value == value } } ?: return null
     return ModeSetting(SettingKey.parse(key) ?: return null, text(label, 32) ?: return null, hint?.let { text(it, 80) ?: return null }, options, default)
+}
+
+private val Placeholder = Regex("\\{([a-z0-9_-]{1,16})\\}")
+
+private fun goal(raw: String, settings: List<ModeSetting>): String? {
+    val goal = text(raw, 48) ?: return null
+    val rest = Placeholder.replace(goal, "")
+    val named = Placeholder.findAll(goal).all { found -> settings.any { it.key.value == found.groupValues[1] } }
+    return goal.takeIf { '{' !in rest && '}' !in rest && named }
 }
 
 private fun WireRange.range(most: Int): IntRange? = if (min in 1..max && max <= most) min..max else null
@@ -320,6 +338,7 @@ private data class WireListing(
     val released: String? = null,
     val kind: String? = null,
     val minutes: WireRange? = null,
+    val goal: String? = null,
     val curated: Boolean = false,
     val checkedOn: Long? = null,
     val howToPlay: List<WireHowToPlay> = emptyList(),

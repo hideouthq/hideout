@@ -38,10 +38,44 @@ class CustomGamesFeedTest {
     ) = """{"schema":$schema,"sequence":$sequence,"runtime":{"modlock":"$modlock","cli":$cli,"host":$host,"platform":$platform,"renderer":$renderer},"modes":[$modes]""" +
         (upcoming?.let { ""","upcoming":[$it]""" } ?: "") + "}"
 
+    private fun upcoming(id: String, name: String = "Soon", released: String = "", art: String = "{}") =
+        """{"id":"$id","listing":{"name":"$name","tagline":"Coming.","description":"Later.","players":{"min":2,"max":8},"creators":["Hideout team"]$released,"art":$art}}"""
+
     @Test
-    fun legacyAnnouncementsAreIgnored() {
-        val parsed = assertNotNull(parseCustomGamesFeed(feed(upcoming = """{"id":"placeholder"}""")))
+    fun upcomingModesReadInFeedOrderWithNoReleaseDate() {
+        val parsed = assertNotNull(
+            parseCustomGamesFeed(feed(upcoming = upcoming("dodgeball", "Dodgeball", art = """{"card":"https://example.test/d.png","tile":"http://example.test/t.png"}""") + "," + upcoming("hero-roulette", "Hero Roulette", released = ""","released":"2027-01-01""""))),
+        )
+        assertEquals(listOf(ModeId("dodgeball"), ModeId("hero-roulette")), parsed.upcoming.map { it.id })
+        assertEquals(listOf("Dodgeball", "Hero Roulette"), parsed.upcoming.map { it.listing.name })
+        assertEquals(listOf(null, java.time.LocalDate.of(2027, 1, 1)), parsed.upcoming.map { it.listing.released })
+        assertEquals(ModeArt(card = "https://example.test/d.png"), parsed.upcoming.first().listing.art, "art is served over https only, as a mode's")
         assertEquals(listOf(ModeId("arena")), parsed.modes.map { it.id })
+    }
+
+    @Test
+    fun aBrokenOrDuplicateUpcomingModeIsSkippedAndTheFeedStillReads() {
+        val entries = listOf(
+            """{"id":"placeholder"}""",
+            "1",
+            upcoming("Bad Id"),
+            upcoming("arena", "Arena again"),
+            upcoming("dodgeball", released = ""","released":"soon""""),
+            upcoming("heaven", "Heaven"),
+            upcoming("heaven", "Heaven again"),
+        ).joinToString(",")
+        val parsed = assertNotNull(parseCustomGamesFeed(feed(upcoming = entries)))
+        assertEquals(listOf("Heaven"), parsed.upcoming.map { it.listing.name })
+        assertEquals(listOf(ModeId("arena")), parsed.modes.map { it.id })
+        val notAList = feed().removeSuffix("}") + ""","upcoming":{"id":"x"}}"""
+        assertEquals(emptyList(), assertNotNull(parseCustomGamesFeed(notAList)).upcoming)
+    }
+
+    @Test
+    fun aFeedWithNoUpcomingModesReadsAsBefore() {
+        val before = assertNotNull(parseCustomGamesFeed(feed()))
+        assertEquals(emptyList(), before.upcoming)
+        assertEquals(before.modes, assertNotNull(parseCustomGamesFeed(feed(upcoming = upcoming("dodgeball")))).modes)
     }
 
     @Test
