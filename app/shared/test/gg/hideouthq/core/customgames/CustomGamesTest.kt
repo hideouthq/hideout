@@ -25,6 +25,7 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.awaitCancellation
@@ -33,15 +34,18 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 
 private class FakeSessionFiles(initial: GameActivity = GameActivity.Closed) : SessionFiles {
     override val clientActivity = MutableStateFlow(initial)
@@ -1460,6 +1464,23 @@ class CustomGamesTest {
         games.close()
         assertEquals(1, link.stops)
         assertNotNull(journal.read())
+    }
+
+    @Test
+    fun exitDuringAFirewallAskEndsItsServerAndWaitsForItsCleanup() = runBlocking {
+        platform.firewall = FirewallDecision.Unknown
+        platform.firewallGate = CompletableDeferred()
+        platform.firewallCleanup = { delay(200) }
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        try {
+            val games = CustomGames(platform, files, FakeCustomGamesFeed(), scope, logs::add, flowOf(false), inGame = flowOf(InGameConsent.Yes))
+            games.start()
+            withTimeout(5.seconds) { games.firewallAsking.first { it } }
+            games.close()
+            assertEquals(1, platform.firewallEnds, "the server and the files it made would outlive Hideout")
+        } finally {
+            scope.cancel()
+        }
     }
 
     @Test

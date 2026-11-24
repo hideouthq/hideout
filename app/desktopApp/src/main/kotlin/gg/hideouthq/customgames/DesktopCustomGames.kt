@@ -67,6 +67,7 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -78,6 +79,7 @@ import java.nio.channels.FileChannel
 import java.nio.file.Files
 import java.nio.file.InvalidPathException
 import java.nio.file.Path
+import java.nio.file.StandardCopyOption
 import java.security.DigestOutputStream
 import java.time.LocalDateTime
 import java.util.concurrent.CompletableFuture
@@ -130,13 +132,14 @@ class DesktopCustomGames internal constructor(
             return@withContext
         }
         val server = serverHome.take(store.folderOf(host.sha256), host.sha256)
-        val owned = ownedBeforeServer(game)
-        val dump = runtimeFolder.resolveSibling("customgames-firewall-ask")
-        deleteTree(dump)
-        Files.createDirectories(dump)
-        val command = listOf(server.pathString, "--dump", dump.pathString, "--game-dir", game.path, "--hostport", freeUdpPort().toString(), "--map", FirewallAskMap)
+        val left = JournalEntry(game, owned = ownedBeforeServer(game))
+        recordAsk(left)
+        deleteTree(askDump)
+        Files.createDirectories(askDump)
+        val command = listOf(server.pathString, "--dump", askDump.pathString, "--game-dir", game.path, "--hostport", freeUdpPort().toString(), "--map", FirewallAskMap)
         val process = ProcessBuilder(command).directory(runtimeFolder.toFile()).redirectOutput(ProcessBuilder.Redirect.DISCARD).redirectError(ProcessBuilder.Redirect.DISCARD).start()
         try {
+            recordAsk(left.copy(process = identityOf(process.toHandle())))
             withTimeoutOrNull(FirewallAskLimit) {
                 while (process.isAlive && firewall.decision(server) == FirewallDecision.Unknown) delay(FirewallPoll)
             }
@@ -144,8 +147,7 @@ class DesktopCustomGames internal constructor(
             withContext(NonCancellable) {
                 process.destroyForcibly()
                 process.onExit().completeOnTimeout(process, stopLimit.inWholeMilliseconds, TimeUnit.MILLISECONDS).join()
-                removeLeftovers(game, owned)
-                deleteTree(dump)
+                clearAsk(left)
             }
         }
         withTimeoutOrNull(FirewallQuestionLimit) {
@@ -153,6 +155,41 @@ class DesktopCustomGames internal constructor(
         }
         Unit
     }
+
+    override suspend fun clearFirewallAsk(): Unit = withContext(Dispatchers.IO) {
+        val left = readSmallText(askRecord)?.let {
+            try {
+                Json.decodeFromString<JournalEntry>(it)
+            } catch (e: IllegalArgumentException) {
+                null
+            }
+        }
+        clearAsk(left ?: JournalEntry())
+    }
+
+    /** What [askFirewall] leaves until it has cleared up, so that a Hideout killed meanwhile clears it up next time. */
+    private fun recordAsk(left: JournalEntry) {
+        val next = askRecord.resolveSibling("${askRecord.fileName}.part")
+        Files.writeString(next, Json.encodeToString(left))
+        retryingBusy { Files.move(next, askRecord, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE) }
+    }
+
+    private suspend fun clearAsk(left: JournalEntry) {
+        left.process?.let { process ->
+            ProcessHandle.of(process.pid).filter { identityOf(it) == process }.ifPresent { server ->
+                server.destroyForcibly()
+                server.onExit().completeOnTimeout(server, stopLimit.inWholeMilliseconds, TimeUnit.MILLISECONDS).join()
+            }
+        }
+        deleteTree(askDump)
+        val game = left.game
+        val owned = left.owned
+        if (game == null || owned == null || removeLeftovers(game, owned)) Files.deleteIfExists(askRecord)
+    }
+
+    private val askDump: Path get() = runtimeFolder.resolveSibling("customgames-firewall-ask")
+
+    private val askRecord: Path get() = runtimeFolder.resolveSibling("customgames-firewall-ask.json")
 
     override suspend fun localPlayer(): LocalPlayer? = withContext(Dispatchers.IO) { player() }
 

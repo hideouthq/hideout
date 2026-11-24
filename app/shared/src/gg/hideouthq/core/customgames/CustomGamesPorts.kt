@@ -126,6 +126,9 @@ interface CustomGamesPlatform {
      */
     suspend fun askFirewall(game: GameRoot, feed: CustomGamesFeed) {}
 
+    /** Ends what an [askFirewall] cut short by Hideout's exit left: its server, the files that made in the game and its own. */
+    suspend fun clearFirewallAsk() {}
+
     /** Sees the process [entry] recorded end, killing it if it will not. Does nothing when its identity no longer matches. */
     suspend fun endLeftover(entry: JournalEntry)
 }

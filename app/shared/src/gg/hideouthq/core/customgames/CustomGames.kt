@@ -297,6 +297,7 @@ class CustomGames(
 
     /** Runs the server of [feed]'s runtime, which fetching it can make the only one the store keeps. */
     private suspend fun askFirewall(feed: suspend () -> CustomGamesFeed?) {
+        logged("clear an earlier firewall ask") { platform.clearFirewallAsk() }
         if (logged("read the firewall's rules") { platform.firewallDecision() } != FirewallDecision.Unknown) return
         val game = files.game() ?: return
         val listed = feed() ?: return
@@ -437,11 +438,16 @@ class CustomGames(
         }
     }
 
-    /** Asks the helper to stop as Hideout exits. The journal stays, so the next start checks that it did. */
+    /**
+     * Ends a firewall ask and asks the helper to stop as Hideout exits, each for at most [ExitStopLimit]. The journal
+     * stays, so the next start checks that the helper did.
+     */
     override fun close() {
         inbox.trySend(Input.CloseUsage)
-        val running = link ?: return
-        runBlocking { withTimeoutOrNull(ExitStopLimit) { running.stop() } }
+        runBlocking {
+            firewallJob?.let { ask -> withTimeoutOrNull(ExitStopLimit) { ask.cancelAndJoin() } }
+            link?.let { running -> withTimeoutOrNull(ExitStopLimit) { running.stop() } }
+        }
     }
 
     private fun GameRecord.playedMode(): ModeId? = when (role) {

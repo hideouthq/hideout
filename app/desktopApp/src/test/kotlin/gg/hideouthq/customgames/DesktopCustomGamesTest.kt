@@ -86,6 +86,7 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
@@ -960,6 +961,32 @@ class DesktopCustomGamesTest {
         val server = root.resolve("customgames-server/modlock-host.exe")
         val firewall = WindowsFirewall({ listOf("v2.10|Action=Allow|Active=TRUE|Dir=In|Protocol=17|Profile=Private|App=${server.pathString.uppercase()}|Name=modlock-host|") }, { false })
         assertEquals(FirewallDecision.Decided, runBlocking { games(windows = true, firewall = firewall).firewallDecision() })
+    }
+
+    @Test
+    fun anAskHideoutsExitCutShortIsClearedUpBeforeTheNext() {
+        val appId = Path.of(game.path, "game", "steam_appid.txt")
+        Files.createDirectories(appId.parent)
+        Files.writeString(appId, "1422450\n\u0000")
+        val dump = root.resolve("customgames-firewall-ask")
+        Files.createDirectories(dump)
+        val server = ProcessBuilder("sleep", "30").start()
+        val left = JournalEntry(game, identityOf(server.toHandle()), SessionOwned(appIdFile = true))
+        Files.writeString(root.resolve("customgames-firewall-ask.json"), Json.encodeToString(left))
+
+        runBlocking { games(windows = true).clearFirewallAsk() }
+        assertTrue(server.waitFor(5, TimeUnit.SECONDS), "the server a killed Hideout left ends")
+        assertFalse(appId.exists(), "the file the server made goes")
+        assertFalse(dump.exists())
+        assertFalse(root.resolve("customgames-firewall-ask.json").exists())
+    }
+
+    @Test
+    fun anAskLeavesNoRecordOnceItHasClearedUp() = serving("host" to zipOf("modlock-host.exe" to "#!/bin/sh\nexit 0\n")) { artifact ->
+        val feed = CustomGamesFeed(1, ModeRuntime(emptyMap(), artifact("host"), artifact("host"), artifact("host")), emptyList())
+        Files.createDirectories(Path.of(game.path, "game"))
+        runBlocking { withTimeout(20.seconds) { games(windows = true).askFirewall(game, feed) } }
+        assertFalse(root.resolve("customgames-firewall-ask.json").exists())
     }
 
     @Test
