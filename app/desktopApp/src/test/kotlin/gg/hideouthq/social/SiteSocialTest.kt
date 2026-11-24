@@ -37,6 +37,7 @@ import java.net.InetSocketAddress
 import java.security.SecureRandom
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
@@ -79,6 +80,7 @@ private class FakeSite {
             if (bytes.isNotEmpty()) exchange.responseBody.write(bytes)
             exchange.close()
         }
+        executor = Executors.newCachedThreadPool()
         start()
     }
     val url = "http://127.0.0.1:${server.address.port}"
@@ -142,6 +144,51 @@ class SiteSocialTest {
         directory.keep(first.copy(token = ListingToken("2".repeat(32))))
         until("the second put") { site.seen.count { it.method == "PUT" } == 2 }
         assertEquals(listOf("PUT /api/games/${"1".repeat(32)}", "DELETE /api/games/${"1".repeat(32)}", "PUT /api/games/${"2".repeat(32)}"), site.seen.map { "${it.method} ${it.path}" })
+    }
+
+    @Test
+    fun aRemovalTheSiteRefusedIsTriedAgainUntilItGoesThrough() {
+        val directory = SiteDirectory(routes, scope, refresh = 10.seconds, firstRetry = 100.milliseconds)
+        val deletes = { site.seen.count { it.method == "DELETE" } }
+        site.answer = { if (it.method == "DELETE" && deletes() <= 2) 429 to """{"error":"limited"}""" else 204 to "" }
+        directory.keep(ListingWanted(ListingToken("1".repeat(32)), JoinTicket(Code, Offer), RelayRegion(4, "fra"), 1, GameStatus.Lobby))
+        until("the put") { site.seen.any { it.method == "PUT" } }
+        directory.keep(null)
+        until("a delete that went through") { deletes() == 3 }
+        runBlocking { delay(1.seconds) }
+        assertEquals(3, deletes(), "and none after it")
+    }
+
+    @Test
+    fun aRemovalIsGivenUpOnceTheListingHasSurelyLapsed() {
+        val directory = SiteDirectory(routes, scope, refresh = 10.seconds, lease = 1.seconds, firstRetry = 100.milliseconds)
+        site.answer = { if (it.method == "DELETE") 503 to """{"error":"unavailable"}""" else 204 to "" }
+        directory.keep(ListingWanted(ListingToken("1".repeat(32)), JoinTicket(Code, Offer), RelayRegion(4, "fra"), 1, GameStatus.Lobby))
+        until("the put") { site.seen.any { it.method == "PUT" } }
+        directory.keep(null)
+        until("a second delete") { site.seen.count { it.method == "DELETE" } >= 2 }
+        runBlocking { delay(1.5.seconds) }
+        val tried = site.seen.size
+        runBlocking { delay(1.seconds) }
+        assertEquals(tried, site.seen.size, "nothing once the site has let it lapse")
+    }
+
+    @Test
+    fun aListingWhosePutTheSiteTookIsRemovedEvenWhenTheAnswerNeverCame() {
+        val release = CountDownLatch(1)
+        site.answer = {
+            if (it.method == "PUT") release.await(30, TimeUnit.SECONDS)
+            204 to ""
+        }
+        try {
+            val directory = SiteDirectory(routes, scope, refresh = 10.seconds)
+            directory.keep(ListingWanted(ListingToken("1".repeat(32)), JoinTicket(Code, Offer), RelayRegion(4, "fra"), 1, GameStatus.Lobby))
+            until("the put") { site.seen.any { it.method == "PUT" } }
+            directory.keep(null)
+            until("the delete") { site.seen.any { it.method == "DELETE" && it.path == "/api/games/${"1".repeat(32)}" } }
+        } finally {
+            release.countDown()
+        }
     }
 
     @Test

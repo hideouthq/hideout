@@ -40,6 +40,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.withTimeoutOrNull
@@ -76,8 +77,11 @@ import kotlin.math.abs
 import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
+import kotlin.time.TimeMark
+import kotlin.time.TimeSource
 
 class SiteSigner(private val mac: Mac, private val build: String, private val device: DeviceKey, private val now: () -> Long = { System.currentTimeMillis() / 1000 }) {
     private val offset = AtomicLong()
@@ -275,31 +279,61 @@ internal class SiteMailbox(private val routes: SiteRoutes, private val scope: Co
     }
 }
 
-/** The site expires a listing after 90 s, so a kept one is put again every [refresh] and lapses once this app stops. */
-/** The joining layer says it is looking for the game until [resolveLimit] runs out. */
+/**
+ * The site expires a listing 90 s after its last put, so a kept one is put again every [refresh] and lapses once this
+ * app stops. A token is tracked from before its first put, and one no longer wanted is deleted, again after each
+ * refusal, until the site takes the delete or [lease] has passed since the last put ended: the site's 90 s and the time
+ * a put this app stopped waiting for may still take to land. The joining layer says it is looking for the game until
+ * [resolveLimit] runs out.
+ */
 internal class SiteDirectory(
     private val routes: SiteRoutes,
     scope: CoroutineScope,
     private val refresh: Duration = 30.seconds,
     private val resolveLimit: Duration = 15.seconds,
+    private val lease: Duration = 2.minutes,
+    private val firstRetry: Duration = 1.seconds,
 ) : Directory {
     private val wanted = MutableStateFlow<ListingWanted?>(null)
-    private val listed = AtomicReference<ListingToken?>(null)
+
+    /** Each token the site may still list, with when its lease has surely run out, null while a put of it is on its way. */
+    private val listed = MutableStateFlow<Map<ListingToken, TimeMark?>>(emptyMap())
 
     init {
         scope.launch {
             wanted.collectLatest { next ->
-                listed.get()?.takeIf { it != next?.token }?.let { old ->
-                    routes.call("DELETE", "/api/games/${old.value}")
-                    listed.compareAndSet(old, null)
-                }
-                while (next != null) {
-                    val answered = routes.call("PUT", "/api/games/${next.token.value}", listingBody(next))?.first
-                    if (answered == NoContent) listed.set(next.token)
-                    delay(refresh)
+                var retry = firstRetry
+                var refreshAt = TimeSource.Monotonic.markNow()
+                while (true) {
+                    val owed = unlist(keep = next?.token)
+                    if (next != null && refreshAt.hasPassedNow()) {
+                        put(next)
+                        refreshAt = TimeSource.Monotonic.markNow() + refresh
+                    }
+                    if (!owed && next == null) break
+                    val wait = if (owed) retry.also { retry = (retry * 2).coerceAtMost(lease) } else Duration.INFINITE
+                    delay(if (next == null) wait else minOf(wait, -refreshAt.elapsedNow()))
                 }
             }
         }
+    }
+
+    private suspend fun put(next: ListingWanted) {
+        listed.update { it + (next.token to null) }
+        try {
+            routes.call("PUT", "/api/games/${next.token.value}", listingBody(next))
+        } finally {
+            listed.update { it + (next.token to TimeSource.Monotonic.markNow() + lease) }
+        }
+    }
+
+    /** Tries each listed token but [keep] once, and says whether any may still be listed. */
+    private suspend fun unlist(keep: ListingToken?): Boolean {
+        for ((token, over) in listed.value) {
+            if (token == keep) continue
+            if (over?.hasPassedNow() == true || routes.call("DELETE", "/api/games/${token.value}")?.first in Done) listed.update { it - token }
+        }
+        return listed.value.keys.any { it != keep }
     }
 
     override fun keep(wanted: ListingWanted?) {
@@ -308,7 +342,7 @@ internal class SiteDirectory(
 
     suspend fun close() {
         wanted.value = null
-        listed.getAndSet(null)?.let { routes.call("DELETE", "/api/games/${it.value}") }
+        unlist(keep = null)
     }
 
     override suspend fun list(): List<PublicGame>? {
@@ -348,7 +382,7 @@ internal class SiteDirectory(
 
     private companion object {
         const val Ok = 200
-        const val NoContent = 204
+        val Done = 200..299
         const val ListingFull = 409
         const val ListingClosed = 410
     }
