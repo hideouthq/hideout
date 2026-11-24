@@ -260,18 +260,24 @@ class DesktopCustomGames internal constructor(
 
     override suspend fun menus(game: GameRoot, renderer: Sha256?, rebuild: Boolean): MenusStamp? = withContext(Dispatchers.IO) {
         val have = gamesFolder.pack(game)?.stamp
-        val built = renderer?.takeIf { rebuild }?.let(::ifFetched) ?: return@withContext have
-        val rendererOnly = MenusStamp(built.hex, pageUrl, MenusScreenPort, SteamInf.revision(game)?.source)
+        if (!rebuild) return@withContext have
+        val revision = SteamInf.revision(game)?.source
+        val stale = have != null && have.revision != revision
+        // Every pack holds copies of the game's own layouts, and one from before an update can break its HUD, so a stale
+        // pack never outlives a failed build, and nor does an in-game part whose build failed.
+        suspend fun failed(keep: Boolean) = if (have == null || keep || !gamesFolder.removeMenus(game)) have else null
+        val built = renderer?.let(::ifFetched) ?: have?.takeIf { stale }?.renderer?.let(Sha256::parse)?.let(::ifFetched)
+            ?: return@withContext failed(keep = !stale)
+        val rendererOnly = MenusStamp(built.hex, pageUrl, MenusScreenPort, revision)
         val want = rendererOnly.copy(inGame = InGameStamp(InGamePort, helperDigest, gamesFolder.sourcesOf(game, have?.inGame?.layouts?.keys.orEmpty())))
         if (have == want) return@withContext have
         if (want != unbuildable) {
             gamesFolder.buildMenus(game, store.folderOf(built), want)?.let { return@withContext it.stamp }
             unbuildable = want
         }
-        // A copy of the game's own layouts from before an update can break its HUD, so it never outlives a failed build.
         if (have == rendererOnly) return@withContext have
         gamesFolder.buildMenus(game, store.folderOf(built), rendererOnly)?.let { return@withContext it.stamp }
-        if (have?.inGame == null || !gamesFolder.removeMenus(game)) have else null
+        failed(keep = !stale && have?.inGame == null)
     }
 
     @Volatile

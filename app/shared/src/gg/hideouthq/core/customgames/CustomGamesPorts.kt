@@ -70,7 +70,9 @@ interface CustomGamesPlatform {
 
     /**
      * The stamp of the menus pack [game] has, rebuilt first from [renderer] when [rebuild] and the stamp differs from what
-     * is wanted now. Only called with [rebuild] while Deadlock is closed. A rebuild that fails keeps the old pack.
+     * is wanted now. Only called with [rebuild] while Deadlock is closed. A pack from before a game update is rebuilt from
+     * its own renderer when [renderer] is not fetched, and removed when no build succeeds. Otherwise a failed rebuild
+     * keeps a renderer-only pack.
      */
     suspend fun menus(game: GameRoot, renderer: Sha256?, rebuild: Boolean): MenusStamp?
 

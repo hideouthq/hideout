@@ -623,6 +623,35 @@ class DesktopCustomGamesTest {
     }
 
     @Test
+    fun aPackFromBeforeAGameUpdateIsRebuiltFromItsOwnRendererWhenTheListedOneIsNotFetched() {
+        val renderer = rendererHere('c')
+        val listed = checkNotNull(Sha256.parse("e".repeat(64)))
+        updateGameTo(100)
+        assertEquals(100, runBlocking { games(writesPack()).menus(game, renderer, rebuild = true) }?.revision)
+
+        updateGameTo(101)
+        val rebuilt = runBlocking { games(writesPack()).menus(game, listed, rebuild = true) }
+        assertEquals(MenusStamp(renderer.hex, "https://menus.example/bridge/", MenusScreenPort, 101, InGameStamp(InGamePort, helperDigest, emptyMap())), rebuilt, "the renderer the pack was built from")
+        assertEquals(rebuilt, runBlocking { games(writesPack()).menus(game, null, rebuild = true) }, "with no feed read, a current pack stays")
+
+        updateGameTo(102)
+        Files.delete(runtimeFolder.resolve(renderer.hex))
+        assertNull(runBlocking { games(writesPack()).menus(game, listed, rebuild = true) }, "no renderer to build from")
+        assertFalse(gamesFolder.resolve("menus/pak01_dir.vpk").exists(), "the stale pack is gone")
+    }
+
+    @Test
+    fun aRendererOnlyPackThatCannotFollowAGameUpdateIsRemoved() {
+        val renderer = rendererHere('c')
+        updateGameTo(100)
+        assertEquals(MenusStamp(renderer.hex, "https://menus.example/bridge/", MenusScreenPort, 100), runBlocking { games(failsUnlessRendererOnly("no overlay")).menus(game, renderer, rebuild = true) })
+
+        updateGameTo(101)
+        assertNull(runBlocking { games("echo '{\"type\":\"stopped\",\"reason\":\"failed\",\"message\":\"no news layout\"}'\nexit 1").menus(game, renderer, rebuild = true) })
+        assertFalse(gamesFolder.resolve("menus/pak01_dir.vpk").exists(), "its copy of the news layout is from before the update")
+    }
+
+    @Test
     fun aPackFromBeforeTheInGameUiStillHostsAndJoinsUntilItIsRebuilt() {
         val renderer = rendererHere('c')
         Files.createDirectories(gamesFolder.resolve("menus"))
