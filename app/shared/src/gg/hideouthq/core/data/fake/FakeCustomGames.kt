@@ -262,6 +262,14 @@ class FakeCustomGamesPlatform(
         return menusStamp
     }
 
+    val renderersFetched = mutableListOf<Sha256>()
+    var rendererProblem: FetchProblem? = null
+
+    override suspend fun fetchRenderer(feed: CustomGamesFeed): FetchProblem? {
+        renderersFetched += feed.runtime.renderer.sha256
+        return rendererProblem
+    }
+
     val devSessionsCleared = mutableListOf<GameRoot>()
 
     override suspend fun clearEndedDevSession(game: GameRoot) {

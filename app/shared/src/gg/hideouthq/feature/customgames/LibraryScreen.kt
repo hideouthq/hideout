@@ -61,6 +61,8 @@ import gg.hideouthq.core.customgames.LibraryEntry
 import gg.hideouthq.core.customgames.LinkProblem
 import gg.hideouthq.core.customgames.ModeKind
 import gg.hideouthq.core.customgames.ModeList
+import gg.hideouthq.core.customgames.RestartReason
+import gg.hideouthq.core.customgames.startsHost
 import gg.hideouthq.core.customgames.social.Social
 import gg.hideouthq.core.customgames.social.SocialStatus
 import gg.hideouthq.core.data.FolderPicker
@@ -159,6 +161,7 @@ fun CustomGamesRoute(
                 }
                 social?.let { InvitesBlocked(it) { id -> copy(id, Res.string.cg_toast_id_copied) } }
                 inGameBlock?.let { NoteCard(stringResource(Res.string.cg_ingame_blocked_lead), stringResource(Res.string.cg_ingame_blocked_body, it)) }
+                if (restarts == RestartReason.NotSetUp && live.session.startsHost) NoteCard(stringResource(Res.string.cg_menus_after_restart_lead), stringResource(Res.string.cg_menus_after_restart_body))
                 PillTabs(
                     ModeTab.entries, tab, { tab = it },
                     label = tabs::getValue,

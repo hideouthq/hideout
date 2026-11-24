@@ -426,6 +426,15 @@ class DesktopCustomGamesTest {
     }
 
     @Test
+    fun theFeedsRendererIsFetchedWithNothingHostedSoTheMenusCanBuild() = serving("renderer" to zipOf("renderer.js" to "r")) { artifact ->
+        val feed = CustomGamesFeed(1, ModeRuntime(mapOf(DesktopOs.Linux to artifact("renderer")), artifact("renderer"), artifact("renderer"), artifact("renderer")), emptyList())
+        val games = games(writesPack())
+        assertNull(runBlocking { games.fetchRenderer(feed) })
+        assertNotNull(runBlocking { games.menus(game, artifact("renderer").sha256, rebuild = true) }?.inGame)
+        assertNotNull(runBlocking { games.fetchRenderer(feed.copy(runtime = feed.runtime.copy(renderer = goneRenderer(artifact("renderer"))))) }, "one that won't download says so")
+    }
+
+    @Test
     fun aGuestWhoCannotDownloadTheMapIsToldBeforeAnythingStarts() = serving("renderer" to zipOf("renderer.js" to "r")) { artifact ->
         val missing = artifact("renderer").copy(url = artifact("renderer").url + "-gone", sha256 = checkNotNull(Sha256.parse("b".repeat(64))))
         val mode = feedMode(artifact("renderer"), missing)

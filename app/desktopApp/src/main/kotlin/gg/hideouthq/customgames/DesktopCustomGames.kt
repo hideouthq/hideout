@@ -165,6 +165,9 @@ class DesktopCustomGames internal constructor(
         return store.provide(packages, feed.runtimeDigests(), listOf(RuntimePiece.Package(feed.runtime.renderer, runnable = false)), mode, progress)
     }
 
+    override suspend fun fetchRenderer(feed: CustomGamesFeed): FetchProblem? =
+        store.provide(listOf(RuntimePiece.Package(feed.runtime.renderer, runnable = false)), feed.runtimeDigests()) {}
+
     override suspend fun remove(id: ModeId, feed: CustomGamesFeed?) = store.remove(id, feed?.runtimeDigests().orEmpty())
 
     override suspend fun played(id: ModeId) = store.played(id, Clock.System.now())

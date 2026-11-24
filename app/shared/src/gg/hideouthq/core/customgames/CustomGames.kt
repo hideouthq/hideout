@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
@@ -97,6 +98,8 @@ enum class LinkProblem {
 /**
  * The owner of a custom game. One coroutine reads events, runs [reduce] and [recordAfter], publishes [live] and carries
  * out the commands, which post their results back as events. No state but [live] says where a session is or what it is for.
+ * While [settingOn] says custom games are on, Deadlock is kept set up for them, so its own menus offer Hideout games
+ * before anything is installed or hosted.
  *
  * Admitting, launching, releasing and the journal run one at a time in the order issued, on a queue of their own, so the
  * helper can still be stopped while the library takes its time. [start] ends what a crash left before any event is read.
@@ -109,6 +112,7 @@ class CustomGames(
     private val log: (String) -> Unit = {},
     private val hostFolders: Flow<Boolean>,
     private val analytics: UsageAnalytics? = null,
+    private val settingOn: Flow<Boolean> = flowOf(false),
 ) : AutoCloseable {
     private class UsageRun(val attempt: UsageAttempt, var stage: UsageStage = UsageStage.Prepare, var play: UsagePlay? = null)
     private var usage: UsageRun? = null
@@ -189,6 +193,9 @@ class CustomGames(
     @Volatile
     private var foldersShown = false
 
+    @Volatile
+    private var menusWanted = false
+
     private val storeChanges = Mutex()
 
     /** The first read lists what is installed, and only later reads log what changed. */
@@ -219,6 +226,25 @@ class CustomGames(
                 readFolders()
             }
         }
+        scope.launch {
+            settingOn.collect {
+                menusWanted = it
+                if (it) readyMenus()
+            }
+        }
+    }
+
+    /**
+     * Fetches the renderer the feed names and builds the pack while Deadlock is closed, unless a pack is built already.
+     * With Deadlock running, [restartsDeadlock] says the menus follow its restart.
+     */
+    private suspend fun readyMenus() {
+        val game = files.game()
+        if (game != null && logged("read the menus") { platform.menus(game, null, rebuild = false) } != null) return
+        val listed = publishedModes.value.feed ?: feed?.lastGood() ?: (feed?.fetch() as? CustomGamesFetch.Fresh)?.feed ?: return
+        changeModes { it.withNewest(listed) }
+        logged("fetch the menus' renderer") { platform.fetchRenderer(listed) }?.let { log("Custom games: could not fetch the menus' renderer: $it") }
+        upkeepGame()
     }
 
     /** [restartAccepted] is the [restartsDeadlock] the player was shown as they pressed, so the session restarts Deadlock for it without asking again. */
@@ -308,7 +334,7 @@ class CustomGames(
     }
 
     private suspend fun lastRemovalEndsTheUse() {
-        logged("record that custom games are not in use") { if (platform.installed().isEmpty() && platform.folders.read().isEmpty()) files.useCustomGames(false) }
+        logged("record that custom games are not in use") { if (!menusWanted && platform.installed().isEmpty() && platform.folders.read().isEmpty()) files.useCustomGames(false) }
     }
 
     private suspend fun readFolders() {
@@ -524,10 +550,11 @@ class CustomGames(
     private fun upkeepGame() = queued {
         if (noSession() && client == GameActivity.Closed) logged("look after the game's custom games files") {
             val game = files.game() ?: return@logged
-            when (files.gamesLines()) {
-                GamesLines.Pending, GamesLines.Removed -> files.useCustomGames(true)
-                GamesLines.Leaving -> files.useCustomGames(false)
-                GamesLines.Mounted, GamesLines.Off, is GamesLines.Unreadable -> Unit
+            val lines = files.gamesLines()
+            when {
+                lines == GamesLines.Pending || lines == GamesLines.Removed -> files.useCustomGames(true)
+                menusWanted && (lines == GamesLines.Off || lines == GamesLines.Leaving) -> files.useCustomGames(true)
+                lines == GamesLines.Leaving -> files.useCustomGames(false)
             }
             when (files.gamesLines()) {
                 GamesLines.Off -> platform.removeGamesFolder(game)

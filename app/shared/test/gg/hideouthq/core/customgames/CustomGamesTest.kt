@@ -133,9 +133,9 @@ class CustomGamesTest {
 
     private val runs = mutableListOf<Run>()
 
-    private inner class Run(val test: TestScope, feed: CustomGamesFeedSource? = null, computer: CustomGamesPlatform = platform, hostFolders: Flow<Boolean> = flowOf(false), analytics: UsageAnalytics? = null) {
+    private inner class Run(val test: TestScope, feed: CustomGamesFeedSource? = null, computer: CustomGamesPlatform = platform, hostFolders: Flow<Boolean> = flowOf(false), analytics: UsageAnalytics? = null, settingOn: Flow<Boolean> = flowOf(false)) {
         val scope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(test.testScheduler)).also { runs += this }
-        val games = CustomGames(computer, files, feed, scope, logs::add, hostFolders, analytics)
+        val games = CustomGames(computer, files, feed, scope, logs::add, hostFolders, analytics, settingOn)
         val session get() = games.live.value.session
         val link: FakeLinkProcess get() = platform.links.last()
 
@@ -2325,6 +2325,57 @@ class CustomGamesTest {
         assertEquals(emptyList(), files.calls, "nothing held and nothing started")
         assertEquals(emptyList(), link.enters, "no wait for menus that can't load")
         assertTrue(logs.any { "citadel/modlock_dev/31bb65da30bd1ed1" in it }, "$logs")
+    }
+
+    private val Listed = FakeCustomGamesFeed.SampleModes.runtime.renderer.sha256
+
+    @Test
+    fun turningCustomGamesOnSetsUpAClosedDeadlockBeforeAnythingIsInstalled() = scenario {
+        platform.menusStamp = null
+        val on = MutableStateFlow(false)
+        val run = Run(this, FakeCustomGamesFeed(), settingOn = on)
+        run.games.start()
+        run.settle()
+        assertEquals(GamesLines.Off, files.lines)
+        assertEquals(emptyList(), platform.renderersFetched, "off, nothing is fetched")
+
+        on.value = true
+        run.settle()
+        assertEquals(listOf(Listed), platform.renderersFetched, "the renderer the feed names")
+        assertEquals(GamesLines.Mounted, files.lines, "the lines the menus load from")
+        assertEquals(listOf<Sha256?>(Listed), platform.menusRebuilds, "and the pack, so the band shows at Deadlock's next start")
+    }
+
+    @Test
+    fun withDeadlockRunningTheAppSaysTheMenusFollowItsRestart() = scenario {
+        platform.menusStamp = null
+        files.clientActivity.value = GameActivity.Running
+        val run = Run(this, FakeCustomGamesFeed(), settingOn = flowOf(true))
+        run.games.start()
+        run.settle()
+        assertEquals(listOf(Listed), platform.renderersFetched, "fetched while it runs")
+        assertEquals(RestartReason.NotSetUp, run.games.restartsDeadlock.value)
+        assertEquals(emptyList(), platform.menusRebuilds, "nothing is built under a running Deadlock")
+
+        files.clientActivity.value = GameActivity.Closed
+        run.settle()
+        assertEquals(GamesLines.Mounted, files.lines)
+        assertEquals(listOf<Sha256?>(Listed), platform.menusRebuilds)
+        assertNull(run.games.restartsDeadlock.value)
+    }
+
+    @Test
+    fun aStartWithThePackBuiltFetchesNothingAndRemovingTheLastModeKeepsTheMenus() = scenario {
+        files.lines = GamesLines.Mounted
+        platform.installedModes[Source.id] = InstalledMode(Source, 1, null)
+        val run = Run(this, FakeCustomGamesFeed(), settingOn = flowOf(true))
+        run.games.start()
+        run.settle()
+        assertEquals(emptyList(), platform.renderersFetched)
+
+        run.games.remove(Source.id)
+        run.settle()
+        assertEquals(GamesLines.Mounted, files.lines, "custom games are still on")
     }
 
     @Test

@@ -76,6 +76,9 @@ interface CustomGamesPlatform {
      */
     suspend fun menus(game: GameRoot, renderer: Sha256?, rebuild: Boolean): MenusStamp?
 
+    /** Gets the renderer [feed] names, so [menus] can build a pack before anything is hosted. */
+    suspend fun fetchRenderer(feed: CustomGamesFeed): FetchProblem?
+
     /**
      * Takes the block of a Modlock development session that has ended out of [game]'s `gameinfo.gi`, as Modlock's next
      * session would, since it mounts that session's menus ahead of Hideout's. A live session's block stays. Only called

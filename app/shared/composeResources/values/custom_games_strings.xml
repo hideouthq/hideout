@@ -314,6 +314,8 @@
     <string name="cg_problem_content_body">Hideout couldn’t put the mode’s files in Deadlock’s folder. Try again.</string>
     <string name="cg_problem_menus_title">Hideout’s menus aren’t ready</string>
     <string name="cg_problem_menus_body">Deadlock needs them to play a mode, and they didn’t download. Check your connection, then try again.</string>
+    <string name="cg_menus_after_restart_lead">Restart Deadlock to play from inside it.</string>
+    <string name="cg_menus_after_restart_body">Hideout games show up in Deadlock’s Play menu the next time it starts.</string>
     <string name="cg_ingame_blocked_lead">Hideout games won’t show inside Deadlock.</string>
     <string name="cg_ingame_blocked_body">A mod in %1$s changes Deadlock’s HUD or Custom Match screen, and gameinfo.gi loads it ahead of Hideout. You can still host and join from here. Remove that mod, or load it after Hideout, then restart Deadlock.</string>
     <string name="cg_problem_menus_blocked_title">Another tool’s menus are in the way</string>
