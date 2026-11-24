@@ -375,7 +375,7 @@
             supportId: opt(o.supportId, (v) => str(v))
           };
         case "catalog":
-          return { t: "catalog", modes: list(o.modes, mode), soon: list(o.soon, mode) };
+          return { t: "catalog", modes: list(o.modes, mode) };
         case "game":
           return { t: "game", host: opt(o.host, host), join: opt(o.join, join), session: opt(o.session, session), restartAhead: opt(o.restartAhead, restart) };
         case "inbox":

@@ -32,10 +32,9 @@ sealed interface Frame {
     @SerialName("hello")
     data class Hello(val protocol: Int, val social: SocialWire, val supportId: String?) : Frame
 
-    /** [soon] are the feed's upcoming modes the library doesn't list, each with no [ModeCard.bytes] or settings. */
     @Serializable
     @SerialName("catalog")
-    data class Catalog(val modes: List<ModeCard>, val soon: List<ModeCard>) : Frame
+    data class Catalog(val modes: List<ModeCard>) : Frame
 
     @Serializable
     @SerialName("game")

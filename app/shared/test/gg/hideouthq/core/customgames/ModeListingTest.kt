@@ -45,20 +45,6 @@ class ModeListingTest {
     }
 
     @Test
-    fun everyUpcomingListingReadsOnlyAsUpcoming() {
-        val upcoming = cases("upcoming")
-        assertEquals(3, upcoming.size)
-        for (file in upcoming) {
-            val listing = assertNotNull(parseUpcomingListing(json(file.readText())) { it }, file.name)
-            assertNull(listing.released, file.name)
-            assertNull(read(file), file.name)
-        }
-        for (file in cases("invalid")) {
-            if (file.name != "no-released.json") assertNull(parseUpcomingListing(json(file.readText())) { it }, file.name)
-        }
-    }
-
-    @Test
     fun aGoalNamesASettingAsTheAuthorWroteIt() {
         val listing = assertNotNull(read(cases.resolve("valid/goal-from-setting.json")))
         assertEquals("First to {kills} kills", listing.goal)

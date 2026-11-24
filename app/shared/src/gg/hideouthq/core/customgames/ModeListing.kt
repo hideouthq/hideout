@@ -24,7 +24,7 @@ data class ModeListing(
     val players: IntRange,
     /** Never empty, except in a [plainListing]. */
     val creators: List<String>,
-    /** Null only for a [plainListing] or an upcoming mode's. */
+    /** Null only for a [plainListing]. */
     val released: LocalDate?,
     /** Null for a kind this Hideout doesn't know, which then lists under All only. */
     val kind: ModeKind? = null,
@@ -206,12 +206,7 @@ fun plainListing(name: String): ModeListing = ModeListing(name, "", "", 1..MaxPl
  * image into an absolute address, or null to leave that image out. Unknown fields, unknown kinds, unknown section and
  * icon names, and settings with no `options`, which a later Hideout may draw, are skipped.
  */
-fun parseListing(json: JsonObject, art: (String) -> String?): ModeListing? = parseListing(json, art, upcoming = false)
-
-/** As [parseListing], for a mode the feed announces before it ships, which may leave out its release date. */
-fun parseUpcomingListing(json: JsonObject, art: (String) -> String?): ModeListing? = parseListing(json, art, upcoming = true)
-
-private fun parseListing(json: JsonObject, art: (String) -> String?, upcoming: Boolean): ModeListing? {
+fun parseListing(json: JsonObject, art: (String) -> String?): ModeListing? {
     val wire = try {
         ListingJson.decodeFromJsonElement<WireListing>(json)
     } catch (e: IllegalArgumentException) {
@@ -230,7 +225,7 @@ private fun parseListing(json: JsonObject, art: (String) -> String?, upcoming: B
         description = text(wire.description, 2000, lines = true) ?: return null,
         players = players,
         creators = wire.creators.map { text(it, 48) ?: return null },
-        released = wire.released?.let { date(it) ?: return null } ?: if (upcoming) null else return null,
+        released = date(wire.released ?: return null) ?: return null,
         kind = ModeKind.entries.firstOrNull { it.wire == wire.kind },
         minutes = wire.minutes?.let { it.range(MaxMinutes) ?: return null },
         goal = wire.goal?.let { goal(it, settings) ?: return null },

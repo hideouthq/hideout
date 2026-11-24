@@ -2,10 +2,8 @@ package gg.hideouthq.core.customgames
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
@@ -40,13 +38,9 @@ value class GameRevision(val source: Long)
 
 data class Artifact(val url: String, val bytes: Long, val sha256: Sha256)
 
-/** [upcoming] are announced with no package yet, in the feed's order, none sharing an id with [modes]. */
-data class CustomGamesFeed(val sequence: Long, val runtime: ModeRuntime, val modes: List<Mode>, val upcoming: List<UpcomingMode> = emptyList()) {
+data class CustomGamesFeed(val sequence: Long, val runtime: ModeRuntime, val modes: List<Mode>) {
     fun mode(id: ModeId): Mode? = modes.firstOrNull { it.id == id }
 }
-
-/** A mode the feed announces before it ships. Its [listing] may have no release date. */
-data class UpcomingMode(val id: ModeId, val listing: ModeListing)
 
 /** [cli] may lack an OS, which then cannot host, but always names at least one. */
 data class ModeRuntime(val cli: Map<DesktopOs, Artifact>, val host: Artifact, val platform: Artifact, val renderer: Artifact)
@@ -86,9 +80,7 @@ val Mode.download: Long? get() = (origin as? ModeOrigin.Feed)?.let { it.rules.by
 
 /**
  * Reads the custom games feed, or null when any part of it breaks a limit. A signed feed with a broken entry is a
- * publishing mistake, so nothing from it is offered. Unknown fields and unknown operating systems are ignored. An
- * upcoming mode is only decoration, so a broken one, or one sharing an id with a mode or an earlier upcoming one, is
- * skipped instead.
+ * publishing mistake, so nothing from it is offered. Unknown fields and unknown operating systems are ignored.
  */
 fun parseCustomGamesFeed(text: String): CustomGamesFeed? {
     val wire = try {
@@ -101,15 +93,7 @@ fun parseCustomGamesFeed(text: String): CustomGamesFeed? {
     val modes = wire.modes.map { parseMode(it) ?: return null }
     val ids = modes.map { it.id }
     if (ids.distinct().size != ids.size) return null
-    val upcoming = (wire.upcoming as? JsonArray).orEmpty().mapNotNull(::parseUpcoming).filter { it.id !in ids }.distinctBy { it.id }
-    return CustomGamesFeed(wire.sequence, runtime, modes, upcoming)
-}
-
-private fun parseUpcoming(entry: JsonElement): UpcomingMode? {
-    val fields = entry as? JsonObject ?: return null
-    val id = (fields["id"] as? JsonPrimitive)?.takeIf { it.isString }?.content?.let(ModeId::parse) ?: return null
-    val listing = parseUpcomingListing(fields["listing"] as? JsonObject ?: return null, ::feedArt) ?: return null
-    return UpcomingMode(id, listing)
+    return CustomGamesFeed(wire.sequence, runtime, modes)
 }
 
 private fun parseRuntime(wire: WireRuntime): ModeRuntime? {
@@ -162,7 +146,7 @@ internal const val MaxArtifactBytes = 8L * 1024 * 1024 * 1024
 private val FeedJson = Json { ignoreUnknownKeys = true }
 
 @Serializable
-private data class WireFeed(val schema: Int, val sequence: Long, val runtime: WireRuntime, val modes: List<WireMode>, val upcoming: JsonElement? = null)
+private data class WireFeed(val schema: Int, val sequence: Long, val runtime: WireRuntime, val modes: List<WireMode>)
 
 @Serializable
 private data class WireRuntime(val cli: JsonObject, val host: WireArtifact, val platform: WireArtifact, val renderer: WireArtifact)

@@ -88,7 +88,7 @@ test('a friend in a match gets a disabled In match, and pressing it does nothing
 
 test('the list shows the catalog, the first mode picked, with its own words', () => {
   const { view } = run(snapshotOf('hello.json', 'catalog.json', 'game-idle.json'))
-  assert.deepEqual(view.rows.slice(0, 2).map((r) => [r.mode.name, r.selected]), [['Arena', true], ['Bebop Wars', false]])
+  assert.deepEqual(view.rows.map((r) => [r.mode.name, r.selected]), [['Arena', true], ['Bebop Wars', false]])
   assert.equal(view.play.kind, 'play')
   assert.equal(view.play.label, 'Play Arena')
   assert.equal(view.counts.games, 2)
@@ -118,28 +118,6 @@ test('the goal chip says the picked target, and a fixed length reads as about th
   })
   assert.deepEqual(run(snapshot).view.chips.slice(2).map((c) => c.text), ['~10 min', 'First to 25 kills'])
   assert.equal(run(snapshot, { kind: 'pick', key: 'kills', value: '50' }).view.chips.at(-1)?.text, 'First to 50 kills')
-})
-
-test('modes not out yet are listed after the playable ones as Soon, and the Games count leaves them out', () => {
-  const { view } = run(snapshotOf('catalog.json', 'game-idle.json'))
-  assert.deepEqual(
-    view.rows.map((r) => [r.mode.name, r.soon]),
-    [['Arena', false], ['Bebop Wars', false], ['Hero Roulette', true], ['Dodgeball', true]],
-  )
-  assert.equal(view.counts.games, 2)
-})
-
-test('a Soon mode shows its detail with no settings, and Play says it isn’t out yet', () => {
-  const snapshot = snapshotOf('catalog.json', 'game-idle.json')
-  const { view, effects } = run(snapshot, { kind: 'mode', mode: 'hero-roulette' as never }, { kind: 'play' })
-  assert.equal(view.selected?.name, 'Hero Roulette')
-  assert.equal(view.soon, true)
-  assert.equal(view.byline, 'by Hideout team')
-  assert.deepEqual(view.chips.map((c) => c.text), ['Free-for-all', '2–12 players', 'First to 20 kills'])
-  assert.deepEqual(view.settings, [])
-  assert.deepEqual(view.play, { kind: 'blocked', label: 'Coming soon', hint: 'Hero Roulette isn’t out yet. It comes to Hideout in an update.' })
-  assert.deepEqual(effects, [])
-  assert.equal(run(snapshot, { kind: 'mode', mode: 'bebop-wars' as never }).view.soon, false)
 })
 
 test('Play sends the picks, listing, invitees and the restart Play was shown, then shows Starting', () => {
@@ -234,7 +212,7 @@ test('with Hideout closed before any list came, the panel says to open it, and l
   assert.deepEqual(viewGames(initialGames('games'), EMPTY, 'connecting', friends, '').empty, { kind: 'loading' })
   const back = viewGames(initialGames('games'), snapshotOf('hello.json', 'catalog.json', 'game-idle.json'), 'online', friends, '')
   assert.equal(back.empty, null)
-  assert.equal(back.rows.length, 4)
+  assert.equal(back.rows.length, 2)
 })
 
 test('servers read as rows with places, fill, ping tone and joinability', () => {

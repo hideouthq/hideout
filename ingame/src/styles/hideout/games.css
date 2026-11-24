@@ -166,11 +166,6 @@
 	background-color: #00000052;
 }
 
-.HGRow.Later
-{
-	opacity: 0.5;
-}
-
 .HGRow.On
 {
 	background-color: #D4A35E21;
@@ -194,28 +189,10 @@
 	flow-children: down;
 }
 
-.HGRowNameLine
-{
-	flow-children: right;
-}
-
 .HGRowName
 {
 	font-size: 23px;
 	margin-bottom: 3px;
-}
-
-.HGSoon
-{
-	vertical-align: middle;
-	margin-left: 10px;
-	padding: 3px 6px 2px 6px;
-	background-color: #D4A35E;
-	font-family: VALVEPulp;
-	font-size: 11px;
-	letter-spacing: 1.5px;
-	text-transform: uppercase;
-	color: #1A1714;
 }
 
 .HGRowDesc

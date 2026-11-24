@@ -10,7 +10,6 @@ import gg.hideouthq.core.customgames.ModeId
 import gg.hideouthq.core.customgames.ModeList
 import gg.hideouthq.core.customgames.ModeListing
 import gg.hideouthq.core.customgames.ModeOrigin
-import gg.hideouthq.core.customgames.ModeSetting
 import gg.hideouthq.core.customgames.Role
 import gg.hideouthq.core.customgames.Session
 import gg.hideouthq.core.customgames.SettingKey
@@ -271,12 +270,10 @@ private suspend fun serverRow(game: PublicGame, modes: ModeList, ping: Map<Int, 
 
 private fun catalog(modes: ModeList): Frame.Catalog {
     val listed = library(modes).filterIsInstance<LibraryEntry.Listed>().map { it.mode }
-    val ids = listed.map { it.id }.toSet()
-    val soon = modes.feed?.upcoming.orEmpty().filter { it.id !in ids }
-    return Frame.Catalog(listed.map { modeCard(it.id, it.listing, it.download) }, soon.map { modeCard(it.id, it.listing, bytes = null, settings = emptyList()) })
+    return Frame.Catalog(listed.map { modeCard(it.id, it.listing, it.download) })
 }
 
-private fun modeCard(id: ModeId, listing: ModeListing, bytes: Long?, settings: List<ModeSetting> = listing.settings): ModeCard {
+private fun modeCard(id: ModeId, listing: ModeListing, bytes: Long?): ModeCard {
     val art = listing.art
     return ModeCard(
         id = id.value,
@@ -289,7 +286,7 @@ private fun modeCard(id: ModeId, listing: ModeListing, bytes: Long?, settings: L
         by = listing.creators,
         bytes = bytes,
         art = ModeArtCard(art.card, art.backdrop, art.render, art.overlay, art.tile),
-        settings = settings.map { setting ->
+        settings = listing.settings.map { setting ->
             SettingCard(setting.key.value, setting.label, setting.hint, setting.default.value, setting.options.map { OptionCard(it.value.value, it.label, it.players) })
         },
     )

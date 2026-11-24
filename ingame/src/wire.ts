@@ -141,8 +141,7 @@ export interface ServerRow {
 
 /** [supportId] is set only while social is blocked: the player's own SteamID64, for support to reset this PC. */
 export type Hello = { t: 'hello'; protocol: number; social: Social; supportId: SteamId | null }
-/** [soon] are modes not out yet, with no settings and no size. */
-export type Catalog = { t: 'catalog'; modes: ModeCard[]; soon: ModeCard[] }
+export type Catalog = { t: 'catalog'; modes: ModeCard[] }
 export type Game = { t: 'game'; host: HostCard | null; join: JoinCard | null; session: SessionCard | null; restartAhead: Restart | null }
 export type Inbox = { t: 'inbox'; invites: InviteCard[] }
 export type Servers = { t: 'servers'; state: ServersState; rows: ServerRow[] }
@@ -355,7 +354,7 @@ export function decodeFrame(text: string): Frame | null {
           supportId: opt(o.supportId, (v) => str(v) as SteamId),
         }
       case 'catalog':
-        return { t: 'catalog', modes: list(o.modes, mode), soon: list(o.soon, mode) }
+        return { t: 'catalog', modes: list(o.modes, mode) }
       case 'game':
         return { t: 'game', host: opt(o.host, host), join: opt(o.join, join), session: opt(o.session, session), restartAhead: opt(o.restartAhead, restart) }
       case 'inbox':
