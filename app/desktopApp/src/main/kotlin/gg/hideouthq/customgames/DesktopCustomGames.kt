@@ -140,8 +140,9 @@ class DesktopCustomGames internal constructor(
         val process = ProcessBuilder(command).directory(runtimeFolder.toFile()).redirectOutput(ProcessBuilder.Redirect.DISCARD).redirectError(ProcessBuilder.Redirect.DISCARD).start()
         try {
             recordAsk(left.copy(process = identityOf(process.toHandle())))
+            val on = firewall.profiles()
             withTimeoutOrNull(FirewallAskLimit) {
-                while (process.isAlive && firewall.decision(server) == FirewallDecision.Unknown) delay(FirewallPoll)
+                while (process.isAlive && firewall.decision(server, on) == FirewallDecision.Unknown) delay(FirewallPoll)
             }
         } finally {
             withContext(NonCancellable) {

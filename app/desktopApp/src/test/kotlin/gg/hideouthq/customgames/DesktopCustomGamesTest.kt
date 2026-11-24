@@ -144,7 +144,7 @@ class DesktopCustomGamesTest {
         root.toFile().deleteRecursively()
     }
 
-    private fun games(script: String = "cat > /dev/null", installs: List<SteamInstall> = emptyList(), windows: Boolean = false, player: LocalPlayer? = LocalPlayer("1001", DisplayName.parse("nori")), stageLimit: Duration = 60.seconds, stopLimit: Duration = 1.seconds, firewall: WindowsFirewall = WindowsFirewall({ emptyList() }, { false })): DesktopCustomGames {
+    private fun games(script: String = "cat > /dev/null", installs: List<SteamInstall> = emptyList(), windows: Boolean = false, player: LocalPlayer? = LocalPlayer("1001", DisplayName.parse("nori")), stageLimit: Duration = 60.seconds, stopLimit: Duration = 1.seconds, firewall: WindowsFirewall = WindowsFirewall({ emptyList() }, { setOf(FirewallProfile.Private) }, { false })): DesktopCustomGames {
         assumeTrue(System.getProperty("os.name") == "Linux")
         val helper = root.resolve("hideout-link")
         Files.writeString(
@@ -959,7 +959,7 @@ class DesktopCustomGamesTest {
     @Test
     fun theAnswerHoldsForEveryServerPackageSinceTheyRunFromOnePath() {
         val server = root.resolve("customgames-server/modlock-host.exe")
-        val firewall = WindowsFirewall({ listOf("v2.10|Action=Allow|Active=TRUE|Dir=In|Protocol=17|Profile=Private|App=${server.pathString.uppercase()}|Name=modlock-host|") }, { false })
+        val firewall = WindowsFirewall({ listOf("v2.10|Action=Allow|Active=TRUE|Dir=In|Protocol=17|Profile=Private|App=${server.pathString.uppercase()}|Name=modlock-host|") }, { setOf(FirewallProfile.Private) }, { false })
         assertEquals(FirewallDecision.Decided, runBlocking { games(windows = true, firewall = firewall).firewallDecision() })
     }
 
@@ -999,7 +999,7 @@ class DesktopCustomGamesTest {
             val server = root.resolve("customgames-server/modlock-host.exe")
             val rule = "v2.10|Action=Block|Active=TRUE|Dir=In|Protocol=17|Profile=Private|App=$server|Name=modlock-host|"
             var questions = 2
-            val firewall = WindowsFirewall({ if (ran.exists()) listOf(rule) else emptyList() }, { questions-- > 0 })
+            val firewall = WindowsFirewall({ if (ran.exists()) listOf(rule) else emptyList() }, { setOf(FirewallProfile.Private) }, { questions-- > 0 })
             Files.createDirectories(Path.of(game.path, "game"))
             runBlocking { withTimeout(20.seconds) { games(windows = true, firewall = firewall).askFirewall(game, feed) } }
             val args = Files.readAllLines(ran)
