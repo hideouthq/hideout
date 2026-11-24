@@ -878,7 +878,7 @@
       if (stripPressed && stripPressed.in !== link.snapshot.game) stripPressed = null;
       const view = viewStrip(link.snapshot, link.status, stripPressed !== null, where.pointer, friends.current);
       const into = find("HOStrip");
-      into.SetHasClass("Shown", view !== null && where.room && !where.escape);
+      into.SetHasClass("Shown", view !== null && where.room && !where.pointer);
       strip.draw(into, JSON.stringify(view), (into2) => {
         if (view) buildStrip(into2, view);
       });

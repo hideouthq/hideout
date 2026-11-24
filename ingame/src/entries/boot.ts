@@ -199,12 +199,15 @@ function boot(): void {
   const strip = new Section()
   let stripPressed: { in: Game | null } | null = null
 
-  /** The Esc menu, in the room and in a match, has its own entries from the HUD's script, so the strip stays out of it. */
+  /**
+   * The Esc menu has its own entries from the HUD's script and the Play screens cover the corner, so the strip shows only
+   * while the room has no menu open, where it points the player at Esc.
+   */
   function drawStrip(where: { room: boolean; pointer: boolean; escape: boolean }): void {
     if (stripPressed && stripPressed.in !== link.snapshot.game) stripPressed = null
     const view = viewStrip(link.snapshot, link.status, stripPressed !== null, where.pointer, friends.current)
     const into = find('HOStrip')
-    into.SetHasClass('Shown', view !== null && where.room && !where.escape)
+    into.SetHasClass('Shown', view !== null && where.room && !where.pointer)
     strip.draw(into, JSON.stringify(view), (into) => {
       if (view) buildStrip(into, view)
     })
