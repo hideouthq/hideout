@@ -210,7 +210,7 @@ fun CustomGamesRoute(
         }
     }
     HostDialog(hosting?.mode, modes, block, restarts, games, modal) { hosting = null }
-    InGameDialog(inGame == InGameConsent.Unanswered && live.session.startsHost && hosting == null, modes.feed?.modes?.firstOrNull(), modal, onInGame)
+    InGameDialog(inGame == InGameConsent.Unanswered && live.session.startsHost && hosting == null, modal, onInGame)
 }
 
 /** Shown once the site refused this PC's mailbox, with the player's own id, the one support resets it by. */
