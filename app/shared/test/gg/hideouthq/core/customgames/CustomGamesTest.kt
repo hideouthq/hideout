@@ -2426,6 +2426,8 @@ class CustomGamesTest {
         platform.firewall = FirewallDecision.Unknown
         platform.firewallGate = CompletableDeferred()
         started(FakeCustomGamesFeed()).apply {
+            games.refreshModes()
+            settle()
             games.host(Source, Choices.None, null)
             settle()
             assertEquals(listOf(Game), platform.firewallAsks)
@@ -2454,6 +2456,8 @@ class CustomGamesTest {
         platform.firewall = FirewallDecision.Unknown
         platform.firewallGate = CompletableDeferred()
         started(FakeCustomGamesFeed()).apply {
+            games.refreshModes()
+            settle()
             games.host(Source, Choices.None, null)
             settle()
             assertTrue(games.firewallAsking.value)
@@ -2463,6 +2467,51 @@ class CustomGamesTest {
             assertEquals(1, platform.firewallEnds, "Windows' question would land over the game")
             assertFalse(games.firewallAsking.value)
             assertFalse(session is Session.HostPreparing, "the host goes on without asking")
+        }
+    }
+
+    @Test
+    fun aHostAsksAboutTheServerItPreparedThoughANewerFeedArrived() = scenario {
+        platform.firewall = FirewallDecision.Unknown
+        val download = CompletableDeferred<Unit>()
+        platform.prepare = { _, offer, _, _ ->
+            download.await()
+            SessionEvent.RuntimePrepared(Prepared.copy(offer = offer), Port)
+        }
+        val source = FakeCustomGamesFeed()
+        started(source).apply {
+            games.refreshModes()
+            settle()
+            games.host(Source, Choices.None, null)
+            settle()
+            val older = FakeCustomGamesFeed.SampleModes
+            val newer = older.copy(sequence = 2, runtime = older.runtime.copy(host = Artifact("https://example.test/b.zip", 5, Sha256.parse("b".repeat(64))!!)))
+            source.answer = CustomGamesFetch.Fresh(newer)
+            games.refreshModes()
+            settle()
+            assertEquals(newer, games.modes.value.feed)
+
+            download.complete(Unit)
+            settle()
+            assertEquals(listOf(older), platform.firewallFeeds, "a newer runtime would replace the files the prepared host runs")
+        }
+    }
+
+    @Test
+    fun hostingEndsAnAskAlreadyRunningBeforeItPrepares() = scenario {
+        platform.firewall = FirewallDecision.Unknown
+        platform.firewallGate = CompletableDeferred()
+        var endedBeforePrepare = -1
+        platform.prepare = { _, offer, _, _ ->
+            endedBeforePrepare = platform.firewallEnds
+            SessionEvent.RuntimePrepared(Prepared.copy(offer = offer), Port)
+        }
+        started(FakeCustomGamesFeed(), inGame = InGameConsent.Yes).apply {
+            assertEquals(listOf(Game), platform.firewallAsks)
+            games.host(Source, Choices.None, null)
+            settle()
+            assertEquals(1, endedBeforePrepare, "an ask of another runtime would change the files the host prepares")
+            assertEquals(listOf(Game, Game), platform.firewallAsks, "the host asks again, about what it prepared")
         }
     }
 

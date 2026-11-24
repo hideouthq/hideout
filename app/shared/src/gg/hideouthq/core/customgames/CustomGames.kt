@@ -15,6 +15,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
@@ -285,19 +286,20 @@ class CustomGames(
      * the in-game UI, which hosts from inside the game, whenever Deadlock is closed and no session runs. Deadlock starting ends it.
      */
     private fun askFirewallWhileClosed() {
-        startAsk(scope) { if (inGameWanted() && noSession()) askFirewall() }
+        startAsk(scope) { if (inGameWanted() && noSession()) askFirewall(::listedFeed) }
     }
 
     /** The one ask there is, started in [within] only while Deadlock is closed. [advance] cancels it as Deadlock starts. */
-    private fun startAsk(within: CoroutineScope, ask: suspend () -> Unit): Job? = synchronized(firewallLock) {
-        if (client != GameActivity.Closed) return null
-        firewallJob?.takeIf { it.isActive } ?: within.launch { ask() }.also { firewallJob = it }
+    private fun startAsk(within: CoroutineScope, ask: suspend () -> Unit): Unit = synchronized(firewallLock) {
+        if (client != GameActivity.Closed || firewallJob?.isActive == true) return
+        firewallJob = within.launch { ask() }
     }
 
-    private suspend fun askFirewall() {
+    /** Runs the server of [feed]'s runtime, which fetching it can make the only one the store keeps. */
+    private suspend fun askFirewall(feed: suspend () -> CustomGamesFeed?) {
         if (logged("read the firewall's rules") { platform.firewallDecision() } != FirewallDecision.Unknown) return
         val game = files.game() ?: return
-        val listed = listedFeed() ?: return
+        val listed = feed() ?: return
         publishedFirewallAsking.value = true
         try {
             logged("have the firewall ask about the game server") { platform.askFirewall(game, listed) }
@@ -763,7 +765,7 @@ class CustomGames(
             platform.prepareHost(mode, choices, newest, progress).also {
                 if (it is RuntimePrepared) {
                     me = it.host.me
-                    coroutineScope { startAsk(this) { askFirewall() }?.join() }
+                    coroutineScope { startAsk(this) { askFirewall { newest } } }
                 }
             }
         }
@@ -787,6 +789,7 @@ class CustomGames(
     private fun preparing(work: suspend (progress: (Transfer) -> Unit) -> PrepareAnswer) {
         prepareJob = scope.launch {
             val job = currentCoroutineContext().job
+            firewallJob?.cancelAndJoin()
             storeChanges.withLock {}
             val answer = try {
                 work { transfer -> if (job.isActive) publishedProgress.value = transfer }
