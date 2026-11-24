@@ -38,6 +38,7 @@
     <string name="import_row_mods">Mods</string>
     <string name="import_row_mods_detail">With their on/off state and load order</string>
     <string name="import_row_profiles">Profiles</string>
+    <string name="import_found">Already in your game</string>
     <string name="import_row_crosshair">Crosshair</string>
     <string name="import_row_crosshair_detail">Added to Yours, to use when you like</string>
     <string name="import_row_autoexec">Autoexec</string>

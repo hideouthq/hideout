@@ -112,7 +112,7 @@ internal object UncataloguedSampleManifest {
     }
 
     fun files(config: FakeConfig): InMemoryGameFiles = InMemoryGameFiles().apply {
-        putBytes(root, InMemoryGameFiles.GameInfo, gameInfo(config.gameInfo, grimoire = config.foreign == ForeignSeed.Grimoire).encodeToByteArray())
+        putBytes(root, InMemoryGameFiles.GameInfo, gameInfo(config.gameInfo, grimoire = config.foreign == ForeignSeed.Grimoire || config.foreign == ForeignSeed.Both).encodeToByteArray())
         FakeManagerData(config.foreign).layOut(this, root)
         config.autoexec?.let { putBytes(root, InMemoryGameFiles.Autoexec, it.encodeToByteArray()) }
         if (config.seed != LibrarySeed.Sample) return@apply

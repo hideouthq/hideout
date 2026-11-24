@@ -13,6 +13,7 @@ import gg.hideouthq.core.data.GameInventory
 import gg.hideouthq.core.data.ManagerData
 import gg.hideouthq.core.data.MigrationRecords
 import gg.hideouthq.core.data.RecordWrite
+import gg.hideouthq.core.library.Adoption
 import gg.hideouthq.core.library.AutoexecTakeover
 import gg.hideouthq.core.library.BundleCopy
 import gg.hideouthq.core.library.CitadelPath
@@ -85,6 +86,7 @@ sealed interface Preview {
     data object Looking : Preview
 
     data class Ready(
+        /** The source's own mods. */
         val mods: List<PreviewMod>,
         /** The profiles that would be made. */
         val profiles: List<Profile>,
@@ -92,6 +94,8 @@ sealed interface Preview {
         val commands: List<String>,
         /** How many mods the source lists that have no files to bring. */
         val missing: Int = 0,
+        /** Files in the game the source does not list, which come along with its mods. */
+        val found: List<PreviewMod> = emptyList(),
     ) : Preview
 
     data class Failed(val problem: ImportProblem) : Preview
@@ -241,19 +245,21 @@ class Migration(
             is Read.Refused -> return Preview.Failed(found.problem)
             is Read.Found -> found
         }
-        val assessment = assess(read.library, survey, held, read.bundle)
+        val assessment = assess(read.library, survey, held, read.bundle, others(source, survey))
         val takeover = takeover(MigrationId("preview"), source, root, read.library, survey, assessment, ImportChoice.Everything, emptyMap())
         val placed = placeTakeover(takeover, library.manifest, survey.addons, assessment.copies.indices.map { "copy-$it" }, ids)
         val on = placed.plan.target.activeProfile.enabled
         val there = library.manifest.profiles.profiles.map { it.id }.toSet()
         val crosshair = CrosshairLines.read(assessment.autoexec.crosshair).crosshair
+        val (own, found) = placed.plan.adopted.zip(assessment.prospects).partition { (_, prospect) -> prospect.fromSource }
+        fun shown(adopted: List<Pair<Adoption, Prospect>>) = adopted.map { (it, _) -> PreviewMod(it.record.title, it.sources.first().name, it.record.installId in on) }
         return Preview.Ready(
-            mods = placed.plan.adopted.map { PreviewMod(it.record.title, it.sources.first().name, it.record.installId in on) } +
-                takeover.copies.map { PreviewMod(it.title, it.fileName, it.enabled) },
+            mods = shown(own) + takeover.copies.map { PreviewMod(it.title, it.fileName, it.enabled) },
             profiles = placed.profiles.map { name -> (placed.plan.book.profiles + placed.plan.target.profiles).first { it.name == name } }.filter { it.id !in there },
             crosshair = assessment.autoexec.crosshair.takeIf { crosshairs.state.value.yours.entries.none { it.crosshair == crosshair } }.orEmpty(),
             commands = assessment.autoexec.commands,
             missing = assessment.missing,
+            found = shown(found),
         )
     }
 
@@ -294,7 +300,7 @@ class Migration(
                     is Read.Refused -> return stop(found.problem)
                     is Read.Found -> found
                 }
-                val assessment = assess(read.library, survey, held, read.bundle)
+                val assessment = assess(read.library, survey, held, read.bundle, others(source, survey))
                 val mods = choice.mods != ModsChoice.None
                 if (mods) record = record.copy(adopted = record.adopted + (assessment.prospects.flatMap { prospect -> prospect.sets.flatMap { it.files } } + assessment.duplicates).map { it.path to it.image })
                 (records.update(record.id, MigrationRecordCodec.encode(record)) as? RecordWrite.Failed)?.let { return stop(ImportProblem.BackupFailed(it.reason)) }
@@ -369,10 +375,10 @@ class Migration(
     ): Takeover {
         val mods = choice.mods != ModsChoice.None
         val incoming = if (!mods) emptyList() else assessment.prospects.map { prospect ->
-            Incoming(prospect.mod.title ?: prospect.fileName, prospect.mod.matched(prospect.sets.size), prospect.fileName, prospect.position, prospect.sets)
+            Incoming(prospect.mod.title ?: fileTitle(prospect.fileName), prospect.mod.matched(prospect.sets.size), prospect.fileName, prospect.position, prospect.sets)
         }
         val copied = if (!mods) emptyList() else assessment.copies.map { copy ->
-            BundleCopy(copy.mod.title ?: copy.fileName, copy.mod.matched(copy.sets), copy.fileName, copy.enabled, copy.files)
+            BundleCopy(copy.mod.title ?: fileTitle(copy.fileName), copy.mod.matched(copy.sets), copy.fileName, copy.enabled, copy.files)
         }
         val sections = foreign.footprint.sections
         return Takeover(
@@ -426,9 +432,18 @@ class Migration(
         }
     }
 
+    /** The other managers on this computer, whose word names their files that come along with [source]'s. */
+    private suspend fun others(source: ImportSource, survey: GameSurvey): List<ForeignLibrary> {
+        if (source !is ImportSource.Installed) return emptyList()
+        return Manager.entries.filter { it != source.manager }.mapNotNull { (read(ImportSource.Installed(it), survey) as? Read.Found)?.library }
+    }
+
     private suspend fun survey(root: GameRoot, held: List<ManifestRecord>): SurveyRead =
         surveyGame(inventory, root, held, surveys.value[root]).also { read -> if (read is SurveyRead.Read) surveys.update { it + (root to read.survey) } }
 }
+
+/** What a mod no manager names is called: its file's name without `_dir.vpk`, as `pak03` or `my_skin`. */
+internal fun fileTitle(fileName: String): String = fileName.removeSuffix(".vpk").removeSuffix("_dir").ifBlank { fileName }
 
 private fun ImportProblem.recordedReason(): String = when (this) {
     ImportProblem.GameMissing -> "the game folder is not available"

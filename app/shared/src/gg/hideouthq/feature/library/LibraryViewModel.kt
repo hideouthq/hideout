@@ -380,7 +380,7 @@ class LibraryViewModel(
 
     private fun importing(migration: MigrationState): ImportBanner? {
         val run = migration.run?.takeIf { it.running } ?: return null
-        val mods = (migration.previews[run.source] as? Preview.Ready)?.mods?.size?.takeIf { run.choice.mods != ModsChoice.None }
+        val mods = (migration.previews[run.source] as? Preview.Ready)?.let { it.mods.size + it.found.size }?.takeIf { run.choice.mods != ModsChoice.None }
         return ImportBanner(optionOf(run.source), mods, (run.phase as? ImportPhase.Waiting)?.wait)
     }
 

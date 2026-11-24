@@ -44,6 +44,9 @@ internal val onboardingTargets: List<Target> = listOf(
     Target("library_import_sources", 1440, 900, interact = { steps("More", "Import from a manager…"); advanceUntil("the sources") { hasText("An export file") } }) {
         AppWith({ AppContainer.fake(FakeConfig()) }, Route.Library)
     },
+    Target("onboarding_import_found", 1440, 900, interact = { advanceUntil("the sources") { hasText("An export file") }; steps("Grimoire"); toImport() }) {
+        Setup { OnboardingFixture.container(seed = LibrarySeed.Empty, foreign = ForeignSeed.Both) }
+    },
     Target("onboarding_import_compact", 1000, 680, scale = 1f, interact = { toImport() }) { Setup { dmm() } },
 )
 

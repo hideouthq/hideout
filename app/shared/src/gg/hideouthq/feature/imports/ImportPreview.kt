@@ -34,10 +34,10 @@ import gg.hideouthq.core.designsystem.component.ProfileTile
 import gg.hideouthq.core.designsystem.component.StatusChip
 import gg.hideouthq.core.designsystem.theme.HideoutTheme
 import gg.hideouthq.core.designsystem.theme.HideoutWeights
-import gg.hideouthq.core.migration.PreviewMod
 import gg.hideouthq.core.library.Profile
 import gg.hideouthq.core.ui.color
 import gg.hideouthq.resources.Res
+import gg.hideouthq.resources.import_found
 import gg.hideouthq.resources.import_left_out
 import gg.hideouthq.resources.import_profile_on
 import gg.hideouthq.resources.library_filter_off
@@ -52,9 +52,15 @@ fun ImportPreviewPanel(state: ImportUi) {
     ArtStage {
         Row(Modifier.height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             shown.forEach { row ->
-                PreviewCard(row, Modifier.width(300.dp).fillMaxHeight()) {
-                    if (row.item == ImportItem.Mods) preview.mods.take(ShownRows).forEach { PreviewModRow(it) }
-                    else preview.profiles.take(ShownRows).forEach { PreviewProfileRow(it) }
+                PreviewCard(itemName(row.item), row.ticked, Modifier.width(300.dp).fillMaxHeight()) {
+                    if (row.item == ImportItem.Profiles) preview.profiles.take(ShownRows).forEach { PreviewProfileRow(it) }
+                    else {
+                        preview.mods.take(ShownRows).forEach { PreviewModRow(it.name, stringResource(if (it.enabled) Res.string.library_filter_on else Res.string.library_filter_off)) }
+                        if (preview.found.isNotEmpty()) {
+                            CardTitle(stringResource(Res.string.import_found), Modifier.padding(top = 8.dp))
+                            preview.found.take(ShownRows).forEach { PreviewModRow(it.name, it.file) }
+                        }
+                    }
                 }
             }
         }
@@ -62,28 +68,33 @@ fun ImportPreviewPanel(state: ImportUi) {
 }
 
 @Composable
-private fun PreviewCard(row: ImportRow, modifier: Modifier, content: @Composable () -> Unit) {
-    val scheme = MaterialTheme.colorScheme
-    val type = HideoutTheme.typography
-    FloatingCard(modifier.then(if (row.ticked) Modifier else Modifier.leftOut()), RoundedCornerShape(22.dp)) {
+private fun PreviewCard(title: String, ticked: Boolean, modifier: Modifier, content: @Composable () -> Unit) {
+    FloatingCard(modifier.then(if (ticked) Modifier else Modifier.leftOut()), RoundedCornerShape(22.dp)) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Row(Modifier.fillMaxWidth().height(24.dp).padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(itemName(row.item), style = type.titleRow.copy(fontSize = type.labelMenuItem.fontSize, fontWeight = HideoutWeights.Title), color = scheme.onSurface, modifier = Modifier.weight(1f))
-                if (!row.ticked) StatusChip(stringResource(Res.string.import_left_out), ChipTone.Neutral, size = ChipSize.Badge)
-            }
+            CardTitle(title, chip = !ticked)
             content()
         }
     }
 }
 
 @Composable
-private fun PreviewModRow(mod: PreviewMod) {
+private fun CardTitle(title: String, modifier: Modifier = Modifier, chip: Boolean = false) {
+    val scheme = MaterialTheme.colorScheme
+    val type = HideoutTheme.typography
+    Row(modifier.fillMaxWidth().height(24.dp).padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(title, style = type.titleRow.copy(fontSize = type.labelMenuItem.fontSize, fontWeight = HideoutWeights.Title), color = scheme.onSurface, modifier = Modifier.weight(1f))
+        if (chip) StatusChip(stringResource(Res.string.import_left_out), ChipTone.Neutral, size = ChipSize.Badge)
+    }
+}
+
+@Composable
+private fun PreviewModRow(name: String, caption: String) {
     val scheme = MaterialTheme.colorScheme
     val type = HideoutTheme.typography
     Row(Modifier.fillMaxWidth().height(42.dp).padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-        CoverArt(mod.name, Modifier.size(44.dp, 30.dp), shape = RoundedCornerShape(8.dp))
-        Text(mod.name, style = type.bodyStrong, color = scheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-        Text(stringResource(if (mod.enabled) Res.string.library_filter_on else Res.string.library_filter_off), style = type.caption.copy(fontWeight = HideoutWeights.Medium), color = scheme.outline)
+        CoverArt(name, Modifier.size(44.dp, 30.dp), shape = RoundedCornerShape(8.dp))
+        Text(name, style = type.bodyStrong, color = scheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        Text(caption, style = type.caption.copy(fontWeight = HideoutWeights.Medium), color = scheme.outline, maxLines = 1)
     }
 }
 

@@ -138,7 +138,7 @@ private fun sourceCards(imports: MigrationState): List<SourceCard> {
 }
 
 private fun rows(preview: Preview.Ready, choice: ImportChoice, enabled: Boolean): List<ImportRow> = listOfNotNull(
-    ImportRow(ImportItem.Mods, preview.mods.size, choice.mods != ModsChoice.None, enabled).takeIf { it.count > 0 },
+    ImportRow(ImportItem.Mods, preview.mods.size + preview.found.size, choice.mods != ModsChoice.None, enabled).takeIf { it.count > 0 },
     ImportRow(ImportItem.Profiles, preview.profiles.size, choice.mods == ModsChoice.ModsAndProfiles, enabled && choice.mods != ModsChoice.None, preview.profiles.map { it.name })
         .takeIf { it.count > 0 },
     ImportRow(ImportItem.Crosshair, preview.counts.crosshairs, choice.crosshair, enabled).takeIf { it.count > 0 },

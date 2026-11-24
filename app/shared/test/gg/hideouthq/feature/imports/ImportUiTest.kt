@@ -61,6 +61,15 @@ class ImportUiTest {
     }
 
     @Test
+    fun filesTheManagerNeverListedComeWithTheModsButCountAsNoneOfItsOwn() {
+        val loose = found.copy(previews = mapOf(dmm to preview.copy(found = listOf(PreviewMod("pak04", "pak04_dir.vpk", true)))))
+        assertEquals(ImportRow(ImportItem.Mods, 3, ticked = true), ui(imports = loose).rows.first(), "the Mods row brings the loose file too")
+        assertEquals(ImportCounts(2, 1, 1, 0), ui(ImportPick(listing = true), loose).sources.first().counts, "the manager's card counts only its own mods")
+        val onlyLoose = found.copy(previews = mapOf(dmm to Preview.Ready(emptyList(), emptyList(), emptyList(), emptyList(), found = listOf(PreviewMod("pak04", "pak04_dir.vpk", true)))))
+        assertFalse(ui(ImportPick(listing = true), onlyLoose).sources.any { it.found }, "a manager with nothing of its own is not offered for files no one listed")
+    }
+
+    @Test
     fun theListOffersOnlySourcesThatCanBringSomething() {
         val asked = ui(ImportPick(listing = true))
         assertTrue(asked.listing, "the list shows when asked for")

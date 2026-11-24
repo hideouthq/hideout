@@ -208,4 +208,41 @@ class AssessTest {
         val recorded = ForeignLibrary(listOf(ForeignMod(ModKey("a"), "Recorded", claimed, listOf(SetMatcher.At(CitadelPath("addons/pak03_dir.vpk"))), null)), emptyList(), null, AutoexecLines(emptyList(), emptyList()), Footprint(emptyList(), emptyList(), emptyList()))
         assertEquals(listOf(claimed to false), assess(recorded, survey(set("addons/pak03_dir.vpk", LoadPosition(0, 3), imprint = imprint)), emptyList()).prospects.map { it.mod.claim to it.mod.selfReported }, "what the source recorded comes first")
     }
+
+    @Test
+    fun filesTheSourceNeverListedComeApartNamedByTheManagerThatListsThem() {
+        val skyline = image("grimoire/pak05_dir.vpk")
+        val grimoire = GrimoireReader.read(
+            """{"skyline":{"sha256":"${skyline.sha256}","modName":"Skyline","gameBananaId":700010,"gameBananaFileId":1800010,"sourceSection":"Mod","lastPriority":5}}""".encodeToByteArray(),
+            profiles = null,
+            autoexec = null,
+        )
+        val dmm = DmmReader.read(resourceBytes("dmm/state-v42.json"), mapOf(CitadelPath("addons/.dmm.json") to resourceBytes("dmm/addons-manifest-v42.json")), null)
+        val game = survey(
+            set("grimoire/pak05_dir.vpk", LoadPosition(0, 5)),
+            set("grimoire/pak07_dir.vpk", LoadPosition(0, 7)),
+            set("addons/pak01_dir.vpk", LoadPosition(1, 1)),
+            set("addons/pak02_dir.vpk", LoadPosition(1, 2)),
+            set("addons/pak03_dir.vpk", LoadPosition(1, 3)),
+            set("addons/pak04_dir.vpk", LoadPosition(1, 4)),
+            mounts = listOf("grimoire", "addons"),
+        )
+
+        val alone = assess(grimoire, game, emptyList())
+        val both = assess(grimoire, game, emptyList(), others = listOf(dmm))
+        assertEquals(alone.prospects.flatMap { it.paths() }, both.prospects.flatMap { it.paths() }, "what comes is the source's to say, whoever names it")
+        assertEquals(
+            listOf(
+                Triple("Skyline", "pak05_dir.vpk", true),
+                Triple(null, "pak07_dir.vpk", true),
+                Triple("Classic Investments", "classicinvestments_dir.vpk", false),
+                Triple("Blue Chonky Whale over Rem", "bluefish_rem.vpk", false),
+                Triple(null, "pak04_dir.vpk", false),
+            ),
+            both.prospects.map { Triple(it.mod.title, it.fileName, it.fromSource) },
+            "a set in a folder only Grimoire keeps is Grimoire's, those Deadlock Mod Manager lists keep its names, and a loose one is no one's",
+        )
+        assertEquals(listOf("pak02_dir.vpk", "pak03_dir.vpk").map { "addons/$it" }, both.prospect("addons/pak02_dir.vpk").paths(), "the other manager's mod comes as one, all its sets")
+        assertEquals(listOf(null to false), alone.prospects.drop(2).map { it.mod.title to it.fromSource }.distinct(), "with no other manager to ask, Deadlock Mod Manager's files are named by nobody, and never as Grimoire's")
+    }
 }

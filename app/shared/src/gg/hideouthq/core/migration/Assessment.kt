@@ -43,8 +43,12 @@ data class Assessment(
     val missing: Int = 0,
 )
 
-/** One mod already in the game as it would come: who its source says it is, and its sets winner first. */
-data class Prospect(val mod: ClaimedMod, val fileName: String, val position: LoadPosition?, val sets: List<IncomingSet>)
+/**
+ * One mod already in the game as it would come: who its source says it is, and its sets winner first. [fromSource] is
+ * false for files outside the folders only the source keeps that it never listed, which come along all the same:
+ * those another manager listed, by that manager's word, and those no manager lists.
+ */
+data class Prospect(val mod: ClaimedMod, val fileName: String, val position: LoadPosition?, val sets: List<IncomingSet>, val fromSource: Boolean = true)
 
 /** One bundle mod to copy in from [files], which hold [sets] complete sets. */
 data class CopyProspect(val mod: ClaimedMod, val fileName: String, val enabled: Boolean, val files: List<LocalFile>, val sets: Int)
@@ -62,11 +66,13 @@ data class CopyProspect(val mod: ClaimedMod, val fileName: String, val enabled: 
  *  - A set two mods claim goes to the one whose recorded size it has, else to neither.
  *  - One mod's sets that load are one prospect wherever they load, and those that do not are a second one. A set no
  *    claim names is a prospect of its own.
- *  - A prospect the source claims nothing of is who its imprint says it is, when one of its sets has one.
+ *  - A set that comes and the source claims nothing of is who one of [others], the other managers on this computer,
+ *    says it is, which only names it: what comes is the source's to say.
+ *  - A prospect no manager claims anything of is who its imprint says it is, when one of its sets has one.
  *  - A mod the source lists that no set found anywhere in the game is, no bundle file holds and Hideout does not hold
  *    already, by its submission, its name or its bytes, is [Assessment.missing].
  */
-fun assess(library: ForeignLibrary, survey: GameSurvey, held: List<ManifestRecord>, bundle: Map<String, BundleVpk> = emptyMap()): Assessment {
+fun assess(library: ForeignLibrary, survey: GameSurvey, held: List<ManifestRecord>, bundle: Map<String, BundleVpk> = emptyMap(), others: List<ForeignLibrary> = emptyList()): Assessment {
     val roots = library.footprint.roots.toSet()
     val takesOver = roots.isNotEmpty()
     val records = held.filter { it.gameRoot == survey.root }
@@ -90,17 +96,16 @@ fun assess(library: ForeignLibrary, survey: GameSurvey, held: List<ManifestRecor
             ?: copies.firstOrNull { it.folder == livingFolder }
             ?: copies.minBy { it.directory.path.value }
         copiesOf[chosen.directory.path] = copies
-        val claimants = library.mods.filter { mod -> mod.matchers.any { matcher -> copies.any { matches(matcher, it) } } }
-        val sized = claimants.filter { mod -> mod.matchers.any { it is SetMatcher.At && chosen.directory.image.sizeBytes in it.sizes && copies.any { set -> matches(it, set) } } }
-        val owner = claimants.singleOrNull() ?: sized.singleOrNull()
+        val owner = ownerAmong(library.mods, copies, chosen)
         val willLoad = copies.any { it.folder == CitadelPath.Addons && PakNumbers.mounted(it.directory.path.name) != null }
         val comes = if (takesOver) chosen.position != null || willLoad || owner != null || chosen.root.role == RootRole.AdoptOff else owner != null
         if (comes) {
-            coming += chosen to owner
+            coming += chosen to (owner ?: others.firstNotNullOfOrNull { ownerAmong(it.mods, copies, chosen) })
             if (takesOver) duplicates += copies.filter { it !== chosen }.flatMap { it.files }
         }
     }
 
+    val ownMods = library.mods.toSet()
     val groups = coming.groupBy({ it.second }, { it.first })
     val drafts = mutableListOf<Prospect>()
     val members = mutableMapOf<Prospect, List<FoundSet>>()
@@ -115,12 +120,13 @@ fun assess(library: ForeignLibrary, survey: GameSurvey, held: List<ManifestRecor
                 fileName = keys.first(),
                 position = part.first().position,
                 sets = part.zip(keys).map { (set, key) -> IncomingSet(key, set.files) },
+                fromSource = owner in ownMods || owner == null && part.all { it.root.managers.size == 1 },
             )
             drafts += prospect
             members[prospect] = part
         }
     }
-    val owners = groups.flatMap { (owner, sets) -> sets.map { it to owner } }.toMap()
+    val owners = groups.flatMap { (owner, sets) -> sets.map { it to owner?.takeIf { it in ownMods } } }.toMap()
     val prospects = drafts.filter { it.position != null }.sortedBy { it.position } +
         drafts.filter { it.position == null }.sortedWith(compareBy<Prospect> { prospect -> owners[members.getValue(prospect).first()]?.position ?: Int.MAX_VALUE }.thenBy { members.getValue(it).first().directory.path.value })
     prospects.forEachIndexed { index, prospect ->
@@ -165,6 +171,13 @@ fun assess(library: ForeignLibrary, survey: GameSurvey, held: List<ManifestRecor
         mod.listed && mod.key !in copyOf && mod.key !in heldOf && survey.sets.none { set -> mod.matchers.any { matches(it, set) } } && !held(mod)
     }
     return Assessment(prospects, duplicates, copies, profiles, library.autoexec, library.footprint.manifests, liveName, missing)
+}
+
+/** The one mod of [mods] that claims [copies], or the one whose recorded size [chosen] has when more do. */
+private fun ownerAmong(mods: List<ForeignMod>, copies: List<FoundSet>, chosen: FoundSet): ForeignMod? {
+    val claimants = mods.filter { mod -> mod.matchers.any { matcher -> copies.any { matches(matcher, it) } } }
+    val sized = claimants.filter { mod -> mod.matchers.any { it is SetMatcher.At && chosen.directory.image.sizeBytes in it.sizes && copies.any { set -> matches(it, set) } } }
+    return claimants.singleOrNull() ?: sized.singleOrNull()
 }
 
 private fun matches(matcher: SetMatcher, set: FoundSet): Boolean = when (matcher) {

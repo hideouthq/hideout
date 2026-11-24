@@ -317,6 +317,35 @@ class MigrationTest {
     }
 
     @Test
+    fun aGrimoireImportBringsDeadlockModManagersFilesByItsNamesAndLooseFilesApart() = runTest {
+        val managers = object : ManagerData by FakeManagerData(ForeignSeed.Grimoire) {
+            override suspend fun dmmState(): ByteArray = resourceBytes("dmm/state-v42.json")
+        }
+        val world = World(seed = ForeignSeed.Grimoire, managers = managers)
+        (1..4).forEach { world.files.putBytes(root, "$citadel/addons/pak0${it}_dir.vpk", FakeVpk.directory(seed = 180 + it)) }
+        world.files.putBytes(root, "$citadel/addons/.dmm.json", resourceBytes("dmm/addons-manifest-v42.json"))
+        val grimoire = ImportSource.Installed(Manager.Grimoire)
+        val migration = with(world) { start() }
+
+        migration.look(grimoire)
+        settle()
+        val preview = assertIs<Preview.Ready>(migration.state.value.previews[grimoire])
+        assertEquals(listOf("Grimoire Locker · hero cards", "Skyline", "night_market"), preview.mods.map { it.name }, "Grimoire's own mods, and what sits in its own folders")
+        assertEquals(
+            listOf(PreviewMod("Classic Investments", "pak01_dir.vpk", false), PreviewMod("Blue Chonky Whale over Rem", "pak02_dir.vpk", false), PreviewMod("pak04", "pak04_dir.vpk", false)),
+            preview.found,
+            "Deadlock Mod Manager's files by its names, and the loose one by its file, none of them as Grimoire's",
+        )
+        assertEquals(3, preview.counts.mods, "Grimoire's card counts only its own")
+
+        migration.import(grimoire, ImportChoice.Everything)
+        settle()
+        assertIs<ImportPhase.Finished>(migration.state.value.run?.phase)
+        val titles = world.store.manifest!!.records.map { it.title }.toSet()
+        assertTrue(titles.containsAll(listOf("Classic Investments", "Blue Chonky Whale over Rem", "pak04", "Skyline")), "every file that comes is Hideout's under the name it was shown by: $titles")
+    }
+
+    @Test
     fun theModsTheManagerListsWithoutFilesAreCountedAndLeftOut() = runTest {
         val world = World()
         world.files.remove(root, "$citadel/addons/700003_Ranked HUD.vpk")
@@ -358,7 +387,7 @@ class MigrationTest {
         settle()
 
         fun installed(file: String) = world.store.manifest!!.records.single { it.title == file }.installId
-        val (first, second) = installed("pak10_dir.vpk") to installed("pak11_dir.vpk")
+        val (first, second) = installed("pak10") to installed("pak11")
         assertEquals(listOf(first, second), onLoadOrder(world.store.manifest!!.records), "what loads keeps loading as it did")
         val ranked = world.library.state.value.profiles!!.profiles.single { it.name == "Ranked" }
         assertEquals(listOf(second, first), ranked.orders[root], "the profile comes in its own order")

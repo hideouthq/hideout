@@ -10,13 +10,14 @@ import gg.hideouthq.preview.sha256Hex
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 
-enum class ForeignSeed { None, Dmm, Grimoire, Bundle }
+/** [Both] is Grimoire and Deadlock Mod Manager on one computer, with a file in `addons` neither lists. */
+enum class ForeignSeed { None, Dmm, Grimoire, Bundle, Both }
 
 class FakeManagerData(private val seed: ForeignSeed) : ManagerData {
-    override suspend fun dmmState(): ByteArray? = if (seed == ForeignSeed.Dmm) SampleForeign.dmmState else null
+    override suspend fun dmmState(): ByteArray? = if (seed == ForeignSeed.Dmm || seed == ForeignSeed.Both) SampleForeign.dmmState else null
 
     override suspend fun grimoire(folder: String?): GrimoireFiles? =
-        if (seed == ForeignSeed.Grimoire) GrimoireFiles(SampleForeign.grimoireMetadata, SampleForeign.grimoireProfiles) else null
+        if (seed == ForeignSeed.Grimoire || seed == ForeignSeed.Both) GrimoireFiles(SampleForeign.grimoireMetadata, SampleForeign.grimoireProfiles) else null
 
     override suspend fun bundle(path: String): BundleOpen =
         if (seed == ForeignSeed.Bundle) BundleOpen.Found(SampleForeign.bundleManifest, SampleForeign.BundleFolder) else BundleOpen.Missing("there is no mod-interchange.json at $path")
@@ -47,6 +48,11 @@ class FakeManagerData(private val seed: ForeignSeed) : ManagerData {
                 files.putBytes(root, "$citadel/cfg/autoexec.cfg", SampleForeign.grimoireAutoexec)
             }
             ForeignSeed.Bundle -> files.putBytes(root, "$citadel/addons/pak12_dir.vpk", SampleForeign.bundled)
+            ForeignSeed.Both -> {
+                FakeManagerData(ForeignSeed.Dmm).layOut(files, root)
+                FakeManagerData(ForeignSeed.Grimoire).layOut(files, root)
+                files.putBytes(root, "$citadel/addons/pak04_dir.vpk", SampleForeign.loose)
+            }
         }
     }
 }
@@ -59,6 +65,7 @@ internal object SampleForeign {
     val skyline = FakeVpk.directory(seed = 111)
     val nightMarket = FakeVpk.directory(seed = 112)
     val bundled = FakeVpk.directory(seed = 120)
+    val loose = FakeVpk.directory(seed = 121)
 
     const val BundleFolder = """C:\Users\you\Downloads\deadlock-mods-export-20261021-101500"""
     const val BundledPath = "files/0000-sunset/sunset_dir.vpk"
