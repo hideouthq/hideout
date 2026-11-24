@@ -104,6 +104,7 @@ class DesktopCustomGames internal constructor(
     private val stopLimit: Duration = Deadline.Stopping.after,
 ) : CustomGamesPlatform {
     private val gamesFolder = GamesFolder(helper, runtimeFolder, log, stageLimit)
+    private val serverHome = ServerHome(runtimeFolder.resolveSibling(ServerFolder), log)
 
     override val firewallMayAsk: Boolean get() = windows
 
@@ -140,7 +141,7 @@ class DesktopCustomGames internal constructor(
         val mods = listOf(store.folderOf(runtime.platform.sha256).pathString, rules).distinct()
         val offer = InviteOffer.of(mode, choices, me, shared)
         val modlock = store.folderOf(cli.sha256).resolve(modlockName).pathString
-        val server = store.folderOf(runtime.host.sha256).resolve(ServerProgram).pathString
+        val server = serverHome.take(store.folderOf(runtime.host.sha256), runtime.host.sha256).pathString
         val host = PreparedHost(modlock, server, mods, ModeContent(content), offer, me, shared?.let { localContent.pathString }, ifFetched(runtime.renderer.sha256))
         RuntimePrepared(host, freeUdpPort())
     }
@@ -400,8 +401,6 @@ internal fun folderArt(root: Path, listed: String): String? {
     }
     return file?.takeIf { it.startsWith(root.normalize()) && Files.isRegularFile(it) }?.toUri()?.toString()
 }
-
-private const val ServerProgram = "modlock-host.exe"
 
 /** The folders of a built mod Modlock's `check.AddonDirs` mounts. */
 private val ContentFolders = setOf("panorama", "models", "materials", "particles")
