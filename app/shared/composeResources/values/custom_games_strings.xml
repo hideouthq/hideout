@@ -178,9 +178,10 @@
     <string name="cg_note_opening_deadlock">Opening Deadlock first</string>
     <string name="cg_note_joining">Joining the game</string>
 
+    <string name="cg_firewall_asking">Windows may ask about Hideout’s game server. Either answer is fine.</string>
+
     <string name="cg_starting_title">Starting your game</string>
     <string name="cg_starting_body">Your code works as soon as your game is ready.</string>
-    <string name="cg_firewall_hint">Windows may ask to let modlock-host.exe use the network. It’s your game’s server, and either answer works.</string>
     <string name="cg_ready_title">Waiting for a friend</string>
     <string name="cg_ready_body">Your game is open. Send a friend your code, and the match starts when they join.</string>
     <string name="cg_room_title">Room for more friends</string>

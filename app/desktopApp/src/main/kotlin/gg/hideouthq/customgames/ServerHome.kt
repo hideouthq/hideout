@@ -10,20 +10,21 @@ import kotlin.io.path.isRegularFile
 
 internal const val ServerProgram = "modlock-host.exe"
 
-/** Beside the runtime folder in the app's data folder, where the installer's firewall rule names [ServerProgram]. */
+/** Beside the runtime folder in the app's data folder. */
 internal const val ServerFolder = "customgames-server"
 
 /**
- * The game server at one path, whichever runtime it comes from. Windows Firewall keys its rules and its prompt by the
- * program's path, so the rule the installer adds for this one covers every runtime the feed moves to.
+ * The game server at one path, whichever runtime it comes from. Windows Firewall keys its rules and its question by the
+ * program's path, so the answer the player gave once holds for every runtime the feed moves to.
  */
 internal class ServerHome(private val folder: Path, private val log: (String) -> Unit) {
+    val program: Path = folder.resolve(ServerProgram)
+
     /**
      * The server to run from [source], the unpacked host package [digest]: this home's copy of it, or the package's own
      * while the copy can't be made, as while a server left from an earlier session still runs from here.
      */
     fun take(source: Path, digest: Sha256): Path {
-        val program = folder.resolve(ServerProgram)
         val stamp = folder.resolve(StampFile)
         if (readSmallText(stamp) == digest.hex && program.isRegularFile()) return program
         return try {

@@ -9,6 +9,7 @@ import gg.hideouthq.core.customgames.CustomGamesPlatform
 import gg.hideouthq.core.customgames.DesktopOs
 import gg.hideouthq.core.customgames.DisplayName
 import gg.hideouthq.core.customgames.FetchProblem
+import gg.hideouthq.core.customgames.FirewallDecision
 import gg.hideouthq.core.customgames.FolderRead
 import gg.hideouthq.core.customgames.GameRevision
 import gg.hideouthq.core.customgames.GameSetup
@@ -253,6 +254,20 @@ class FakeCustomGamesPlatform(
     }
 
     override suspend fun ownedBeforeServer(game: GameRoot): SessionOwned = SampleOwned
+
+    var firewall = FirewallDecision.Decided
+
+    /** The game each [askFirewall] ran on. One the gate holds is still asking. */
+    val firewallAsks = mutableListOf<GameRoot>()
+    var firewallGate: CompletableDeferred<Unit>? = null
+
+    override suspend fun firewallDecision(): FirewallDecision = firewall
+
+    override suspend fun askFirewall(game: GameRoot, feed: CustomGamesFeed) {
+        firewallAsks += game
+        firewallGate?.await()
+        firewall = FirewallDecision.Decided
+    }
 
     /** Whether each rebuild in [menusRebuilds] asked for the in-game UI. */
     val inGameRebuilds = mutableListOf<Boolean>()

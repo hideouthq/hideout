@@ -49,6 +49,7 @@ import gg.hideouthq.feature.analytics.AnalyticsNotice
 import gg.hideouthq.feature.appupdate.UpdateChip
 import gg.hideouthq.feature.appupdate.WhatsNewDialog
 import gg.hideouthq.feature.appupdate.updateChipState
+import gg.hideouthq.feature.customgames.FirewallAskNote
 import gg.hideouthq.feature.customgames.GameInProgress
 import gg.hideouthq.feature.customgames.HostingChip
 import gg.hideouthq.feature.customgames.HostingChipView
@@ -86,6 +87,7 @@ fun AppShell(
     game: GameInProgress? = null,
     onOpenGame: () -> Unit = {},
     onShowInstalled: (String) -> Unit = {},
+    firewallAsking: Boolean = false,
 ) {
     val viewModel = viewModel { ShellViewModel(modLibrary, launcher, profileShares, profileImports, catalog::cachedMod) }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -152,9 +154,10 @@ fun AppShell(
                                 )
                             }
                         }
-                        ShellSnackbarHost(state.snackbar, state.canEditChoices, viewModel::undo, viewModel::dismissSnackbar, Modifier.align(Alignment.BottomCenter).padding(HideoutDimens.Snackbar.Margin))
+                        ShellSnackbarHost(state.snackbar.takeUnless { firewallAsking }, state.canEditChoices, viewModel::undo, viewModel::dismissSnackbar, Modifier.align(Alignment.BottomCenter).padding(HideoutDimens.Snackbar.Margin))
+                        FirewallAskNote(firewallAsking, Modifier.align(Alignment.BottomCenter).padding(HideoutDimens.Snackbar.Margin))
                         AppUpdateToast(
-                            appUpdate.justUpdatedTo.takeIf { state.snackbar == null },
+                            appUpdate.justUpdatedTo.takeIf { state.snackbar == null && !firewallAsking },
                             onWhatsNew = {
                                 appUpdates.acknowledgeUpdated()
                                 onWhatsNewOpen(true)

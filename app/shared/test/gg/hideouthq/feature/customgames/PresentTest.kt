@@ -93,15 +93,15 @@ class PresentTest {
 
     private fun guestRecord(started: Boolean = false) = GameRecord(Role.Guest(friendsCode, friendsOffer, bebop.listing), me, at.takeIf { started })
 
-    private fun present(session: Session, record: GameRecord?, transfer: Transfer? = null, firewall: Boolean = false, modes: ModeList = this.modes, restarts: RestartReason? = null) =
-        present(PresentInputs(LiveSession(session, record), restarts, transfer, modes, firewall, site))
+    private fun present(session: Session, record: GameRecord?, transfer: Transfer? = null, modes: ModeList = this.modes, restarts: RestartReason? = null) =
+        present(PresentInputs(LiveSession(session, record), restarts, transfer, modes, site))
 
     private fun hosting(vararg players: Player, own: OwnGame = OwnGame.In) =
         Session.Hosting(code, "street", players.withIndex().associate { it.index to it.value }, own)
 
     private fun starting(code: InviteCode? = null, map: String? = null) = Session.HostStarting(code, map, token)
 
-    private fun game(session: Session, record: GameRecord?, firewall: Boolean = false) = assertNotNull(present(session, record, firewall = firewall).game)
+    private fun game(session: Session, record: GameRecord?) = assertNotNull(present(session, record).game)
 
     private fun steps(body: Body) = assertIs<Body.Starting>(body).steps.map { it.name to it.status }
 
@@ -125,11 +125,10 @@ class PresentTest {
     }
 
     @Test
-    fun startingShowsTheCodeOnceItExistsAndTheFirewallHintWhereWindowsMayAsk() {
-        val waiting = game(starting(), hostRecord(), firewall = true)
+    fun startingShowsTheCodeOnceItExists() {
+        val waiting = game(starting(), hostRecord())
         assertEquals(listOf(StepStatus.Done, StepStatus.Running(), StepStatus.Waiting, StepStatus.Waiting), steps(waiting.body).map { it.second })
         assertEquals(StepNote.Installed("0.1.0"), assertIs<Body.Starting>(waiting.body).steps.first().note)
-        assertTrue(assertIs<Body.Starting>(waiting.body).firewallHint)
         assertNull(waiting.invite?.code)
         val coded = game(starting(code, "street"), hostRecord())
         assertEquals(StepStatus.Done, steps(coded.body)[2].second)

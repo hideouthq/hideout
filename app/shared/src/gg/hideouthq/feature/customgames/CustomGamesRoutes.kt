@@ -22,7 +22,7 @@ fun rememberPresent(games: CustomGames, site: SiteOrigin?): Present {
     val restarts by games.restartsDeadlock.collectAsStateWithLifecycle()
     val transfer by games.transfer.collectAsStateWithLifecycle()
     val modes by games.modes.collectAsStateWithLifecycle()
-    return remember(live, restarts, transfer, modes, site) { present(PresentInputs(live, restarts, transfer, modes, games.firewallMayAsk, site)) }
+    return remember(live, restarts, transfer, modes, site) { present(PresentInputs(live, restarts, transfer, modes, site)) }
 }
 
 fun sessionRoute(before: LiveSession, after: LiveSession): Route? {

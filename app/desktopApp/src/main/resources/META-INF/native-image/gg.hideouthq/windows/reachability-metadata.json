@@ -1,5 +1,5 @@
 {
-  "comment": "Written by hand: the Windows native libraries the app's JARs carry. Their loaders skip the resource when an earlier run already unpacked it, so a trace sees them only on a clean machine. Only the Windows image reads this folder. DesktopHandoff's ShellExecute also needs the type JNA builds for its result, which the Windows trace predates. The rest is what the JDK's Windows clipboard natives look up by name: the methods they call back, the class a pasted file list is returned in, and the exceptions they throw. Copying is what first reaches them, and a pasted image alone reaches concatData, so these stay here where a retrace cannot lose them. java.net.URL is a class only Windows' flavor map names. awt_Component.cpp builds each MouseWheelEvent through JNI, and the Windows trace never turned the wheel.",
+  "comment": "Written by hand: the Windows native libraries the app's JARs carry. Their loaders skip the resource when an earlier run already unpacked it, so a trace sees them only on a clean machine. Only the Windows image reads this folder. DesktopHandoff's ShellExecute also needs the type JNA builds for its result, which the Windows trace predates. WindowsFirewall's User32 calls came after it too. The rest is what the JDK's Windows clipboard natives look up by name: the methods they call back, the class a pasted file list is returned in, and the exceptions they throw. Copying is what first reaches them, and a pasted image alone reaches concatData, so these stay here where a retrace cannot lose them. java.net.URL is a class only Windows' flavor map names. awt_Component.cpp builds each MouseWheelEvent through JNI, and the Windows trace never turned the wheel.",
   "resources": [
     {
       "glob": "windows/x64/org/lwjgl/**"
@@ -18,6 +18,13 @@
     }
   ],
   "reflection": [
+    {
+      "type": {
+        "proxy": [
+          "com.sun.jna.platform.win32.User32"
+        ]
+      }
+    },
     {
       "type": "java.awt.event.MouseWheelEvent",
       "jniAccessible": true,

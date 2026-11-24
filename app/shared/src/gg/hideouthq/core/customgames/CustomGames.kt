@@ -122,7 +122,6 @@ class CustomGames(
 ) : AutoCloseable {
     private class UsageRun(val attempt: UsageAttempt, var stage: UsageStage = UsageStage.Prepare, var play: UsagePlay? = null)
     private var usage: UsageRun? = null
-    val firewallMayAsk: Boolean get() = platform.firewallMayAsk
 
     private val publishedLive = MutableStateFlow(LiveSession())
     val live: StateFlow<LiveSession> = publishedLive.asStateFlow()
@@ -240,7 +239,12 @@ class CustomGames(
             inGame.collect { consent ->
                 val wanted = consent == InGameConsent.Yes
                 val answered = inGameAnswer.getAndUpdate { wanted } != null
-                if (wanted) readyMenus() else if (answered) upkeepGame()
+                if (wanted) {
+                    readyMenus()
+                    askFirewallWhileClosed()
+                } else if (answered) {
+                    upkeepGame()
+                }
             }
         }
     }
@@ -252,11 +256,47 @@ class CustomGames(
     private suspend fun readyMenus() {
         val game = files.game()
         if (game == null || logged("read the menus") { platform.menus(game, null, rebuild = false, inGame = false) } == null) {
-            val listed = publishedModes.value.feed ?: feed?.lastGood() ?: (feed?.fetch() as? CustomGamesFetch.Fresh)?.feed ?: return
-            changeModes { it.withNewest(listed) }
+            val listed = listedFeed() ?: return
             logged("fetch the menus' renderer") { platform.fetchRenderer(listed) }?.let { log("Custom games: could not fetch the menus' renderer: $it") }
         }
         upkeepGame()
+    }
+
+    private suspend fun listedFeed(): CustomGamesFeed? {
+        val listed = publishedModes.value.feed ?: feed?.lastGood() ?: (feed?.fetch() as? CustomGamesFetch.Fresh)?.feed ?: return null
+        changeModes { it.withNewest(listed) }
+        return listed
+    }
+
+    private val publishedFirewallAsking = MutableStateFlow(false)
+
+    /** Whether Hideout is having the firewall ask about the game server now, while the player looks at Hideout. */
+    val firewallAsking: StateFlow<Boolean> = publishedFirewallAsking.asStateFlow()
+
+    private val firewallTurn = Mutex()
+
+    @Volatile
+    private var firewallJob: Job? = null
+
+    /**
+     * Has the firewall ask about the game server before Deadlock can be in front of its question: once the player wants
+     * the in-game UI, which hosts from inside the game, whenever Deadlock is closed and no session runs. Deadlock starting ends it.
+     */
+    private fun askFirewallWhileClosed() {
+        if (firewallJob?.isActive == true) return
+        firewallJob = scope.launch { if (inGameWanted() && noSession()) askFirewall() }
+    }
+
+    private suspend fun askFirewall() = firewallTurn.withLock {
+        if (client != GameActivity.Closed || logged("read the firewall's rules") { platform.firewallDecision() } != FirewallDecision.Unknown) return@withLock
+        val game = files.game() ?: return@withLock
+        val listed = listedFeed() ?: return@withLock
+        publishedFirewallAsking.value = true
+        try {
+            logged("have the firewall ask about the game server") { platform.askFirewall(game, listed) }
+        } finally {
+            publishedFirewallAsking.value = false
+        }
     }
 
     private val publishedInGameUnsaved = MutableStateFlow(false)
@@ -520,7 +560,12 @@ class CustomGames(
         if (event is LinkEvent.Stopped) link = null
         if (event is ClientActivity) {
             client = event.activity
-            if (event.activity == GameActivity.Closed) menusFailedThisRun = false
+            if (event.activity == GameActivity.Closed) {
+                menusFailedThisRun = false
+                askFirewallWhileClosed()
+            } else {
+                firewallJob?.cancel()
+            }
         }
         if (event == LinkEvent.Entered || event == ClientActivity(GameActivity.Closed)) booting?.cancel()
         val before = publishedLive.value
@@ -707,7 +752,12 @@ class CustomGames(
     private fun prepare(mode: Mode, choices: Choices) {
         val newest = publishedModes.value.feed
         preparing { progress ->
-            platform.prepareHost(mode, choices, newest, progress).also { if (it is RuntimePrepared) me = it.host.me }
+            platform.prepareHost(mode, choices, newest, progress).also {
+                if (it is RuntimePrepared) {
+                    me = it.host.me
+                    askFirewall()
+                }
+            }
         }
     }
 

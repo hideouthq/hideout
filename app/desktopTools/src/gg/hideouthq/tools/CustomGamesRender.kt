@@ -5,6 +5,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import gg.hideouthq.App
 import gg.hideouthq.AppContainer
+import gg.hideouthq.core.customgames.FirewallDecision
 import gg.hideouthq.core.customgames.parseListing
 import gg.hideouthq.core.data.Preferences
 import gg.hideouthq.core.data.ProcessScan
@@ -20,6 +21,7 @@ import gg.hideouthq.data.CoilRemoteImages
 import gg.hideouthq.rememberHideoutAppState
 import io.ktor.client.engine.okhttp.OkHttp
 import java.io.File
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
@@ -80,6 +82,8 @@ private fun customGamesTargets(images: RemoteImages, folder: File): List<CustomG
             advance(600)
             check(!hasText(OptInTitle)) { "Not now answers it too" }
         },
+        CustomGamesTarget("firewall_ask", 1440, 900, { CustomGamesApp(images, folder, Route.CustomGames, inGame = null, platform = asking()) }) { firewallAskThrough("firewall_ask") },
+        CustomGamesTarget("firewall_ask_compact", 1000, 700, { CustomGamesApp(images, folder, Route.CustomGames, inGame = null, platform = asking()) }) { firewallAskThrough("firewall_ask_compact") },
         CustomGamesTarget("servers", 1440, 900, { app(Route.CustomGames) }) {
             clickLabel("Servers")
             advance(600)
@@ -132,6 +136,20 @@ private fun Script.joinThrough(name: String) {
 
 private const val OptInTitle = "Play Hideout games inside Deadlock"
 
+/** A computer whose firewall hasn't seen the game server yet, and whose question stays up. */
+private fun asking() = FakeCustomGamesPlatform().apply {
+    firewall = FirewallDecision.Unknown
+    firewallGate = CompletableDeferred()
+}
+
+private fun Script.firewallAskThrough(name: String) {
+    optInShown()
+    clickLabel("Turn on")
+    waitForLocalImages()
+    check(hasText("Windows may ask about Hideout’s game server. Either answer is fine.")) { "Hideout's line stays while Windows asks" }
+    capture(name)
+}
+
 private fun Script.optInShown() {
     waitForLocalImages()
     check(hasText(OptInTitle)) { "the page asks before Hideout's UI goes into Deadlock" }
@@ -157,7 +175,7 @@ private fun Script.waitForLocalImages() {
 }
 
 @Composable
-private fun CustomGamesApp(images: RemoteImages, folder: File, start: Route, running: Boolean = false, link: String? = null, inGame: Boolean? = true) {
+private fun CustomGamesApp(images: RemoteImages, folder: File, start: Route, running: Boolean = false, link: String? = null, inGame: Boolean? = true, platform: FakeCustomGamesPlatform = FakeCustomGamesPlatform()) {
     CompositionLocalProvider(LocalWindowChrome provides RenderedWindowChrome) {
         val container = remember {
             val json = Json.parseToJsonElement(File(folder, "hideout.json").readText()).jsonObject
@@ -170,7 +188,7 @@ private fun CustomGamesApp(images: RemoteImages, folder: File, start: Route, run
                 }
             }
             val processes = FakeProcesses(if (running) ProcessScan.Seen(game = true) else ProcessScan.Seen())
-            AppContainer.fake(images = images, processes = processes, preferences = preferences, customGamesFeed = feed).also { app ->
+            AppContainer.fake(images = images, processes = processes, preferences = preferences, customGamesPlatform = platform, customGamesFeed = feed).also { app ->
                 link?.let { app.customGames?.openLink(it) }
             }
         }

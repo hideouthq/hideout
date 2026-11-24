@@ -80,10 +80,7 @@ private fun ColumnScope.StatusContent(body: Body, view: GameView, games: CustomG
     val openSteam = { steam.openUri(SteamUri) }
     headlineOf(body, view)?.let { Heading(it.icon, it.tone, it.title.text(), it.body.text(), it.busy) }
     when (body) {
-        is Body.Starting -> {
-            StepList(body.steps, view.face.namePhrase, hostName)
-            if (body.firewallHint) HintBox(HideoutIcons.Info, stringResource(Res.string.cg_firewall_hint))
-        }
+        is Body.Starting -> StepList(body.steps, view.face.namePhrase, hostName)
         is Body.RestartNeeded -> Buttons {
             Primary(stringResource(Res.string.cg_restart_button), games::restartGame, HideoutIcons.Refresh)
             Tonal(stringResource(Res.string.cg_cancel), games::stop)

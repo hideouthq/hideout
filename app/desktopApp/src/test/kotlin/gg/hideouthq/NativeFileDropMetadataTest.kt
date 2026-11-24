@@ -2,6 +2,7 @@ package gg.hideouthq
 
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -19,7 +20,7 @@ class NativeFileDropMetadataTest {
     ).readText().let { Json.parseToJsonElement(it).jsonObject }
 
     private fun jniMethods(type: String): Set<String> = windows.getValue("reflection").jsonArray.map { it.jsonObject }
-        .filter { it["type"]?.jsonPrimitive?.content == type && it["jniAccessible"]?.jsonPrimitive?.booleanOrNull == true }
+        .filter { (it["type"] as? JsonPrimitive)?.content == type && it["jniAccessible"]?.jsonPrimitive?.booleanOrNull == true }
         .flatMap { it["methods"]?.jsonArray.orEmpty() }
         .map { method ->
             val parameters = method.jsonObject.getValue("parameterTypes").jsonArray.joinToString(",") { it.jsonPrimitive.content }

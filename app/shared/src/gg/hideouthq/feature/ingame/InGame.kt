@@ -87,7 +87,7 @@ class InGame(private val games: CustomGames, val social: Social, site: SiteOrigi
     @OptIn(ExperimentalCoroutinesApi::class)
     val topics: StateFlow<Map<Topic, String>> =
         combine(games.live, games.modes, games.transfer, games.restartsDeadlock, social.state) { live, modes, transfer, restarts, state ->
-            PresentInputs(live, restarts, transfer, modes, games.firewallMayAsk, site) to SocialView(social.status(state), social.available, state)
+            PresentInputs(live, restarts, transfer, modes, site) to SocialView(social.status(state), social.available, state)
         }.combine(serverJoin.combine(invitedBy, ::Pair)) { (inputs, view), joins -> Triple(inputs, view, joins) }
             .mapLatest { (inputs, view, joins) -> inGameFrames(inputs, epoch, view, joins.first, joins.second) }.stateIn(scope, SharingStarted.Eagerly, emptyMap())
 
