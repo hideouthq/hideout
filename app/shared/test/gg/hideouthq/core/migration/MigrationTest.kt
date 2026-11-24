@@ -8,6 +8,7 @@ import gg.hideouthq.core.crosshair.CrosshairColor
 import gg.hideouthq.core.crosshair.CrosshairOrigin
 import gg.hideouthq.core.data.BundleOpen
 import gg.hideouthq.core.data.FileListing
+import gg.hideouthq.core.data.GrimoireFiles
 import gg.hideouthq.core.data.ManagerData
 import gg.hideouthq.core.data.Preferences
 import gg.hideouthq.core.data.ProcessScan
@@ -361,6 +362,38 @@ class MigrationTest {
         migration.import(dmm, ImportChoice.Everything)
         settle()
         assertEquals(ImportPhase.Finished(summary.copy(profiles = listOf("Ranked 2"))), migration.state.value.run?.phase)
+    }
+
+    @Test
+    fun aGrimoireProfileThatNamesHideoutsFilesByNameTurnsThoseModsOn() = runTest {
+        val fov = FakeVpk.directory(seed = 160)
+        val speedometer = FakeVpk.directory(seed = 161)
+        val clutter = FakeVpk.directory(seed = 162)
+        val clutterHash = Sha256.image(clutter).sha256
+        val metadata = """{"pak01_dir.vpk":{"modName":"Unknown Pak01"},"pak02_dir.vpk":{"modName":"Unknown Pak02"},
+            "pak03_dir.vpk":{"gameBananaId":722853,"gameBananaFileId":1902556,"sourceSection":"Mod","modName":"Clutter Be Gone","sha256":"$clutterHash"}}"""
+        val profiles = """[{"id":"profile_1795530000000_casual","name":"casual","mods":[
+            {"fileName":"pak01_dir.vpk","enabled":true,"priority":1},
+            {"fileName":"pak02_dir.vpk","enabled":true,"priority":2},
+            {"fileName":"pak03_dir.vpk","enabled":true,"priority":3,"gameBananaId":722853,"gameBananaFileId":1902556,"sha256":"$clutterHash"}],
+            "autoexecCommands":[],"createdAt":"2026-11-24T14:00:00.000Z","updatedAt":"2026-11-24T14:00:00.000Z"}]"""
+        val managers = object : ManagerData by FakeManagerData(ForeignSeed.None) {
+            override suspend fun grimoire(folder: String?) = GrimoireFiles(metadata.encodeToByteArray(), profiles.encodeToByteArray())
+        }
+        val world = World(LibraryManifest(records = listOf(heldMod("fov", root, fov, number = 1), heldMod("speedometer", root, speedometer, number = 2))), seed = ForeignSeed.None, managers = managers)
+        world.files.putBytes(root, "$citadel/gameinfo.gi", grimoireInfo.decodeToString().replace("Game\tcitadel/grimoire\n", "Game\tcitadel/grimoire\n\t\t\tGame\tcitadel/addons\n").encodeToByteArray())
+        world.files.putBytes(root, "$citadel/addons/pak01_dir.vpk", fov)
+        world.files.putBytes(root, "$citadel/addons/pak02_dir.vpk", speedometer)
+        world.files.putBytes(root, "$citadel/addons/pak03_dir.vpk", clutter)
+        val grimoire = ImportSource.Installed(Manager.Grimoire)
+        val migration = with(world) { start() }
+
+        migration.import(grimoire, ImportChoice.Everything)
+        settle()
+        assertIs<ImportPhase.Finished>(migration.state.value.run?.phase)
+        val manifest = world.store.manifest!!
+        val clutterId = manifest.records.single { it.files.single().image == Sha256.image(clutter) }.installId
+        assertEquals(setOf("fov", "speedometer", clutterId), manifest.profiles.profiles.single { it.name == "casual" }.enabled, "the files Grimoire names are Hideout's mods, which the profile turns on")
     }
 
     @Test

@@ -62,10 +62,19 @@ object GrimoireReader {
         val entries = profile["mods"].items.mapNotNull { it.obj }
         val legacy = entries.map { it["priority"].number }.distinct().size < entries.size
         val ordered = if (legacy) entries else entries.sortedWith(compareBy(nullsLast()) { it["priority"].number })
-        val members = ordered.filterNot { it["enabled"].isFalse }.mapNotNull { entry ->
-            entry["sha256"].sha256?.let { ProfileMember.Files(SetMatcher.Hash(it)) }
-                ?: entry["gameBananaId"].whole?.takeIf { it > 0 }?.let(ProfileMember::Submission)
+        val members = ordered.filterNot { it["enabled"].isFalse }.flatMap { entry ->
+            entry["sha256"].sha256?.let { listOf(ProfileMember.Files(SetMatcher.Hash(it))) }
+                ?: entry["gameBananaId"].whole?.takeIf { it > 0 }?.let { listOf(ProfileMember.Submission(it)) }
+                ?: byName(entry["fileName"].words)
         }
         return ForeignProfile(ProfileKey(id), profile["name"].words ?: id, folder = null, members = members.distinct())
+    }
+
+    /** An entry with no hash or ids is the file of that name, as Grimoire itself resolves it, enabled or parked. */
+    private fun byName(fileName: String?): List<ProfileMember> {
+        if (fileName == null || '/' in fileName || '\\' in fileName) return emptyList()
+        return listOf(CitadelPath.Addons, CitadelPath.Addons.resolve(".disabled")).mapNotNull { folder ->
+            CitadelPath.parse("${folder.value}/$fileName")?.let { ProfileMember.Files(SetMatcher.At(it)) }
+        }
     }
 }

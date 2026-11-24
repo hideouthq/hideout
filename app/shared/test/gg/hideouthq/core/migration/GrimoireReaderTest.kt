@@ -62,7 +62,7 @@ class GrimoireReaderTest {
     }
 
     @Test
-    fun profilesKeepTheirMembersByHashThenByIdsAndNoneIsLive() {
+    fun profilesKeepTheirMembersByHashThenByIdsThenByNameAndNoneIsLive() {
         val profiles = """[
           {"id":"profile_1726000000000_ab12cd","name":"Ranked","mods":[
             {"fileName":"pak03_dir.vpk","enabled":true,"priority":1,"gameBananaId":650634,"gameBananaFileId":1720039,"sha256":"${hash('a')}"},
@@ -79,7 +79,10 @@ class GrimoireReaderTest {
             listOf(
                 ForeignProfile(
                     ProfileKey("profile_1726000000000_ab12cd"), "Ranked", folder = null,
-                    members = listOf(ProfileMember.Files(SetMatcher.Hash(hash('a'))), ProfileMember.Submission(4321), ProfileMember.Submission(12)),
+                    members = listOf(
+                        ProfileMember.Files(SetMatcher.Hash(hash('a'))), ProfileMember.Submission(4321), ProfileMember.Submission(12),
+                        ProfileMember.Files(SetMatcher.At(CitadelPath("addons/pak08_dir.vpk"))), ProfileMember.Files(SetMatcher.At(CitadelPath("addons/.disabled/pak08_dir.vpk"))),
+                    ),
                 ),
             ),
             library.profiles,
