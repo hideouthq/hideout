@@ -19,7 +19,7 @@
     <string name="profile_library_empty_message">Mods you install land here. Turn them on and off for each profile, and Hideout takes care of the game files.</string>
     <string name="profile_library_discover">Discover mods</string>
     <string name="profile_library_add_file">Add from file</string>
-    <string name="profile_library_import">Import from another manager…</string>
+    <string name="profile_library_import">Import from a manager…</string>
     <string name="profile_library_drop_hint">or drop a .zip, .7z, .rar or .vpk anywhere in the window</string>
     <string name="profile_library_details_placeholder">Pick a mod to see its details.</string>
     <string name="profile_library_no_results">No matching mods</string>

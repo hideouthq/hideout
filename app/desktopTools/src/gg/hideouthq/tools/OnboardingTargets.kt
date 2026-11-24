@@ -35,10 +35,13 @@ internal val onboardingTargets: List<Target> = listOf(
     Target("onboarding_import_stopped", 1440, 900, interact = { toImport(); steps("Import"); advanceUntil("the stop") { hasText("The import stopped.") } }) {
         Setup { dmm(migrationRecords = FullDisk) }
     },
-    Target("library_import", 1440, 900, interact = { steps("More", "Import from another manager…"); advanceUntil("what comes along") { hasText("With their on/off state and load order") } }) {
+    Target("library_more_menu", 1440, 900, interact = { steps("More") }) {
         AppWith({ AppContainer.fake(FakeConfig(foreign = ForeignSeed.Dmm)) }, Route.Library)
     },
-    Target("library_import_sources", 1440, 900, interact = { steps("More", "Import from another manager…"); advanceUntil("the sources") { hasText("An export file") } }) {
+    Target("library_import", 1440, 900, interact = { steps("More", "Import from a manager…"); advanceUntil("what comes along") { hasText("With their on/off state and load order") } }) {
+        AppWith({ AppContainer.fake(FakeConfig(foreign = ForeignSeed.Dmm)) }, Route.Library)
+    },
+    Target("library_import_sources", 1440, 900, interact = { steps("More", "Import from a manager…"); advanceUntil("the sources") { hasText("An export file") } }) {
         AppWith({ AppContainer.fake(FakeConfig()) }, Route.Library)
     },
     Target("onboarding_import_compact", 1000, 680, scale = 1f, interact = { toImport() }) { Setup { dmm() } },

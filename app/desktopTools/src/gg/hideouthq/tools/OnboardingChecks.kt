@@ -114,7 +114,7 @@ private fun checkLibraryImport(outDir: File) {
     val state = HideoutAppState(container, Route.Library)
     runCheck(outDir, "library_import", state) {
         advance(600)
-        steps("More", "Import from another manager…")
+        steps("More", "Import from a manager…")
         advanceUntil("what comes along") { hasText("With their on/off state and load order") }
         check(!shows("Start fresh") && !shows("Next") && !hasText("Where are your mods?")) { "the dialog is one page, open on what the manager brings" }
         capture("import")
@@ -140,7 +140,7 @@ private fun checkImportWaits(outDir: File) {
     val state = HideoutAppState(container, Route.Library)
     runCheck(outDir, "library_import_waits", state) {
         advance(600)
-        steps("Import from another manager…")
+        steps("Import from a manager…")
         advanceUntil("what comes along") { hasText("With their on/off state and load order") }
         steps("Import")
         advanceUntil("the import waiting") { container.migration.state.value.run?.phase is ImportPhase.Waiting }
