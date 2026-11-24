@@ -343,6 +343,7 @@ class AppContainer(
             heroSettings: HeroSettingsFiles = InMemoryHeroSettings(mapOf(InMemoryHeroSettings.Cloud to HeroSettings.New.render())),
             previewFiles: PreviewFiles? = null,
             preferences: Preferences = Preferences(MemoryStorage()),
+            customGamesPlatform: CustomGamesPlatform = FakeCustomGamesPlatform(),
             customGamesSite: SiteOrigin? = null,
             profileShares: ProfileShares = FakeProfileShares(customGamesSite),
             customGamesFeed: CustomGamesFeed = FakeCustomGamesFeed.Placeholder,
@@ -373,7 +374,7 @@ class AppContainer(
                 library.state.modsBusy(), gameScope,
             ).apply { start() }
             library.refuseSessionsWhen { appUpdates.restartBegun }
-            val customGames = CustomGames(FakeCustomGamesPlatform(), LibrarySessionFiles(library, launcher), FakeCustomGamesFeed(answer = CustomGamesFetch.Fresh(customGamesFeed)), gameScope, hostFolders = preferences.hostFolders(), analytics = analytics, inGame = preferences.inGameAnswer(), saveInGame = preferences::answerInGameUi).apply { start() }
+            val customGames = CustomGames(customGamesPlatform, LibrarySessionFiles(library, launcher), FakeCustomGamesFeed(answer = CustomGamesFetch.Fresh(customGamesFeed)), gameScope, hostFolders = preferences.hostFolders(), analytics = analytics, inGame = preferences.inGameAnswer(), saveInGame = preferences::answerInGameUi).apply { start() }
             return AppContainer(
                 analytics = analytics,
                 catalog = catalog,

@@ -32,15 +32,16 @@ fun HideoutSnackbar(
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null,
     actionEnabled: Boolean = true,
-    closeLabel: String,
+    closeLabel: String? = null,
     onClose: (() -> Unit)? = null,
 ) {
     val shape = RoundedCornerShape(14.dp)
+    val trailing = actionLabel != null && onAction != null || closeLabel != null && onClose != null
     Row(
         modifier.height(48.dp)
             .dropShadow(shape, Shadow(radius = HideoutDimens.Snackbar.ShadowBlur, color = HideoutTheme.colors.dialogShadow, offset = DpOffset(0.dp, HideoutDimens.Snackbar.ShadowOffsetY)))
             .background(Color(0xFFE6E1E1), shape)
-            .padding(start = 18.dp, end = 6.dp)
+            .padding(start = 18.dp, end = if (trailing) 6.dp else 18.dp)
             .semantics { liveRegion = LiveRegionMode.Polite },
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -55,6 +56,6 @@ fun HideoutSnackbar(
             contentColor = Color(0xFF4E4351),
             onClick = onAction,
         ) { content -> Text(actionLabel, style = HideoutTheme.typography.labelButton, color = content, maxLines = 1) }
-        if (onClose != null) HideoutIconButton(HideoutIcons.Close, closeLabel, onClose, iconSize = 16.dp, tint = Color(0xFF4A474A), hoverColor = Color.Black.copy(alpha = 0.06f))
+        if (closeLabel != null && onClose != null) HideoutIconButton(HideoutIcons.Close, closeLabel, onClose, iconSize = 16.dp, tint = Color(0xFF4A474A), hoverColor = Color.Black.copy(alpha = 0.06f))
     }
 }

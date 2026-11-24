@@ -126,6 +126,7 @@ fun AppContent(state: HideoutAppState) {
                             state.libraryShow = installId
                             state.navigator.openSection(Section.Library)
                         },
+                        firewallAsking = customGames?.firewallAsking?.collectAsState()?.value == true,
                     )
                     FileImportHost(state.fileImport, state.container.modLibrary)
                     ProfileImportHost(state.container, state.modal)

@@ -40,6 +40,7 @@ import gg.hideouthq.core.customgames.StageResult
 import gg.hideouthq.core.customgames.PreflightProblem
 import gg.hideouthq.core.customgames.Refusal
 import gg.hideouthq.core.customgames.FetchProblem
+import gg.hideouthq.core.customgames.FirewallDecision
 import gg.hideouthq.core.customgames.SessionEvent.GuestPrepared
 import gg.hideouthq.core.customgames.SessionEvent.RuntimeFailed
 import gg.hideouthq.core.customgames.SessionEvent.RuntimePrepared
@@ -142,7 +143,7 @@ class DesktopCustomGamesTest {
         root.toFile().deleteRecursively()
     }
 
-    private fun games(script: String = "cat > /dev/null", installs: List<SteamInstall> = emptyList(), windows: Boolean = false, player: LocalPlayer? = LocalPlayer("1001", DisplayName.parse("nori")), stageLimit: Duration = 60.seconds, stopLimit: Duration = 1.seconds): DesktopCustomGames {
+    private fun games(script: String = "cat > /dev/null", installs: List<SteamInstall> = emptyList(), windows: Boolean = false, player: LocalPlayer? = LocalPlayer("1001", DisplayName.parse("nori")), stageLimit: Duration = 60.seconds, stopLimit: Duration = 1.seconds, firewall: WindowsFirewall = WindowsFirewall({ emptyList() }, { false })): DesktopCustomGames {
         assumeTrue(System.getProperty("os.name") == "Linux")
         val helper = root.resolve("hideout-link")
         Files.writeString(
@@ -155,7 +156,7 @@ class DesktopCustomGamesTest {
             """.trimIndent(),
         )
         helper.toFile().setExecutable(true)
-        return DesktopCustomGames(helper, runtimeFolder, RuntimeStore(runtimeFolder, { client }, logs::add), journal, ModeFolders(MemoryStorage()), logs::add, windows, home.pathString, { installs }, NoRegistry, "https://menus.example/bridge/", { player }, stageLimit, stopLimit)
+        return DesktopCustomGames(helper, runtimeFolder, RuntimeStore(runtimeFolder, { client }, logs::add), journal, ModeFolders(MemoryStorage()), logs::add, windows, home.pathString, { installs }, NoRegistry, "https://menus.example/bridge/", { player }, stageLimit, stopLimit, firewall)
     }
 
     private fun events(process: LinkProcess) = runBlocking { withTimeout(20.seconds) { process.events.toList() } }
@@ -376,7 +377,7 @@ class DesktopCustomGamesTest {
         assertEquals(setOf(mode.id), runBlocking { games().installed() }.keys, "a hosted feed mode is installed")
         assertTrue(prepared.port in 1..65535)
         assertTrue(Files.isExecutable(Path.of(prepared.host.modlock)))
-        assertEquals(root.resolve("customgames-server/modlock-host.exe"), Path.of(prepared.host.server), "the server runs from the one path the installer's firewall rule names")
+        assertEquals(root.resolve("customgames-server/modlock-host.exe"), Path.of(prepared.host.server), "the server runs from one path, which Windows keeps its answer for")
         assertEquals("h", Files.readString(Path.of(prepared.host.server)))
         assertEquals(1, prepared.host.mods.size, "one package as both platform and mode is one mod")
         assertEquals(artifact("mod").sha256, prepared.host.renderer)
@@ -945,9 +946,43 @@ class DesktopCustomGamesTest {
     }
 
     @Test
-    fun onlyWindowsWarnsAboutTheFirewall() {
-        assertTrue(games(windows = true).firewallMayAsk)
-        assertFalse(games(windows = false).firewallMayAsk)
+    fun onlyWindowsHasAFirewallThatAsks() = serving("host" to zipOf("modlock-host.exe" to "h")) { artifact ->
+        val feed = CustomGamesFeed(1, ModeRuntime(emptyMap(), artifact("host"), artifact("host"), artifact("host")), emptyList())
+        val linux = games()
+        assertEquals(FirewallDecision.Decided, runBlocking { linux.firewallDecision() })
+        runBlocking { linux.askFirewall(game, feed) }
+        assertFalse(root.resolve("customgames-server").exists(), "nothing to fetch or run")
+        assertEquals(FirewallDecision.Unknown, runBlocking { games(windows = true).firewallDecision() })
+    }
+
+    @Test
+    fun theAnswerHoldsForEveryServerPackageSinceTheyRunFromOnePath() {
+        val server = root.resolve("customgames-server/modlock-host.exe")
+        val firewall = WindowsFirewall({ listOf("v2.10|Action=Allow|Active=TRUE|Dir=In|Protocol=17|Profile=Private|App=${server.pathString.uppercase()}|Name=modlock-host|") }, { false })
+        assertEquals(FirewallDecision.Decided, runBlocking { games(windows = true, firewall = firewall).firewallDecision() })
+    }
+
+    @Test
+    fun theFirewallAsksWhileAServerOpensItsPortAndTheServerEndsOnceItHas() {
+        val pid = root.resolve("server.pid")
+        val ran = root.resolve("server.args")
+        val script = "#!/bin/sh\necho $$ > '$pid'\nfor a in \"$@\"; do printf '%s\\n' \"${'$'}a\" >> '$ran'; done\nexec sleep 30\n"
+        serving("host" to zipOf("modlock-host.exe" to script)) { artifact ->
+            val feed = CustomGamesFeed(1, ModeRuntime(emptyMap(), artifact("host"), artifact("host"), artifact("host")), emptyList())
+            val server = root.resolve("customgames-server/modlock-host.exe")
+            val rule = "v2.10|Action=Block|Active=TRUE|Dir=In|Protocol=17|Profile=Private|App=$server|Name=modlock-host|"
+            var questions = 2
+            val firewall = WindowsFirewall({ if (ran.exists()) listOf(rule) else emptyList() }, { questions-- > 0 })
+            Files.createDirectories(Path.of(game.path, "game"))
+            runBlocking { withTimeout(20.seconds) { games(windows = true, firewall = firewall).askFirewall(game, feed) } }
+            val args = Files.readAllLines(ran)
+            val dump = root.resolve("customgames-firewall-ask")
+            assertEquals(listOf("--dump", dump.pathString, "--game-dir", game.path, "--hostport"), args.take(5))
+            assertEquals(listOf("--map", "new_player_basics"), args.drop(6), "a map that loads quickly, since the server only has to open its port")
+            assertFalse(ProcessHandle.of(Files.readString(pid).trim().toLong()).map { it.isAlive }.orElse(false), "the server ends once Windows has its rule")
+            assertFalse(dump.exists())
+            assertEquals(-1, questions, "Hideout's line stays while the question is on screen")
+        }
     }
 
     @Test

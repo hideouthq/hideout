@@ -8,6 +8,7 @@ import gg.hideouthq.core.customgames.Deadline
 import gg.hideouthq.core.customgames.DesktopOs
 import gg.hideouthq.core.customgames.DisplayName
 import gg.hideouthq.core.customgames.FetchProblem
+import gg.hideouthq.core.customgames.FirewallDecision
 import gg.hideouthq.core.customgames.FolderRead
 import gg.hideouthq.core.customgames.GameRevision
 import gg.hideouthq.core.customgames.GameSetup
@@ -62,7 +63,10 @@ import gg.hideouthq.library.sha256
 import gg.hideouthq.library.steamInstalls
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -85,6 +89,8 @@ import kotlin.io.path.isRegularFile
 import kotlin.io.path.pathString
 import kotlin.time.Clock
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
 
 /** [home] goes to Modlock too, so the Steam [hostingProblem] finds in it is the one Modlock finds. */
 class DesktopCustomGames internal constructor(
@@ -102,11 +108,51 @@ class DesktopCustomGames internal constructor(
     private val player: () -> LocalPlayer? = { localPlayerOf(installs()) },
     stageLimit: Duration = StageLimit,
     private val stopLimit: Duration = Deadline.Stopping.after,
+    private val firewall: WindowsFirewall = WindowsFirewall.OfThisComputer,
 ) : CustomGamesPlatform {
     private val gamesFolder = GamesFolder(helper, runtimeFolder, log, stageLimit)
     private val serverHome = ServerHome(runtimeFolder.resolveSibling(ServerFolder), log)
 
-    override val firewallMayAsk: Boolean get() = windows
+    override suspend fun firewallDecision(): FirewallDecision = withContext(Dispatchers.IO) {
+        if (windows) firewall.decision(serverHome.program) else FirewallDecision.Decided
+    }
+
+    /**
+     * Runs the server only to open its port: `--dump` starts it on a small map, writes what it registered and quits, a few
+     * seconds after it binds (measured). Windows puts up its question and its rules as the port opens, and its question
+     * stays on screen after the server is gone.
+     */
+    override suspend fun askFirewall(game: GameRoot, feed: CustomGamesFeed) = withContext(Dispatchers.IO) {
+        if (!windows) return@withContext
+        val host = feed.runtime.host
+        store.provide(listOf(RuntimePiece.Package(host, runnable = true)), feed.runtimeDigests()) {}?.let {
+            log("Custom games: could not fetch the game server for the firewall to ask about: $it")
+            return@withContext
+        }
+        val server = serverHome.take(store.folderOf(host.sha256), host.sha256)
+        val owned = ownedBeforeServer(game)
+        val dump = runtimeFolder.resolveSibling("customgames-firewall-ask")
+        deleteTree(dump)
+        Files.createDirectories(dump)
+        val command = listOf(server.pathString, "--dump", dump.pathString, "--game-dir", game.path, "--hostport", freeUdpPort().toString(), "--map", FirewallAskMap)
+        val process = ProcessBuilder(command).directory(runtimeFolder.toFile()).redirectOutput(ProcessBuilder.Redirect.DISCARD).redirectError(ProcessBuilder.Redirect.DISCARD).start()
+        try {
+            withTimeoutOrNull(FirewallAskLimit) {
+                while (process.isAlive && firewall.decision(server) == FirewallDecision.Unknown) delay(FirewallPoll)
+            }
+        } finally {
+            withContext(NonCancellable) {
+                process.destroyForcibly()
+                process.onExit().completeOnTimeout(process, stopLimit.inWholeMilliseconds, TimeUnit.MILLISECONDS).join()
+                removeLeftovers(game, owned)
+                deleteTree(dump)
+            }
+        }
+        withTimeoutOrNull(FirewallQuestionLimit) {
+            while (firewall.questionShown()) delay(FirewallPoll)
+        }
+        Unit
+    }
 
     override suspend fun localPlayer(): LocalPlayer? = withContext(Dispatchers.IO) { player() }
 
@@ -379,6 +425,17 @@ private fun freeUdpPort(): Int = DatagramChannel.open().use { channel ->
     channel.bind(InetSocketAddress(InetAddress.getLoopbackAddress(), 0))
     (channel.localAddress as InetSocketAddress).port
 }
+
+/** A map the server loads in a few seconds, since it only has to open its port. */
+private const val FirewallAskMap = "new_player_basics"
+
+/** How long a server may take to open its port. */
+private val FirewallAskLimit = 1.minutes
+
+/** How long Hideout's line stays beside Windows' question. */
+private val FirewallQuestionLimit = 2.minutes
+
+private val FirewallPoll = 500.milliseconds
 
 private const val ListingFile = "hideout.json"
 

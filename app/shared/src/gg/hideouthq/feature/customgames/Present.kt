@@ -46,7 +46,6 @@ data class PresentInputs(
     val restartsDeadlock: RestartReason? = null,
     val transfer: Transfer? = null,
     val modes: ModeList = ModeList(),
-    val firewallMayAsk: Boolean = false,
     val site: SiteOrigin? = null,
 )
 
@@ -149,7 +148,7 @@ sealed interface HostedBy {
 }
 
 sealed interface Body {
-    data class Starting(val steps: List<StepView>, val firewallHint: Boolean) : Body
+    data class Starting(val steps: List<StepView>) : Body
 
     data class RestartNeeded(val why: RestartReason) : Body
 
@@ -529,7 +528,7 @@ private fun hostGame(session: Session, record: GameRecord, face: ModeFace, input
     val body = when {
         session is Session.RestartNeeded -> Body.RestartNeeded(session.why)
         session is Session.Restarting -> Body.Restarting(session.closeFailed)
-        starting -> Body.Starting(hostSteps(session, inputs.transfer, face.version), inputs.firewallMayAsk && session is Session.HostStarting)
+        starting -> Body.Starting(hostSteps(session, inputs.transfer, face.version))
         entering -> Body.Entering(joining = own is OwnGame.Joining)
         own is OwnGame.Out -> Body.NotIn(own.problem, canPlay = true)
         full || sections.isNotEmpty() -> Body.Match(sections)

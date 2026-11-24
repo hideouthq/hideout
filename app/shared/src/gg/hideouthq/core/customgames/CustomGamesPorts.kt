@@ -117,11 +117,29 @@ interface CustomGamesPlatform {
 
     val folders: ModeFolders
 
-    /** Whether the system may stop everything to ask about a server that opens a port, as Windows' firewall does. */
-    val firewallMayAsk: Boolean get() = false
+    /** Where the system's firewall stands on the game server. */
+    suspend fun firewallDecision(): FirewallDecision = FirewallDecision.Decided
+
+    /**
+     * Gets the game server [feed] names unless it is here, runs it on [game] just until the firewall has put up its
+     * question, then waits while that question stays on screen. Only called while Deadlock is closed. A cancel ends the server.
+     */
+    suspend fun askFirewall(game: GameRoot, feed: CustomGamesFeed) {}
 
     /** Sees the process [entry] recorded end, killing it if it will not. Does nothing when its identity no longer matches. */
     suspend fun endLeftover(entry: JournalEntry)
+}
+
+/**
+ * Windows Firewall asks once about each program that opens a port, keyed by its path, and over whatever is in front,
+ * which can be Deadlock. Either answer suits the game server, since its players reach it over loopback.
+ */
+enum class FirewallDecision {
+    /** No rule names the server yet, so the next server to open a port brings up the question. */
+    Unknown,
+
+    /** A rule names the server, or nothing here asks. */
+    Decided,
 }
 
 sealed interface StageResult {

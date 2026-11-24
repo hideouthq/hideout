@@ -2362,6 +2362,94 @@ class CustomGamesTest {
     }
 
     @Test
+    fun sayingYesHasTheFirewallAskWhileThePlayerLooksAtHideout() = scenario {
+        platform.firewall = FirewallDecision.Unknown
+        platform.firewallGate = CompletableDeferred()
+        val answer = MutableStateFlow(InGameConsent.Unanswered)
+        val run = Run(this, FakeCustomGamesFeed(), inGame = answer)
+        run.games.start()
+        run.settle()
+        assertEquals(emptyList(), platform.firewallAsks, "unanswered, nothing asks")
+
+        answer.value = InGameConsent.Yes
+        run.settle()
+        assertEquals(listOf(Game), platform.firewallAsks, "the in-game UI hosts from inside the game, so the question comes now")
+        assertTrue(run.games.firewallAsking.value, "with Hideout's line beside it")
+        platform.firewallGate?.complete(Unit)
+        run.settle()
+        assertFalse(run.games.firewallAsking.value)
+
+        files.clientActivity.value = GameActivity.Running
+        run.settle()
+        files.clientActivity.value = GameActivity.Closed
+        run.settle()
+        assertEquals(listOf(Game), platform.firewallAsks, "Windows asks once a program")
+    }
+
+    @Test
+    fun nothingAsksWhereTheFirewallHasDecidedOrThereIsNone() = scenario {
+        started(FakeCustomGamesFeed(), inGame = InGameConsent.Yes).apply {
+            files.clientActivity.value = GameActivity.Running
+            settle()
+            files.clientActivity.value = GameActivity.Closed
+            settle()
+            hostUntilStarting()
+        }
+        assertEquals(emptyList(), platform.firewallAsks)
+    }
+
+    @Test
+    fun aYesWhileDeadlockRunsAsksOnceItClosesAndDeadlockStartingEndsTheAsk() = scenario {
+        platform.firewall = FirewallDecision.Unknown
+        platform.firewallGate = CompletableDeferred()
+        files.clientActivity.value = GameActivity.Running
+        val run = started(FakeCustomGamesFeed(), inGame = InGameConsent.Yes)
+        assertEquals(emptyList(), platform.firewallAsks, "Deadlock would be in front of the question")
+
+        files.clientActivity.value = GameActivity.Closed
+        run.settle()
+        assertEquals(listOf(Game), platform.firewallAsks)
+        assertTrue(run.games.firewallAsking.value)
+
+        files.clientActivity.value = GameActivity.Running
+        run.settle()
+        assertFalse(run.games.firewallAsking.value, "the player started the game, so the ask ends with its server")
+        assertEquals(FirewallDecision.Unknown, platform.firewall)
+
+        files.clientActivity.value = GameActivity.Closed
+        run.settle()
+        assertEquals(listOf(Game, Game), platform.firewallAsks, "and comes again at the next calm moment")
+    }
+
+    @Test
+    fun aHostFromHideoutHasTheFirewallAskBeforeTheServerOrDeadlockStarts() = scenario {
+        platform.firewall = FirewallDecision.Unknown
+        platform.firewallGate = CompletableDeferred()
+        started(FakeCustomGamesFeed()).apply {
+            games.host(Source, Choices.None, null)
+            settle()
+            assertEquals(listOf(Game), platform.firewallAsks)
+            assertIs<Session.HostPreparing>(session)
+            assertTrue(games.firewallAsking.value)
+            assertEquals(emptyList(), platform.hosted)
+            assertFalse("launch" in files.calls)
+
+            platform.firewallGate?.complete(Unit)
+            settle()
+            assertFalse(games.firewallAsking.value)
+            assertIs<Session.HostStarting>(session)
+        }
+    }
+
+    @Test
+    fun aHostWhileDeadlockRunsLeavesTheQuestionToTheServer() = game {
+        platform.firewall = FirewallDecision.Unknown
+        runningSetUp()
+        hostUntilStarting()
+        assertEquals(emptyList(), platform.firewallAsks, "the game is in front, where no question can be answered")
+    }
+
+    @Test
     fun unansweredAHostedGameGetsAPackWithoutTheInGameUi() = game {
         hostUntilHosting()
         assertEquals(listOf(false), platform.inGameRebuilds, "the renderer alone")
