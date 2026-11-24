@@ -10,6 +10,7 @@ import gg.hideouthq.core.customgames.RelayRegion
 import gg.hideouthq.core.customgames.SteamId
 import gg.hideouthq.core.customgames.social.Delivery
 import gg.hideouthq.core.customgames.social.GameStatus
+import gg.hideouthq.core.customgames.social.InvitationId
 import gg.hideouthq.core.customgames.social.ListingId
 import gg.hideouthq.core.customgames.social.ListingToken
 import gg.hideouthq.core.customgames.social.ListingWanted
@@ -30,6 +31,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.OkHttpClient
+import java.io.IOException
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.security.SecureRandom
@@ -55,6 +57,7 @@ private val Code = checkNotNull(InviteCode.parse("P95-MAN-26D"))
 private val Offer = InviteOffer.of(FakeCustomGamesFeed.BebopWars, Choices.None, LocalPlayer("76561198000000002", null))
 private val Me = checkNotNull(SteamId.parse("76561198000000001"))
 private val Friend = checkNotNull(SteamId.parse("76561198000000002"))
+private val Invite = checkNotNull(InvitationId.parse("0123456789abcdef0123456789abcdef"))
 
 private class FakeSite {
     class Seen(val method: String, val path: String, val body: String, val time: String?, val build: String?, val device: String?)
@@ -196,20 +199,32 @@ class SiteSocialTest {
     fun anInviteIsDeliveredOnlyWhenTheSiteSaysSo() = runBlocking {
         val mailbox = SiteMailbox(routes, scope, {})
         site.answer = { 200 to """{"delivered":true}""" }
-        assertEquals(Delivery.Delivered, mailbox.deliver(Friend, Me, JoinTicket(Code, Offer), 2))
+        assertEquals(Delivery.Delivered, mailbox.deliver(Invite, Friend, Me, JoinTicket(Code, Offer), 2))
         val sent = site.seen.last()
         assertEquals("/api/mailbox/${Friend.value}/invites", sent.path)
-        assertEquals("""{"from":"${Me.value}","code":"${Code.value}","offer":"${Offer.encoded}","players":2}""", sent.body)
+        assertEquals("""{"id":"${Invite.value}","from":"${Me.value}","code":"${Code.value}","offer":"${Offer.encoded}","players":2}""", sent.body)
         site.answer = { 200 to """{"delivered":false}""" }
-        assertEquals(Delivery.NotReached, mailbox.deliver(Friend, Me, JoinTicket(Code, Offer), 2))
+        assertEquals(Delivery.NotReached, mailbox.deliver(Invite, Friend, Me, JoinTicket(Code, Offer), 2))
         site.answer = { 429 to """{"error":"rate_limited"}""" }
-        assertEquals(Delivery.NotReached, mailbox.deliver(Friend, Me, JoinTicket(Code, Offer), 2))
+        assertEquals(Delivery.NotReached, mailbox.deliver(Invite, Friend, Me, JoinTicket(Code, Offer), 2))
         site.answer = { 404 to """{"error":"not_found"}""" }
-        assertEquals(Delivery.NotReached, mailbox.deliver(Friend, Me, JoinTicket(Code, Offer), 2), "this PC's device not admitted")
+        assertEquals(Delivery.NotReached, mailbox.deliver(Invite, Friend, Me, JoinTicket(Code, Offer), 2), "this PC's device not admitted")
         site.answer = { 503 to """{"error":"unavailable"}""" }
-        assertEquals(Delivery.NotReached, mailbox.deliver(Friend, Me, JoinTicket(Code, Offer), 2))
+        assertEquals(Delivery.NotReached, mailbox.deliver(Invite, Friend, Me, JoinTicket(Code, Offer), 2))
         site.close()
-        assertEquals(Delivery.NotReached, mailbox.deliver(Friend, Me, JoinTicket(Code, Offer), 2))
+        assertEquals(Delivery.NotReached, mailbox.deliver(Invite, Friend, Me, JoinTicket(Code, Offer), 2))
+    }
+
+    @Test
+    fun aSendRetriedAfterItsConnectionDroppedCarriesTheSameInviteId() = runBlocking {
+        routes.call("GET", "/api/games")
+        site.seen.clear()
+        var answered = 0
+        site.answer = { if (answered++ == 0) throw IOException("dropped after reading") else 200 to """{"delivered":true}""" }
+        assertEquals(Delivery.Delivered, SiteMailbox(routes, scope, {}).deliver(Invite, Friend, Me, JoinTicket(Code, Offer), 2))
+        val ids = site.seen.map { Json.parseToJsonElement(it.body).jsonObject["id"]?.jsonPrimitive?.content }
+        assertEquals(2, ids.size, "the client sent it again")
+        assertEquals(listOf(Invite.value, Invite.value), ids, "so the receiver shows it once")
     }
 
     @Test
@@ -221,7 +236,7 @@ class SiteSocialTest {
         }
         try {
             val asked = TimeSource.Monotonic.markNow()
-            assertNull(withTimeoutOrNull(1.seconds) { SiteMailbox(routes, scope, {}).deliver(Friend, Me, JoinTicket(Code, Offer), 2) })
+            assertNull(withTimeoutOrNull(1.seconds) { SiteMailbox(routes, scope, {}).deliver(Invite, Friend, Me, JoinTicket(Code, Offer), 2) })
             val took = asked.elapsedNow()
             assertTrue(took < 3.seconds, "the send had 1 s, and this took $took")
         } finally {
@@ -261,9 +276,9 @@ class SiteSocialTest {
         val real = System.currentTimeMillis() / 1000
         clock = real - 3_600
         site.answer = { request -> if (abs(request.time!!.toLong() - System.currentTimeMillis() / 1000) <= 5) 200 to """{"delivered":true}""" else 404 to """{"error":"not_found"}""" }
-        assertEquals(Delivery.Delivered, SiteMailbox(routes, scope, {}).deliver(Friend, Me, JoinTicket(Code, Offer), 2), "retried at the time the site's Date said")
+        assertEquals(Delivery.Delivered, SiteMailbox(routes, scope, {}).deliver(Invite, Friend, Me, JoinTicket(Code, Offer), 2), "retried at the time the site's Date said")
         assertEquals(2, site.seen.size)
-        assertEquals(Delivery.Delivered, SiteMailbox(routes, scope, {}).deliver(Friend, Me, JoinTicket(Code, Offer), 2))
+        assertEquals(Delivery.Delivered, SiteMailbox(routes, scope, {}).deliver(Invite, Friend, Me, JoinTicket(Code, Offer), 2))
         assertEquals(3, site.seen.size, "the next request signs at the site's time from the start")
     }
 
@@ -288,10 +303,10 @@ class SiteSocialTest {
         val message = """{"type":"invite","invite":{"id":"${"9f".repeat(16)}","from":"${Friend.value}","code":"${Code.value}","offer":"${Offer.encoded}","players":2,"ttl":59000}}"""
         for (ahead in listOf(0.seconds, 61.seconds, 1.hours, (-1).hours)) {
             val here = Clock.System.now() + ahead
-            val (state, _) = reduceSocial(SocialState(), SocialInput.Came(checkNotNull(parseInvite(message, here))), here) { ListingToken("t") }
+            val (state, _) = reduceSocial(SocialState(), SocialInput.Came(checkNotNull(parseInvite(message, here))), here) { "0".repeat(32) }
             assertEquals(1, state.inbox.size, "a clock $ahead off")
-            assertEquals(1, reduceSocial(state, SocialInput.Tick, here + 58.seconds) { ListingToken("t") }.first.inbox.size, "kept until its lifetime runs out")
-            assertEquals(0, reduceSocial(state, SocialInput.Tick, here + 59.seconds) { ListingToken("t") }.first.inbox.size, "and gone once it has")
+            assertEquals(1, reduceSocial(state, SocialInput.Tick, here + 58.seconds) { "0".repeat(32) }.first.inbox.size, "kept until its lifetime runs out")
+            assertEquals(0, reduceSocial(state, SocialInput.Tick, here + 59.seconds) { "0".repeat(32) }.first.inbox.size, "and gone once it has")
         }
     }
 

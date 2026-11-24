@@ -251,8 +251,9 @@ internal class SiteMailbox(private val routes: SiteRoutes, private val scope: Co
         }
     }
 
-    override suspend fun deliver(to: SteamId, from: SteamId, ticket: JoinTicket, players: Int): Delivery {
+    override suspend fun deliver(id: InvitationId, to: SteamId, from: SteamId, ticket: JoinTicket, players: Int): Delivery {
         val body = buildJsonObject {
+            put("id", id.value)
             put("from", from.value)
             put("code", ticket.code.value)
             put("offer", ticket.offer.encoded)

@@ -10,6 +10,7 @@ import gg.hideouthq.core.customgames.SteamId
 import gg.hideouthq.core.customgames.social.Delivery
 import gg.hideouthq.core.customgames.social.GameStatus
 import gg.hideouthq.core.customgames.social.Invitation
+import gg.hideouthq.core.customgames.social.InvitationId
 import gg.hideouthq.core.customgames.social.ListingId
 import gg.hideouthq.core.customgames.social.ListingToken
 import gg.hideouthq.core.customgames.social.ListingWanted
@@ -78,20 +79,22 @@ class SiteRoundTripTest {
         val code = checkNotNull(InviteCode.parse("P95-MAN-26D"))
         val offer = InviteOffer.of(FakeCustomGamesFeed.BebopWars, Choices.None, LocalPlayer(host.value, null))
         val ticket = JoinTicket(code, offer)
+        val invite = checkNotNull(InvitationId.parse(HexFormat.of().formatHex(ByteArray(16).also(SecureRandom()::nextBytes))))
         var delivery = Delivery.NotReached
         withTimeout(30.seconds) {
             while (delivery != Delivery.Delivered) {
                 delay(250.milliseconds)
-                delivery = hostMailbox.deliver(friend, host, ticket, 2)
+                delivery = hostMailbox.deliver(invite, friend, host, ticket, 2)
             }
         }
         val invitation: Invitation = arrived.await()
+        assertEquals(invite, invitation.id, "the sender's id, which the receiver dedupes by")
         assertEquals(host, invitation.from)
         assertEquals(ticket, invitation.ticket)
 
         val stranger = SiteMailbox(routes(DeviceKey.generate(SecureRandom()).first), scope, ::println)
-        assertEquals(Delivery.NotReached, stranger.deliver(friend, host, ticket, 2), "another device can't send as the host")
-        assertEquals(Delivery.NotReached, SiteMailbox(routes(DeviceKey.generate(SecureRandom()).first, build = "0.3"), scope, ::println).deliver(friend, host, ticket, 2), "nor a build that isn't one")
+        assertEquals(Delivery.NotReached, stranger.deliver(invite, friend, host, ticket, 2), "another device can't send as the host")
+        assertEquals(Delivery.NotReached, SiteMailbox(routes(DeviceKey.generate(SecureRandom()).first, build = "0.3"), scope, ::println).deliver(invite, friend, host, ticket, 2), "nor a build that isn't one")
 
         val directory = SiteDirectory(hostRoutes, scope)
         val token = ListingToken(HexFormat.of().formatHex(ByteArray(16).also(SecureRandom()::nextBytes)))

@@ -13,6 +13,7 @@ import gg.hideouthq.core.customgames.RelayRegion
 import gg.hideouthq.core.customgames.Session
 import gg.hideouthq.core.customgames.SiteOrigin
 import gg.hideouthq.core.customgames.SteamId
+import gg.hideouthq.core.customgames.social.InvitationId
 import gg.hideouthq.core.customgames.social.Delivery
 import gg.hideouthq.core.customgames.social.Directory
 import gg.hideouthq.core.customgames.social.GameStatus
@@ -185,7 +186,7 @@ class InGameEndpointTest {
             override fun hold(owner: SteamId?) = Unit
             override val invitations: Flow<Invitation> = emptyFlow()
             override val refused = MutableStateFlow<SteamId?>(null)
-            override suspend fun deliver(to: SteamId, from: SteamId, ticket: JoinTicket, players: Int) = Delivery.Delivered
+            override suspend fun deliver(id: InvitationId, to: SteamId, from: SteamId, ticket: JoinTicket, players: Int) = Delivery.Delivered
         }
         val social = Social(games, SocialNetwork(mailbox, directory) { null }, scope).apply { start() }
         social.wantServers()

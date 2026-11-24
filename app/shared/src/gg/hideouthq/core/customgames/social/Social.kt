@@ -64,7 +64,8 @@ interface Mailbox {
     /** The owner whose mailbox the site refused this PC, until one opens for them. */
     val refused: StateFlow<SteamId?>
 
-    suspend fun deliver(to: SteamId, from: SteamId, ticket: JoinTicket, players: Int): Delivery
+    /** [id] is the same on every attempt at one invite, so the receiver shows it once however often it arrives. */
+    suspend fun deliver(id: InvitationId, to: SteamId, from: SteamId, ticket: JoinTicket, players: Int): Delivery
 }
 
 interface Directory {
@@ -137,7 +138,7 @@ sealed interface SocialInput {
 }
 
 sealed interface SocialEffect {
-    data class Deliver(val code: InviteCode, val to: SteamId, val ticket: JoinTicket, val players: Int) : SocialEffect
+    data class Deliver(val code: InviteCode, val to: SteamId, val id: InvitationId, val ticket: JoinTicket, val players: Int) : SocialEffect
 
     data class ReadServers(val measure: Boolean) : SocialEffect
 }
@@ -148,9 +149,10 @@ val PingLifetime = 5.minutes
 
 /**
  * Deliveries converge on every [SocialInput.Live]: a friend invited during the start goes out with the rest once the
- * code arrives, and a repeated Live sends nothing twice.
+ * code arrives, and a repeated Live sends nothing twice. [fresh] draws 32 random lowercase hex digits for each listing
+ * token and invite id.
  */
-fun reduceSocial(state: SocialState, input: SocialInput, now: Instant, fresh: () -> ListingToken): Pair<SocialState, List<SocialEffect>> = when (input) {
+fun reduceSocial(state: SocialState, input: SocialInput, now: Instant, fresh: () -> String): Pair<SocialState, List<SocialEffect>> = when (input) {
     is SocialInput.Live -> deliveries(state, input.live, fresh)
     is SocialInput.Came -> {
         val invitation = input.invitation
@@ -187,17 +189,17 @@ fun reduceSocial(state: SocialState, input: SocialInput, now: Instant, fresh: ()
     }
 }
 
-private fun deliveries(state: SocialState, live: LiveSession, fresh: () -> ListingToken): Pair<SocialState, List<SocialEffect>> {
+private fun deliveries(state: SocialState, live: LiveSession, fresh: () -> String): Pair<SocialState, List<SocialEffect>> {
     val hosting = live.session as? Session.Hosting
     val role = live.game?.role as? Role.Host
     val offer = role?.offer
     if (hosting == null || offer == null) return (if (state.hosted == null) state else state.copy(hosted = null)) to emptyList()
-    val hosted = state.hosted?.takeIf { it.code == hosting.code } ?: Hosted(hosting.code, fresh())
+    val hosted = state.hosted?.takeIf { it.code == hosting.code } ?: Hosted(hosting.code, ListingToken(fresh()))
     val owed = role.outreach.invitees - hosted.deliveries.keys
     val ticket = JoinTicket(hosting.code, offer)
     val players = hosting.players.size.coerceAtLeast(1)
     val next = hosted.copy(deliveries = hosted.deliveries + owed.associateWith { Delivery.Sending })
-    return state.copy(hosted = next) to owed.map { SocialEffect.Deliver(hosting.code, it, ticket, players) }
+    return state.copy(hosted = next) to owed.map { SocialEffect.Deliver(hosting.code, it, checkNotNull(InvitationId.parse(fresh())), ticket, players) }
 }
 
 fun listingWanted(state: SocialState, live: LiveSession): ListingWanted? {
@@ -281,7 +283,7 @@ class Social(
 
     private fun step(input: SocialInput) {
         val now = Clock.System.now()
-        val (next, effects) = reduceSocial(published.value, input, now, ::drawToken)
+        val (next, effects) = reduceSocial(published.value, input, now, ::drawHex)
         published.value = next
         network?.mailbox?.hold(mailboxOwner(next, now, me()))
         network?.directory?.keep(listingWanted(next, games.live.value))
@@ -304,7 +306,7 @@ class Social(
         val from = me()
         if (network == null || from == null) return Delivery.NotReached
         val answer = try {
-            withTimeoutOrNull(sendLimit) { network.mailbox.deliver(effect.to, from, effect.ticket, effect.players) }
+            withTimeoutOrNull(sendLimit) { network.mailbox.deliver(effect.id, effect.to, from, effect.ticket, effect.players) }
         } catch (e: Exception) {
             currentCoroutineContext().ensureActive()
             null
@@ -315,4 +317,4 @@ class Social(
 
 private val random = SecureRandom()
 
-private fun drawToken(): ListingToken = ListingToken(HexFormat.of().formatHex(ByteArray(16).also(random::nextBytes)))
+private fun drawHex(): String = HexFormat.of().formatHex(ByteArray(16).also(random::nextBytes))

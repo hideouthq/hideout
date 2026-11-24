@@ -7,13 +7,13 @@
     "host": "hideouthq.gg",
     "path": "/api/mailbox/76561198000000001/invites",
     "time": 1763900000,
-    "body": "{\"from\":\"76561198000000002\",\"code\":\"P95MAN26D\",\"offer\":\"YmVib3Atd2Fycwo\",\"players\":2}",
-    "message": "POST\nhideouthq.gg\n/api/mailbox/76561198000000001/invites\n1763900000\n0.3.0\n34e2e05008f859c96b38e1257b224e2171f7960c7b6497ec8b4408a40eb0185d",
-    "signature": "ce72e4944655784f9fdf56dec096d50a92af8f814f179d496c883a1e79180f83",
+    "body": "{\"id\":\"0123456789abcdef0123456789abcdef\",\"from\":\"76561198000000002\",\"code\":\"P95MAN26D\",\"offer\":\"YmVib3Atd2Fycwo\",\"players\":2}",
+    "message": "POST\nhideouthq.gg\n/api/mailbox/76561198000000001/invites\n1763900000\n0.3.0\nf9c35d04e3eb341342e34a4d9b40dcd4d89b2bfcca8f94bb0e02d3780d5b3841",
+    "signature": "171e9d9241b6bd74ebc4af67bdf91e0d1b8415c9ec392837de916f11bde14c8e",
     "device": {
       "seed": "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60",
       "key": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo",
-      "signature": "cLZ2MEbf_Bpey-k-lzZhsjMIU8qBJLJqAMCKVODd22Up0WZeXUvgkQVSbDXOiddMLbPfAfcYDgG5zkodneDVAg"
+      "signature": "9zjWA15FN5jGBFy9l6GdXpf7f-0JfUrOePWzRUTTzq4aRWQgZNc_yrKrNlX_po62s9-r3QPCRtuFHyhCilRvDw"
     }
   },
   {

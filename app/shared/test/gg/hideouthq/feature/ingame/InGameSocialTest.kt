@@ -87,7 +87,7 @@ private class FakeMailbox : Mailbox {
 
     override val invitations: Flow<Invitation> = arriving
 
-    override suspend fun deliver(to: SteamId, from: SteamId, ticket: JoinTicket, players: Int): Delivery {
+    override suspend fun deliver(id: InvitationId, to: SteamId, from: SteamId, ticket: JoinTicket, players: Int): Delivery {
         delivered += to to ticket
         return answer()
     }

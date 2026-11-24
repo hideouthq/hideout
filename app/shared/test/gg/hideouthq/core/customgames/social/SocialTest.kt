@@ -54,7 +54,7 @@ private val Now = Instant.fromEpochSeconds(1_800_000_000)
 
 class SocialTest {
     private var tokens = 0
-    private val fresh = { ListingToken("%032x".format(++tokens)) }
+    private val fresh = { "%032x".format(++tokens) }
 
     private fun record(invitees: Set<SteamId> = setOf(Kestrel), listing: Listing = Listing.InviteOnly) =
         GameRecord(Role.Host(Bebop, Choices.None, Outreach(listing, invitees), Offer), LocalPlayer(Me.value, null))
@@ -77,6 +77,7 @@ class SocialTest {
         val (sent, effects) = before.after(SocialInput.Live(live))
         assertEquals(setOf(Kestrel, Nori), effects.filterIsInstance<SocialEffect.Deliver>().map { it.to }.toSet())
         assertEquals(JoinTicket(Code, Offer), effects.filterIsInstance<SocialEffect.Deliver>().first().ticket, "the offer the helper serves")
+        assertEquals(2, effects.filterIsInstance<SocialEffect.Deliver>().map { it.id }.toSet().size, "each invitee's invite has its own id")
 
         val (answered, again) = sent.after(SocialInput.Live(live), SocialInput.Answered(Code, Kestrel, Delivery.Delivered), SocialInput.Live(live))
         assertEquals(emptyList(), again, "a repeated Live and an answer send nothing twice")
