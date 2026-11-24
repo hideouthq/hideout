@@ -1,5 +1,6 @@
 package gg.hideouthq.core.data
 
+import gg.hideouthq.core.customgames.InGameConsent
 import gg.hideouthq.core.model.Accent
 import gg.hideouthq.core.model.Appearance
 import gg.hideouthq.core.model.ModCardStyle
@@ -157,5 +158,18 @@ class PreferencesTest {
         assertFailsWith<IllegalStateException> { preferences.setKeepDownloads(false) }
         assertEquals(InstallDefaults(askWhichVersion = false), preferences.defaults.value)
         assertEquals(InstallDefaults(askWhichVersion = false), Preferences(storage).installDefaults(), "a restart reads what was saved")
+    }
+
+    @Test
+    fun anAnswerToTheInGameQuestionHoldsForTheRunEvenWhenItCannotBeSaved() = runTest {
+        val storage = object : CacheStorage {
+            override suspend fun read(name: String): String? = null
+            override suspend fun write(name: String, text: String) = throw IllegalStateException("read-only disk")
+        }
+        val preferences = Preferences(storage)
+        preferences.readInGameUi()
+        assertFailsWith<IllegalStateException> { preferences.answerInGameUi(false) }
+        assertEquals(InGameConsent.No, preferences.inGameUi.value, "the question is not asked again this run")
+        assertEquals(InGameConsent.Unanswered, Preferences(storage).apply { readInGameUi() }.inGameUi.value, "and again after a restart")
     }
 }

@@ -118,6 +118,7 @@ class CustomGames(
     private val hostFolders: Flow<Boolean>,
     private val analytics: UsageAnalytics? = null,
     private val inGame: Flow<InGameConsent> = flowOf(InGameConsent.Unanswered),
+    private val saveInGame: suspend (Boolean) -> Unit = {},
 ) : AutoCloseable {
     private class UsageRun(val attempt: UsageAttempt, var stage: UsageStage = UsageStage.Prepare, var play: UsagePlay? = null)
     private var usage: UsageRun? = null
@@ -256,6 +257,16 @@ class CustomGames(
             logged("fetch the menus' renderer") { platform.fetchRenderer(listed) }?.let { log("Custom games: could not fetch the menus' renderer: $it") }
         }
         upkeepGame()
+    }
+
+    private val publishedInGameUnsaved = MutableStateFlow(false)
+
+    /** Whether the player's last answer to [inGame] couldn't be saved, so it holds only until Hideout closes. */
+    val inGameUnsaved: StateFlow<Boolean> = publishedInGameUnsaved.asStateFlow()
+
+    /** Saves the player's answer to [inGame] through [saveInGame], which applies it for this run even when the save fails. */
+    fun answerInGame(on: Boolean) {
+        scope.launch { publishedInGameUnsaved.value = logged("save the answer to Hideout's UI inside Deadlock") { saveInGame(on) } == null }
     }
 
     private suspend fun inGameWanted(): Boolean = inGameAnswer.filterNotNull().first()

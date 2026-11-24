@@ -193,6 +193,12 @@ class Preferences(private val storage: CacheStorage, private val clock: Clock = 
 
     suspend fun setInGameUi(on: Boolean) = change { it.copy(inGameUi = on) }
 
+    /** The custom games page's question: the answer holds for this run even when saving it throws, so the question isn't asked again. */
+    suspend fun answerInGameUi(on: Boolean) {
+        publishedInGameUi.value = if (on) InGameConsent.Yes else InGameConsent.No
+        setInGameUi(on)
+    }
+
     /** Settings › Developer › "Host mode folders", as last read or saved; null before [readHostModeFolders]. */
     val hostModeFolders: StateFlow<Boolean?> = publishedHostModeFolders.asStateFlow()
 

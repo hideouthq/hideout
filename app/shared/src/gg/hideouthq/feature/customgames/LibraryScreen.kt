@@ -119,7 +119,7 @@ fun CustomGamesRoute(
     /** Whether one notification is wanted when servers go live, and the switch that says so. */
     notifyServers: Boolean,
     onNotifyServers: (Boolean) -> Unit,
-    /** The player's answer to Hideout's UI inside Deadlock, null before it is read, and how a new one is saved. */
+    /** The player's answer to Hideout's UI inside Deadlock, null before it is read, and how a new one is given. */
     inGame: InGameConsent?,
     onInGame: (Boolean) -> Unit,
     social: Social? = null,
@@ -128,6 +128,7 @@ fun CustomGamesRoute(
     val live by games.live.collectAsStateWithLifecycle()
     val restarts by games.restartsDeadlock.collectAsStateWithLifecycle()
     val inGameBlock by games.inGameBlockedBy.collectAsStateWithLifecycle()
+    val inGameUnsaved by games.inGameUnsaved.collectAsStateWithLifecycle()
     val linkProblem by games.linkProblem.collectAsStateWithLifecycle()
     val today = remember { LocalDate.now() }
     var tab by rememberSaveable { mutableStateOf(ModeTab.Browse) }
@@ -165,6 +166,7 @@ fun CustomGamesRoute(
                     CodeField(games::openInvite)
                 }
                 social?.let { InvitesBlocked(it) { id -> copy(id, Res.string.cg_toast_id_copied) } }
+                if (inGameUnsaved) NoteCard(stringResource(Res.string.cg_ingame_unsaved_lead), stringResource(Res.string.cg_ingame_unsaved_body))
                 inGameBlock?.let { NoteCard(stringResource(Res.string.cg_ingame_blocked_lead), stringResource(Res.string.cg_ingame_blocked_body, it)) }
                 if (menusAfterRestartShown(restarts, live.session, inGame)) NoteCard(stringResource(Res.string.cg_menus_after_restart_lead), stringResource(Res.string.cg_menus_after_restart_body))
                 PillTabs(

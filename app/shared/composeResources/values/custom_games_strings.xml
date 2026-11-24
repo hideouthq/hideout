@@ -327,6 +327,8 @@
     <string name="cg_ingame_file">Hideout adds a small menus file to Deadlock’s folder. Turn it off any time in Settings.</string>
     <string name="cg_ingame_turn_on">Turn on</string>
     <string name="cg_ingame_not_now">Not now</string>
+    <string name="cg_ingame_unsaved_lead">Hideout couldn’t save your answer.</string>
+    <string name="cg_ingame_unsaved_body">It holds until Hideout closes. You can change it any time in Settings.</string>
     <string name="cg_ingame_blocked_lead">Hideout games won’t show inside Deadlock.</string>
     <string name="cg_ingame_blocked_body">A mod in %1$s changes Deadlock’s HUD or Custom Match screen, and gameinfo.gi loads it ahead of Hideout. You can still host and join from here. Remove that mod, or load it after Hideout, then restart Deadlock.</string>
     <string name="cg_problem_menus_blocked_title">Another tool’s menus are in the way</string>

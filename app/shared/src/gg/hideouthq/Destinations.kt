@@ -150,7 +150,7 @@ internal fun Destination(entry: HistoryEntry, state: HideoutAppState) {
             CustomGamesRoute(
                 games, state.container.folderPicker, state.modal, { navigator.navigate(Route.CustomGameMode(it)) }, navigator::search,
                 notifyServers, onNotifyServers = { on -> scope.launch { preferences.setNotifyServers(on) } },
-                inGame, onInGame = { on -> scope.launch { preferences.setInGameUi(on) } }, social = state.container.inGame?.social,
+                inGame, onInGame = games::answerInGame, social = state.container.inGame?.social,
             )
         }
         is Route.CustomGameMode -> state.container.customGames?.let { games ->

@@ -133,9 +133,9 @@ class CustomGamesTest {
 
     private val runs = mutableListOf<Run>()
 
-    private inner class Run(val test: TestScope, feed: CustomGamesFeedSource? = null, computer: CustomGamesPlatform = platform, hostFolders: Flow<Boolean> = flowOf(false), analytics: UsageAnalytics? = null, inGame: Flow<InGameConsent> = flowOf(InGameConsent.Unanswered)) {
+    private inner class Run(val test: TestScope, feed: CustomGamesFeedSource? = null, computer: CustomGamesPlatform = platform, hostFolders: Flow<Boolean> = flowOf(false), analytics: UsageAnalytics? = null, inGame: Flow<InGameConsent> = flowOf(InGameConsent.Unanswered), saveInGame: suspend (Boolean) -> Unit = {}) {
         val scope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(test.testScheduler)).also { runs += this }
-        val games = CustomGames(computer, files, feed, scope, logs::add, hostFolders, analytics, inGame)
+        val games = CustomGames(computer, files, feed, scope, logs::add, hostFolders, analytics, inGame, saveInGame)
         val session get() = games.live.value.session
         val link: FakeLinkProcess get() = platform.links.last()
 
@@ -2411,6 +2411,22 @@ class CustomGamesTest {
         answer.value = InGameConsent.No
         run.settle()
         assertEquals(GamesLines.Off, files.lines, "Deadlock is left as it was before")
+    }
+
+    @Test
+    fun anAnswerThatCannotBeSavedIsLoggedAndShown() = scenario {
+        var refuse = true
+        val run = Run(this, saveInGame = { if (refuse) throw IOException("read-only disk") })
+        run.games.start()
+        run.games.answerInGame(true)
+        run.settle()
+        assertTrue(run.games.inGameUnsaved.value)
+        assertTrue(logs.any { "could not save the answer" in it }, "$logs")
+
+        refuse = false
+        run.games.answerInGame(true)
+        run.settle()
+        assertFalse(run.games.inGameUnsaved.value, "saved on a later answer")
     }
 
     @Test
