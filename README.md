@@ -62,7 +62,7 @@ Hideout takes over the mod files already in your game instead of downloading the
 
 <img align="right" src="docs/readme/helper-penguin.webp" width="170" alt="A Lil Helper standing next to a penguin">
 
-Download Hideout for [Windows](https://github.com/hideouthq/hideout/releases/download/v0.1.0/Hideout-0.1.0-Setup.exe) or [Linux](https://github.com/hideouthq/hideout/releases/tag/v0.1.0).
+Download the latest Hideout for [Windows](https://hideouthq.gg/download/windows) or [Linux](https://hideouthq.gg/download/linux) (AppImage). The [latest release](https://github.com/hideouthq/hideout/releases/latest) also has an MSI, a DEB and an RPM.
 
 > [!WARNING]
 > **Windows gets less testing than Linux.**
