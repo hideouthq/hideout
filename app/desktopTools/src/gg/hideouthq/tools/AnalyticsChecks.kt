@@ -91,11 +91,11 @@ private fun checkAnalyticsNotice(out: File) {
                 val panel = nodes().single { it.config.contains(SemanticsProperties.TestTag) && it.config[SemanticsProperties.TestTag] == "analytics-notice" }.boundsInRoot
                 check(chip.bottom <= 56f && chip.right < minimize.left) { "The helper chip belongs beside the other top-right controls" }
                 check(panel.top >= chip.bottom && panel.top < 120f && panel.right > width - 200f) { "The helper panel must open below the top-right chip" }
-                check(!hasText("daily app activity")) { "Detailed collection information starts collapsed" }
+                check(!hasText("app activity once a day")) { "Detailed collection information starts collapsed" }
                 check(fixture.sent.isEmpty()) { "Showing the default-on choice must not start delivery" }
                 capture("notice")
                 clickLabel("Details")
-                check(hasText("daily app activity") && hasText("public custom games")) { "Details must explain collection" }
+                check(hasText("app activity once a day") && hasText("custom games list")) { "Details must explain collection" }
                 check(fixture.sent.isEmpty()) { "Reading details must not start delivery" }
                 capture("details")
                 clickLabel("Less")
