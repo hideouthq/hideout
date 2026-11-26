@@ -65,6 +65,12 @@ class LibraryTest {
     }
 
     @Test
+    fun aModeForOnePlayerReadsAsSoloAndOneAnyoneCanStartAloneDoesNot() {
+        assertEquals(PlayerCount.Solo, playerCount(FakeCustomGamesFeed.SoloMode.listing))
+        assertEquals(PlayerCount.Between(1..12), playerCount(FakeCustomGamesFeed.SoloMode.listing.copy(players = 1..12, kind = ModeKind.Coop)))
+    }
+
+    @Test
     fun kindsComeFromTheModesWithCountsAndFilter() {
         val view = libraryView(ModeList(feed = feed), ModeFilter(kind = ModeKind.Teams), today)
         assertTrue(view.filtersShown)

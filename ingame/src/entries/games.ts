@@ -124,11 +124,14 @@ function drawDetail(view: GamesView): void {
       label(c, '', chip.text)
     }
   })
-  settings.draw(find('HGSettings'), JSON.stringify([view.settings, view.listing, view.listingLine]), (into) => {
+  find('HGSettingsColumn').visible = view.settings.length > 0 || !view.solo
+  find('HGFriendsColumn').visible = !view.solo
+  settings.draw(find('HGSettings'), JSON.stringify([view.settings, view.solo, view.listing, view.listingLine]), (into) => {
     for (const { setting, value } of view.settings) {
       const options = setting.options.map((o) => ({ label: o.label, on: o.value === value, press: () => dispatch({ kind: 'pick', key: setting.key, value: o.value }) }))
       settingRow(into, setting.label, setting.hint ?? '', options)
     }
+    if (view.solo) return
     const listings: [Listing, string][] = [
       ['invite-only', 'Invite only'],
       ['public', 'Public'],

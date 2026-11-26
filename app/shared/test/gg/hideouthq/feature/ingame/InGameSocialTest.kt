@@ -9,6 +9,7 @@ import gg.hideouthq.core.customgames.JoinTicket
 import gg.hideouthq.core.customgames.LinkEvent
 import gg.hideouthq.core.customgames.Listing
 import gg.hideouthq.core.customgames.LocalPlayer
+import gg.hideouthq.core.customgames.ModeId
 import gg.hideouthq.core.customgames.Outreach
 import gg.hideouthq.core.customgames.Player
 import gg.hideouthq.core.customgames.RelayRegion
@@ -66,6 +67,7 @@ private val Me = checkNotNull(SteamId.parse("76561198000000001"))
 private val Kestrel = checkNotNull(SteamId.parse("76561198000000007"))
 private val Nori = checkNotNull(SteamId.parse("76561198000000008"))
 private val Bebop = FakeCustomGamesFeed.BebopWars
+private val Solo = FakeCustomGamesFeed.SoloMode
 private val Code = checkNotNull(InviteCode.parse("P95-MAN-26D"))
 private val FriendCode = checkNotNull(InviteCode.parse("Q22-RST-33E"))
 private val FriendOffer = InviteOffer.of(Bebop, Choices.None, LocalPlayer("76561198000000007", null))
@@ -112,7 +114,7 @@ private class FakeDirectory : Directory {
 class InGameSocialTest {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val platform = FakeCustomGamesPlatform(chatty = false)
-    private val feed = FakeCustomGamesFeed(answer = CustomGamesFetch.Fresh(FakeCustomGamesFeed.SampleModes.copy(modes = listOf(Bebop))))
+    private val feed = FakeCustomGamesFeed(answer = CustomGamesFetch.Fresh(FakeCustomGamesFeed.SampleModes.copy(modes = listOf(Bebop, Solo))))
     private val games = CustomGames(platform, FakeSessionFiles(), feed, scope, hostFolders = flowOf(false)).apply { start() }
     private val mailbox = FakeMailbox()
     private val directory = FakeDirectory()
@@ -143,10 +145,10 @@ class InGameSocialTest {
     private fun topic(topic: Topic, what: String, wanted: (JsonObject) -> Boolean): JsonObject =
         inGame.topics.map { topics -> topics[topic]?.let { Json.parseToJsonElement(it).jsonObject } }.awaited(what) { it != null && wanted(it) }!!
 
-    private fun hostAndReachHosting(outreach: Outreach) {
+    private fun hostAndReachHosting(outreach: Outreach, mode: ModeId = Bebop.id) {
         inGame.opened()
         games.modes.awaited("the mode list") { it.feed != null }
-        assertEquals(CommandResult.Accepted, press(PanelCommand.Host(Bebop.id, emptyMap(), outreach, restart = null)))
+        assertEquals(CommandResult.Accepted, press(PanelCommand.Host(mode, emptyMap(), outreach, restart = null)))
         until("the helper started") { platform.links.isNotEmpty() }
         platform.links.last().say(LinkEvent.InviteReady(Code, Fra))
         platform.links.last().say(LinkEvent.Server(ServerEvent.Ready("street")))
@@ -174,6 +176,21 @@ class InGameSocialTest {
         until("Nori's invite") { mailbox.delivered.size >= 2 }
         runBlocking { delay(300.milliseconds) }
         assertEquals(listOf(Kestrel, Nori), mailbox.delivered.map { it.first }, "Kestrel's invite never goes twice")
+    }
+
+    @Test
+    fun aSoloGameInvitesNobodyIsNeverListedAndRefusesBothPressesWhateverItsHostPressAsked() {
+        hostAndReachHosting(Outreach(Listing.Public, setOf(Kestrel)), Solo.id)
+        assertEquals(Outreach.Private, assertIs<Role.Host>(games.live.value.game?.role).outreach)
+        val card = topic(Topic.Game, "the solo game's card") { it["host"] is JsonObject && it["startsHost"]?.jsonPrimitive?.content == "false" }["host"]!!.jsonObject
+        assertEquals(JsonNull, card["link"], "no link to copy")
+        assertEquals("invite-only", card["listing"]!!.jsonPrimitive.content)
+        assertEquals(emptyList(), card["invitees"]!!.jsonArray.toList())
+        assertEquals(CommandResult.Invalid, press(PanelCommand.Invite(setOf(Nori))))
+        assertEquals(CommandResult.Invalid, press(PanelCommand.Relist(Listing.Public)))
+        runBlocking { delay(300.milliseconds) }
+        assertEquals(emptyList(), mailbox.delivered.toList())
+        assertEquals(emptyList(), directory.kept.filterNotNull())
     }
 
     private fun deliveryTo(friend: SteamId): String =

@@ -59,6 +59,7 @@ import gg.hideouthq.core.customgames.ModeArt
 import gg.hideouthq.core.customgames.ModeKind
 import gg.hideouthq.core.customgames.ModeListing
 import gg.hideouthq.core.customgames.capacities
+import gg.hideouthq.core.customgames.solo
 import gg.hideouthq.core.designsystem.component.CoverArt
 import gg.hideouthq.core.designsystem.component.GlassBadge
 import gg.hideouthq.core.designsystem.component.HideoutIcon
@@ -273,8 +274,9 @@ fun ModeGrid(cards: List<ModeCard>, onOpen: (String) -> Unit, modifier: Modifier
     }
 }
 
-/** How a listing's player count reads: two even sides for a team mode with a fixed count, else the count or its range. */
+/** How a listing's player count reads: solo, two even sides for a team mode with a fixed count, else the count or its range. */
 sealed interface PlayerCount {
+    data object Solo : PlayerCount
     data class Sides(val perSide: Int) : PlayerCount
     data class Exactly(val players: Int) : PlayerCount
     data class Between(val players: IntRange) : PlayerCount
@@ -283,6 +285,7 @@ sealed interface PlayerCount {
 fun playerCount(listing: ModeListing): PlayerCount {
     val range = listing.capacities
     return when {
+        listing.solo -> PlayerCount.Solo
         range.first != range.last -> PlayerCount.Between(range)
         listing.kind == ModeKind.Teams && range.first % 2 == 0 -> PlayerCount.Sides(range.first / 2)
         else -> PlayerCount.Exactly(range.first)
@@ -291,6 +294,7 @@ fun playerCount(listing: ModeListing): PlayerCount {
 
 @Composable
 fun playersText(listing: ModeListing): String = when (val count = playerCount(listing)) {
+    PlayerCount.Solo -> stringResource(Res.string.cg_players_solo)
     is PlayerCount.Sides -> stringResource(Res.string.cg_players_sides, count.perSide)
     is PlayerCount.Exactly -> stringResource(Res.string.cg_players_one, count.players)
     is PlayerCount.Between -> stringResource(Res.string.cg_players_range, count.players.first, count.players.last)

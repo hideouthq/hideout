@@ -202,6 +202,27 @@ class PresentTest {
     }
 
     @Test
+    fun aSoloGameOpensToNobodyAndIsTheMatchOnceItsPlayerIsIn() {
+        val record = GameRecord(Role.Host(FakeCustomGamesFeed.SoloMode, Choices.None), me)
+        val starting = game(starting(code, "street"), record)
+        assertTrue(starting.solo)
+        assertNull(starting.invite, "no code to show or copy")
+        assertEquals(listOf(StepName.GetMode, StepName.StartServer, StepName.SendGameIn), steps(starting.body).map { it.first })
+        val playing = present(hosting(self), record.copy(startedAt = at))
+        val view = assertNotNull(playing.game)
+        assertEquals(Body.Match(emptyList()), view.body)
+        assertEquals(Status.InMatch, view.status)
+        assertEquals(emptyList(), view.endCutsOff)
+        val chip = assertNotNull(playing.chip)
+        assertEquals(HostingTitle.Playing("Parry Drill"), chip.title)
+        assertNull(chip.count, "nobody else to count")
+        assertNull(chip.invite)
+        assertEquals(Body.Match(emptyList()), game(hosting(), record.copy(startedAt = at)).body, "in before the server names its player, still nobody to wait for")
+        assertTrue(assertNotNull(present(Session.Ended(EndReason.PlayerStopped), record.copy(startedAt = at, endedAt = at)).game).solo, "Play again says so")
+        assertFalse(game(hosting(self), hostRecord(started = true)).solo)
+    }
+
+    @Test
     fun aHostWhoseGameIsOutCanPlayAndKeepsTheStatusByCount() {
         val view = game(hosting(self, nori, own = OwnGame.Out()), hostRecord(started = true))
         assertEquals(Body.NotIn(null, canPlay = true), view.body)

@@ -33,6 +33,7 @@ import gg.hideouthq.core.customgames.Transfer
 import gg.hideouthq.core.customgames.download
 import gg.hideouthq.core.customgames.library
 import gg.hideouthq.core.customgames.slotOf
+import gg.hideouthq.core.customgames.solo
 import gg.hideouthq.core.designsystem.component.StepStatus
 import gg.hideouthq.core.library.LibraryProblem
 import kotlin.time.Duration
@@ -140,6 +141,8 @@ data class GameView(
     val invite: InviteView?,
     /** Who End game would cut off, asked about first. Empty ends at once, since nobody else is there. */
     val endCutsOff: List<String>,
+    /** A host's game of a solo mode: no invite, no players to count, and words for one player. */
+    val solo: Boolean = false,
 )
 
 sealed interface HostedBy {
@@ -157,7 +160,7 @@ sealed interface Body {
     /** Open and not full, with [friends] already in it. */
     data class Open(val friends: Int) : Body
 
-    /** Full, or the mode reported something to show. [sections] are the listed sections with state, in listing order. */
+    /** Full, solo, or the mode reported something to show. [sections] are the listed sections with state, in listing order. */
     data class Match(val sections: List<SectionView>) : Body
 
     data class Entering(val joining: Boolean) : Body
@@ -379,6 +382,10 @@ data class HostingChipView(val title: HostingTitle, val face: ModeFace?, val sta
 
 sealed interface HostingTitle {
     data class Hosting(val mode: String?) : HostingTitle
+
+    /** A host's solo game, which nobody else is in. */
+    data class Playing(val mode: String?) : HostingTitle
+
     data class InGame(val host: DisplayName?) : HostingTitle
     data object CleaningUp : HostingTitle
 }
@@ -405,6 +412,7 @@ internal const val SeedOfUnknown = "custom-game"
 private fun gameView(session: Session, record: GameRecord, inputs: PresentInputs): GameView? {
     val face = faceOf(record, inputs.modes)
     val role = record.role
+    val solo = role is Role.Host && role.mode.listing.solo
     ending(session)?.let { (reason, stage) ->
         val byYou = reason == EndReason.PlayerStopped
         val of = when {
@@ -413,11 +421,11 @@ private fun gameView(session: Session, record: GameRecord, inputs: PresentInputs
             else -> if (byYou) EndingOf.YouLeft else EndingOf.FriendsGame
         }
         val status = endingStatus(stage, if (role is Role.Host) Status.Ending else Status.Leaving)
-        return GameView(face, hostedBy(role), status, Body.Ending(stage, of), null, null, emptyList())
+        return GameView(face, hostedBy(role), status, Body.Ending(stage, of), null, null, emptyList(), solo)
     }
-    if (session is Session.Ended) return endedView(session.reason, record, face, inputs.modes)
+    if (session is Session.Ended) return endedView(session.reason, record, face, inputs.modes, solo)
     return when (role) {
-        is Role.Host -> hostGame(session, record, face, inputs)
+        is Role.Host -> hostGame(session, record, face, inputs, solo)
         is Role.Guest -> guestGame(session, record, role, face)
     }
 }
@@ -436,7 +444,7 @@ private fun hostedBy(role: Role): HostedBy = when (role) {
     is Role.Guest -> HostedBy.Friend(role.offer?.host)
 }
 
-private fun endedView(reason: EndReason, record: GameRecord, face: ModeFace, modes: ModeList): GameView? {
+private fun endedView(reason: EndReason, record: GameRecord, face: ModeFace, modes: ModeList, solo: Boolean): GameView? {
     val role = record.role
     val host = role is Role.Host
     val outcome = when {
@@ -463,7 +471,7 @@ private fun endedView(reason: EndReason, record: GameRecord, face: ModeFace, mod
             ),
         )
     }
-    return GameView(face, hostedBy(role), status, Body.Ended(outcome, lastMatch(record), side), null, null, emptyList())
+    return GameView(face, hostedBy(role), status, Body.Ended(outcome, lastMatch(record), side), null, null, emptyList(), solo)
 }
 
 private fun youEnded(record: GameRecord): Outcome.YouEnded {
@@ -509,7 +517,7 @@ private fun startTrace(reason: EndReason, record: GameRecord): StartTrace? {
     return StartTrace(worked, failed, (record.role as? Role.Host)?.mode?.download)
 }
 
-private fun hostGame(session: Session, record: GameRecord, face: ModeFace, inputs: PresentInputs): GameView {
+private fun hostGame(session: Session, record: GameRecord, face: ModeFace, inputs: PresentInputs, solo: Boolean): GameView {
     val capacity = record.capacity
     val hosting = session as? Session.Hosting
     val own = hosting?.own
@@ -520,7 +528,7 @@ private fun hostGame(session: Session, record: GameRecord, face: ModeFace, input
         is Session.Hosting -> session.code
         else -> null
     }
-    val invite = InviteView(code?.shown, inputs.site?.let { code?.webLink(it) }, live = hosting != null, paused = full)
+    val invite = InviteView(code?.shown, inputs.site?.let { code?.webLink(it) }, live = hosting != null, paused = full).takeUnless { solo }
     val entering = own is OwnGame.Sending || own is OwnGame.Joining
     val starting = own == null || (entering && record.players.slotOf(record.me) == null)
     val sections = sections(record, hosting?.players.orEmpty())
@@ -528,10 +536,10 @@ private fun hostGame(session: Session, record: GameRecord, face: ModeFace, input
     val body = when {
         session is Session.RestartNeeded -> Body.RestartNeeded(session.why)
         session is Session.Restarting -> Body.Restarting(session.closeFailed)
-        starting -> Body.Starting(hostSteps(session, inputs.transfer, face.version))
+        starting -> Body.Starting(hostSteps(session, inputs.transfer, face.version, solo))
         entering -> Body.Entering(joining = own is OwnGame.Joining)
         own is OwnGame.Out -> Body.NotIn(own.problem, canPlay = true)
-        full || sections.isNotEmpty() -> Body.Match(sections)
+        full || solo || sections.isNotEmpty() -> Body.Match(sections)
         else -> Body.Open(friends.size)
     }
     val status = when {
@@ -541,7 +549,7 @@ private fun hostGame(session: Session, record: GameRecord, face: ModeFace, input
         full -> Status.InMatch
         else -> Status.Ready
     }
-    return GameView(face, HostedBy.ThisPc, status, body, players, invite, friends)
+    return GameView(face, HostedBy.ThisPc, status, body, players, invite, friends, solo)
 }
 
 private fun guestGame(session: Session, record: GameRecord, role: Role.Guest, face: ModeFace): GameView {
@@ -583,7 +591,8 @@ private fun presenceOf(own: OwnGame?): Presence = when (own) {
     else -> Presence.GettingReady
 }
 
-internal fun hostSteps(session: Session, transfer: Transfer?, version: String?): List<StepView> {
+/** A [solo] game opens to nobody, so it has no step for that. */
+internal fun hostSteps(session: Session, transfer: Transfer?, version: String?, solo: Boolean): List<StepView> {
     val hosting = session as? Session.Hosting
     val starting = session as? Session.HostStarting
     val installed = version?.let(StepNote::Installed)
@@ -602,7 +611,7 @@ internal fun hostSteps(session: Session, transfer: Transfer?, version: String?):
         starting?.map != null -> StepStatus.Running()
         else -> StepStatus.Waiting
     }
-    return listOf(getMode, StepView(StepName.StartServer, server), StepView(StepName.OpenToFriends, open), sendGameIn(hosting?.own))
+    return listOfNotNull(getMode, StepView(StepName.StartServer, server), StepView(StepName.OpenToFriends, open).takeUnless { solo }, sendGameIn(hosting?.own))
 }
 
 private fun sendGameIn(own: OwnGame?): StepView = when (own) {
@@ -684,10 +693,10 @@ private fun scoreboard(board: SectionState.Scoreboard, players: Map<Int, Player>
 
 private fun chipView(game: GameView, session: Session, record: GameRecord): HostingChipView {
     val title = when (val role = record.role) {
-        is Role.Host -> HostingTitle.Hosting(game.face.title)
+        is Role.Host -> if (game.solo) HostingTitle.Playing(game.face.title) else HostingTitle.Hosting(game.face.title)
         is Role.Guest -> HostingTitle.InGame(role.offer?.host)
     }
-    val count = game.players?.takeIf { session is Session.Hosting }?.let { players -> players.capacity?.let { players.rows.size to it } }
+    val count = game.players?.takeIf { session is Session.Hosting && !game.solo }?.let { players -> players.capacity?.let { players.rows.size to it } }
     val score = (game.body as? Body.Match)?.sections?.let(::scoreOf)
     val invite = game.invite?.takeIf { it.live && !it.paused && it.code != null }
     return HostingChipView(title, game.face, game.status, count, score, invite, opens = true)

@@ -124,6 +124,14 @@
     const modes = snapshot.catalog?.modes ?? [];
     return modes.find((m) => m.id === state2.draft.mode) ?? modes[0] ?? null;
   }
+  function solo(mode2) {
+    return mode2.players[1] === 1;
+  }
+  function alone(state2, snapshot) {
+    const host2 = runningHost(snapshot);
+    const mode2 = host2 ? snapshot.catalog?.modes.find((m) => m.id === host2.mode) : selectedMode(state2, snapshot);
+    return mode2 ? solo(mode2) : false;
+  }
   function pickOf(setting, picks) {
     const picked = picks[setting.key];
     return picked !== void 0 && setting.options.some((o) => o.value === picked) ? picked : setting.default;
@@ -143,9 +151,11 @@
       case "pick":
         return [{ ...state2, draft: { ...draft, picks: { ...draft.picks, [event.key]: event.value } } }, []];
       case "listing":
+        if (alone(state2, snapshot)) return [state2, []];
         if (host2) return host2.listing === event.listing ? [state2, []] : sending("listing", { k: "listing", listing: event.listing });
         return [{ ...state2, draft: { ...draft, listing: event.listing } }, []];
       case "friend": {
+        if (alone(state2, snapshot)) return [state2, []];
         const inMatch = friends2.online.some((f) => f.id === event.id && f.inMatch);
         const button2 = friendButton(event.id, inMatch, state2, snapshot);
         if (button2 === "in-match") return [state2, []];
@@ -161,12 +171,13 @@
         if (!mode2 || host2 || state2.request.kind === "sending" || !startsHost(snapshot)) return [state2, []];
         const picks = {};
         for (const setting of mode2.settings) picks[setting.key] = pickOf(setting, draft.picks);
+        const shared = !solo(mode2);
         return sending("play", {
           k: "host",
           mode: mode2.id,
           picks,
-          listing: draft.listing,
-          invite: draftInvitees(state2, snapshot),
+          listing: shared ? draft.listing : "invite-only",
+          invite: shared ? draftInvitees(state2, snapshot) : [],
           restart: snapshot.game?.restartAhead?.reason ?? null
         });
       }
@@ -189,7 +200,9 @@
     }
   }
   var KINDS = { duel: "Duel", teams: "Teams", "free-for-all": "Free-for-all", "co-op": "Co-op" };
-  function playersText([least, most]) {
+  function playersText(mode2) {
+    if (solo(mode2)) return "Solo";
+    const [least, most] = mode2.players;
     return least === most ? `${most} players` : `${least}\u2013${most} players`;
   }
   function sizeText(bytes) {
@@ -208,7 +221,7 @@
     const chips2 = [];
     const kind = mode2.kind && KINDS[mode2.kind];
     if (kind) chips2.push({ icon: "kind", text: kind });
-    chips2.push({ icon: "players", text: playersText(mode2.players) });
+    chips2.push({ icon: "players", text: playersText(mode2) });
     const minutes = mode2.minutes;
     if (minutes) chips2.push({ icon: "time", text: minutes[0] === minutes[1] ? `~${minutes[0]} min` : `${minutes[0]}\u2013${minutes[1]} min` });
     if (mode2.goal) chips2.push({ icon: "goal", text: goalText(mode2.goal, mode2.settings, picks) });
@@ -216,7 +229,7 @@
   }
   function metaLine(mode2) {
     const kind = mode2.kind && KINDS[mode2.kind];
-    return [kind, playersText(mode2.players)].filter(Boolean).join(" \xB7 ");
+    return [kind, playersText(mode2)].filter(Boolean).join(" \xB7 ");
   }
   var ACTION_LABELS = { stop: "Stop game", restart: "Restart Deadlock", play: "Play", again: "Try again", dismiss: "Close" };
   var REFUSALS = {
@@ -244,7 +257,8 @@
     if (hello?.social !== "blocked" || !hello.supportId) return null;
     return { text: `Invites are blocked on this PC. Send support this ID to reset it: ${hello.supportId}`, id: hello.supportId };
   }
-  function inviteHint(state2, snapshot) {
+  function inviteHint(state2, snapshot, mode2) {
+    if (solo(mode2)) return "A solo game on your PC. Nobody else can join.";
     if (state2.draft.invitees.length && snapshot.hello?.social === "other-account") return "Open Hideout with the Steam account playing Deadlock to send invites.";
     const n = draftInvitees(state2, snapshot).length;
     if (n) return `${n} ${n === 1 ? "friend gets" : "friends get"} an invite when your game is ready.`;
@@ -286,7 +300,7 @@
     if (state2.request.kind === "sending" && state2.request.what === "play") return { kind: "busy", label: "Starting\u2026", hint: "" };
     if (!mode2) return { kind: "blocked", label: label2, hint: "" };
     if (state2.request.kind === "refused" && state2.request.what === "play") return { kind: "play", label: label2, hint: REFUSALS[state2.request.result] };
-    return { kind: "play", label: label2, hint: snapshot.game?.restartAhead?.text ?? inviteHint(state2, snapshot) };
+    return { kind: "play", label: label2, hint: snapshot.game?.restartAhead?.text ?? inviteHint(state2, snapshot, mode2) };
   }
   function rejoin(mode2) {
     return { kind: "act", label: mode2 ? `Rejoin ${mode2}` : "Rejoin", action: "play", hint: "The match keeps running. Rejoin sends your Deadlock back in." };
@@ -369,6 +383,7 @@
     const host2 = runningHost(snapshot);
     const listing2 = host2 ? host2.listing : state2.draft.listing;
     const servers2 = viewServers(snapshot, state2.serversAnswer);
+    const lone = alone(state2, snapshot);
     return {
       tab: state2.tab,
       counts: { games: modes.length, servers: snapshot.servers?.state === "ready" ? servers2.lines.length : null },
@@ -380,9 +395,10 @@
       byline: selected ? [`by ${selected.by.join(", ")}`, selected.bytes === null ? null : sizeText(selected.bytes)].filter(Boolean).join(" \xB7 ") : "",
       chips: selected ? chipsOf(selected, state2.draft.picks) : [],
       settings: selected ? selected.settings.map((setting) => ({ setting, value: pickOf(setting, state2.draft.picks) })) : [],
+      solo: lone,
       listing: listing2,
       listingLine: listing2 === "public" ? me2 && selected ? `Listed in Servers as \u201C${me2}\u2019s ${selected.name}\u201D` : "Listed in Servers for anyone to join" : "Only friends you invite, or anyone with the code",
-      friends: friends2.online.map((friend) => ({ friend, button: friendButton(friend.id, friend.inMatch, state2, snapshot) })),
+      friends: lone ? [] : friends2.online.map((friend) => ({ friend, button: friendButton(friend.id, friend.inMatch, state2, snapshot) })),
       blocked: blockedLine(snapshot),
       offline: friends2.offline,
       play: playButton(state2, snapshot, link2, selected)
@@ -984,11 +1000,14 @@
         label(c, "", chip.text);
       }
     });
-    settings.draw(find("HGSettings"), JSON.stringify([view.settings, view.listing, view.listingLine]), (into) => {
+    find("HGSettingsColumn").visible = view.settings.length > 0 || !view.solo;
+    find("HGFriendsColumn").visible = !view.solo;
+    settings.draw(find("HGSettings"), JSON.stringify([view.settings, view.solo, view.listing, view.listingLine]), (into) => {
       for (const { setting, value } of view.settings) {
         const options = setting.options.map((o) => ({ label: o.label, on: o.value === value, press: () => dispatch({ kind: "pick", key: setting.key, value: o.value }) }));
         settingRow(into, setting.label, setting.hint ?? "", options);
       }
+      if (view.solo) return;
       const listings = [
         ["invite-only", "Invite only"],
         ["public", "Public"]

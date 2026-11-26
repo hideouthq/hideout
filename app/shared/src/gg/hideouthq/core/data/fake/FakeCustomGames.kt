@@ -401,6 +401,13 @@ class FakeCustomGamesFeed(
 
         val SampleFolder = Mode(ModeId("arena"), "1.0.0", SampleListing, ModeOrigin.Folder("/built/arena"))
 
+        /** A trainer: one player, so nobody else can join its game. */
+        val SoloMode = Mode(
+            ModeId("parry-drill"), "1.0.0",
+            SampleListing.copy(name = "Parry Drill", tagline = "Parry every heavy melee.", players = 1..1, minutes = 5..30),
+            ModeOrigin.Feed(SampleArtifact, null),
+        )
+
         private fun pick(text: String) = checkNotNull(SettingValue.parse(text))
 
         val BebopWarsListing = ModeListing(

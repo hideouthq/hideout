@@ -3,6 +3,7 @@
 // menu, in the room and in a match, has its own entries for that (escmenu.ts).
 
 import type { Friends } from './friends.ts'
+import { solo } from './games.ts'
 import type { LinkStatus } from './link.ts'
 import type { Action, HostCard, SessionCard, Snapshot } from './wire.ts'
 
@@ -38,15 +39,18 @@ export function viewStrip(snapshot: Snapshot, status: LinkStatus, pressed: boole
   return null
 }
 
+/** A solo game has nobody else in it, so it is played rather than hosted and counts no players. */
 function hostStrip(snapshot: Snapshot, host: HostCard, pressed: boolean, pointer: boolean): StripView {
   const mode = snapshot.catalog?.modes.find((m) => m.id === host.mode)
   const art = mode ? (mode.art.tile ?? mode.art.card) : null
   const name = mode?.name ?? 'your game'
+  const alone = mode ? solo(mode) : false
   if (host.phase === 'notin') {
-    return { art, line: [[mode?.name ?? 'Your game', true], ['is still running', false]], sub: inIt(host), buttons: outButtons(host.actions, 'Stop', pressed, pointer) }
+    return { art, line: [[mode?.name ?? 'Your game', true], ['is still running', false]], sub: alone ? null : inIt(host), buttons: outButtons(host.actions, 'Stop', pressed, pointer) }
   }
   const buttons: StripButtons = !host.actions.includes('stop') || pressed ? { kind: 'spinner' } : pointer ? { kind: 'acts', acts: [{ action: 'stop', label: 'Stop', primary: false }] } : { kind: 'esc', words: 'to stop' }
   if (host.phase === 'ready') {
+    if (alone) return { art, line: [['Playing', false], [name, true]], sub: null, buttons }
     const players = host.players ? ([[`· ${host.players[0]} of ${host.players[1]}`, false]] as [string, boolean][]) : []
     return { art, line: [['Hosting', false], [name, true], ...players], sub: null, buttons }
   }

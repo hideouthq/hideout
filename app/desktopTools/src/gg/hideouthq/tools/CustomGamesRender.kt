@@ -6,7 +6,9 @@ import androidx.compose.runtime.remember
 import gg.hideouthq.App
 import gg.hideouthq.AppContainer
 import gg.hideouthq.core.customgames.FirewallDecision
+import gg.hideouthq.core.customgames.ModeListing
 import gg.hideouthq.core.customgames.parseListing
+import gg.hideouthq.core.customgames.solo
 import gg.hideouthq.core.data.Preferences
 import gg.hideouthq.core.data.ProcessScan
 import gg.hideouthq.core.data.fake.FakeCustomGamesFeed
@@ -47,23 +49,25 @@ fun main(args: Array<String>) {
 
 private class CustomGamesTarget(val name: String, val widthDp: Int, val heightDp: Int, val content: @Composable () -> Unit, val script: Script.() -> Unit)
 
+/** The page target checks Bebop Wars's own words, so with another mode's folder pick other targets, such as library and host. */
 private fun customGamesTargets(images: RemoteImages, folder: File): List<CustomGamesTarget> {
     val app: @Composable (Route) -> Unit = { start -> CustomGamesApp(images, folder, start) }
+    val listing = listingIn(folder)
     return listOf(
         CustomGamesTarget("page", 1440, 1900, { app(Route.CustomGames) }) {
-            openBebopWars()
+            openMode(listing)
             check(hasText("Hook pulled teammates home.")) { "the banner shows the listing's summary" }
             check(hasText("Higher score after 8 minutes, then sudden death")) { "the side panel shows the listing's facts" }
             check(hasText("The canal")) { "the legend shows under the map" }
             capture("page")
         },
         CustomGamesTarget("page_compact", 1000, 2000, { app(Route.CustomGames) }) {
-            openBebopWars()
+            openMode(listing)
             capture("page_compact")
         },
         CustomGamesTarget("library", 1440, 900, { app(Route.CustomGames) }) {
             capture("library")
-            moveTo(nodes().first { it.hasLabel("Bebop Wars") })
+            moveTo(nodes().first { it.hasLabel(listing.name) })
             advance(600)
             capture("bebop_hovered")
         },
@@ -109,16 +113,16 @@ private fun customGamesTargets(images: RemoteImages, folder: File): List<CustomG
         CustomGamesTarget("discover_wide", 1920, 2600, { app(Route.Discover) }) {
             capture("discover_wide")
         },
-        CustomGamesTarget("host", 1440, 1000, { app(Route.CustomGames) }) { hostThrough("host") },
-        CustomGamesTarget("host_running", 1440, 1000, { CustomGamesApp(images, folder, Route.CustomGames, running = true) }) { hostThrough("host_running") },
+        CustomGamesTarget("host", 1440, 1000, { app(Route.CustomGames) }) { hostThrough("host", listing) },
+        CustomGamesTarget("host_running", 1440, 1000, { CustomGamesApp(images, folder, Route.CustomGames, running = true) }) { hostThrough("host_running", listing) },
         CustomGamesTarget("join", 1440, 1000, { CustomGamesApp(images, folder, Route.CustomGames, link = FakeCustomGamesPlatform.SampleCode.shown) }) { joinThrough("join") },
         CustomGamesTarget("join_running", 1440, 1000, { CustomGamesApp(images, folder, Route.CustomGames, running = true, link = FakeCustomGamesPlatform.SampleCode.shown) }) { joinThrough("join_running") },
     )
 }
 
-private fun Script.hostThrough(name: String) {
-    openBebopWars()
-    clickLabel("Host a game")
+private fun Script.hostThrough(name: String, listing: ModeListing) {
+    openMode(listing)
+    clickLabel(if (listing.solo) "Play" else "Host a game")
     waitForLocalImages()
     capture("${name}_dialog")
     clickLabel("Start game")
@@ -160,8 +164,8 @@ private fun Script.optInShown() {
     check(shows("Turn on") && shows("Not now")) { "both answers" }
 }
 
-private fun Script.openBebopWars() {
-    moveTo(nodes().first { it.hasLabel("Bebop Wars") })
+private fun Script.openMode(listing: ModeListing) {
+    moveTo(nodes().first { it.hasLabel(listing.name) })
     click()
     waitForLocalImages()
 }
@@ -178,9 +182,7 @@ private fun Script.waitForLocalImages() {
 private fun CustomGamesApp(images: RemoteImages, folder: File, start: Route, running: Boolean = false, link: String? = null, inGame: Boolean? = true, platform: FakeCustomGamesPlatform = FakeCustomGamesPlatform()) {
     CompositionLocalProvider(LocalWindowChrome provides RenderedWindowChrome) {
         val container = remember {
-            val json = Json.parseToJsonElement(File(folder, "hideout.json").readText()).jsonObject
-            val listing = checkNotNull(parseListing(json) { File(folder, it).toURI().toString() }) { "$folder/hideout.json breaks a listing rule" }
-            val feed = FakeCustomGamesFeed.Placeholder.copy(modes = listOf(FakeCustomGamesFeed.BebopWars.copy(listing = listing)))
+            val feed = FakeCustomGamesFeed.Placeholder.copy(modes = listOf(FakeCustomGamesFeed.BebopWars.copy(listing = listingIn(folder))))
             val preferences = Preferences(MemoryStorage()).also {
                 runBlocking {
                     it.setCustomGames(true)
@@ -194,4 +196,9 @@ private fun CustomGamesApp(images: RemoteImages, folder: File, start: Route, run
         }
         App(rememberHideoutAppState(container, start))
     }
+}
+
+private fun listingIn(folder: File): ModeListing {
+    val json = Json.parseToJsonElement(File(folder, "hideout.json").readText()).jsonObject
+    return checkNotNull(parseListing(json) { File(folder, it).toURI().toString() }) { "$folder/hideout.json breaks a listing rule" }
 }

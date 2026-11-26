@@ -31,6 +31,7 @@ import gg.hideouthq.core.customgames.Mode
 import gg.hideouthq.core.customgames.ModeList
 import gg.hideouthq.core.customgames.RestartReason
 import gg.hideouthq.core.customgames.SettingValue
+import gg.hideouthq.core.customgames.solo
 import gg.hideouthq.core.designsystem.component.ButtonSize
 import gg.hideouthq.core.designsystem.component.ButtonVariant
 import gg.hideouthq.core.designsystem.component.HideoutButton
@@ -55,10 +56,11 @@ fun HostDialog(mode: Mode?, modes: ModeList, block: HostBlock?, restarts: Restar
     var choices by remember(current) { mutableStateOf(Choices.defaultsOf(current.listing)) }
     val view = hostDialog(current, shownDownload, choices)
     val name = current.listing.name
-    val title = stringResource(Res.string.cg_host_title, name)
+    val solo = current.listing.solo
+    val title = stringResource(if (solo) Res.string.cg_play_title else Res.string.cg_host_title, name)
     AlertModal(visible = mode != null, modal = modal, title = title, onDismiss = onClose, initialFocus = focus, width = 600.dp, padding = 0.dp) {
         Column(Modifier.verticalScroll(rememberScrollState())) {
-            Header(current, title, onClose)
+            Header(current, title, stringResource(if (solo) Res.string.cg_play_meta else Res.string.cg_host_meta), onClose)
             Column(Modifier.padding(start = 24.dp, end = 24.dp, top = 14.dp, bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
                 view.settings.forEach { pick ->
                     val sizes = pick.setting.options.any { it.players != null }
@@ -82,13 +84,13 @@ fun HostDialog(mode: Mode?, modes: ModeList, block: HostBlock?, restarts: Restar
 }
 
 @Composable
-private fun Header(mode: Mode, title: String, onClose: () -> Unit) {
+private fun Header(mode: Mode, title: String, meta: String, onClose: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     Row(Modifier.fillMaxWidth().padding(start = 24.dp, end = 18.dp, top = 22.dp, bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
         ModeTile(mode.id.value, mode.listing.art.tile, 56.dp, 16.dp)
         Column(Modifier.weight(1f).align(Alignment.CenterVertically)) {
             Text(title, style = HideoutTheme.typography.titleDialog.copy(fontSize = 22.sp, lineHeight = 25.sp), color = scheme.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text(stringResource(Res.string.cg_host_meta), Modifier.padding(top = 3.dp), style = HideoutTheme.typography.caption.copy(fontSize = 13.sp), color = scheme.outline)
+            Text(meta, Modifier.padding(top = 3.dp), style = HideoutTheme.typography.caption.copy(fontSize = 13.sp), color = scheme.outline)
         }
         HideoutIconButton(HideoutIcons.Close, stringResource(Res.string.cg_close), onClose)
     }

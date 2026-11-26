@@ -7,7 +7,7 @@ import { type GamesEvent, type GamesState, initialGames, reduceGames, viewGames,
 import { viewJoining } from '../src/joining.ts'
 import { viewStrip } from '../src/strip.ts'
 import { wantedToasts } from '../src/toasts.ts'
-import { EMPTY, type Frame, type Snapshot, type SteamId, decodeFrame, withFrame } from '../src/wire.ts'
+import { EMPTY, type Frame, type HostCard, type ModeId, type Snapshot, type SteamId, decodeFrame, withFrame } from '../src/wire.ts'
 
 const frame = (name: string) => decodeFrame(readFileSync(new URL(`../fixtures/${name}`, import.meta.url), 'utf8'))!
 const snapshotOf = (...names: string[]) => names.map(frame).reduce<Snapshot>((s, f: Frame) => withFrame(s, f), EMPTY)
@@ -455,4 +455,45 @@ test('a guest in a match and a host whose game runs are told to leave it first',
   assert.equal(hosting.view.servers.note, 'Leave your current game first.')
   const toast = wantedToasts(snapshotOf('inbox.json', 'game-ready.json'), friends, 0, {}, new Set(), 'escape')[0]
   assert.equal(toast?.kind === 'invite' && toast.blocked, 'Leave your current game first.')
+})
+
+const withSolo = (snapshot: Snapshot) => {
+  const catalog = snapshotOf('catalog.json').catalog!
+  const arena = catalog.modes[0]!
+  const solo = { ...arena, id: 'parry-drill' as ModeId, name: 'Parry Drill', players: [1, 1] as [number, number] }
+  const coop = { ...arena, id: 'keep' as ModeId, name: 'Keep', kind: 'co-op', players: [1, 12] as [number, number] }
+  return withFrame(snapshot, { ...catalog, modes: [...catalog.modes, solo, coop] })
+}
+
+test('a solo mode reads as Solo and offers no invites or listing, and Play sends none whatever was drafted', () => {
+  const snapshot = withSolo(snapshotOf('hello-on.json', 'game-idle.json'))
+  const drafted: GamesEvent[] = [
+    { kind: 'mode', mode: 'bebop-wars' as ModeId },
+    { kind: 'friend', id: KESTREL },
+    { kind: 'listing', listing: 'public' },
+    { kind: 'mode', mode: 'parry-drill' as ModeId },
+  ]
+  const { view, state } = run(snapshot, ...drafted, { kind: 'friend', id: MUGI }, { kind: 'listing', listing: 'invite-only' })
+  assert.equal(view.rows.find((r) => r.mode.id === 'parry-drill')?.meta, 'Solo')
+  assert.deepEqual(view.chips.find((c) => c.icon === 'players'), { icon: 'players', text: 'Solo' })
+  assert.deepEqual([view.solo, view.friends], [true, []])
+  assert.equal(view.play.hint, 'A solo game on your PC. Nobody else can join.')
+  assert.deepEqual([state.draft.invitees, state.draft.listing], [[KESTREL], 'public'], 'the presses a solo mode doesn’t offer change nothing')
+  assert.equal(view.rows.find((r) => r.mode.id === 'keep')?.meta, 'Co-op · 1–12 players', 'a mode one player can start is not solo')
+
+  const { effects } = run(snapshot, ...drafted, { kind: 'play' })
+  assert.deepEqual(effects, [{ kind: 'send', what: 'play', command: { k: 'host', mode: 'parry-drill', picks: {}, listing: 'invite-only', invite: [], restart: null } }])
+  const back = run(snapshot, ...drafted, { kind: 'mode', mode: 'bebop-wars' as ModeId }).view
+  assert.deepEqual([back.solo, back.friends.map((f) => f.button)], [false, ['invited', 'invite']], 'a mode for more players offers them again')
+})
+
+test('a hosted solo game offers no invites while it runs, and the strip says it is played', () => {
+  const ready = snapshotOf('game-ready.json').game!
+  const host: HostCard = { ...ready.host!, mode: 'parry-drill' as ModeId, link: null, players: [1, 1], listing: 'invite-only', invitees: [] }
+  const snapshot = withSolo(withFrame(snapshotOf('hello-on.json'), { ...ready, host }))
+  const { view, effects } = run(snapshot, { kind: 'mode', mode: 'bebop-wars' as ModeId }, { kind: 'friend', id: KESTREL }, { kind: 'listing', listing: 'public' })
+  assert.deepEqual([view.solo, view.friends, effects], [true, [], []], 'whichever mode the list shows')
+  assert.deepEqual(strip(snapshot)?.line, [['Playing', false], ['Parry Drill', true]])
+  const left = withFrame(snapshot, { ...ready, host: { ...host, phase: 'notin', actions: ['play', 'stop'] } })
+  assert.deepEqual([strip(left)?.line, strip(left)?.sub], [[['Parry Drill', true], ['is still running', false]], null])
 })

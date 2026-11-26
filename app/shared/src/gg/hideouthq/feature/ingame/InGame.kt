@@ -27,6 +27,7 @@ import gg.hideouthq.core.customgames.social.ServersRead
 import gg.hideouthq.core.customgames.social.Social
 import gg.hideouthq.core.customgames.social.SocialState
 import gg.hideouthq.core.customgames.social.SocialStatus
+import gg.hideouthq.core.customgames.solo
 import gg.hideouthq.core.customgames.startsHost
 import gg.hideouthq.core.customgames.takesInvite
 import gg.hideouthq.core.designsystem.component.StepStatus
@@ -118,12 +119,19 @@ class InGame(private val games: CustomGames, val social: Social, site: SiteOrigi
         is PanelCommand.Confirm -> accepted { games.confirmJoin(command.restart) }
         is PanelCommand.Hello -> accepted { social.gameSelf(command.self) }
         is PanelCommand.Forget -> accepted { social.forget(command.id) }
-        is PanelCommand.Invite -> online { if (hosted() == null) CommandResult.Busy else accepted { games.invite(command.to) } }
+        is PanelCommand.Invite -> online {
+            val hosted = hosted()
+            when {
+                hosted == null -> CommandResult.Busy
+                hosted.mode.listing.solo -> CommandResult.Invalid
+                else -> accepted { games.invite(command.to) }
+            }
+        }
         is PanelCommand.Relist -> online {
             val hosted = hosted()
             when {
                 hosted == null -> CommandResult.Busy
-                command.listing == Listing.Public && hosted.mode.origin !is ModeOrigin.Feed -> CommandResult.Invalid
+                command.listing == Listing.Public && (hosted.mode.origin !is ModeOrigin.Feed || hosted.mode.listing.solo) -> CommandResult.Invalid
                 else -> accepted { games.list(command.listing) }
             }
         }

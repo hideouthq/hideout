@@ -26,6 +26,7 @@
     <string name="cg_status_ended">Ended</string>
 
     <string name="cg_players_one">%1$d players</string>
+    <string name="cg_players_solo">Solo</string>
     <string name="cg_players_sides">%1$d vs %1$d</string>
     <string name="cg_players_range">%1$d–%2$d players</string>
     <string name="cg_minutes">%1$d min</string>
@@ -142,6 +143,7 @@
     <string name="cg_fact_updated">Updated %1$s</string>
     <string name="cg_fact_download">Download</string>
     <string name="cg_fact_download_note">Installs when you host or join</string>
+    <string name="cg_fact_download_note_solo">Installs when you play</string>
     <string name="cg_fact_installed_note">Installed on this PC</string>
     <string name="cg_fact_folder">Folder</string>
     <string name="cg_fact_made_by">Made by</string>
@@ -153,12 +155,15 @@
 
     <string name="cg_host_title">Host %1$s</string>
     <string name="cg_host_meta">A private game on your PC. Only people with your code can join.</string>
+    <string name="cg_play_title">Play %1$s</string>
+    <string name="cg_play_meta">A solo game on your PC. Nobody else can join.</string>
     <string name="cg_host_players_sub">%1$d players in this game</string>
     <string name="cg_host_download">%1$s MB download</string>
     <string name="cg_host_download_sub">%1$s installs when you start.</string>
     <string name="cg_start_game">Start game</string>
 
     <string name="cg_hosted_here">Hosted on this PC</string>
+    <string name="cg_on_this_pc">On this PC</string>
     <string name="cg_hosted_by">Hosted by %1$s</string>
     <string name="cg_hosted_by_friend">Hosted by a friend</string>
     <string name="cg_nothing_running_title">No game running</string>
@@ -182,6 +187,7 @@
 
     <string name="cg_starting_title">Starting your game</string>
     <string name="cg_starting_body">Your code works as soon as your game is ready.</string>
+    <string name="cg_starting_solo_body">Hideout sends your Deadlock in as soon as your game is ready.</string>
     <string name="cg_ready_title">Waiting for a friend</string>
     <string name="cg_ready_body">Your game is open. Send a friend your code, and the match starts when they join.</string>
     <string name="cg_room_title">Room for more friends</string>
@@ -261,6 +267,7 @@
     <string name="cg_ended_closed_title">Deadlock closed, so you left the game</string>
     <string name="cg_ended_closed_body">Join again gets you back in while your friend’s game runs.</string>
     <string name="cg_host_again">Host again</string>
+    <string name="cg_play_again">Play again</string>
     <plurals name="cg_ended_you_after">
         <item quantity="one">You ended it at %1$s, after %2$d minute.</item>
         <item quantity="other">You ended it at %1$s, after %2$d minutes.</item>
@@ -381,6 +388,7 @@
     <string name="cg_invite_message_code">Join my %1$s game in Hideout. Type this code in Hideout › Custom games: %2$s</string>
     <string name="cg_note_host_title">This game runs on your PC</string>
     <string name="cg_note_host_body">Keep Hideout open while you play. Ending the game or quitting Hideout ends it for everyone.</string>
+    <string name="cg_note_solo_body">Keep Hideout open while you play. Quitting Hideout ends your game.</string>
     <string name="cg_note_guest_title">%1$s is hosting</string>
     <string name="cg_note_guest_title_friend">Your friend is hosting</string>
     <string name="cg_note_guest_body">The game runs on their PC and ends when they end it. If you drop out, the same code gets you back in.</string>
@@ -391,6 +399,7 @@
     <string name="cg_keep_playing">Keep playing</string>
     <string name="cg_quit_host_title">Quit Hideout and end your game?</string>
     <string name="cg_quit_host_body">You’re hosting %1$s. Quitting Hideout ends it for everyone in it.</string>
+    <string name="cg_quit_solo_body">You’re playing %1$s. Quitting Hideout ends it.</string>
     <string name="cg_quit_host_confirm">Quit and end game</string>
     <string name="cg_quit_guest_title">Quit Hideout and leave the game?</string>
     <string name="cg_quit_guest_body">Quitting takes you out of your friend’s game. It keeps running for everyone else.</string>
@@ -415,6 +424,7 @@
     <string name="cg_join_cancelling">Cancelling…</string>
 
     <string name="cg_chip_hosting">Hosting %1$s</string>
+    <string name="cg_chip_playing">Playing %1$s</string>
     <string name="cg_chip_in_game">In %1$s’s game</string>
     <string name="cg_chip_in_game_friend">In a friend’s game</string>
     <string name="cg_chip_cleaning_up">Cleaning up your last game…</string>

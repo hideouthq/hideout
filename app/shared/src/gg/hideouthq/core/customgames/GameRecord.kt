@@ -66,7 +66,7 @@ class RecordContext(val me: LocalPlayer?, val listingOf: (InviteOffer) -> ModeLi
  */
 fun recordAfter(live: LiveSession, event: SessionEvent, next: Session, context: RecordContext): GameRecord? = when {
     next == Session.Idle || next == Session.Recovering -> null
-    event is HostRequested && live.session.startsHost && next is Session.HostPreparing -> GameRecord(Role.Host(event.mode, event.choices, event.outreach), context.me)
+    event is HostRequested && live.session.startsHost && next is Session.HostPreparing -> GameRecord(Role.Host(event.mode, event.choices).reaching(event.outreach), context.me)
     next is Session.Finding && !(live.game?.endedAt == null && (live.game?.role as? Role.Guest)?.code == next.code) ->
         GameRecord(Role.Guest(next.code, next.acceptedBefore, next.acceptedBefore?.let(context.listingOf)), context.me)
     else -> live.game?.let { kept ->
@@ -76,8 +76,8 @@ fun recordAfter(live: LiveSession, event: SessionEvent, next: Session, context: 
             role = when {
                 role is Role.Guest -> role.found((next as? Session.Confirming)?.invite?.offer, context)
                 role is Role.Host && event is RuntimePrepared -> role.copy(offer = event.host.offer)
-                role is Role.Host && event is SessionEvent.Invited -> role.copy(outreach = role.outreach.copy(invitees = role.outreach.invitees + event.to))
-                role is Role.Host && event is SessionEvent.Listed -> role.copy(outreach = role.outreach.copy(listing = event.listing))
+                role is Role.Host && event is SessionEvent.Invited -> role.reaching(role.outreach.copy(invitees = role.outreach.invitees + event.to))
+                role is Role.Host && event is SessionEvent.Listed -> role.reaching(role.outreach.copy(listing = event.listing))
                 else -> role
             },
             me = kept.me ?: context.me,
@@ -90,6 +90,9 @@ fun recordAfter(live: LiveSession, event: SessionEvent, next: Session, context: 
         )
     }
 }
+
+/** A solo game stays [Outreach.Private] whatever a press asks, so nobody is invited to it and it is never listed. */
+private fun Role.Host.reaching(outreach: Outreach): Role.Host = copy(outreach = if (mode.listing.solo) Outreach.Private else outreach)
 
 private fun Role.Guest.found(answered: InviteOffer?, context: RecordContext): Role.Guest = when {
     answered != null && answered != offer -> copy(offer = answered, listing = context.listingOf(answered))

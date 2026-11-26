@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import gg.hideouthq.core.customgames.CustomGames
+import gg.hideouthq.core.customgames.solo
 import gg.hideouthq.core.ui.WindowModal
 import gg.hideouthq.resources.*
 import org.jetbrains.compose.resources.stringResource
@@ -16,7 +17,10 @@ fun QuitConfirm(guard: QuitGuard, games: CustomGames, modal: WindowModal) {
         null -> null
         QuitWarning.EndsHostedGame -> ConfirmWords(
             stringResource(Res.string.cg_quit_host_title),
-            stringResource(Res.string.cg_quit_host_body, live.game?.listing?.name ?: stringResource(Res.string.cg_unknown_mode)),
+            stringResource(
+                if (live.game?.listing?.solo == true) Res.string.cg_quit_solo_body else Res.string.cg_quit_host_body,
+                live.game?.listing?.name ?: stringResource(Res.string.cg_unknown_mode),
+            ),
             keep, stringResource(Res.string.cg_quit_host_confirm),
         )
         QuitWarning.LeavesGame -> ConfirmWords(

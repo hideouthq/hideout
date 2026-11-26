@@ -43,6 +43,18 @@ class GameRecordTest {
     }
 
     @Test
+    fun aSoloGameKeepsNoOutreachWhateverAPressAsks() {
+        val friend = checkNotNull(SteamId.parse("76561198000000007"))
+        val solo = FakeCustomGamesFeed.SoloMode
+        val asked = play(HostRequested(solo, Choices.None, outreach = Outreach(Listing.Public, setOf(friend))))
+        assertEquals(Outreach.Private, assertIs<Role.Host>(asked.game?.role).outreach)
+        val later = play(Invited(setOf(friend)), Listed(Listing.Public), start = asked)
+        assertEquals(Outreach.Private, assertIs<Role.Host>(later.game?.role).outreach)
+        val shared = play(HostRequested(mode, Choices.None, outreach = Outreach(Listing.Public, setOf(friend))))
+        assertEquals(Outreach(Listing.Public, setOf(friend)), assertIs<Role.Host>(shared.game?.role).outreach, "a mode for more players keeps what was asked")
+    }
+
+    @Test
     fun aHostWhoReachedHostingStartedAndKeepsThatThroughTheEnd() {
         val hosting = play(*hostToHosting)
         assertTrue(assertNotNull(hosting.game).started)

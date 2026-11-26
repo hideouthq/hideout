@@ -60,6 +60,7 @@ import gg.hideouthq.core.customgames.LegendEntry
 import gg.hideouthq.core.customgames.SectionKind
 import gg.hideouthq.core.customgames.StepIcon
 import gg.hideouthq.core.customgames.download
+import gg.hideouthq.core.customgames.solo
 import gg.hideouthq.core.designsystem.component.BackLink
 import gg.hideouthq.core.designsystem.component.ButtonVariant
 import gg.hideouthq.core.designsystem.component.HideoutButton
@@ -180,7 +181,7 @@ private fun BoxScope.BannerText(card: ModeCard, block: HostBlock?, onHost: () ->
             maxLines = 3, overflow = TextOverflow.Ellipsis,
         )
         Blocked(block?.let { blockText(it) }, Modifier.padding(top = 4.dp)) {
-            HideoutButton(stringResource(Res.string.cg_host_a_game), onHost, leadingIcon = HideoutIcons.Play, leadingIconSize = 16.dp, enabled = block == null)
+            HideoutButton(stringResource(if (listing.solo) Res.string.cg_play else Res.string.cg_host_a_game), onHost, leadingIcon = HideoutIcons.Play, leadingIconSize = 16.dp, enabled = block == null)
         }
     }
 }
@@ -365,7 +366,7 @@ private fun DownloadFact(card: ModeCard) {
     when {
         card.folder -> Fact(stringResource(Res.string.cg_fact_folder), stringResource(Res.string.cg_badge_folder))
         card.install is Install.Installed -> Fact(key, stringResource(Res.string.cg_mb, megabytes(card.install.record.bytes)), stringResource(Res.string.cg_fact_installed_note))
-        else -> card.mode.download?.let { Fact(key, stringResource(Res.string.cg_mb, megabytes(it)), stringResource(Res.string.cg_fact_download_note)) }
+        else -> card.mode.download?.let { Fact(key, stringResource(Res.string.cg_mb, megabytes(it)), stringResource(if (card.mode.listing.solo) Res.string.cg_fact_download_note_solo else Res.string.cg_fact_download_note)) }
     }
 }
 

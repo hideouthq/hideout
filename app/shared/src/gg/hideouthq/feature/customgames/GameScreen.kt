@@ -119,7 +119,7 @@ private fun GameHeader(view: GameView, modifier: Modifier) {
     val scheme = MaterialTheme.colorScheme
     val type = HideoutTheme.typography
     val hosted = when (val host = view.host) {
-        HostedBy.ThisPc -> stringResource(Res.string.cg_hosted_here)
+        HostedBy.ThisPc -> stringResource(if (view.solo) Res.string.cg_on_this_pc else Res.string.cg_hosted_here)
         is HostedBy.Friend -> named(host.name, Res.string.cg_hosted_by, Res.string.cg_hosted_by_friend)
         null -> null
     }
@@ -187,13 +187,13 @@ private fun GameBody(
                 main = { inner ->
                     Column(inner, verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         StatusCard(shown, games, copy, onEnd, onBack, Modifier.fillMaxWidth())
-                        PlayersCard(players, Modifier.fillMaxWidth())
+                        if (!shown.solo) PlayersCard(players, Modifier.fillMaxWidth())
                     }
                 },
                 side = { inner ->
                     Column(inner, verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         if (shown.host == HostedBy.ThisPc) shown.invite?.let { InviteCard(it, shown.face.name(), copy, Modifier.fillMaxWidth()) }
-                        shown.host?.let { HostNote(it, onEnd, games::stop) }
+                        shown.host?.let { HostNote(it, shown.solo, onEnd, games::stop) }
                     }
                 },
             )
@@ -202,14 +202,20 @@ private fun GameBody(
 }
 
 @Composable
-private fun HostNote(host: HostedBy, onEnd: () -> Unit, onLeave: () -> Unit) {
+private fun HostNote(host: HostedBy, solo: Boolean, onEnd: () -> Unit, onLeave: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     val type = HideoutTheme.typography
     val title = when (host) {
         HostedBy.ThisPc -> stringResource(Res.string.cg_note_host_title)
         is HostedBy.Friend -> named(host.name, Res.string.cg_note_guest_title, Res.string.cg_note_guest_title_friend)
     }
-    val body = stringResource(if (host == HostedBy.ThisPc) Res.string.cg_note_host_body else Res.string.cg_note_guest_body)
+    val body = stringResource(
+        when {
+            host != HostedBy.ThisPc -> Res.string.cg_note_guest_body
+            solo -> Res.string.cg_note_solo_body
+            else -> Res.string.cg_note_host_body
+        },
+    )
     val (action, onAction) = if (host == HostedBy.ThisPc) stringResource(Res.string.cg_end_game) to onEnd else stringResource(Res.string.cg_leave_game) to onLeave
     CgCard(Modifier.fillMaxWidth(), padding = 16.dp, radius = 20.dp, gap = 0.dp) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {

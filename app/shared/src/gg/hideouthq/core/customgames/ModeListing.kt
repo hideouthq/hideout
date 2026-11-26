@@ -146,6 +146,9 @@ val ModeListing.capacities: IntRange
     get() = settings.firstNotNullOfOrNull { setting -> setting.options.mapNotNull { it.players }.takeIf { it.isNotEmpty() } }
         ?.let { it.min()..it.max() } ?: players
 
+/** A mode for one player. Nobody else can join its game, so it has no code, invite or public listing. */
+val ModeListing.solo: Boolean get() = players.last == 1
+
 /**
  * The sections a mode can turn on, by the name its listing uses. This enum is the one list: a new kind is a PR that adds
  * an entry, and the exhaustive `when`s over it then fail the build until the kind is handled everywhere. A listing naming

@@ -106,7 +106,7 @@ private fun ColumnScope.StatusContent(body: Body, view: GameView, games: CustomG
                 CopyDetails(failed.details, copy)
             }
         }
-        is Body.Ended -> EndedButtons(body, host, games, onBack)
+        is Body.Ended -> EndedButtons(body, host, view.solo, games, onBack)
     }
 }
 
@@ -116,7 +116,7 @@ fun headlineOf(body: Body, view: GameView): Headline? {
     val host = view.host == HostedBy.ThisPc
     val hostName = (view.host as? HostedBy.Friend)?.name
     return when (body) {
-        is Body.Starting -> Headline(HideoutIcons.Gamepad, Tone.Starting, phrase(Res.string.cg_starting_title), phrase(Res.string.cg_starting_body))
+        is Body.Starting -> Headline(HideoutIcons.Gamepad, Tone.Starting, phrase(Res.string.cg_starting_title), phrase(if (view.solo) Res.string.cg_starting_solo_body else Res.string.cg_starting_body))
         is Body.RestartNeeded -> Headline(HideoutIcons.Refresh, Tone.Warn, phrase(Res.string.cg_restart_title), restartWhyPhrase(body.why))
         is Body.Restarting -> if (body.closeFailed) {
             Headline(HideoutIcons.Monitor, Tone.Warn, phrase(Res.string.cg_restart_close_title), phrase(Res.string.cg_restart_close_body))
@@ -132,10 +132,11 @@ fun headlineOf(body: Body, view: GameView): Headline? {
             )
         }
         is Body.Match -> if (body.sections.isEmpty()) {
+            val filled = host && !view.solo
             Headline(
                 HideoutIcons.Users, Tone.Match,
-                phrase(if (host) Res.string.cg_match_title else Res.string.cg_match_guest_title),
-                phrase(if (host) Res.string.cg_match_body else Res.string.cg_match_guest_body),
+                phrase(if (filled) Res.string.cg_match_title else Res.string.cg_match_guest_title),
+                phrase(if (filled) Res.string.cg_match_body else Res.string.cg_match_guest_body),
             )
         } else {
             null
@@ -206,9 +207,9 @@ private fun endedHeadline(outcome: Outcome, host: Boolean, hostName: DisplayName
 }
 
 @Composable
-private fun EndedButtons(body: Body.Ended, host: Boolean, games: CustomGames, onBack: () -> Unit) {
+private fun EndedButtons(body: Body.Ended, host: Boolean, solo: Boolean, games: CustomGames, onBack: () -> Unit) {
     val back: @Composable () -> Unit = { Tonal(stringResource(Res.string.cg_back_to_library), onBack) }
-    val hostAgain: @Composable () -> Unit = { Primary(stringResource(Res.string.cg_host_again), games::again, HideoutIcons.Refresh) }
+    val hostAgain: @Composable () -> Unit = { Primary(stringResource(if (solo) Res.string.cg_play_again else Res.string.cg_host_again), games::again, HideoutIcons.Refresh) }
     val joinAgain: @Composable () -> Unit = { Primary(stringResource(Res.string.cg_join_again), games::again, HideoutIcons.Refresh) }
     when (val outcome = body.outcome) {
         is Outcome.YouEnded -> Buttons {

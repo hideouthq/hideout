@@ -51,11 +51,11 @@
 					<Label id="HGDesc" class="HGDesc" text="" />
 					<Panel id="HGChips" class="HGChips" />
 					<Panel class="HGTwo">
-						<Panel class="HGColumn">
+						<Panel id="HGSettingsColumn" class="HGColumn">
 							<Label class="Cap" text="Settings" />
 							<Panel id="HGSettings" class="HGSettingRows" />
 						</Panel>
-						<Panel class="HGColumn HGRight">
+						<Panel id="HGFriendsColumn" class="HGColumn HGRight">
 							<Panel class="CapRow">
 								<Label class="Cap" text="Invite friends" />
 								<Label id="HGOnline" class="CapCount" text="" />

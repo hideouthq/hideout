@@ -536,6 +536,26 @@
     }
   };
 
+  // src/games.ts
+  function takesInvite(snapshot) {
+    return snapshot.game?.takesInvite !== false;
+  }
+  var LEAVE_FIRST = "Leave your current game first.";
+  function solo(mode2) {
+    return mode2.players[1] === 1;
+  }
+  var REFUSALS = {
+    accepted: "",
+    busy: "Finish the game that\u2019s running first.",
+    gone: "That\u2019s no longer there. Pick another.",
+    invalid: "Hideout couldn\u2019t read that. Try again.",
+    unavailable: "This Hideout can\u2019t do that yet.",
+    outdated: "Restart Deadlock to update Hideout games.",
+    stale: "Hideout reconnected. Press again.",
+    unreachable: "Hideout didn\u2019t answer. Is it still open?"
+  };
+  var OUTDATED = { title: "Restart Deadlock", body: REFUSALS.outdated };
+
   // src/strip.ts
   var HIDDEN = ["failed", "ended"];
   function viewStrip(snapshot, status, pressed, pointer, friends) {
@@ -550,11 +570,13 @@
     const mode2 = snapshot.catalog?.modes.find((m) => m.id === host2.mode);
     const art2 = mode2 ? mode2.art.tile ?? mode2.art.card : null;
     const name = mode2?.name ?? "your game";
+    const alone = mode2 ? solo(mode2) : false;
     if (host2.phase === "notin") {
-      return { art: art2, line: [[mode2?.name ?? "Your game", true], ["is still running", false]], sub: inIt(host2), buttons: outButtons(host2.actions, "Stop", pressed, pointer) };
+      return { art: art2, line: [[mode2?.name ?? "Your game", true], ["is still running", false]], sub: alone ? null : inIt(host2), buttons: outButtons(host2.actions, "Stop", pressed, pointer) };
     }
     const buttons = !host2.actions.includes("stop") || pressed ? { kind: "spinner" } : pointer ? { kind: "acts", acts: [{ action: "stop", label: "Stop", primary: false }] } : { kind: "esc", words: "to stop" };
     if (host2.phase === "ready") {
+      if (alone) return { art: art2, line: [["Playing", false], [name, true]], sub: null, buttons };
       const players = host2.players ? [[`\xB7 ${host2.players[0]} of ${host2.players[1]}`, false]] : [];
       return { art: art2, line: [["Hosting", false], [name, true], ...players], sub: null, buttons };
     }
@@ -581,23 +603,6 @@
     if (rejoin) out.push({ action: "play", label: "Rejoin", primary: true });
     return { kind: "acts", acts: out };
   }
-
-  // src/games.ts
-  function takesInvite(snapshot) {
-    return snapshot.game?.takesInvite !== false;
-  }
-  var LEAVE_FIRST = "Leave your current game first.";
-  var REFUSALS = {
-    accepted: "",
-    busy: "Finish the game that\u2019s running first.",
-    gone: "That\u2019s no longer there. Pick another.",
-    invalid: "Hideout couldn\u2019t read that. Try again.",
-    unavailable: "This Hideout can\u2019t do that yet.",
-    outdated: "Restart Deadlock to update Hideout games.",
-    stale: "Hideout reconnected. Press again.",
-    unreachable: "Hideout didn\u2019t answer. Is it still open?"
-  };
-  var OUTDATED = { title: "Restart Deadlock", body: REFUSALS.outdated };
 
   // src/toasts.ts
   function wantedToasts(snapshot, friends, now, arrived, hidden, screen) {

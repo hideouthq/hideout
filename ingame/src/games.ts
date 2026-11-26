@@ -70,6 +70,18 @@ function selectedMode(state: GamesState, snapshot: Snapshot): ModeCard | null {
   return modes.find((m) => m.id === state.draft.mode) ?? modes[0] ?? null
 }
 
+/** A mode for one player. Nobody else can join its game, so it has no code, invite or public listing. */
+export function solo(mode: ModeCard): boolean {
+  return mode.players[1] === 1
+}
+
+/** Whether the game the panel's invites and listing are for is solo: the hosted one while it runs, else the one picked to play. */
+function alone(state: GamesState, snapshot: Snapshot): boolean {
+  const host = runningHost(snapshot)
+  const mode = host ? snapshot.catalog?.modes.find((m) => m.id === host.mode) : selectedMode(state, snapshot)
+  return mode ? solo(mode) : false
+}
+
 function pickOf(setting: Setting, picks: Record<string, string>): string {
   const picked = picks[setting.key]
   return picked !== undefined && setting.options.some((o) => o.value === picked) ? picked : setting.default
@@ -90,9 +102,11 @@ export function reduceGames(state: GamesState, event: GamesEvent, snapshot: Snap
     case 'pick':
       return [{ ...state, draft: { ...draft, picks: { ...draft.picks, [event.key]: event.value } } }, []]
     case 'listing':
+      if (alone(state, snapshot)) return [state, []]
       if (host) return host.listing === event.listing ? [state, []] : sending('listing', { k: 'listing', listing: event.listing })
       return [{ ...state, draft: { ...draft, listing: event.listing } }, []]
     case 'friend': {
+      if (alone(state, snapshot)) return [state, []]
       const inMatch = friends.online.some((f) => f.id === event.id && f.inMatch)
       const button = friendButton(event.id, inMatch, state, snapshot)
       if (button === 'in-match') return [state, []]
@@ -108,12 +122,13 @@ export function reduceGames(state: GamesState, event: GamesEvent, snapshot: Snap
       if (!mode || host || state.request.kind === 'sending' || !startsHost(snapshot)) return [state, []]
       const picks: Record<string, string> = {}
       for (const setting of mode.settings) picks[setting.key] = pickOf(setting, draft.picks)
+      const shared = !solo(mode)
       return sending('play', {
         k: 'host',
         mode: mode.id,
         picks,
-        listing: draft.listing,
-        invite: draftInvitees(state, snapshot),
+        listing: shared ? draft.listing : 'invite-only',
+        invite: shared ? draftInvitees(state, snapshot) : [],
         restart: snapshot.game?.restartAhead?.reason ?? null,
       })
     }
@@ -190,6 +205,8 @@ export interface GamesView {
   byline: string
   chips: { icon: 'kind' | 'players' | 'time' | 'goal'; text: string }[]
   settings: SettingRow[]
+  /** The game the invites and listing are for is solo, so the panel offers neither. */
+  solo: boolean
   listing: Listing
   listingLine: string
   friends: { friend: Friend; button: FriendButton }[]
@@ -200,7 +217,9 @@ export interface GamesView {
 
 const KINDS: Record<string, string> = { duel: 'Duel', teams: 'Teams', 'free-for-all': 'Free-for-all', 'co-op': 'Co-op' }
 
-function playersText([least, most]: [number, number]): string {
+function playersText(mode: ModeCard): string {
+  if (solo(mode)) return 'Solo'
+  const [least, most] = mode.players
   return least === most ? `${most} players` : `${least}–${most} players`
 }
 
@@ -222,7 +241,7 @@ function chipsOf(mode: ModeCard, picks: Record<string, string>): GamesView['chip
   const chips: GamesView['chips'] = []
   const kind = mode.kind && KINDS[mode.kind]
   if (kind) chips.push({ icon: 'kind', text: kind })
-  chips.push({ icon: 'players', text: playersText(mode.players) })
+  chips.push({ icon: 'players', text: playersText(mode) })
   const minutes = mode.minutes
   if (minutes) chips.push({ icon: 'time', text: minutes[0] === minutes[1] ? `~${minutes[0]} min` : `${minutes[0]}–${minutes[1]} min` })
   if (mode.goal) chips.push({ icon: 'goal', text: goalText(mode.goal, mode.settings, picks) })
@@ -231,7 +250,7 @@ function chipsOf(mode: ModeCard, picks: Record<string, string>): GamesView['chip
 
 function metaLine(mode: ModeCard): string {
   const kind = mode.kind && KINDS[mode.kind]
-  return [kind, playersText(mode.players)].filter(Boolean).join(' · ')
+  return [kind, playersText(mode)].filter(Boolean).join(' · ')
 }
 
 const ACTION_LABELS: Record<Action, string> = { stop: 'Stop game', restart: 'Restart Deadlock', play: 'Play', again: 'Try again', dismiss: 'Close' }
@@ -267,7 +286,8 @@ function blockedLine(snapshot: Snapshot): GamesView['blocked'] {
   return { text: `Invites are blocked on this PC. Send support this ID to reset it: ${hello.supportId}`, id: hello.supportId }
 }
 
-function inviteHint(state: GamesState, snapshot: Snapshot): string {
+function inviteHint(state: GamesState, snapshot: Snapshot, mode: ModeCard): string {
+  if (solo(mode)) return 'A solo game on your PC. Nobody else can join.'
   if (state.draft.invitees.length && snapshot.hello?.social === 'other-account') return 'Open Hideout with the Steam account playing Deadlock to send invites.'
   const n = draftInvitees(state, snapshot).length
   if (n) return `${n} ${n === 1 ? 'friend gets' : 'friends get'} an invite when your game is ready.`
@@ -312,7 +332,7 @@ function playButton(state: GamesState, snapshot: Snapshot, link: LinkStatus, mod
   if (state.request.kind === 'sending' && state.request.what === 'play') return { kind: 'busy', label: 'Starting…', hint: '' }
   if (!mode) return { kind: 'blocked', label, hint: '' }
   if (state.request.kind === 'refused' && state.request.what === 'play') return { kind: 'play', label, hint: REFUSALS[state.request.result] }
-  return { kind: 'play', label, hint: snapshot.game?.restartAhead?.text ?? inviteHint(state, snapshot) }
+  return { kind: 'play', label, hint: snapshot.game?.restartAhead?.text ?? inviteHint(state, snapshot, mode) }
 }
 
 function rejoin(mode: string | null): PlayButton {
@@ -384,6 +404,7 @@ export function viewGames(state: GamesState, snapshot: Snapshot, link: LinkStatu
   const host = runningHost(snapshot)
   const listing = host ? host.listing : state.draft.listing
   const servers = viewServers(snapshot, state.serversAnswer)
+  const lone = alone(state, snapshot)
   return {
     tab: state.tab,
     counts: { games: modes.length, servers: snapshot.servers?.state === 'ready' ? servers.lines.length : null },
@@ -395,6 +416,7 @@ export function viewGames(state: GamesState, snapshot: Snapshot, link: LinkStatu
     byline: selected ? [`by ${selected.by.join(', ')}`, selected.bytes === null ? null : sizeText(selected.bytes)].filter(Boolean).join(' · ') : '',
     chips: selected ? chipsOf(selected, state.draft.picks) : [],
     settings: selected ? selected.settings.map((setting) => ({ setting, value: pickOf(setting, state.draft.picks) })) : [],
+    solo: lone,
     listing,
     listingLine:
       listing === 'public'
@@ -402,7 +424,7 @@ export function viewGames(state: GamesState, snapshot: Snapshot, link: LinkStatu
           ? `Listed in Servers as “${me}’s ${selected.name}”`
           : 'Listed in Servers for anyone to join'
         : 'Only friends you invite, or anyone with the code',
-    friends: friends.online.map((friend) => ({ friend, button: friendButton(friend.id, friend.inMatch, state, snapshot) })),
+    friends: lone ? [] : friends.online.map((friend) => ({ friend, button: friendButton(friend.id, friend.inMatch, state, snapshot) })),
     blocked: blockedLine(snapshot),
     offline: friends.offline,
     play: playButton(state, snapshot, link, selected),

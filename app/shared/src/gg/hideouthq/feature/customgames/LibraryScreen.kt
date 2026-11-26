@@ -64,6 +64,7 @@ import gg.hideouthq.core.customgames.ModeKind
 import gg.hideouthq.core.customgames.ModeList
 import gg.hideouthq.core.customgames.RestartReason
 import gg.hideouthq.core.customgames.Session
+import gg.hideouthq.core.customgames.solo
 import gg.hideouthq.core.customgames.startsHost
 import gg.hideouthq.core.customgames.social.Social
 import gg.hideouthq.core.customgames.social.SocialStatus
@@ -419,7 +420,7 @@ private fun InstalledLine(row: InstalledRow, today: LocalDate, why: String?, onH
         if (update != null) {
             Blocked(why) { HideoutButton(stringResource(Res.string.cg_update), { games.update(mode.id) }, size = ButtonSize.Small, enabled = why == null) }
         } else {
-            HideoutButton(stringResource(Res.string.cg_host), onHost, variant = ButtonVariant.Tonal, size = ButtonSize.Small, enabled = status !is InstalledStatus.Updating)
+            HideoutButton(stringResource(if (row.mode.listing.solo) Res.string.cg_play else Res.string.cg_host), onHost, variant = ButtonVariant.Tonal, size = ButtonSize.Small, enabled = status !is InstalledStatus.Updating)
         }
         RowMenu(stringResource(Res.string.cg_more), listOf(MenuEntry.Item(stringResource(Res.string.cg_remove), HideoutIcons.Trash, { games.remove(mode.id) }, danger = true, enabled = why == null, hint = why)))
     }

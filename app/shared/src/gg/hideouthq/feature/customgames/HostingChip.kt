@@ -159,6 +159,7 @@ private fun CodeBox(code: String) {
 @Composable
 private fun chipTitle(title: HostingTitle): String = when (title) {
     is HostingTitle.Hosting -> stringResource(Res.string.cg_chip_hosting, title.mode ?: stringResource(Res.string.cg_unknown_mode))
+    is HostingTitle.Playing -> stringResource(Res.string.cg_chip_playing, title.mode ?: stringResource(Res.string.cg_unknown_mode))
     is HostingTitle.InGame -> named(title.host, Res.string.cg_chip_in_game, Res.string.cg_chip_in_game_friend)
     HostingTitle.CleaningUp -> stringResource(Res.string.cg_chip_cleaning_up)
 }
