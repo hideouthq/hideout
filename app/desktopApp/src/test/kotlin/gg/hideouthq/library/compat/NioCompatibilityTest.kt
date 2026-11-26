@@ -164,6 +164,30 @@ class NioCompatibilityTest {
     }
 
     @Test
+    fun samePathCopiesAreRepairedIndependentlyInDirectoryOrder() = runBlocking<Unit> {
+        installGame()
+        val custom = model(listOf(mesh(listOf(attachment("standing_pivot", OldPivot, doubleArrayOf(0.0, 110.0, 0.0))))))
+        val inputs = listOf(broken, vanilla, custom)
+        val set = placeSet(5, inputs.map { VpkFile(modelPath, it) })
+        val record = ManifestRecord("mod", root, "Test", Placement.On(Slot(5)), sets = listOf(set))
+        val check = checked(record)
+        val findings = check.sets.single().findings
+        assertEquals(listOf(0, 2), findings.map { it.occurrence })
+        assertTrue(findings.all { it.kind == FindingKind.Repairable })
+        val original = assertIs<RetainResult.Retained>(port.retain(record, set, "copies")).original
+        val derived = assertIs<DeriveResult.Derived>(port.derive(record, set, original, check.sets.single(), check.basis, emptyList()))
+        val context = RuleContext(mapOf(modelPath to vanilla)::get)
+        val source = ArraySource(data.resolve("staging/${derived.staging.value}/0.vpk").readBytes())
+        val pack = VpkPackages.read(source)
+        val entries = pack.find(modelPath)
+        assertEquals(inputs.size, entries.size)
+        for ((index, input) in inputs.withIndex()) {
+            val expected = (ModelRepairs.repair(modelPath, input, context) as? ResourceRepair.Repaired)?.bytes ?: input
+            assertContentEquals(expected, VpkPackages.payload(pack, entries[index], source, { null }))
+        }
+    }
+
+    @Test
     fun aRepairedSetIsCheckedByItsRetainedOriginal() = runBlocking<Unit> {
         val (repaired, original) = repairedRecord("orig2")
         val again = assertIs<CheckResult.Checked>(port.check(repaired, listOf(original), emptyList())).check

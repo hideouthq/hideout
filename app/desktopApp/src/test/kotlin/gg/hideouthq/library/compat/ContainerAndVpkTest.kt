@@ -205,14 +205,22 @@ class ContainerAndVpkTest {
     }
 
     @Test
-    fun aDamagedEntryAndAnAmbiguousNameAreRefused() {
+    fun aDamagedEntryIsRefusedAndOnlyTheSelectedCopyIsRewritten() {
         val (original) = vpk(listOf(model, sound), md5 = false)
         val pack = VpkPackages.read(ArraySource(original))
         val damaged = original.copyOf().also { it[(pack.dataStart + 3).toInt()] = (it[(pack.dataStart + 3).toInt()] + 1).toByte() }
         assertFailsWith<Kv3Failure> { VpkPackages.payload(pack, pack.entries.first(), ArraySource(damaged), { null }) }
         val (twice) = vpk(listOf(model, VpkFile(model.path, ByteArray(3))), md5 = false)
         val twicePack = VpkPackages.read(ArraySource(twice))
-        assertFailsWith<Kv3Failure> { VpkPackages.rewrite(twicePack, ArraySource(twice), emptyMap(), mapOf(twicePack.entries.first() to ByteArray(4)), ByteArrayOutputStream()) }
+        val out = ByteArrayOutputStream()
+        val replacement = byteArrayOf(1, 2, 3, 4)
+        VpkPackages.rewrite(twicePack, ArraySource(twice), emptyMap(), mapOf(twicePack.entries.first() to replacement), out)
+        val source = ArraySource(out.toByteArray())
+        val written = VpkPackages.read(source)
+        val copies = written.find(model.path)
+        assertEquals(2, copies.size)
+        assertContentEquals(replacement, VpkPackages.payload(written, copies[0], source, { null }))
+        assertContentEquals(ByteArray(3), VpkPackages.payload(written, copies[1], source, { null }))
     }
 
     @Test

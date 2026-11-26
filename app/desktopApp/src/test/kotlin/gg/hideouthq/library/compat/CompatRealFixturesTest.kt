@@ -182,7 +182,7 @@ class CompatRealFixturesTest {
                 FileSource.open(staged).use { dir ->
                     val pack = VpkPackages.read(dir)
                     for (finding in setCheck.findings.filter { it.kind == gg.hideouthq.core.library.FindingKind.Repairable }) {
-                        val bytes = VpkPackages.payload(pack, pack.find(finding.resource).single(), dir, { null })
+                        val bytes = VpkPackages.payload(pack, pack.find(finding.resource)[finding.occurrence], dir, { null })
                         openGame(root).use { gamePacks ->
                             val verdicts = ModelRepairs.assess(finding.resource, bytes, RuleContext(gamePacks::resource))
                             assertTrue(verdicts.none { it.outcome is RuleOutcome.Repairable }, "${finding.resource} reads back repaired: $verdicts")

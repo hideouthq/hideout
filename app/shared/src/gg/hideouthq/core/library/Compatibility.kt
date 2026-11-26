@@ -12,7 +12,7 @@ enum class FindingKind {
 }
 
 /** What one rule found in one resource of a set; a resource with nothing to say has no finding. */
-data class CompatFinding(val rule: RuleIdentity, val resource: String, val kind: FindingKind, val detail: String, val edits: Int = 0)
+data class CompatFinding(val rule: RuleIdentity, val resource: String, val kind: FindingKind, val detail: String, val edits: Int = 0, val occurrence: Int = 0)
 
 /**
  * One set as checked: the files read, [inputs] in the set's order (the retained originals for a repaired set), and

@@ -22,6 +22,7 @@ internal class ArraySource(private val bytes: ByteArray) : ByteSource {
 }
 
 internal data class VpkEntry(
+    val directoryIndex: Int,
     val extension: String,
     val folder: String,
     val name: String,
@@ -37,10 +38,10 @@ internal data class VpkEntry(
 
     val embedded: Boolean get() = archive == EmbeddedArchive
 
-    override fun equals(other: Any?): Boolean = other is VpkEntry && extension == other.extension && folder == other.folder && name == other.name &&
+    override fun equals(other: Any?): Boolean = other is VpkEntry && directoryIndex == other.directoryIndex && extension == other.extension && folder == other.folder && name == other.name &&
         crc == other.crc && preload.contentEquals(other.preload) && archive == other.archive && offset == other.offset && length == other.length
 
-    override fun hashCode(): Int = listOf(extension, folder, name, crc, archive, offset, length).hashCode() * 31 + preload.contentHashCode()
+    override fun hashCode(): Int = listOf(directoryIndex, extension, folder, name, crc, archive, offset, length).hashCode() * 31 + preload.contentHashCode()
 
     companion object {
         const val EmbeddedArchive = 0x7FFF
@@ -125,6 +126,7 @@ internal object VpkPackages {
                 throw Kv3Failure("a name in the VPK tree is not UTF-8")
             }
         }
+        var directoryIndex = 0
         val groups = mutableListOf<Pair<String, List<Pair<String, List<VpkEntry>>>>>()
         while (true) {
             val extension = string().ifEmpty { null } ?: break
@@ -146,7 +148,7 @@ internal object VpkPackages {
                     val preloadBytes = tree.copyOfRange(position, position + preload)
                     position += preload
                     if (archive == VpkEntry.EmbeddedArchive && length > 0 && offset + length > dataBytes) throw Kv3Failure("a VPK entry reads past the embedded data")
-                    entries += VpkEntry(extension, folder, name, crc, preloadBytes, archive, offset, length)
+                    entries += VpkEntry(directoryIndex++, extension, folder, name, crc, preloadBytes, archive, offset, length)
                 }
                 folders += folder to entries
             }
@@ -176,8 +178,7 @@ internal object VpkPackages {
         if (pack.version == 2 && pack.signature.isNotEmpty() && !emptySignature(pack.signature)) throw Kv3Failure("the VPK is signed")
         val all = pack.entries
         for (entry in replaced.keys) {
-            if (all.count { it == entry } != 1) throw Kv3Failure("${entry.path} is not exactly one entry of the VPK")
-            if (all.count { it.path == entry.path } != 1) throw Kv3Failure("${entry.path} is named more than once in the VPK")
+            if (entry !in all) throw Kv3Failure("${entry.path} is missing from the VPK")
         }
         var embeddedEnd = pack.dataBytes
         val chunkEnds = chunkSizes.toMutableMap()

@@ -123,31 +123,30 @@ class NioCompatibility(private val originalsRoot: Path, private val stagingRoot:
                 fun shadow(path: String): Provider? = above.entries.firstOrNull { (_, paths) -> paths != null && path in paths }?.key
                 val context = RuleContext(game::resource, sources.resources(pack)) { path -> unknownAbove || shadow(path) != null }
                 val findings = mutableListOf<CompatFinding>()
-                for (model in pack.entries.filter { it.extension == "vmdl_c" }.distinctBy { it.path }) {
-                    if (pack.find(model.path).size > 1) {
-                        findings += rules.map { CompatFinding(it, model.path, FindingKind.Unknown, "the model is named more than once") }
-                        continue
-                    }
-                    val winner = shadow(model.path)
+                val models = pack.entries.filter { it.path.endsWith(".vmdl_c") }.groupBy { it.path }
+                for ((path, copies) in models) {
+                    val winner = shadow(path)
                     if (winner != null && winner.managed) continue
                     if (winner != null || unknownAbove) {
                         val why = if (winner != null) "${winner.name}, which Hideout does not manage, loads first" else "what loads first could not be read"
-                        findings += rules.map { CompatFinding(it, model.path, FindingKind.Unknown, why) }
+                        findings += rules.map { CompatFinding(it, path, FindingKind.Unknown, why) }
                         continue
                     }
-                    val bytes = try {
-                        VpkPackages.payload(pack, model, sources.dir, sources::chunk, ModelRepairs.MaxResourceBytes)
-                    } catch (e: Kv3Failure) {
-                        findings += rules.map { CompatFinding(it, model.path, FindingKind.Unknown, e.message) }
-                        continue
-                    }
-                    for (verdict in ModelRepairs.assess(model.path, bytes, context)) {
-                        val identity = RuleIdentity(verdict.rule.id, verdict.rule.revision)
-                        when (val outcome = verdict.outcome) {
-                            RuleOutcome.NotAffected -> Unit
-                            is RuleOutcome.Repairable -> findings += CompatFinding(identity, model.path, FindingKind.Repairable, "${outcome.edits.size} values", outcome.edits.size)
-                            is RuleOutcome.Unrepairable -> findings += CompatFinding(identity, model.path, FindingKind.NeedsAuthor, outcome.reason)
-                            is RuleOutcome.Declined -> findings += CompatFinding(identity, model.path, FindingKind.Unknown, outcome.reason)
+                    for ((occurrence, model) in copies.withIndex()) {
+                        val bytes = try {
+                            VpkPackages.payload(pack, model, sources.dir, sources::chunk, ModelRepairs.MaxResourceBytes)
+                        } catch (e: Kv3Failure) {
+                            findings += rules.map { CompatFinding(it, path, FindingKind.Unknown, e.message, occurrence = occurrence) }
+                            continue
+                        }
+                        for (verdict in ModelRepairs.assess(path, bytes, context)) {
+                            val identity = RuleIdentity(verdict.rule.id, verdict.rule.revision)
+                            when (val outcome = verdict.outcome) {
+                                RuleOutcome.NotAffected -> Unit
+                                is RuleOutcome.Repairable -> findings += CompatFinding(identity, path, FindingKind.Repairable, "${outcome.edits.size} values", outcome.edits.size, occurrence)
+                                is RuleOutcome.Unrepairable -> findings += CompatFinding(identity, path, FindingKind.NeedsAuthor, outcome.reason, occurrence = occurrence)
+                                is RuleOutcome.Declined -> findings += CompatFinding(identity, path, FindingKind.Unknown, outcome.reason, occurrence = occurrence)
+                            }
                         }
                     }
                 }
@@ -172,7 +171,7 @@ class NioCompatibility(private val originalsRoot: Path, private val stagingRoot:
         if (images != expected.inputs) return DeriveResult.Stale("the files changed since the check")
         val files = retainedFiles(original, set) ?: return DeriveResult.Refused("the kept original files are missing")
         for ((path, image) in files.zip(images)) if (measure(path) != image) return DeriveResult.Refused("the kept original ${path.fileName} no longer holds what was copied")
-        val wanted = expected.findings.filter { it.kind == FindingKind.Repairable }.groupBy { it.resource }
+        val wanted = expected.findings.filter { it.kind == FindingKind.Repairable }.groupBy { it.resource to it.occurrence }
         if (wanted.isEmpty()) return DeriveResult.Refused("nothing in the set is repairable")
         val providers = try {
             above.filter { it.rank < record.rank(set) }.associateWith { provider -> if (provider == Provider.Unreadable) null else providerPaths(record.gameRoot, provider, log = null) }
@@ -192,8 +191,9 @@ class NioCompatibility(private val originalsRoot: Path, private val stagingRoot:
                 val replaced = LinkedHashMap<VpkEntry, ByteArray>()
                 val applied = linkedSetOf<RuleIdentity>()
                 var edits = 0
-                for ((resource, findings) in wanted) {
-                    val entry = pack.find(resource).singleOrNull() ?: return DeriveResult.Stale("$resource is not exactly one file of the set any more")
+                for ((copy, findings) in wanted) {
+                    val (resource, occurrence) = copy
+                    val entry = pack.find(resource).getOrNull(occurrence) ?: return DeriveResult.Stale("$resource is missing from the set")
                     val bytes = VpkPackages.payload(pack, entry, sources.dir, sources::chunk, ModelRepairs.MaxResourceBytes)
                     when (val repair = ModelRepairs.repair(resource, bytes, context)) {
                         is ResourceRepair.Refused -> return DeriveResult.Refused("$resource: ${repair.reason}")
@@ -211,7 +211,7 @@ class NioCompatibility(private val originalsRoot: Path, private val stagingRoot:
                 Files.createDirectories(stagingRoot)
                 Files.createDirectory(folder)
                 val members = writeSet(set, record.filesOf(set).map { it.name }, images, pack, sources, replaced, folder, id)
-                readBack(replaced, members, folder)?.let { return DeriveResult.Refused("the repaired files did not read back exactly: $it") }
+                readBack(pack, replaced, members, folder)?.let { return DeriveResult.Refused("the repaired files did not read back exactly: $it") }
                 kept = true
                 val derivation = SetDerivation(original.id, images, rules.filter { it in applied }, codec, basis.game, replaced.size, edits)
                 DeriveResult.Derived(StagingId(id), VpkSet(set.componentKey, members), derivation)
@@ -243,15 +243,23 @@ class NioCompatibility(private val originalsRoot: Path, private val stagingRoot:
         return members
     }
 
-    private fun readBack(replaced: Map<VpkEntry, ByteArray>, members: List<SetMember<StagedVpk>>, folder: Path): String? = FileSource.open(folder.resolve("0.vpk")).use { dir ->
+    private fun readBack(original: VpkPackage, replaced: Map<VpkEntry, ByteArray>, members: List<SetMember<StagedVpk>>, folder: Path): String? = FileSource.open(folder.resolve("0.vpk")).use { dir ->
         val written = VpkPackages.read(dir)
         val chunks = members.drop(1).associate { (it.part as VpkPart.Chunk).index to folder.resolve("${it.vpk.ref.index}.vpk") }
         val opened = HashMap<Int, FileSource>()
         try {
-            replaced.entries.firstOrNull { (entry, bytes) ->
-                val read = written.find(entry.path).singleOrNull() ?: return@firstOrNull true
-                !VpkPackages.payload(written, read, dir, { index -> chunks[index]?.let { opened.getOrPut(index) { FileSource.open(it) } } }, ModelRepairs.MaxResourceBytes).contentEquals(bytes)
-            }?.let { "${it.key.path} does not read back as repaired" }
+            val entries = written.entries
+            val before = original.entries
+            fun chunk(index: Int) = chunks[index]?.let { opened.getOrPut(index) { FileSource.open(it) } }
+            if (entries.size != before.size) return "the directory entry count changed"
+            for ((index, entry) in before.withIndex()) {
+                val bytes = replaced[entry] ?: continue
+                val read = entries[index]
+                if (read.path != entry.path) return "the directory entry for ${entry.path} changed"
+                val payload = VpkPackages.payload(written, read, dir, ::chunk, ModelRepairs.MaxResourceBytes)
+                if (!payload.contentEquals(bytes)) return "${entry.path} does not read back as repaired"
+            }
+            null
         } finally {
             opened.values.forEach { it.close() }
         }
@@ -365,7 +373,7 @@ class NioCompatibility(private val originalsRoot: Path, private val stagingRoot:
     }
 
     companion object {
-        const val Codec: String = "hideout-kv3-1+resource-1+vpk-1"
+        const val Codec: String = "hideout-kv3-1+resource-1+vpk-2"
         private val Token = Regex("[a-z0-9][a-z0-9-]{0,63}")
         private const val CopyBytes = 1 shl 20
 
